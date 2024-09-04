@@ -1,0 +1,73 @@
+package database
+
+import (
+	"github.com/filinvadim/dWighter/api"
+	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/dWighter/json"
+	"github.com/google/uuid"
+)
+
+const TweetsRepoName = "TWEETS"
+
+// TweetRepo handles operations related to tweets
+type TweetRepo struct {
+	db *storage.DB
+}
+
+func NewTweetRepo(db *storage.DB) *TweetRepo {
+	return &TweetRepo{db: db}
+}
+
+// Create adds a new tweet to the database
+func (repo *TweetRepo) Create(userID string, tweet api.Tweet) error {
+	data, err := json.JSON.Marshal(tweet)
+	if err != nil {
+		return err
+	}
+	if tweet.TweetId == nil {
+		id := uuid.New().String()
+		tweet.TweetId = &id
+	}
+
+	if tweet.Sequence == 0 {
+		seq, err := repo.db.NextSequence()
+		if err != nil {
+			return err
+		}
+		tweet.Sequence = int64(seq)
+	}
+
+	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
+	if err != nil {
+		return err
+	}
+	return repo.db.Set(key, data)
+}
+
+// Get retrieves a tweet by its ID
+func (repo *TweetRepo) Get(userID, tweetID string) (*api.Tweet, error) {
+	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
+	if err != nil {
+		return nil, err
+	}
+	data, err := repo.db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var tweet api.Tweet
+	err = json.JSON.Unmarshal(data, &tweet)
+	if err != nil {
+		return nil, err
+	}
+	return &tweet, nil
+}
+
+// Delete removes a tweet by its ID
+func (repo *TweetRepo) Delete(userID, tweetID string) error {
+	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
+	if err != nil {
+		return err
+	}
+	return repo.db.Delete(key)
+}
