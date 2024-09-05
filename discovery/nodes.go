@@ -3,6 +3,7 @@ package discovery
 import (
 	"errors"
 	"github.com/filinvadim/dWighter/api"
+	"github.com/filinvadim/dWighter/database"
 	"sync"
 	"time"
 )
@@ -14,7 +15,7 @@ type DiscoveryService struct {
 }
 
 // NewDiscoveryService creates a new DiscoveryService instance
-func NewDiscoveryService() *DiscoveryService {
+func NewDiscoveryService(ipRepo database.IPRepo) *DiscoveryService {
 	return &DiscoveryService{
 		ips: make(map[string]api.IPAddress),
 	}
@@ -23,7 +24,7 @@ func NewDiscoveryService() *DiscoveryService {
 // AddNode adds a new IP address to the service
 func (ds *DiscoveryService) AddNode(ipAddress api.IPAddress) error {
 	// Validate IP address format
-	if ipAddress.IP == "" {
+	if ipAddress.Ip == "" {
 		return errors.New("invalid IP address")
 	}
 
@@ -32,7 +33,7 @@ func (ds *DiscoveryService) AddNode(ipAddress api.IPAddress) error {
 
 	// Lock and add the IP address to the map
 	ds.mutex.Lock()
-	ds.ips[ipAddress.IP] = ipAddress
+	ds.ips[ipAddress.Ip] = ipAddress
 	ds.mutex.Unlock()
 
 	return nil

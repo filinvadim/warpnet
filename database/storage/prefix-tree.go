@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"unicode"
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -37,11 +36,7 @@ func validateUserId(userId string) error {
 	if len(userId) == 0 {
 		return errors.New("userId cannot be empty")
 	}
-	for _, char := range userId {
-		if !unicode.IsLetter(char) && !unicode.IsDigit(char) {
-			return errors.New("userId must be alphanumeric")
-		}
-	}
+
 	return nil
 }
 
@@ -66,11 +61,7 @@ func validateTweetId(tweetId string) error {
 	if len(tweetId) == 0 {
 		return errors.New("tweetId cannot be empty")
 	}
-	for _, char := range tweetId {
-		if !unicode.IsDigit(char) {
-			return errors.New("tweetId must be numeric")
-		}
-	}
+
 	return nil
 }
 
@@ -90,19 +81,24 @@ func (pb *PrefixBuilder) AddTweetId(tweetId string) *PrefixBuilder {
 	return pb
 }
 
-// AddFolloweeId adds a followee ID segment to the key (reuses user ID validation)
-func (pb *PrefixBuilder) AddFolloweeId(followeeId string) *PrefixBuilder {
+// AddFollowedId adds a followee ID segment to the key (reuses user ID validation)
+func (pb *PrefixBuilder) AddWriterId(writerId string) *PrefixBuilder {
 	// Skip processing if there's already an error
 	if pb.err != nil {
 		return pb
 	}
 
-	// Perform validation and store the error if validation fails
-	if err := validateUserId(followeeId); err != nil {
-		pb.err = err
+	pb.key = fmt.Sprintf("%s:writer:%s", pb.key, writerId)
+	return pb
+}
+
+func (pb *PrefixBuilder) AddReaderId(readerId string) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
 		return pb
 	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, followeeId)
+
+	pb.key = fmt.Sprintf("%s:reader:%s", pb.key, readerId)
 	return pb
 }
 

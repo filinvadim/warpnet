@@ -6,9 +6,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"log"
-	"os"
-	"path/filepath"
-	"runtime"
 	"time"
 )
 
@@ -18,15 +15,36 @@ type DB struct {
 	stopChan chan struct{}
 }
 
-func New(login, password string) *DB {
+func New(
+	login, password, path string,
+	isEncrypted, isInMemory bool,
+	logLvl string,
+) *DB {
 	opts := badger.
-		DefaultOptions(getDBPath()).
+		DefaultOptions(path + "/storage").
 		WithSyncWrites(false).
-		WithLoggingLevel(badger.INFO).
 		WithIndexCacheSize(256 << 20).
-		WithEncryptionKey(generateEncryptionKey(login, password)).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2)
+
+	if isEncrypted {
+		opts.EncryptionKey = generateEncryptionKey(login, password)
+	}
+	if isInMemory {
+		opts.WithDir("").WithValueDir("").WithInMemory(isInMemory)
+	}
+
+	switch logLvl {
+	case "info":
+		opts.WithLoggingLevel(1)
+	case "debug":
+		opts.WithLoggingLevel(0)
+	case "error":
+		opts.WithLoggingLevel(3)
+	default:
+		opts.WithLoggingLevel(1)
+	}
+
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal(err)
@@ -80,32 +98,49 @@ func (db *DB) runEventualGC() {
 	}
 }
 
-func getDBPath() string {
-	var dbPath string
+type IterKeysFunc func(key string) error
 
-	switch runtime.GOOS {
-	case "windows":
-		// %LOCALAPPDATA% Windows
-		appData := os.Getenv("LOCALAPPDATA") // C:\Users\{username}\AppData\Local
-		if appData == "" {
-			log.Fatal("failed to get path to LOCALAPPDATA")
+func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
+	return db.badger.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		p := []byte(prefix)
+		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+			item := it.Item()
+			err := handler(string(item.Key()))
+			if err != nil {
+				return err
+			}
 		}
-		dbPath = filepath.Join(appData, "badgerdb", "data")
+		return nil
+	})
+}
 
-	case "darwin", "linux", "android":
-		homeDir := os.TempDir()
-		dbPath = filepath.Join(homeDir, ".badgerdb", "data")
+type IterKeysValuesFunc func(key string, val []byte) error
 
-	default:
-		log.Fatal("unsupported OS")
-	}
+func (db *DB) IterateKeysValues(prefix string, handler IterKeysValuesFunc) error {
+	return db.badger.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = true
+		it := txn.NewIterator(opts)
+		defer it.Close()
 
-	err := os.MkdirAll(dbPath, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return dbPath
+		p := []byte(prefix)
+		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+			item := it.Item()
+			key := string(item.Key())
+			err := item.Value(func(val []byte) error {
+				// Call the handler function to process the key-value pair
+				return handler(key, val)
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (db *DB) Set(key string, value []byte) error {
@@ -140,35 +175,21 @@ func (db *DB) Update(key string, newValue []byte) error {
 	})
 }
 
+func (db *DB) Txn(f func(tx *badger.Txn) error) error {
+	txn := db.badger.NewTransaction(true)
+	defer txn.Discard()
+
+	if err := f(txn); err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
 func (db *DB) Delete(key string) error {
 	return db.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(key))
 	})
-}
-
-type KV map[string]string
-
-func (db *DB) Iterate(prefix string) (KV, error) {
-	kv := make(KV)
-	err := db.badger.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		p := []byte(prefix)
-		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-			item := it.Item()
-
-			k := append([]byte{}, item.Key()...)
-			err := item.Value(func(v []byte) error {
-				kv[string(k)] = string(v)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	return kv, err
 }
 
 func (db *DB) NextSequence() (uint64, error) {

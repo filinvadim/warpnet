@@ -89,54 +89,54 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// BroadcastMessageWithBody request with any body
-	BroadcastMessageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostBroadcastWithBody request with any body
+	PostBroadcastWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	BroadcastMessage(ctx context.Context, body BroadcastMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostBroadcast(ctx context.Context, body PostBroadcastJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// FollowUserWithBody request with any body
-	FollowUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostFollowWithBody request with any body
+	PostFollowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	FollowUser(ctx context.Context, body FollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostFollow(ctx context.Context, body PostFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNodeIPAddresses request
-	GetNodeIPAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetNodesIpAddresses request
+	GetNodesIpAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SendNodeIPAddressesWithBody request with any body
-	SendNodeIPAddressesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostNodesIpAddressesWithBody request with any body
+	PostNodesIpAddressesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SendNodeIPAddresses(ctx context.Context, body SendNodeIPAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostNodesIpAddresses(ctx context.Context, body PostNodesIpAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PingNode request
-	PingNode(ctx context.Context, params *PingNodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetPing request
+	GetPing(ctx context.Context, params *GetPingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetUserTimeline request
-	GetUserTimeline(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetTimelineUserId request
+	GetTimelineUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateTweetWithBody request with any body
-	CreateTweetWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostTweetsWithBody request with any body
+	PostTweetsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTweet(ctx context.Context, body CreateTweetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostTweets(ctx context.Context, body PostTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetUserTweets request
-	GetUserTweets(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetTweetsUserId request
+	GetTweetsUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UnfollowUserWithBody request with any body
-	UnfollowUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostUnfollowWithBody request with any body
+	PostUnfollowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UnfollowUser(ctx context.Context, body UnfollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostUnfollow(ctx context.Context, body PostUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateUserWithBody request with any body
-	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostUsersWithBody request with any body
+	PostUsersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostUsers(ctx context.Context, body PostUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetUser request
-	GetUser(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetUsersUserId request
+	GetUsersUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) BroadcastMessageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewBroadcastMessageRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostBroadcastWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostBroadcastRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +147,8 @@ func (c *Client) BroadcastMessageWithBody(ctx context.Context, contentType strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) BroadcastMessage(ctx context.Context, body BroadcastMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewBroadcastMessageRequest(c.Server, body)
+func (c *Client) PostBroadcast(ctx context.Context, body PostBroadcastJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostBroadcastRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +159,8 @@ func (c *Client) BroadcastMessage(ctx context.Context, body BroadcastMessageJSON
 	return c.Client.Do(req)
 }
 
-func (c *Client) FollowUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewFollowUserRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostFollowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostFollowRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +171,8 @@ func (c *Client) FollowUserWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-func (c *Client) FollowUser(ctx context.Context, body FollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewFollowUserRequest(c.Server, body)
+func (c *Client) PostFollow(ctx context.Context, body PostFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostFollowRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -183,8 +183,8 @@ func (c *Client) FollowUser(ctx context.Context, body FollowUserJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeIPAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeIPAddressesRequest(c.Server)
+func (c *Client) GetNodesIpAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodesIpAddressesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +195,8 @@ func (c *Client) GetNodeIPAddresses(ctx context.Context, reqEditors ...RequestEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) SendNodeIPAddressesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSendNodeIPAddressesRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostNodesIpAddressesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodesIpAddressesRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -207,8 +207,8 @@ func (c *Client) SendNodeIPAddressesWithBody(ctx context.Context, contentType st
 	return c.Client.Do(req)
 }
 
-func (c *Client) SendNodeIPAddresses(ctx context.Context, body SendNodeIPAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSendNodeIPAddressesRequest(c.Server, body)
+func (c *Client) PostNodesIpAddresses(ctx context.Context, body PostNodesIpAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodesIpAddressesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -219,8 +219,8 @@ func (c *Client) SendNodeIPAddresses(ctx context.Context, body SendNodeIPAddress
 	return c.Client.Do(req)
 }
 
-func (c *Client) PingNode(ctx context.Context, params *PingNodeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPingNodeRequest(c.Server, params)
+func (c *Client) GetPing(ctx context.Context, params *GetPingParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPingRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -231,8 +231,8 @@ func (c *Client) PingNode(ctx context.Context, params *PingNodeParams, reqEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTimeline(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserTimelineRequest(c.Server, userId)
+func (c *Client) GetTimelineUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTimelineUserIdRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -243,8 +243,8 @@ func (c *Client) GetUserTimeline(ctx context.Context, userId string, reqEditors 
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTweetWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTweetRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostTweetsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTweetsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +255,8 @@ func (c *Client) CreateTweetWithBody(ctx context.Context, contentType string, bo
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTweet(ctx context.Context, body CreateTweetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTweetRequest(c.Server, body)
+func (c *Client) PostTweets(ctx context.Context, body PostTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTweetsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +267,8 @@ func (c *Client) CreateTweet(ctx context.Context, body CreateTweetJSONRequestBod
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTweets(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserTweetsRequest(c.Server, userId)
+func (c *Client) GetTweetsUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTweetsUserIdRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -279,8 +279,8 @@ func (c *Client) GetUserTweets(ctx context.Context, userId string, reqEditors ..
 	return c.Client.Do(req)
 }
 
-func (c *Client) UnfollowUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUnfollowUserRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostUnfollowWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostUnfollowRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -291,8 +291,8 @@ func (c *Client) UnfollowUserWithBody(ctx context.Context, contentType string, b
 	return c.Client.Do(req)
 }
 
-func (c *Client) UnfollowUser(ctx context.Context, body UnfollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUnfollowUserRequest(c.Server, body)
+func (c *Client) PostUnfollow(ctx context.Context, body PostUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostUnfollowRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -303,8 +303,8 @@ func (c *Client) UnfollowUser(ctx context.Context, body UnfollowUserJSONRequestB
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostUsersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostUsersRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -315,8 +315,8 @@ func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequest(c.Server, body)
+func (c *Client) PostUsers(ctx context.Context, body PostUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostUsersRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +327,8 @@ func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUser(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserRequest(c.Server, userId)
+func (c *Client) GetUsersUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUsersUserIdRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -339,19 +339,19 @@ func (c *Client) GetUser(ctx context.Context, userId string, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
-// NewBroadcastMessageRequest calls the generic BroadcastMessage builder with application/json body
-func NewBroadcastMessageRequest(server string, body BroadcastMessageJSONRequestBody) (*http.Request, error) {
+// NewPostBroadcastRequest calls the generic PostBroadcast builder with application/json body
+func NewPostBroadcastRequest(server string, body PostBroadcastJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewBroadcastMessageRequestWithBody(server, "application/json", bodyReader)
+	return NewPostBroadcastRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewBroadcastMessageRequestWithBody generates requests for BroadcastMessage with any type of body
-func NewBroadcastMessageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostBroadcastRequestWithBody generates requests for PostBroadcast with any type of body
+func NewPostBroadcastRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -379,19 +379,19 @@ func NewBroadcastMessageRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
-// NewFollowUserRequest calls the generic FollowUser builder with application/json body
-func NewFollowUserRequest(server string, body FollowUserJSONRequestBody) (*http.Request, error) {
+// NewPostFollowRequest calls the generic PostFollow builder with application/json body
+func NewPostFollowRequest(server string, body PostFollowJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewFollowUserRequestWithBody(server, "application/json", bodyReader)
+	return NewPostFollowRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewFollowUserRequestWithBody generates requests for FollowUser with any type of body
-func NewFollowUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostFollowRequestWithBody generates requests for PostFollow with any type of body
+func NewPostFollowRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -419,8 +419,8 @@ func NewFollowUserRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
-// NewGetNodeIPAddressesRequest generates requests for GetNodeIPAddresses
-func NewGetNodeIPAddressesRequest(server string) (*http.Request, error) {
+// NewGetNodesIpAddressesRequest generates requests for GetNodesIpAddresses
+func NewGetNodesIpAddressesRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -446,19 +446,19 @@ func NewGetNodeIPAddressesRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewSendNodeIPAddressesRequest calls the generic SendNodeIPAddresses builder with application/json body
-func NewSendNodeIPAddressesRequest(server string, body SendNodeIPAddressesJSONRequestBody) (*http.Request, error) {
+// NewPostNodesIpAddressesRequest calls the generic PostNodesIpAddresses builder with application/json body
+func NewPostNodesIpAddressesRequest(server string, body PostNodesIpAddressesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSendNodeIPAddressesRequestWithBody(server, "application/json", bodyReader)
+	return NewPostNodesIpAddressesRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewSendNodeIPAddressesRequestWithBody generates requests for SendNodeIPAddresses with any type of body
-func NewSendNodeIPAddressesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostNodesIpAddressesRequestWithBody generates requests for PostNodesIpAddresses with any type of body
+func NewPostNodesIpAddressesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -486,8 +486,8 @@ func NewSendNodeIPAddressesRequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
-// NewPingNodeRequest generates requests for PingNode
-func NewPingNodeRequest(server string, params *PingNodeParams) (*http.Request, error) {
+// NewGetPingRequest generates requests for GetPing
+func NewGetPingRequest(server string, params *GetPingParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -531,13 +531,13 @@ func NewPingNodeRequest(server string, params *PingNodeParams) (*http.Request, e
 	return req, nil
 }
 
-// NewGetUserTimelineRequest generates requests for GetUserTimeline
-func NewGetUserTimelineRequest(server string, userId string) (*http.Request, error) {
+// NewGetTimelineUserIdRequest generates requests for GetTimelineUserId
+func NewGetTimelineUserIdRequest(server string, userId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userId", runtime.ParamLocationPath, userId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -565,19 +565,19 @@ func NewGetUserTimelineRequest(server string, userId string) (*http.Request, err
 	return req, nil
 }
 
-// NewCreateTweetRequest calls the generic CreateTweet builder with application/json body
-func NewCreateTweetRequest(server string, body CreateTweetJSONRequestBody) (*http.Request, error) {
+// NewPostTweetsRequest calls the generic PostTweets builder with application/json body
+func NewPostTweetsRequest(server string, body PostTweetsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTweetRequestWithBody(server, "application/json", bodyReader)
+	return NewPostTweetsRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewCreateTweetRequestWithBody generates requests for CreateTweet with any type of body
-func NewCreateTweetRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostTweetsRequestWithBody generates requests for PostTweets with any type of body
+func NewPostTweetsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -605,13 +605,13 @@ func NewCreateTweetRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
-// NewGetUserTweetsRequest generates requests for GetUserTweets
-func NewGetUserTweetsRequest(server string, userId string) (*http.Request, error) {
+// NewGetTweetsUserIdRequest generates requests for GetTweetsUserId
+func NewGetTweetsUserIdRequest(server string, userId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userId", runtime.ParamLocationPath, userId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -639,19 +639,19 @@ func NewGetUserTweetsRequest(server string, userId string) (*http.Request, error
 	return req, nil
 }
 
-// NewUnfollowUserRequest calls the generic UnfollowUser builder with application/json body
-func NewUnfollowUserRequest(server string, body UnfollowUserJSONRequestBody) (*http.Request, error) {
+// NewPostUnfollowRequest calls the generic PostUnfollow builder with application/json body
+func NewPostUnfollowRequest(server string, body PostUnfollowJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUnfollowUserRequestWithBody(server, "application/json", bodyReader)
+	return NewPostUnfollowRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewUnfollowUserRequestWithBody generates requests for UnfollowUser with any type of body
-func NewUnfollowUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostUnfollowRequestWithBody generates requests for PostUnfollow with any type of body
+func NewPostUnfollowRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -679,19 +679,19 @@ func NewUnfollowUserRequestWithBody(server string, contentType string, body io.R
 	return req, nil
 }
 
-// NewCreateUserRequest calls the generic CreateUser builder with application/json body
-func NewCreateUserRequest(server string, body CreateUserJSONRequestBody) (*http.Request, error) {
+// NewPostUsersRequest calls the generic PostUsers builder with application/json body
+func NewPostUsersRequest(server string, body PostUsersJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateUserRequestWithBody(server, "application/json", bodyReader)
+	return NewPostUsersRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewCreateUserRequestWithBody generates requests for CreateUser with any type of body
-func NewCreateUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostUsersRequestWithBody generates requests for PostUsers with any type of body
+func NewPostUsersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -719,13 +719,13 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
-// NewGetUserRequest generates requests for GetUser
-func NewGetUserRequest(server string, userId string) (*http.Request, error) {
+// NewGetUsersUserIdRequest generates requests for GetUsersUserId
+func NewGetUsersUserIdRequest(server string, userId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userId", runtime.ParamLocationPath, userId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -796,59 +796,59 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// BroadcastMessageWithBodyWithResponse request with any body
-	BroadcastMessageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BroadcastMessageResponse, error)
+	// PostBroadcastWithBodyWithResponse request with any body
+	PostBroadcastWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostBroadcastResponse, error)
 
-	BroadcastMessageWithResponse(ctx context.Context, body BroadcastMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*BroadcastMessageResponse, error)
+	PostBroadcastWithResponse(ctx context.Context, body PostBroadcastJSONRequestBody, reqEditors ...RequestEditorFn) (*PostBroadcastResponse, error)
 
-	// FollowUserWithBodyWithResponse request with any body
-	FollowUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FollowUserResponse, error)
+	// PostFollowWithBodyWithResponse request with any body
+	PostFollowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostFollowResponse, error)
 
-	FollowUserWithResponse(ctx context.Context, body FollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*FollowUserResponse, error)
+	PostFollowWithResponse(ctx context.Context, body PostFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostFollowResponse, error)
 
-	// GetNodeIPAddressesWithResponse request
-	GetNodeIPAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodeIPAddressesResponse, error)
+	// GetNodesIpAddressesWithResponse request
+	GetNodesIpAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesIpAddressesResponse, error)
 
-	// SendNodeIPAddressesWithBodyWithResponse request with any body
-	SendNodeIPAddressesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendNodeIPAddressesResponse, error)
+	// PostNodesIpAddressesWithBodyWithResponse request with any body
+	PostNodesIpAddressesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodesIpAddressesResponse, error)
 
-	SendNodeIPAddressesWithResponse(ctx context.Context, body SendNodeIPAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*SendNodeIPAddressesResponse, error)
+	PostNodesIpAddressesWithResponse(ctx context.Context, body PostNodesIpAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodesIpAddressesResponse, error)
 
-	// PingNodeWithResponse request
-	PingNodeWithResponse(ctx context.Context, params *PingNodeParams, reqEditors ...RequestEditorFn) (*PingNodeResponse, error)
+	// GetPingWithResponse request
+	GetPingWithResponse(ctx context.Context, params *GetPingParams, reqEditors ...RequestEditorFn) (*GetPingResponse, error)
 
-	// GetUserTimelineWithResponse request
-	GetUserTimelineWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserTimelineResponse, error)
+	// GetTimelineUserIdWithResponse request
+	GetTimelineUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTimelineUserIdResponse, error)
 
-	// CreateTweetWithBodyWithResponse request with any body
-	CreateTweetWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTweetResponse, error)
+	// PostTweetsWithBodyWithResponse request with any body
+	PostTweetsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTweetsResponse, error)
 
-	CreateTweetWithResponse(ctx context.Context, body CreateTweetJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTweetResponse, error)
+	PostTweetsWithResponse(ctx context.Context, body PostTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTweetsResponse, error)
 
-	// GetUserTweetsWithResponse request
-	GetUserTweetsWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserTweetsResponse, error)
+	// GetTweetsUserIdWithResponse request
+	GetTweetsUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTweetsUserIdResponse, error)
 
-	// UnfollowUserWithBodyWithResponse request with any body
-	UnfollowUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UnfollowUserResponse, error)
+	// PostUnfollowWithBodyWithResponse request with any body
+	PostUnfollowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUnfollowResponse, error)
 
-	UnfollowUserWithResponse(ctx context.Context, body UnfollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UnfollowUserResponse, error)
+	PostUnfollowWithResponse(ctx context.Context, body PostUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostUnfollowResponse, error)
 
-	// CreateUserWithBodyWithResponse request with any body
-	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	// PostUsersWithBodyWithResponse request with any body
+	PostUsersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUsersResponse, error)
 
-	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	PostUsersWithResponse(ctx context.Context, body PostUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostUsersResponse, error)
 
-	// GetUserWithResponse request
-	GetUserWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
+	// GetUsersUserIdWithResponse request
+	GetUsersUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUsersUserIdResponse, error)
 }
 
-type BroadcastMessageResponse struct {
+type PostBroadcastResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r BroadcastMessageResponse) Status() string {
+func (r PostBroadcastResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -856,20 +856,20 @@ func (r BroadcastMessageResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r BroadcastMessageResponse) StatusCode() int {
+func (r PostBroadcastResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type FollowUserResponse struct {
+type PostFollowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r FollowUserResponse) Status() string {
+func (r PostFollowResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -877,21 +877,21 @@ func (r FollowUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r FollowUserResponse) StatusCode() int {
+func (r PostFollowResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetNodeIPAddressesResponse struct {
+type GetNodesIpAddressesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]IPAddress
 }
 
 // Status returns HTTPResponse.Status
-func (r GetNodeIPAddressesResponse) Status() string {
+func (r GetNodesIpAddressesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -899,20 +899,20 @@ func (r GetNodeIPAddressesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeIPAddressesResponse) StatusCode() int {
+func (r GetNodesIpAddressesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type SendNodeIPAddressesResponse struct {
+type PostNodesIpAddressesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r SendNodeIPAddressesResponse) Status() string {
+func (r PostNodesIpAddressesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -920,21 +920,21 @@ func (r SendNodeIPAddressesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r SendNodeIPAddressesResponse) StatusCode() int {
+func (r PostNodesIpAddressesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PingNodeResponse struct {
+type GetPingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PingResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r PingNodeResponse) Status() string {
+func (r GetPingResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -942,21 +942,21 @@ func (r PingNodeResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PingNodeResponse) StatusCode() int {
+func (r GetPingResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetUserTimelineResponse struct {
+type GetTimelineUserIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Tweet
 }
 
 // Status returns HTTPResponse.Status
-func (r GetUserTimelineResponse) Status() string {
+func (r GetTimelineUserIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -964,20 +964,20 @@ func (r GetUserTimelineResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetUserTimelineResponse) StatusCode() int {
+func (r GetTimelineUserIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type CreateTweetResponse struct {
+type PostTweetsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateTweetResponse) Status() string {
+func (r PostTweetsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -985,21 +985,21 @@ func (r CreateTweetResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateTweetResponse) StatusCode() int {
+func (r PostTweetsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetUserTweetsResponse struct {
+type GetTweetsUserIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Tweet
 }
 
 // Status returns HTTPResponse.Status
-func (r GetUserTweetsResponse) Status() string {
+func (r GetTweetsUserIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1007,20 +1007,20 @@ func (r GetUserTweetsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetUserTweetsResponse) StatusCode() int {
+func (r GetTweetsUserIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type UnfollowUserResponse struct {
+type PostUnfollowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r UnfollowUserResponse) Status() string {
+func (r PostUnfollowResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1028,20 +1028,20 @@ func (r UnfollowUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UnfollowUserResponse) StatusCode() int {
+func (r PostUnfollowResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type CreateUserResponse struct {
+type PostUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateUserResponse) Status() string {
+func (r PostUsersResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1049,21 +1049,21 @@ func (r CreateUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateUserResponse) StatusCode() int {
+func (r PostUsersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetUserResponse struct {
+type GetUsersUserIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *User
 }
 
 // Status returns HTTPResponse.Status
-func (r GetUserResponse) Status() string {
+func (r GetUsersUserIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1071,169 +1071,169 @@ func (r GetUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetUserResponse) StatusCode() int {
+func (r GetUsersUserIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-// BroadcastMessageWithBodyWithResponse request with arbitrary body returning *BroadcastMessageResponse
-func (c *ClientWithResponses) BroadcastMessageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BroadcastMessageResponse, error) {
-	rsp, err := c.BroadcastMessageWithBody(ctx, contentType, body, reqEditors...)
+// PostBroadcastWithBodyWithResponse request with arbitrary body returning *PostBroadcastResponse
+func (c *ClientWithResponses) PostBroadcastWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostBroadcastResponse, error) {
+	rsp, err := c.PostBroadcastWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseBroadcastMessageResponse(rsp)
+	return ParsePostBroadcastResponse(rsp)
 }
 
-func (c *ClientWithResponses) BroadcastMessageWithResponse(ctx context.Context, body BroadcastMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*BroadcastMessageResponse, error) {
-	rsp, err := c.BroadcastMessage(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostBroadcastWithResponse(ctx context.Context, body PostBroadcastJSONRequestBody, reqEditors ...RequestEditorFn) (*PostBroadcastResponse, error) {
+	rsp, err := c.PostBroadcast(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseBroadcastMessageResponse(rsp)
+	return ParsePostBroadcastResponse(rsp)
 }
 
-// FollowUserWithBodyWithResponse request with arbitrary body returning *FollowUserResponse
-func (c *ClientWithResponses) FollowUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FollowUserResponse, error) {
-	rsp, err := c.FollowUserWithBody(ctx, contentType, body, reqEditors...)
+// PostFollowWithBodyWithResponse request with arbitrary body returning *PostFollowResponse
+func (c *ClientWithResponses) PostFollowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostFollowResponse, error) {
+	rsp, err := c.PostFollowWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseFollowUserResponse(rsp)
+	return ParsePostFollowResponse(rsp)
 }
 
-func (c *ClientWithResponses) FollowUserWithResponse(ctx context.Context, body FollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*FollowUserResponse, error) {
-	rsp, err := c.FollowUser(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostFollowWithResponse(ctx context.Context, body PostFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostFollowResponse, error) {
+	rsp, err := c.PostFollow(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseFollowUserResponse(rsp)
+	return ParsePostFollowResponse(rsp)
 }
 
-// GetNodeIPAddressesWithResponse request returning *GetNodeIPAddressesResponse
-func (c *ClientWithResponses) GetNodeIPAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodeIPAddressesResponse, error) {
-	rsp, err := c.GetNodeIPAddresses(ctx, reqEditors...)
+// GetNodesIpAddressesWithResponse request returning *GetNodesIpAddressesResponse
+func (c *ClientWithResponses) GetNodesIpAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesIpAddressesResponse, error) {
+	rsp, err := c.GetNodesIpAddresses(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetNodeIPAddressesResponse(rsp)
+	return ParseGetNodesIpAddressesResponse(rsp)
 }
 
-// SendNodeIPAddressesWithBodyWithResponse request with arbitrary body returning *SendNodeIPAddressesResponse
-func (c *ClientWithResponses) SendNodeIPAddressesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendNodeIPAddressesResponse, error) {
-	rsp, err := c.SendNodeIPAddressesWithBody(ctx, contentType, body, reqEditors...)
+// PostNodesIpAddressesWithBodyWithResponse request with arbitrary body returning *PostNodesIpAddressesResponse
+func (c *ClientWithResponses) PostNodesIpAddressesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodesIpAddressesResponse, error) {
+	rsp, err := c.PostNodesIpAddressesWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSendNodeIPAddressesResponse(rsp)
+	return ParsePostNodesIpAddressesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SendNodeIPAddressesWithResponse(ctx context.Context, body SendNodeIPAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*SendNodeIPAddressesResponse, error) {
-	rsp, err := c.SendNodeIPAddresses(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostNodesIpAddressesWithResponse(ctx context.Context, body PostNodesIpAddressesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodesIpAddressesResponse, error) {
+	rsp, err := c.PostNodesIpAddresses(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSendNodeIPAddressesResponse(rsp)
+	return ParsePostNodesIpAddressesResponse(rsp)
 }
 
-// PingNodeWithResponse request returning *PingNodeResponse
-func (c *ClientWithResponses) PingNodeWithResponse(ctx context.Context, params *PingNodeParams, reqEditors ...RequestEditorFn) (*PingNodeResponse, error) {
-	rsp, err := c.PingNode(ctx, params, reqEditors...)
+// GetPingWithResponse request returning *GetPingResponse
+func (c *ClientWithResponses) GetPingWithResponse(ctx context.Context, params *GetPingParams, reqEditors ...RequestEditorFn) (*GetPingResponse, error) {
+	rsp, err := c.GetPing(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePingNodeResponse(rsp)
+	return ParseGetPingResponse(rsp)
 }
 
-// GetUserTimelineWithResponse request returning *GetUserTimelineResponse
-func (c *ClientWithResponses) GetUserTimelineWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserTimelineResponse, error) {
-	rsp, err := c.GetUserTimeline(ctx, userId, reqEditors...)
+// GetTimelineUserIdWithResponse request returning *GetTimelineUserIdResponse
+func (c *ClientWithResponses) GetTimelineUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTimelineUserIdResponse, error) {
+	rsp, err := c.GetTimelineUserId(ctx, userId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetUserTimelineResponse(rsp)
+	return ParseGetTimelineUserIdResponse(rsp)
 }
 
-// CreateTweetWithBodyWithResponse request with arbitrary body returning *CreateTweetResponse
-func (c *ClientWithResponses) CreateTweetWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTweetResponse, error) {
-	rsp, err := c.CreateTweetWithBody(ctx, contentType, body, reqEditors...)
+// PostTweetsWithBodyWithResponse request with arbitrary body returning *PostTweetsResponse
+func (c *ClientWithResponses) PostTweetsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTweetsResponse, error) {
+	rsp, err := c.PostTweetsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateTweetResponse(rsp)
+	return ParsePostTweetsResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTweetWithResponse(ctx context.Context, body CreateTweetJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTweetResponse, error) {
-	rsp, err := c.CreateTweet(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostTweetsWithResponse(ctx context.Context, body PostTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTweetsResponse, error) {
+	rsp, err := c.PostTweets(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateTweetResponse(rsp)
+	return ParsePostTweetsResponse(rsp)
 }
 
-// GetUserTweetsWithResponse request returning *GetUserTweetsResponse
-func (c *ClientWithResponses) GetUserTweetsWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserTweetsResponse, error) {
-	rsp, err := c.GetUserTweets(ctx, userId, reqEditors...)
+// GetTweetsUserIdWithResponse request returning *GetTweetsUserIdResponse
+func (c *ClientWithResponses) GetTweetsUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTweetsUserIdResponse, error) {
+	rsp, err := c.GetTweetsUserId(ctx, userId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetUserTweetsResponse(rsp)
+	return ParseGetTweetsUserIdResponse(rsp)
 }
 
-// UnfollowUserWithBodyWithResponse request with arbitrary body returning *UnfollowUserResponse
-func (c *ClientWithResponses) UnfollowUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UnfollowUserResponse, error) {
-	rsp, err := c.UnfollowUserWithBody(ctx, contentType, body, reqEditors...)
+// PostUnfollowWithBodyWithResponse request with arbitrary body returning *PostUnfollowResponse
+func (c *ClientWithResponses) PostUnfollowWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUnfollowResponse, error) {
+	rsp, err := c.PostUnfollowWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUnfollowUserResponse(rsp)
+	return ParsePostUnfollowResponse(rsp)
 }
 
-func (c *ClientWithResponses) UnfollowUserWithResponse(ctx context.Context, body UnfollowUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UnfollowUserResponse, error) {
-	rsp, err := c.UnfollowUser(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostUnfollowWithResponse(ctx context.Context, body PostUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostUnfollowResponse, error) {
+	rsp, err := c.PostUnfollow(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUnfollowUserResponse(rsp)
+	return ParsePostUnfollowResponse(rsp)
 }
 
-// CreateUserWithBodyWithResponse request with arbitrary body returning *CreateUserResponse
-func (c *ClientWithResponses) CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUserWithBody(ctx, contentType, body, reqEditors...)
+// PostUsersWithBodyWithResponse request with arbitrary body returning *PostUsersResponse
+func (c *ClientWithResponses) PostUsersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostUsersResponse, error) {
+	rsp, err := c.PostUsersWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserResponse(rsp)
+	return ParsePostUsersResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUser(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostUsersWithResponse(ctx context.Context, body PostUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostUsersResponse, error) {
+	rsp, err := c.PostUsers(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserResponse(rsp)
+	return ParsePostUsersResponse(rsp)
 }
 
-// GetUserWithResponse request returning *GetUserResponse
-func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
-	rsp, err := c.GetUser(ctx, userId, reqEditors...)
+// GetUsersUserIdWithResponse request returning *GetUsersUserIdResponse
+func (c *ClientWithResponses) GetUsersUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUsersUserIdResponse, error) {
+	rsp, err := c.GetUsersUserId(ctx, userId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetUserResponse(rsp)
+	return ParseGetUsersUserIdResponse(rsp)
 }
 
-// ParseBroadcastMessageResponse parses an HTTP response from a BroadcastMessageWithResponse call
-func ParseBroadcastMessageResponse(rsp *http.Response) (*BroadcastMessageResponse, error) {
+// ParsePostBroadcastResponse parses an HTTP response from a PostBroadcastWithResponse call
+func ParsePostBroadcastResponse(rsp *http.Response) (*PostBroadcastResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &BroadcastMessageResponse{
+	response := &PostBroadcastResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1241,15 +1241,15 @@ func ParseBroadcastMessageResponse(rsp *http.Response) (*BroadcastMessageRespons
 	return response, nil
 }
 
-// ParseFollowUserResponse parses an HTTP response from a FollowUserWithResponse call
-func ParseFollowUserResponse(rsp *http.Response) (*FollowUserResponse, error) {
+// ParsePostFollowResponse parses an HTTP response from a PostFollowWithResponse call
+func ParsePostFollowResponse(rsp *http.Response) (*PostFollowResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &FollowUserResponse{
+	response := &PostFollowResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1257,15 +1257,15 @@ func ParseFollowUserResponse(rsp *http.Response) (*FollowUserResponse, error) {
 	return response, nil
 }
 
-// ParseGetNodeIPAddressesResponse parses an HTTP response from a GetNodeIPAddressesWithResponse call
-func ParseGetNodeIPAddressesResponse(rsp *http.Response) (*GetNodeIPAddressesResponse, error) {
+// ParseGetNodesIpAddressesResponse parses an HTTP response from a GetNodesIpAddressesWithResponse call
+func ParseGetNodesIpAddressesResponse(rsp *http.Response) (*GetNodesIpAddressesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetNodeIPAddressesResponse{
+	response := &GetNodesIpAddressesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1283,15 +1283,15 @@ func ParseGetNodeIPAddressesResponse(rsp *http.Response) (*GetNodeIPAddressesRes
 	return response, nil
 }
 
-// ParseSendNodeIPAddressesResponse parses an HTTP response from a SendNodeIPAddressesWithResponse call
-func ParseSendNodeIPAddressesResponse(rsp *http.Response) (*SendNodeIPAddressesResponse, error) {
+// ParsePostNodesIpAddressesResponse parses an HTTP response from a PostNodesIpAddressesWithResponse call
+func ParsePostNodesIpAddressesResponse(rsp *http.Response) (*PostNodesIpAddressesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &SendNodeIPAddressesResponse{
+	response := &PostNodesIpAddressesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1299,15 +1299,15 @@ func ParseSendNodeIPAddressesResponse(rsp *http.Response) (*SendNodeIPAddressesR
 	return response, nil
 }
 
-// ParsePingNodeResponse parses an HTTP response from a PingNodeWithResponse call
-func ParsePingNodeResponse(rsp *http.Response) (*PingNodeResponse, error) {
+// ParseGetPingResponse parses an HTTP response from a GetPingWithResponse call
+func ParseGetPingResponse(rsp *http.Response) (*GetPingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PingNodeResponse{
+	response := &GetPingResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1325,15 +1325,15 @@ func ParsePingNodeResponse(rsp *http.Response) (*PingNodeResponse, error) {
 	return response, nil
 }
 
-// ParseGetUserTimelineResponse parses an HTTP response from a GetUserTimelineWithResponse call
-func ParseGetUserTimelineResponse(rsp *http.Response) (*GetUserTimelineResponse, error) {
+// ParseGetTimelineUserIdResponse parses an HTTP response from a GetTimelineUserIdWithResponse call
+func ParseGetTimelineUserIdResponse(rsp *http.Response) (*GetTimelineUserIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetUserTimelineResponse{
+	response := &GetTimelineUserIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1351,15 +1351,15 @@ func ParseGetUserTimelineResponse(rsp *http.Response) (*GetUserTimelineResponse,
 	return response, nil
 }
 
-// ParseCreateTweetResponse parses an HTTP response from a CreateTweetWithResponse call
-func ParseCreateTweetResponse(rsp *http.Response) (*CreateTweetResponse, error) {
+// ParsePostTweetsResponse parses an HTTP response from a PostTweetsWithResponse call
+func ParsePostTweetsResponse(rsp *http.Response) (*PostTweetsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateTweetResponse{
+	response := &PostTweetsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1367,15 +1367,15 @@ func ParseCreateTweetResponse(rsp *http.Response) (*CreateTweetResponse, error) 
 	return response, nil
 }
 
-// ParseGetUserTweetsResponse parses an HTTP response from a GetUserTweetsWithResponse call
-func ParseGetUserTweetsResponse(rsp *http.Response) (*GetUserTweetsResponse, error) {
+// ParseGetTweetsUserIdResponse parses an HTTP response from a GetTweetsUserIdWithResponse call
+func ParseGetTweetsUserIdResponse(rsp *http.Response) (*GetTweetsUserIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetUserTweetsResponse{
+	response := &GetTweetsUserIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1393,15 +1393,15 @@ func ParseGetUserTweetsResponse(rsp *http.Response) (*GetUserTweetsResponse, err
 	return response, nil
 }
 
-// ParseUnfollowUserResponse parses an HTTP response from a UnfollowUserWithResponse call
-func ParseUnfollowUserResponse(rsp *http.Response) (*UnfollowUserResponse, error) {
+// ParsePostUnfollowResponse parses an HTTP response from a PostUnfollowWithResponse call
+func ParsePostUnfollowResponse(rsp *http.Response) (*PostUnfollowResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UnfollowUserResponse{
+	response := &PostUnfollowResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1409,15 +1409,15 @@ func ParseUnfollowUserResponse(rsp *http.Response) (*UnfollowUserResponse, error
 	return response, nil
 }
 
-// ParseCreateUserResponse parses an HTTP response from a CreateUserWithResponse call
-func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
+// ParsePostUsersResponse parses an HTTP response from a PostUsersWithResponse call
+func ParsePostUsersResponse(rsp *http.Response) (*PostUsersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateUserResponse{
+	response := &PostUsersResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1425,15 +1425,15 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 	return response, nil
 }
 
-// ParseGetUserResponse parses an HTTP response from a GetUserWithResponse call
-func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
+// ParseGetUsersUserIdResponse parses an HTTP response from a GetUsersUserIdWithResponse call
+func ParseGetUsersUserIdResponse(rsp *http.Response) (*GetUsersUserIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetUserResponse{
+	response := &GetUsersUserIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

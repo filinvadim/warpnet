@@ -11,7 +11,7 @@ paths:
   /ping:
     get:
       summary: Ping another node to check its status
-      operationId: pingNode
+      operation_id: pingNode
       parameters:
         - name: ip
           in: query
@@ -35,7 +35,7 @@ paths:
   /users:
     post:
       summary: Create a new user
-      operationId: createUser
+      operation_id: createUser
       requestBody:
         required: true
         content:
@@ -48,12 +48,12 @@ paths:
         '400':
           description: Invalid input
 
-  /users/{userId}:
+  /users/{user_id}:
     get:
       summary: Get user information
-      operationId: getUser
+      operation_id: getUser
       parameters:
-        - name: userId
+        - name: user_id
           in: path
           required: true
           schema:
@@ -71,7 +71,7 @@ paths:
   /tweets:
     post:
       summary: Publish a new tweet
-      operationId: createTweet
+      operation_id: createTweet
       requestBody:
         required: true
         content:
@@ -84,12 +84,12 @@ paths:
         '400':
           description: Invalid input
 
-  /tweets/{userId}:
+  /tweets/{user_id}:
     get:
       summary: Get user's tweets
-      operationId: getUserTweets
+      operation_id: getUserTweets
       parameters:
-        - name: userId
+        - name: user_id
           in: path
           required: true
           schema:
@@ -106,12 +106,12 @@ paths:
         '404':
           description: User or tweets not found
 
-  /timeline/{userId}:
+  /timeline/{user_id}:
     get:
       summary: Get user's tweet timeline
-      operationId: getUserTimeline
+      operation_id: getUserTimeline
       parameters:
-        - name: userId
+        - name: user_id
           in: path
           required: true
           schema:
@@ -131,7 +131,7 @@ paths:
   /broadcast:
     post:
       summary: Broadcast a message to friends' nodes
-      operationId: broadcastMessage
+      operation_id: broadcastMessage
       requestBody:
         required: true
         content:
@@ -147,7 +147,7 @@ paths:
   /follow:
     post:
       summary: Follow another user
-      operationId: followUser
+      operation_id: followUser
       requestBody:
         required: true
         content:
@@ -158,12 +158,12 @@ paths:
         '200':
           description: Successfully followed the user
         '400':
-          description: Invalid input
+          description: Inval_id input
 
   /unfollow:
     post:
       summary: Unfollow a user
-      operationId: unfollowUser
+      operation_id: unfollowUser
       requestBody:
         required: true
         content:
@@ -179,7 +179,7 @@ paths:
   /nodes/ip-addresses:
     get:
       summary: Get list of IP addresses from other nodes
-      operationId: getNodeIPAddresses
+      operation_id: getNodeIPAddresses
       responses:
         '200':
           description: List of IP addresses from other nodes
@@ -196,7 +196,7 @@ paths:
 
     post:
       summary: Send list of IP addresses to other nodes
-      operationId: sendNodeIPAddresses
+      operation_id: sendNodeIPAddresses
       requestBody:
         required: true
         content:
@@ -216,7 +216,7 @@ components:
     User:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           minLength: 1
         username:
@@ -257,14 +257,19 @@ components:
         created_at:
           type: string
           format: date-time
+      required:
+        - user_id
+        - username
+        - sequence
+        - timestamp
 
     Tweet:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           minLength: 1
-        tweetId:
+        tweet_id:
           type: string
           minLength: 1
         content:
@@ -294,7 +299,7 @@ components:
           items:
             $ref: '#/components/schemas/Retweet'
       required:
-        - userId
+        - user_id
         - content
         - sequence
         - timestamp
@@ -302,34 +307,34 @@ components:
     Like:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           minLength: 1
-        tweetId:
+        tweet_id:
           type: string
           minLength: 1
       required:
-        - userId
-        - tweetId
+        - user_id
+        - tweet_id
 
     Retweet:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           minLength: 1
-        tweetId:
+        tweet_id:
           type: string
           minLength: 1
       required:
-        - userId
-        - tweetId
+        - user_id
+        - tweet_id
 
 
     BroadcastMessage:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           minLength: 1
         prefixes:
@@ -345,7 +350,7 @@ components:
           type: integer
           format: int64
       required:
-        - userId
+        - user_id
         - content
         - key
         - value
@@ -353,28 +358,28 @@ components:
     FollowRequest:
       type: object
       properties:
-        from_follower_id:
+        from_follower__id:
           type: string
           minLength: 1
-        to_followed_id:
+        to_followed__id:
           type: string
           minLength: 1
       required:
-        - from_follower_id
-        - to_followed_id
+        - from_follower__id
+        - to_followed__id
 
     UnfollowRequest:
       type: object
       properties:
-        from_follower_id:
+        from_follower__id:
           type: string
           minLength: 1
-        to_followed_id:
+        to_followed__id:
           type: string
           minLength: 1
       required:
-        - from_follower_id
-        - to_followed_id
+        - from_follower__id
+        - to_followed__id
 
     IPAddress:
       type: object
@@ -403,6 +408,8 @@ components:
         created_at:
           type: string
           format: date-time
+        user__id:
+          type: string
       required:
         - ip
         - isActive

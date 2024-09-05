@@ -13,6 +13,9 @@ import (
 	_ "go.uber.org/automaxprocs"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 )
 
 var version string
@@ -29,7 +32,7 @@ func main() {
 	}
 	swagger.Servers = nil
 
-	db := storage.New("", "")
+	db := storage.New("", "", getAppPath(), true, false, "debug")
 	defer db.Close()
 
 	l := logger.NewLogger("info", false)
@@ -58,4 +61,32 @@ func main() {
 	}
 
 	e.Shutdown(context.Background())
+}
+
+func getAppPath() string {
+	var dbPath string
+
+	switch runtime.GOOS {
+	case "windows":
+		// %LOCALAPPDATA% Windows
+		appData := os.Getenv("LOCALAPPDATA") // C:\Users\{username}\AppData\Local
+		if appData == "" {
+			log.Fatal("failed to get path to LOCALAPPDATA")
+		}
+		dbPath = filepath.Join(appData, "badgerdb")
+
+	case "darwin", "linux", "android":
+		homeDir := os.TempDir()
+		dbPath = filepath.Join(homeDir, ".badgerdb")
+
+	default:
+		log.Fatal("unsupported OS")
+	}
+
+	err := os.MkdirAll(dbPath, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return dbPath
 }

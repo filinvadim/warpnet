@@ -71,3 +71,25 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	}
 	return repo.db.Delete(key)
 }
+
+func (repo *TweetRepo) List(userId string) ([]api.Tweet, error) {
+	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
+	if err != nil {
+		return nil, err
+	}
+
+	tweets := make([]api.Tweet, 0, 20)
+	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
+		var tweet api.Tweet
+		err := json.JSON.Unmarshal(value, &tweet)
+		if err != nil {
+			return err
+		}
+		tweets = append(tweets, tweet)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tweets, nil
+}
