@@ -1,19 +1,20 @@
 package database_test
 
 import (
+	"os"
+	"testing"
+	"time"
+
 	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 func setupTimelineTestDB(t *testing.T) *storage.DB {
-	path := "../var/timeline"
-	// Открываем базу данных в этой директории
-	db := storage.New("timelinetest", "timelinetest", path, false, true, "error")
+	path := "../var/dbtesttimeline"
+	db := storage.New("timelinetest", path, false, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -23,56 +24,135 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 	return db
 }
 
-func TestTimelineRepo_AddTweetToTimeline(t *testing.T) {
-	db := setupTimelineTestDB(t)
-	repo := database.NewTimelineRepo(db)
-
-	userID := uuid.New().String()
-	id1 := uuid.New().String()
-	id2 := uuid.New().String()
-	tweet1 := api.Tweet{TweetId: &id1}
-	tweet2 := api.Tweet{TweetId: &id2}
-
-	// Add two tweets with different timestamps
-	err := repo.AddTweetToTimeline(userID, tweet1)
-	assert.NoError(t, err)
-
-	err = repo.AddTweetToTimeline(userID, tweet2)
-	assert.NoError(t, err)
-
-	// Verify that both tweets were added
-	tweets, err := repo.GetTimeline(userID)
-	assert.NoError(t, err)
-	assert.Len(t, tweets, 2)
-	assert.Contains(t, tweets, tweet1)
-	assert.Contains(t, tweets, tweet2)
+func createTestTweet(id string, timestamp time.Time) api.Tweet {
+	return api.Tweet{
+		TweetId:   &id,
+		Content:   "Test content",
+		UserId:    uuid.New().String(),
+		CreatedAt: &timestamp,
+	}
 }
 
-func TestTimelineRepo_GetTimeline(t *testing.T) {
+// Test for adding and retrieving tweets with limit and cursor
+func TestAddAndGetTimelineWithCursorAndLimit(t *testing.T) {
+	db := setupTimelineTestDB(t)
+	repo := database.NewTimelineRepo(db)
+
+	userID := "U"
+	tweet1 := createTestTweet("tweet1", time.Now().Add(-time.Hour))
+	tweet2 := createTestTweet("tweet2", time.Now().Add(-30*time.Minute))
+	tweet3 := createTestTweet("tweet3", time.Now())
+
+	// Add tweets to the timeline
+	_ = repo.AddTweetToTimeline(userID, tweet1)
+	_ = repo.AddTweetToTimeline(userID, tweet2)
+	_ = repo.AddTweetToTimeline(userID, tweet3)
+
+	lim := uint64(2)
+	cur := ""
+	// Retrieve first two tweets (should return tweet3 and tweet2)
+	tweets, cursor, err := repo.GetTimeline(userID, &lim, &cur)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 2)
+
+	assert.Equal(t, *tweet3.TweetId, *tweets[0].TweetId)
+	assert.Equal(t, *tweet2.TweetId, *tweets[1].TweetId)
+
+	// Use the cursor to retrieve the last tweet (tweet1)
+	tweets, newCursor, err := repo.GetTimeline(userID, &lim, &cursor)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 1)
+	assert.Equal(t, *tweet1.TweetId, *tweets[0].TweetId)
+	assert.Equal(t, "", newCursor) // No more data
+}
+
+// Test for adding and deleting tweets
+func TestAddAndDeleteTweetFromTimeline(t *testing.T) {
 	db := setupTimelineTestDB(t)
 	repo := database.NewTimelineRepo(db)
 
 	userID := uuid.New().String()
-	tweetID1 := uuid.New().String()
-	tweetID2 := uuid.New().String()
-	tweetID3 := uuid.New().String()
+	tweet := createTestTweet("tweet1", time.Now().Add(-time.Hour))
 
-	tweet1 := api.Tweet{TweetId: &tweetID1}
-	tweet2 := api.Tweet{TweetId: &tweetID2}
-	tweet3 := api.Tweet{TweetId: &tweetID3}
-	// Add three tweets
-	err := repo.AddTweetToTimeline(userID, tweet1)
-	assert.NoError(t, err)
-	err = repo.AddTweetToTimeline(userID, tweet2)
-	assert.NoError(t, err)
-	err = repo.AddTweetToTimeline(userID, tweet3)
+	// Add a tweet to the timeline
+	err := repo.AddTweetToTimeline(userID, tweet)
 	assert.NoError(t, err)
 
-	// Retrieve all tweets
-	tweets, err := repo.GetTimeline(userID)
+	lim := uint64(1)
+	cur := ""
+	// Verify that the tweet was added
+	tweets, _, err := repo.GetTimeline(userID, &lim, &cur)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 1)
+	assert.Equal(t, *tweet.TweetId, *tweets[0].TweetId)
+
+	// Delete the tweet from the timeline
+	err = repo.DeleteTweetFromTimeline(userID, *tweets[0].CreatedAt, *tweets[0].Sequence)
+	assert.NoError(t, err)
+
+	// Verify that the tweet was deleted
+	tweets, _, err = repo.GetTimeline(userID, &lim, &cur)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 0)
+}
+
+// Test for retrieving tweets from an empty timeline
+func TestGetTimelineEmpty(t *testing.T) {
+	db := setupTimelineTestDB(t)
+	repo := database.NewTimelineRepo(db)
+
+	userID := uuid.New().String()
+
+	lim := uint64(5)
+	cur := ""
+	// Retrieve tweets from an empty timeline
+	tweets, cursor, err := repo.GetTimeline(userID, &lim, &cur)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 0)
+	assert.Equal(t, "", cursor)
+}
+
+// Test for adding multiple tweets and ensuring limit and pagination work
+func TestGetTimelineWithLargeLimit(t *testing.T) {
+	db := setupTimelineTestDB(t)
+	repo := database.NewTimelineRepo(db)
+
+	userID := uuid.New().String()
+	tweet1 := createTestTweet("tweet1", time.Now().Add(-time.Hour))
+	tweet2 := createTestTweet("tweet2", time.Now().Add(-30*time.Minute))
+	tweet3 := createTestTweet("tweet3", time.Now())
+
+	// Add three tweets to the timeline
+	_ = repo.AddTweetToTimeline(userID, tweet1)
+	_ = repo.AddTweetToTimeline(userID, tweet2)
+	_ = repo.AddTweetToTimeline(userID, tweet3)
+
+	lim := uint64(10)
+	cur := ""
+	// Retrieve all tweets with a large limit
+	tweets, cursor, err := repo.GetTimeline(userID, &lim, &cur)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 3)
-	assert.Contains(t, tweets, tweet1)
-	assert.Contains(t, tweets, tweet2)
-	assert.Contains(t, tweets, tweet3)
+	assert.Equal(t, *tweet3.TweetId, *tweets[0].TweetId)
+	assert.Equal(t, *tweet2.TweetId, *tweets[1].TweetId)
+	assert.Equal(t, *tweet1.TweetId, *tweets[2].TweetId)
+	assert.Equal(t, "", cursor)
+}
+
+// Test for invalid cursor
+func TestGetTimelineInvalidCursor(t *testing.T) {
+	db := setupTimelineTestDB(t)
+	repo := database.NewTimelineRepo(db)
+
+	userID := uuid.New().String()
+	tweet := createTestTweet("tweet1", time.Now().Add(-time.Hour))
+	_ = repo.AddTweetToTimeline(userID, tweet)
+
+	lim := uint64(5)
+	cur := "invalid_cursor"
+	// Pass an invalid cursor (should return no results)
+	tweets, cursor, err := repo.GetTimeline(userID, &lim, &cur)
+	assert.NoError(t, err)
+	assert.Len(t, tweets, 0)
+	assert.Equal(t, "", cursor)
 }

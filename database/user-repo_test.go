@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -13,9 +12,9 @@ import (
 )
 
 func setupUserTestDB(t *testing.T) *storage.DB {
-	path := "../var/user"
+	path := "../var/dbtestuser"
 	// Открываем базу данных в этой директории
-	db := storage.New("usertest", "usertest", path, false, true, "error")
+	db := storage.New("usertest", path, false, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -36,7 +35,7 @@ func TestUserRepo_Create(t *testing.T) {
 	userID := uuid.New().String()
 	user.UserId = userID
 
-	err := repo.Create(user)
+	_, err := repo.Create(user)
 
 	assert.NoError(t, err)
 
@@ -57,7 +56,7 @@ func TestUserRepo_Get(t *testing.T) {
 		UserId:   userID,
 	}
 
-	err := repo.Create(user)
+	_, err := repo.Create(user)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь может быть получен
@@ -77,7 +76,7 @@ func TestUserRepo_Delete(t *testing.T) {
 		UserId:   userID,
 	}
 
-	err := repo.Create(user)
+	_, err := repo.Create(user)
 	assert.NoError(t, err)
 
 	// Удаляем пользователя
@@ -103,17 +102,15 @@ func TestUserRepo_List(t *testing.T) {
 		UserId:   (uuid.New().String()),
 	}
 
-	err := repo.Create(user1)
+	_, err := repo.Create(user1)
 	assert.NoError(t, err)
-	err = repo.Create(user2)
+	_, err = repo.Create(user2)
 	assert.NoError(t, err)
 
 	// Получаем список пользователей
 	users, err := repo.List()
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
-
-	fmt.Println(users, "USERS!")
 
 	// Проверяем, что все пользователи корректно получены
 	assert.Contains(t, users, user1)

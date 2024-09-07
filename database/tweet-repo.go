@@ -5,6 +5,7 @@ import (
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
+	"time"
 )
 
 const TweetsRepoName = "TWEETS"
@@ -19,29 +20,32 @@ func NewTweetRepo(db *storage.DB) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet api.Tweet) error {
+func (repo *TweetRepo) Create(userID string, tweet api.Tweet) (*api.Tweet, error) {
 	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if tweet.TweetId == nil {
 		id := uuid.New().String()
 		tweet.TweetId = &id
 	}
-
-	if tweet.Sequence == 0 {
+	if tweet.CreatedAt == nil {
+		now := time.Now()
+		tweet.CreatedAt = &now
+	}
+	if tweet.Sequence == nil {
 		seq, err := repo.db.NextSequence()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		tweet.Sequence = int64(seq)
+		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
 	}
 
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return repo.db.Set(key, data)
+	return &tweet, repo.db.Set(key, data)
 }
 
 // Get retrieves a tweet by its ID

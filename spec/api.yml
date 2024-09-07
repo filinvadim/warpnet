@@ -8,10 +8,37 @@ servers:
     description: Local development server
 
 paths:
-  /ping:
+  /:
     get:
+      summary: Serve the main index.html page
+      description: This endpoint serves the main frontend page of the application (index.html).
+      operationId: GetIndex
+      responses:
+        '200':
+          description: The main HTML page of the application
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<html><head><title>Twitter Clone</title></head><body>Welcome to Twitter Clone</body></html>"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+  /nodes/ping:
+    get:
+      tags:
+        - Node
       summary: Ping another node to check its status
-      operation_id: pingNode
       parameters:
         - name: ip
           in: query
@@ -31,11 +58,10 @@ paths:
           description: Node not found or not responding
         '500':
           description: Internal server error
-
-  /users:
     post:
-      summary: Create a new user
-      operation_id: createUser
+      tags:
+        - Node
+      summary: Send node  status
       requestBody:
         required: true
         content:
@@ -43,15 +69,43 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
       responses:
-        '201':
+        '200':
+          description: Ping response from the node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+        '404':
+          description: Node not found or not responding
+        '500':
+          description: Internal server error
+
+  /users:
+    post:
+      tags:
+        - User
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
           description: User successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
         '400':
           description: Invalid input
 
   /users/{user_id}:
     get:
+      tags:
+        - User
       summary: Get user information
-      operation_id: getUser
       parameters:
         - name: user_id
           in: path
@@ -70,8 +124,9 @@ paths:
 
   /tweets:
     post:
+      tags:
+        - Tweet
       summary: Publish a new tweet
-      operation_id: createTweet
       requestBody:
         required: true
         content:
@@ -79,15 +134,42 @@ paths:
             schema:
               $ref: '#/components/schemas/Tweet'
       responses:
-        '201':
+        '200':
           description: Tweet successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tweet'
+        '400':
+          description: Invalid input
+
+  /tweets/{user_id}/{tweet_id}:
+    get:
+      tags:
+        - Tweet
+      summary: Get a certain tweet
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tweet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tweet successfully fetched
         '400':
           description: Invalid input
 
   /tweets/{user_id}:
     get:
+      tags:
+        - Tweet
       summary: Get user's tweets
-      operation_id: getUserTweets
       parameters:
         - name: user_id
           in: path
@@ -106,48 +188,43 @@ paths:
         '404':
           description: User or tweets not found
 
-  /timeline/{user_id}:
+  /tweets/timeline/{user_id}:
     get:
+      tags:
+        - Tweet
       summary: Get user's tweet timeline
-      operation_id: getUserTimeline
       parameters:
         - name: user_id
           in: path
           required: true
           schema:
             type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            x-go-type: uint64
+            default: 20
       responses:
         '200':
           description: User's tweet timeline
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tweet'
+                $ref: '#/components/schemas/TimelineResponse'
         '404':
           description: User or timeline not found
 
-  /broadcast:
-    post:
-      summary: Broadcast a message to friends' nodes
-      operation_id: broadcastMessage
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BroadcastMessage'
-      responses:
-        '200':
-          description: Message successfully broadcasted
-        '400':
-          description: Invalid input
 
-  /follow:
+  /users/follow:
     post:
+      tags:
+        - User
       summary: Follow another user
-      operation_id: followUser
       requestBody:
         required: true
         content:
@@ -155,15 +232,16 @@ paths:
             schema:
               $ref: '#/components/schemas/FollowRequest'
       responses:
-        '200':
+        '201':
           description: Successfully followed the user
         '400':
-          description: Inval_id input
+          description: Invalid input
 
-  /unfollow:
+  /users/unfollow:
     post:
+      tags:
+        - User
       summary: Unfollow a user
-      operation_id: unfollowUser
       requestBody:
         required: true
         content:
@@ -176,38 +254,37 @@ paths:
         '400':
           description: Invalid input
 
-  /nodes/ip-addresses:
+  /nodes:
     get:
-      summary: Get list of IP addresses from other nodes
-      operation_id: getNodeIPAddresses
+      tags:
+        - Node
+      summary: Get node info
       responses:
         '200':
-          description: List of IP addresses from other nodes
+          description: Success
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/IPAddress'
+                  $ref: '#/components/schemas/Node'
         '500':
           description: Server error
         '404':
-          description: not found
-
+          description: Not found
     post:
-      summary: Send list of IP addresses to other nodes
-      operation_id: sendNodeIPAddresses
+      tags:
+        - Node
+      summary: Send node info
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/IPAddress'
+                $ref: '#/components/schemas/Node'
       responses:
         '200':
-          description: IP addresses successfully received
+          description: Success
         '400':
           description: Invalid input
 
@@ -218,7 +295,6 @@ components:
       properties:
         user_id:
           type: string
-          minLength: 1
         username:
           type: string
           minLength: 1
@@ -258,10 +334,7 @@ components:
           type: string
           format: date-time
       required:
-        - user_id
         - username
-        - sequence
-        - timestamp
 
     Tweet:
       type: object
@@ -301,8 +374,6 @@ components:
       required:
         - user_id
         - content
-        - sequence
-        - timestamp
 
     Like:
       type: object
@@ -330,65 +401,40 @@ components:
         - user_id
         - tweet_id
 
-
-    BroadcastMessage:
-      type: object
-      properties:
-        user_id:
-          type: string
-          minLength: 1
-        prefixes:
-          type: string
-          minLength: 1
-        key:
-          type: string
-          minLength: 1
-        value:
-          type: string
-          minLength: 1
-        sequence_num:
-          type: integer
-          format: int64
-      required:
-        - user_id
-        - content
-        - key
-        - value
-
     FollowRequest:
       type: object
       properties:
-        from_follower__id:
+        reader_id:
           type: string
           minLength: 1
-        to_followed__id:
+        writer_id:
           type: string
           minLength: 1
       required:
-        - from_follower__id
-        - to_followed__id
+        - reader_id
+        - writer_id
 
     UnfollowRequest:
       type: object
       properties:
-        from_follower__id:
+        reader_id:
           type: string
           minLength: 1
-        to_followed__id:
+        writer_id:
           type: string
           minLength: 1
       required:
-        - from_follower__id
-        - to_followed__id
+        - reader_id
+        - writer_id
 
-    IPAddress:
+    Node:
       type: object
       properties:
         ip:
           type: string
           format: ipv4
           description: The IP address
-        isActive:
+        is_active:
           type: boolean
           description: Whether the IP address is currently active
         latency:
@@ -396,7 +442,7 @@ components:
           format: int64
           description: The network latency to this IP in milliseconds
           example: 120
-        lastSeen:
+        last_seen:
           type: string
           format: date-time
           description: The timestamp when this IP address was last active
@@ -408,12 +454,13 @@ components:
         created_at:
           type: string
           format: date-time
-        user__id:
+        owner_id:
           type: string
       required:
         - ip
-        - isActive
-        - lastSeen
+        - is_active
+        - last_seen
+        - owner_id
 
     PingResponse:
       type: object
@@ -426,10 +473,30 @@ components:
           type: integer
           format: int64
           description: The latency to the IP address in milliseconds
-        isActive:
-          type: boolean
-          description: Whether the node is currently active
       required:
         - ip
         - latency
-        - isActive
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    TimelineResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        tweets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tweet'
+      required:
+        - cursor
+        - tweets

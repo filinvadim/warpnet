@@ -11,7 +11,7 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/automaxprocs v1.5.3
 )

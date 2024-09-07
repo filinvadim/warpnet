@@ -2,12 +2,15 @@ package storage
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"log"
 	"time"
 )
+
+var ErrStopIteration = errors.New("stop iteration")
 
 type DB struct {
 	badger   *badger.DB
@@ -16,7 +19,7 @@ type DB struct {
 }
 
 func New(
-	login, password, path string,
+	password, path string,
 	isEncrypted, isInMemory bool,
 	logLvl string,
 ) *DB {
@@ -25,33 +28,23 @@ func New(
 		WithSyncWrites(false).
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
-		WithNumCompactors(2)
+		WithNumCompactors(2).
+		WithLogger(nil)
 
 	if isEncrypted {
-		opts.EncryptionKey = generateEncryptionKey(login, password)
+		opts.EncryptionKey = generateEncryptionKey(password)
 	}
 	if isInMemory {
 		opts.WithDir("").WithValueDir("").WithInMemory(isInMemory)
 	}
 
-	switch logLvl {
-	case "info":
-		opts.WithLoggingLevel(1)
-	case "debug":
-		opts.WithLoggingLevel(0)
-	case "error":
-		opts.WithLoggingLevel(3)
-	default:
-		opts.WithLoggingLevel(1)
-	}
-
 	db, err := badger.Open(opts)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("badger open:", err)
 	}
 
 	stopChan := make(chan struct{})
-	seq, err := db.GetSequence([]byte("unified"), 100)
+	seq, err := db.GetSequence([]byte("SEQUENCE:unified"), 100)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,15 +56,15 @@ func New(
 	return storage
 }
 
-func generateEncryptionKey(login, password string) []byte {
+func generateEncryptionKey(password string) []byte {
 	var encryptionKey = make([]byte, 32)
-	if login == "" || password == "" {
+	if password == "" {
 		if _, err := rand.Read(encryptionKey); err != nil {
 			log.Fatal("error generating random key:", err)
 		}
 		return encryptionKey
 	}
-	creds := []byte(login + password)
+	creds := []byte(password)
 	if len(creds) > 32 {
 		log.Fatal("login and password combination is too long")
 	}
@@ -193,6 +186,14 @@ func (db *DB) Delete(key string) error {
 }
 
 func (db *DB) NextSequence() (uint64, error) {
+	num, err := db.sequence.Next()
+	if err != nil {
+		return 0, err
+	}
+	if num != 0 {
+		return num, nil
+	}
+
 	return db.sequence.Next()
 }
 

@@ -19,40 +19,16 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
-// BroadcastMessage defines model for BroadcastMessage.
-type BroadcastMessage struct {
-	Key         string  `json:"key"`
-	Prefixes    *string `json:"prefixes,omitempty"`
-	SequenceNum *int64  `json:"sequence_num,omitempty"`
-	UserId      string  `json:"user_id"`
-	Value       string  `json:"value"`
+// Error defines model for Error.
+type Error struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // FollowRequest defines model for FollowRequest.
 type FollowRequest struct {
-	FromFollowerId string `json:"from_follower__id"`
-	ToFollowedId   string `json:"to_followed__id"`
-}
-
-// IPAddress defines model for IPAddress.
-type IPAddress struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
-
-	// Ip The IP address
-	Ip string `json:"ip"`
-
-	// IsActive Whether the IP address is currently active
-	IsActive bool `json:"isActive"`
-
-	// LastSeen The timestamp when this IP address was last active
-	LastSeen time.Time `json:"lastSeen"`
-
-	// Latency The network latency to this IP in milliseconds
-	Latency *int64 `json:"latency,omitempty"`
-
-	// Uptime Uptime of the node in seconds
-	Uptime *int64  `json:"uptime,omitempty"`
-	UserId *string `json:"user__id,omitempty"`
+	ReaderId string `json:"reader_id"`
+	WriterId string `json:"writer_id"`
 }
 
 // Like defines model for Like.
@@ -61,13 +37,31 @@ type Like struct {
 	UserId  string `json:"user_id"`
 }
 
+// Node defines model for Node.
+type Node struct {
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// Ip The IP address
+	Ip string `json:"ip"`
+
+	// IsActive Whether the IP address is currently active
+	IsActive bool `json:"is_active"`
+
+	// LastSeen The timestamp when this IP address was last active
+	LastSeen time.Time `json:"last_seen"`
+
+	// Latency The network latency to this IP in milliseconds
+	Latency *int64 `json:"latency,omitempty"`
+	OwnerId string `json:"owner_id"`
+
+	// Uptime Uptime of the node in seconds
+	Uptime *int64 `json:"uptime,omitempty"`
+}
+
 // PingResponse defines model for PingResponse.
 type PingResponse struct {
 	// Ip The IP address that was pinged
 	Ip string `json:"ip"`
-
-	// IsActive Whether the node is currently active
-	IsActive bool `json:"isActive"`
 
 	// Latency The latency to the IP address in milliseconds
 	Latency int64 `json:"latency"`
@@ -79,6 +73,12 @@ type Retweet struct {
 	UserId  string `json:"user_id"`
 }
 
+// TimelineResponse defines model for TimelineResponse.
+type TimelineResponse struct {
+	Cursor string  `json:"cursor"`
+	Tweets []Tweet `json:"tweets"`
+}
+
 // Tweet defines model for Tweet.
 type Tweet struct {
 	Content       string     `json:"content"`
@@ -87,15 +87,15 @@ type Tweet struct {
 	LikesCount    *int64     `json:"likes_count,omitempty"`
 	Retweets      *[]Retweet `json:"retweets,omitempty"`
 	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	Sequence      int64      `json:"sequence"`
+	Sequence      *int64     `json:"sequence,omitempty"`
 	TweetId       *string    `json:"tweet_id,omitempty"`
 	UserId        string     `json:"user_id"`
 }
 
 // UnfollowRequest defines model for UnfollowRequest.
 type UnfollowRequest struct {
-	FromFollowerId string `json:"from_follower__id"`
-	ToFollowedId   string `json:"to_followed__id"`
+	ReaderId string `json:"reader_id"`
+	WriterId string `json:"writer_id"`
 }
 
 // User defines model for User.
@@ -112,68 +112,77 @@ type User struct {
 	MyReferrals  *[]string  `json:"my_referrals,omitempty"`
 	PublicKey    *string    `json:"publicKey,omitempty"`
 	ReferredBy   *string    `json:"referred_by,omitempty"`
-	UserId       string     `json:"user_id"`
+	UserId       *string    `json:"user_id,omitempty"`
 	Username     string     `json:"username"`
 }
 
-// PostNodesIpAddressesJSONBody defines parameters for PostNodesIpAddresses.
-type PostNodesIpAddressesJSONBody = []IPAddress
-
-// GetPingParams defines parameters for GetPing.
-type GetPingParams struct {
+// GetNodesPingParams defines parameters for GetNodesPing.
+type GetNodesPingParams struct {
 	Ip string `form:"ip" json:"ip"`
 }
 
-// PostBroadcastJSONRequestBody defines body for PostBroadcast for application/json ContentType.
-type PostBroadcastJSONRequestBody = BroadcastMessage
+// GetTweetsTimelineUserIdParams defines parameters for GetTweetsTimelineUserId.
+type GetTweetsTimelineUserIdParams struct {
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
-// PostFollowJSONRequestBody defines body for PostFollow for application/json ContentType.
-type PostFollowJSONRequestBody = FollowRequest
+// PostNodesJSONRequestBody defines body for PostNodes for application/json ContentType.
+type PostNodesJSONRequestBody = Node
 
-// PostNodesIpAddressesJSONRequestBody defines body for PostNodesIpAddresses for application/json ContentType.
-type PostNodesIpAddressesJSONRequestBody = PostNodesIpAddressesJSONBody
+// PostNodesPingJSONRequestBody defines body for PostNodesPing for application/json ContentType.
+type PostNodesPingJSONRequestBody = User
 
 // PostTweetsJSONRequestBody defines body for PostTweets for application/json ContentType.
 type PostTweetsJSONRequestBody = Tweet
 
-// PostUnfollowJSONRequestBody defines body for PostUnfollow for application/json ContentType.
-type PostUnfollowJSONRequestBody = UnfollowRequest
-
 // PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
 type PostUsersJSONRequestBody = User
 
+// PostUsersFollowJSONRequestBody defines body for PostUsersFollow for application/json ContentType.
+type PostUsersFollowJSONRequestBody = FollowRequest
+
+// PostUsersUnfollowJSONRequestBody defines body for PostUsersUnfollow for application/json ContentType.
+type PostUsersUnfollowJSONRequestBody = UnfollowRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Broadcast a message to friends' nodes
-	// (POST /broadcast)
-	PostBroadcast(ctx echo.Context) error
-	// Follow another user
-	// (POST /follow)
-	PostFollow(ctx echo.Context) error
-	// Get list of IP addresses from other nodes
-	// (GET /nodes/ip-addresses)
-	GetNodesIpAddresses(ctx echo.Context) error
-	// Send list of IP addresses to other nodes
-	// (POST /nodes/ip-addresses)
-	PostNodesIpAddresses(ctx echo.Context) error
+	// Serve the main index.html page
+	// (GET /)
+	GetIndex(ctx echo.Context) error
+	// Get node info
+	// (GET /nodes)
+	GetNodes(ctx echo.Context) error
+	// Send node info
+	// (POST /nodes)
+	PostNodes(ctx echo.Context) error
 	// Ping another node to check its status
-	// (GET /ping)
-	GetPing(ctx echo.Context, params GetPingParams) error
-	// Get user's tweet timeline
-	// (GET /timeline/{user_id})
-	GetTimelineUserId(ctx echo.Context, userId string) error
+	// (GET /nodes/ping)
+	GetNodesPing(ctx echo.Context, params GetNodesPingParams) error
+	// Send node  status
+	// (POST /nodes/ping)
+	PostNodesPing(ctx echo.Context) error
 	// Publish a new tweet
 	// (POST /tweets)
 	PostTweets(ctx echo.Context) error
+	// Get user's tweet timeline
+	// (GET /tweets/timeline/{user_id})
+	GetTweetsTimelineUserId(ctx echo.Context, userId string, params GetTweetsTimelineUserIdParams) error
 	// Get user's tweets
 	// (GET /tweets/{user_id})
 	GetTweetsUserId(ctx echo.Context, userId string) error
-	// Unfollow a user
-	// (POST /unfollow)
-	PostUnfollow(ctx echo.Context) error
+	// Get a certain tweet
+	// (GET /tweets/{user_id}/{tweet_id})
+	GetTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string) error
 	// Create a new user
 	// (POST /users)
 	PostUsers(ctx echo.Context) error
+	// Follow another user
+	// (POST /users/follow)
+	PostUsersFollow(ctx echo.Context) error
+	// Unfollow a user
+	// (POST /users/unfollow)
+	PostUsersUnfollow(ctx echo.Context) error
 	// Get user information
 	// (GET /users/{user_id})
 	GetUsersUserId(ctx echo.Context, userId string) error
@@ -184,48 +193,39 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// PostBroadcast converts echo context to params.
-func (w *ServerInterfaceWrapper) PostBroadcast(ctx echo.Context) error {
+// GetIndex converts echo context to params.
+func (w *ServerInterfaceWrapper) GetIndex(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostBroadcast(ctx)
+	err = w.Handler.GetIndex(ctx)
 	return err
 }
 
-// PostFollow converts echo context to params.
-func (w *ServerInterfaceWrapper) PostFollow(ctx echo.Context) error {
+// GetNodes converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodes(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostFollow(ctx)
+	err = w.Handler.GetNodes(ctx)
 	return err
 }
 
-// GetNodesIpAddresses converts echo context to params.
-func (w *ServerInterfaceWrapper) GetNodesIpAddresses(ctx echo.Context) error {
+// PostNodes converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodes(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetNodesIpAddresses(ctx)
+	err = w.Handler.PostNodes(ctx)
 	return err
 }
 
-// PostNodesIpAddresses converts echo context to params.
-func (w *ServerInterfaceWrapper) PostNodesIpAddresses(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostNodesIpAddresses(ctx)
-	return err
-}
-
-// GetPing converts echo context to params.
-func (w *ServerInterfaceWrapper) GetPing(ctx echo.Context) error {
+// GetNodesPing converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodesPing(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetPingParams
+	var params GetNodesPingParams
 	// ------------- Required query parameter "ip" -------------
 
 	err = runtime.BindQueryParameter("form", true, true, "ip", ctx.QueryParams(), &params.Ip)
@@ -234,23 +234,16 @@ func (w *ServerInterfaceWrapper) GetPing(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetPing(ctx, params)
+	err = w.Handler.GetNodesPing(ctx, params)
 	return err
 }
 
-// GetTimelineUserId converts echo context to params.
-func (w *ServerInterfaceWrapper) GetTimelineUserId(ctx echo.Context) error {
+// PostNodesPing converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodesPing(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetTimelineUserId(ctx, userId)
+	err = w.Handler.PostNodesPing(ctx)
 	return err
 }
 
@@ -260,6 +253,38 @@ func (w *ServerInterfaceWrapper) PostTweets(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostTweets(ctx)
+	return err
+}
+
+// GetTweetsTimelineUserId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTweetsTimelineUserId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTweetsTimelineUserIdParams
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTweetsTimelineUserId(ctx, userId, params)
 	return err
 }
 
@@ -279,12 +304,27 @@ func (w *ServerInterfaceWrapper) GetTweetsUserId(ctx echo.Context) error {
 	return err
 }
 
-// PostUnfollow converts echo context to params.
-func (w *ServerInterfaceWrapper) PostUnfollow(ctx echo.Context) error {
+// GetTweetsUserIdTweetId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTweetsUserIdTweetId(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// ------------- Path parameter "tweet_id" -------------
+	var tweetId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tweet_id", ctx.Param("tweet_id"), &tweetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tweet_id: %s", err))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostUnfollow(ctx)
+	err = w.Handler.GetTweetsUserIdTweetId(ctx, userId, tweetId)
 	return err
 }
 
@@ -294,6 +334,24 @@ func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostUsers(ctx)
+	return err
+}
+
+// PostUsersFollow converts echo context to params.
+func (w *ServerInterfaceWrapper) PostUsersFollow(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostUsersFollow(ctx)
+	return err
+}
+
+// PostUsersUnfollow converts echo context to params.
+func (w *ServerInterfaceWrapper) PostUsersUnfollow(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostUsersUnfollow(ctx)
 	return err
 }
 
@@ -341,16 +399,18 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/broadcast", wrapper.PostBroadcast)
-	router.POST(baseURL+"/follow", wrapper.PostFollow)
-	router.GET(baseURL+"/nodes/ip-addresses", wrapper.GetNodesIpAddresses)
-	router.POST(baseURL+"/nodes/ip-addresses", wrapper.PostNodesIpAddresses)
-	router.GET(baseURL+"/ping", wrapper.GetPing)
-	router.GET(baseURL+"/timeline/:user_id", wrapper.GetTimelineUserId)
+	router.GET(baseURL+"/", wrapper.GetIndex)
+	router.GET(baseURL+"/nodes", wrapper.GetNodes)
+	router.POST(baseURL+"/nodes", wrapper.PostNodes)
+	router.GET(baseURL+"/nodes/ping", wrapper.GetNodesPing)
+	router.POST(baseURL+"/nodes/ping", wrapper.PostNodesPing)
 	router.POST(baseURL+"/tweets", wrapper.PostTweets)
+	router.GET(baseURL+"/tweets/timeline/:user_id", wrapper.GetTweetsTimelineUserId)
 	router.GET(baseURL+"/tweets/:user_id", wrapper.GetTweetsUserId)
-	router.POST(baseURL+"/unfollow", wrapper.PostUnfollow)
+	router.GET(baseURL+"/tweets/:user_id/:tweet_id", wrapper.GetTweetsUserIdTweetId)
 	router.POST(baseURL+"/users", wrapper.PostUsers)
+	router.POST(baseURL+"/users/follow", wrapper.PostUsersFollow)
+	router.POST(baseURL+"/users/unfollow", wrapper.PostUsersUnfollow)
 	router.GET(baseURL+"/users/:user_id", wrapper.GetUsersUserId)
 
 }
@@ -358,32 +418,35 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"3CbNIgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

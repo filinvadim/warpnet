@@ -5,6 +5,8 @@ import (
 	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
+	"math"
+	"time"
 )
 
 const TimelineRepoName = "TIMELINE"
@@ -22,7 +24,23 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet api.Tweet) err
 	if tweet.TweetId == nil {
 		return fmt.Errorf("tweet id should not be nil")
 	}
-	key, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
+	if tweet.CreatedAt == nil {
+		return fmt.Errorf("tweet created at should not be nil")
+	}
+	if tweet.Sequence == nil {
+		tweet.Sequence = new(int64)
+		newSeqNum, err := repo.db.NextSequence()
+		if err != nil {
+			return err
+		}
+		*tweet.Sequence = math.MaxInt64 - int64(newSeqNum)
+	}
+
+	key, err := storage.NewPrefixBuilder(TimelineRepoName).
+		AddUserId(userID).
+		AddReverseTimestamp(*tweet.CreatedAt).
+		AddSequence(*tweet.Sequence).
+		Build()
 	if err != nil {
 		return err
 	}
@@ -32,23 +50,78 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet api.Tweet) err
 		return err
 	}
 	return repo.db.Set(key, bt)
+}
 
+func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.Time, seqNum int64) error {
+	if createdAt.IsZero() {
+		return fmt.Errorf("createdAt should not be zero")
+	}
+	if seqNum == 0 {
+		return fmt.Errorf("seqNum should not be zero")
+	}
+	key, err := storage.NewPrefixBuilder(TimelineRepoName).
+		AddUserId(userID).
+		AddReverseTimestamp(createdAt).
+		AddSequence(seqNum).
+		Build()
+	if err != nil {
+		return err
+	}
+
+	return repo.db.Delete(key)
 }
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
-func (repo *TimelineRepo) GetTimeline(userID string) ([]api.Tweet, error) { // TODO limit offset
-	tweets := make([]api.Tweet, 0, 10)
+func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]api.Tweet, string, error) {
+	if limit == nil {
+		limit = new(uint64)
+		*limit = 20
+	}
+	if *limit == 0 {
+		limit = new(uint64)
+		*limit = 20
+	}
+	tweets := make([]api.Tweet, 0, *limit)
 	prefix, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+
+	var lastKey string
+	if cursor != nil && *cursor != "" {
+		prefix = *cursor
 	}
 
 	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
+		fmt.Println(string(key), string(value), "???????")
+		if len(tweets) >= int(*limit) {
+			lastKey = key
+			return storage.ErrStopIteration
+		}
+		if !IsValidForPrefix(key, prefix) {
+			return nil
+		}
+
 		var t api.Tweet
-		json.JSON.Unmarshal(value, &t)
+		if err = json.JSON.Unmarshal(value, &t); err != nil {
+			return err
+		}
+		fmt.Println(t, "@@@@@")
 		tweets = append(tweets, t)
 		return nil
 	})
 
-	return tweets, err
+	if err == storage.ErrStopIteration || err == nil {
+		if len(tweets) < int(*limit) {
+			lastKey = ""
+		}
+		return tweets, lastKey, nil
+	}
+
+	return tweets, lastKey, err
+}
+
+func IsValidForPrefix(key string, prefix string) bool {
+	isValid := len(key) >= len(prefix) && key[:len(prefix)] == prefix
+	return isValid
 }

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f8fa;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #registration, #timeline-container {
+            display: none;
+        }
+
+        #registration.active, #timeline-container.active {
+            display: block;
+        }
+
+        #new-user input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccd6dd;
+        }
+
+        #new-user button {
+            background-color: #1da1f2;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #new-user button:hover {
+            background-color: #0d95e8;
+        }
+
+        .tweet {
+            border-bottom: 1px solid #e1e8ed;
+            padding: 10px 0;
+        }
+
+        .tweet:last-child {
+            border-bottom: none;
+        }
+
+        .tweet-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .tweet-user {
+            color: #657786;
+            font-size: 14px;
+        }
+
+        #new-tweet textarea {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccd6dd;
+            margin-bottom: 10px;
+            resize: none;
+        }
+
+        #new-tweet button {
+            background-color: #1da1f2;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #new-tweet button:hover {
+            background-color: #0d95e8;
+        }
+
+        .delete-button {
+            background-color: #e0245e;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .delete-button:hover {
+            background-color: #c41e4d;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="registration" class="active">
+        <h1>Create Your Account</h1>
+        <div id="new-user">
+            <input id="username" type="text" placeholder="Enter your username">
+            <button onclick="createUser()">Create Account</button>
+        </div>
+    </div>
+
+    <div id="timeline-container">
+        <h1>Twitter Timeline</h1>
+
+        <div id="new-tweet">
+            <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
+            <button onclick="postTweet()">Tweet</button>
+        </div>
+
+        <div id="timeline"></div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:6969'; // Укажите свой API-эндпоинт
+    let currentUserId = null;
+
+    function createUser() {
+        const username = document.getElementById('username').value;
+        if (username === '') {
+            alert('Username cannot be empty');
+            return;
+        }
+
+        const newUser = {
+            username: username,
+        };
+
+        fetch(`${apiUrl}/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newUser)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.user_id) {
+                    currentUserId = data.user_id;
+                    showTimeline();
+                } else {
+                    alert('Failed to create user');
+                }
+            })
+            .catch(error => console.error('Error creating user:', error));
+    }
+
+    function showTimeline() {
+        document.getElementById('registration').classList.remove('active');
+        document.getElementById('timeline-container').classList.add('active');
+        loadTimeline();
+    }
+
+    function loadTimeline() {
+        fetch(`${apiUrl}/tweets/timeline/${currentUserId}`)
+            .then(response => response.json())
+            .then(data => {
+                const timelineDiv = document.getElementById('timeline');
+                timelineDiv.innerHTML = '';
+                data.tweets.forEach(tweet => {
+                    const tweetDiv = document.createElement('div');
+                    tweetDiv.classList.add('tweet');
+                    tweetDiv.innerHTML = `
+                            <div class="tweet-text">${tweet.content}</div>
+                            <div class="tweet-user">${tweet.user_id}</div>
+                            <button class="delete-button" onclick="deleteTweet('${tweet.user_id}', '${tweet.tweet_id}')">Delete</button>
+                        `;
+                    timelineDiv.appendChild(tweetDiv);
+                });
+            })
+            .catch(error => console.error('Error loading timeline:', error));
+    }
+
+    function postTweet() {
+        const tweetText = document.getElementById('tweet-text').value;
+        if (tweetText === '') {
+            alert('Tweet cannot be empty');
+            return;
+        }
+
+        const newTweet = {
+            content: tweetText,
+            user_id: currentUserId
+        };
+
+        fetch(`${apiUrl}/tweets`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newTweet)
+        })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('tweet-text').value = '';
+                    loadTimeline(); // Перезагрузим ленту после добавления твита
+                } else {
+                    alert('Failed to post tweet');
+                }
+            })
+            .catch(error => console.error('Error posting tweet:', error));
+    }
+
+    function deleteTweet(userId, tweetId) {
+        fetch(`${apiUrl}/tweets/${userId}/${tweetId}`, {
+            method: 'DELETE'
+        })
+            .then(response => {
+                if (response.ok) {
+                    loadTimeline(); // Перезагрузим ленту после удаления твита
+                } else {
+                    alert('Failed to delete tweet');
+                }
+            })
+            .catch(error => console.error('Error deleting tweet:', error));
+    }
+
+    // Если пользователь уже авторизован, показываем таймлайн
+    window.onload = function() {
+        if (currentUserId) {
+            showTimeline();
+        }
+    }
+</script>
+</body>
+</html>

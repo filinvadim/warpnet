@@ -11,9 +11,9 @@ import (
 )
 
 func setupFollowTestDB(t *testing.T) *storage.DB {
-	path := "../var/follow"
+	path := "../var/dbtestfollow"
 	// Открываем базу данных в этой директории
-	db := storage.New("followtest", "followtest", path, false, true, "error")
+	db := storage.New("followtest", path, false, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()

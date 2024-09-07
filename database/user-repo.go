@@ -5,6 +5,7 @@ import (
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
+	"time"
 )
 
 const UsersRepoName = "USERS"
@@ -19,21 +20,26 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user api.User) error {
+func (repo *UserRepo) Create(user api.User) (*api.User, error) {
 	data, err := json.JSON.Marshal(user)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if user.UserId == "" {
-		user.UserId = uuid.New().String()
+	if user.UserId == nil {
+		id := uuid.New().String()
+		user.UserId = &id
+	}
+	if user.CreatedAt == nil {
+		now := time.Now()
+		user.CreatedAt = &now
 	}
 
-	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(user.UserId).Build()
+	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return repo.db.Set(key, data)
+	return &user, repo.db.Set(key, data)
 }
 
 // Get retrieves a user by their ID

@@ -3,8 +3,11 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -53,6 +56,26 @@ func (pb *PrefixBuilder) AddUserId(userId string) *PrefixBuilder {
 		return pb
 	}
 	pb.key = fmt.Sprintf("%s:%s", pb.key, userId)
+	return pb
+}
+
+func (pb *PrefixBuilder) AddReverseTimestamp(tm time.Time) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
+		return pb
+	}
+
+	pb.key = fmt.Sprintf("%s:%s", pb.key, strconv.FormatInt(math.MaxInt64-tm.UnixMilli(), 10))
+	return pb
+}
+
+func (pb *PrefixBuilder) AddSequence(num int64) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
+		return pb
+	}
+
+	pb.key = fmt.Sprintf("%s:%s", pb.key, strconv.FormatInt(num, 10))
 	return pb
 }
 

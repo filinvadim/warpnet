@@ -13,9 +13,9 @@ import (
 )
 
 func setupTweetTestDB(t *testing.T) *storage.DB {
-	path := "../var/tweet"
+	path := "../var/dbtesttweet"
 	// Открываем базу данных в этой директории
-	db := storage.New("tweettest", "tweettest", path, false, true, "error")
+	db := storage.New("tweettest", path, false, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -34,17 +34,19 @@ func TestTweetRepo_Create(t *testing.T) {
 	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
+
+	id := uuid.New().String()
 	user := api.User{
 		Username: "User",
-		UserId:   (uuid.New().String()),
+		UserId:   &id,
 	}
 
-	err := repo.Create(user.UserId, tweet)
+	_, err := repo.Create(*user.UserId, tweet)
 
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был корректно создан
-	retrievedTweet, err := repo.Get(user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -57,16 +59,18 @@ func TestTweetRepo_Get(t *testing.T) {
 	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
+	id := uuid.New().String()
+
 	user := api.User{
 		Username: "User",
-		UserId:   (uuid.New().String()),
+		UserId:   &id,
 	}
 
-	err := repo.Create(user.UserId, tweet)
+	_, err := repo.Create(*user.UserId, tweet)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь может быть получен
-	retrievedTweet, err := repo.Get(user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -79,19 +83,21 @@ func TestTweetRepo_Delete(t *testing.T) {
 	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
+	id := uuid.New().String()
+
 	user := api.User{
 		Username: "User",
-		UserId:   (uuid.New().String()),
+		UserId:   &id,
 	}
 
-	err := repo.Create(user.UserId, tweet)
+	_, err := repo.Create(*user.UserId, tweet)
 	assert.NoError(t, err)
 
-	err = repo.Delete(user.UserId, tweetID)
+	err = repo.Delete(*user.UserId, tweetID)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был удален
-	retrievedTweet, err := repo.Get(user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedTweet)
 }
@@ -108,17 +114,19 @@ func TestTweetRepo_List(t *testing.T) {
 	tweet2 := api.Tweet{
 		TweetId: &id2,
 	}
+	id := uuid.New().String()
+
 	user := api.User{
 		Username: "User",
-		UserId:   (uuid.New().String()),
+		UserId:   &id,
 	}
 
-	err := repo.Create(user.UserId, tweet1)
+	_, err := repo.Create(*user.UserId, tweet1)
 	assert.NoError(t, err)
-	err = repo.Create(user.UserId, tweet2)
+	_, err = repo.Create(*user.UserId, tweet2)
 	assert.NoError(t, err)
 
-	tweets, err := repo.List(user.UserId)
+	tweets, err := repo.List(*user.UserId)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 2)
 
