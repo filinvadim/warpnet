@@ -1,12 +1,11 @@
 package storage
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	"log"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,12 +14,17 @@ var ErrStopIteration = errors.New("stop iteration")
 type DB struct {
 	badger   *badger.DB
 	sequence *badger.Sequence
-	stopChan chan struct{}
+
+	isRunning *atomic.Bool
+	stopChan  chan struct{}
+
+	runF func(opt badger.Options) (*badger.DB, error)
+	opts badger.Options
 }
 
 func New(
-	password, path string,
-	isEncrypted, isInMemory bool,
+	path string,
+	isInMemory bool,
 	logLvl string,
 ) *DB {
 	opts := badger.
@@ -31,49 +35,44 @@ func New(
 		WithNumCompactors(2).
 		WithLogger(nil)
 
-	if isEncrypted {
-		opts.EncryptionKey = generateEncryptionKey(password)
-	}
 	if isInMemory {
 		opts.WithDir("").WithValueDir("").WithInMemory(isInMemory)
 	}
 
-	db, err := badger.Open(opts)
-	if err != nil {
-		log.Fatal("badger open:", err)
+	storage := &DB{
+		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
+		sequence: nil, runF: badger.Open, opts: opts,
 	}
-
-	stopChan := make(chan struct{})
-	seq, err := db.GetSequence([]byte("SEQUENCE:unified"), 100)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	storage := &DB{badger: db, stopChan: stopChan, sequence: seq}
-
-	go storage.runEventualGC()
 
 	return storage
 }
 
-func generateEncryptionKey(password string) []byte {
-	var encryptionKey = make([]byte, 32)
-	if password == "" {
-		if _, err := rand.Read(encryptionKey); err != nil {
-			log.Fatal("error generating random key:", err)
-		}
-		return encryptionKey
+func (db *DB) Run(password []byte) (err error) {
+	if db.isRunning.Load() {
+		return nil
 	}
-	creds := []byte(password)
-	if len(creds) > 32 {
-		log.Fatal("login and password combination is too long")
+	if len(password) != 0 {
+		db.opts.EncryptionKey = password
 	}
-	copy(encryptionKey[32-len(creds):], creds)
-	return encryptionKey
+
+	db.badger, err = db.runF(db.opts)
+	if err != nil {
+		return err
+	}
+
+	db.isRunning.Store(true)
+	fmt.Println("DATABASE IS RUNNING!")
+	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
+	if err != nil {
+		return err
+	}
+	go db.runEventualGC()
+	return nil
 }
 
 func (db *DB) runEventualGC() {
 	fmt.Println("badger GC started")
+	db.badger.RunValueLogGC(0.5)
 	for {
 		select {
 		case <-time.After(time.Hour * 24):
@@ -94,6 +93,9 @@ func (db *DB) runEventualGC() {
 type IterKeysFunc func(key string) error
 
 func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
+	if !db.isRunning.Load() {
+		return errors.New("db is not running")
+	}
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		it := txn.NewIterator(opts)
@@ -114,6 +116,9 @@ func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
 type IterKeysValuesFunc func(key string, val []byte) error
 
 func (db *DB) IterateKeysValues(prefix string, handler IterKeysValuesFunc) error {
+	if !db.isRunning.Load() {
+		return errors.New("db is not running")
+	}
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = true
@@ -137,6 +142,9 @@ func (db *DB) IterateKeysValues(prefix string, handler IterKeysValuesFunc) error
 }
 
 func (db *DB) Set(key string, value []byte) error {
+	if !db.isRunning.Load() {
+		return errors.New("db is not running")
+	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), value)
 		return txn.SetEntry(e)
@@ -144,6 +152,9 @@ func (db *DB) Set(key string, value []byte) error {
 }
 
 func (db *DB) Get(key string) ([]byte, error) {
+	if !db.isRunning.Load() {
+		return nil, errors.New("db is not running")
+	}
 	var value []byte
 	err := db.badger.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
@@ -162,6 +173,9 @@ func (db *DB) Get(key string) ([]byte, error) {
 }
 
 func (db *DB) Update(key string, newValue []byte) error {
+	if !db.isRunning.Load() {
+		return errors.New("db is not running")
+	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), newValue)
 		return txn.SetEntry(e)
@@ -180,12 +194,18 @@ func (db *DB) Txn(f func(tx *badger.Txn) error) error {
 }
 
 func (db *DB) Delete(key string) error {
+	if !db.isRunning.Load() {
+		return errors.New("db is not running")
+	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(key))
 	})
 }
 
 func (db *DB) NextSequence() (uint64, error) {
+	if !db.isRunning.Load() {
+		return 0, errors.New("db is not running")
+	}
 	num, err := db.sequence.Next()
 	if err != nil {
 		return 0, err
@@ -198,6 +218,9 @@ func (db *DB) NextSequence() (uint64, error) {
 }
 
 func (db *DB) GC() {
+	if !db.isRunning.Load() {
+		return
+	}
 	for {
 		err := db.badger.RunValueLogGC(0.5)
 		if err == badger.ErrNoRewrite {
@@ -207,7 +230,14 @@ func (db *DB) GC() {
 }
 
 func (db *DB) Close() error {
+	defer db.isRunning.Store(false)
+
 	close(db.stopChan)
-	db.sequence.Release()
+	if db.sequence != nil {
+		db.sequence.Release()
+	}
+	if db.badger == nil {
+		return nil
+	}
 	return db.badger.Close()
 }

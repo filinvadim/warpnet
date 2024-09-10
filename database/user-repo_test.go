@@ -1,10 +1,10 @@
 package database_test
 
 import (
+	"github.com/filinvadim/dWighter/api/server"
 	"os"
 	"testing"
 
-	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -28,7 +28,7 @@ func TestUserRepo_Create(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := database.NewUserRepo(db)
 
-	user := api.User{
+	user := server.User{
 		Username: "Test User",
 		UserId:   uuid.New().String(),
 	}
@@ -51,7 +51,7 @@ func TestUserRepo_Get(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := api.User{
+	user := server.User{
 		Username: "Test User",
 		UserId:   userID,
 	}
@@ -71,7 +71,7 @@ func TestUserRepo_Delete(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := api.User{
+	user := server.User{
 		Username: "Test User",
 		UserId:   userID,
 	}
@@ -93,11 +93,11 @@ func TestUserRepo_List(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := database.NewUserRepo(db)
 
-	user1 := api.User{
+	user1 := server.User{
 		Username: "User1",
 		UserId:   (uuid.New().String()),
 	}
-	user2 := api.User{
+	user2 := server.User{
 		Username: "User2",
 		UserId:   (uuid.New().String()),
 	}

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/dWighter/api"
+	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/handlers"
@@ -29,14 +29,14 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGINT)
 
-	swagger, err := api.GetSwagger()
+	swagger, err := server.GetSwagger()
 	if err != nil {
 		log.Fatalf("loading swagger spec: %v", err)
 	}
 	swagger.Servers = nil
 
 	path := getAppPath()
-	db := storage.New("", path, false, false, "debug")
+	db := storage.New(path, false, "debug")
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
@@ -44,6 +44,7 @@ func main() {
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
+	authRepo := database.NewAuthRepo(db)
 
 	e := echo.New()
 
@@ -61,21 +62,49 @@ func main() {
 		Output: os.Stderr,
 	})
 	e.Use(lg)
+	e.Use(echomiddleware.CORS())
+	//e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+	//	return func(c echo.Context) error {
+	//		// Проксируем только запросы, которые идут на корневой URI "/"
+	//		if c.Request().URL.RequestURI() != "/" {
+	//			return next(c) // Продолжаем выполнение цепочки для других URI
+	//		}
+	//
+	//		// Настраиваем прокси для перенаправления на localhost:6969
+	//		target, _ := url.Parse("http://localhost:6969")
+	//		proxy := httputil.NewSingleHostReverseProxy(target)
+	//
+	//		// Изменяем заголовки запроса, чтобы соответствовать целевому серверу
+	//		c.Request().Host = target.Host
+	//		c.Request().URL.Host = target.Host
+	//		c.Request().URL.Scheme = target.Scheme
+	//
+	//		// Проксируем запрос на локальный сервер
+	//		proxy.ServeHTTP(c.Response(), c.Request())
+	//
+	//		// Возвращаем nil, т.к. запрос уже обработан прокси
+	//		return nil
+	//	}
+	//})
+	e.Use(echomiddleware.Recover())
+	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	api.RegisterHandlers(e, &struct {
+	server.RegisterHandlers(e, &struct {
 		*handlers.TweetController
 		*handlers.NodeController
 		*handlers.UserController
 		*handlers.StaticController
+		*handlers.AuthController
 	}{
 		handlers.NewTweetController(timelineRepo, tweetRepo),
 		handlers.NewNodeController(nodeRepo),
-		handlers.NewUserController(userRepo, followRepo),
+		handlers.NewUserController(userRepo, followRepo, nodeRepo),
 		handlers.NewStaticController(),
+		handlers.NewAuthController(authRepo),
 	})
 
-	go e.Start(net.JoinHostPort("", "6969"))
+	go e.Start(net.JoinHostPort("localhost", "6969"))
 	time.Sleep(1 * time.Second)
 
 	err = browser.OpenURL("http://localhost:6969")
@@ -86,7 +115,6 @@ func main() {
 	<-interrupt
 
 	e.Shutdown(context.Background())
-
 }
 
 func getAppPath() string {
@@ -104,7 +132,7 @@ func getAppPath() string {
 	case "darwin", "linux", "android":
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		dbPath = filepath.Join(homeDir, ".badgerdb")
 

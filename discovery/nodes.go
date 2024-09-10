@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"errors"
-	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database"
 	"sync"
 	"time"
@@ -10,19 +9,19 @@ import (
 
 // DiscoveryService manages IP addresses
 type DiscoveryService struct {
-	ips   map[string]api.IPAddress
+	ips   map[string]server.IPAddress
 	mutex sync.RWMutex
 }
 
 // NewDiscoveryService creates a new DiscoveryService instance
 func NewDiscoveryService(ipRepo database.IPRepo) *DiscoveryService {
 	return &DiscoveryService{
-		ips: make(map[string]api.IPAddress),
+		ips: make(map[string]server.IPAddress),
 	}
 }
 
 // AddNode adds a new IP address to the service
-func (ds *DiscoveryService) AddNode(ipAddress api.IPAddress) error {
+func (ds *DiscoveryService) AddNode(ipAddress server.IPAddress) error {
 	// Validate IP address format
 	if ipAddress.Ip == "" {
 		return errors.New("invalid IP address")
@@ -40,12 +39,12 @@ func (ds *DiscoveryService) AddNode(ipAddress api.IPAddress) error {
 }
 
 // GetNodes retrieves the list of all IP addresses
-func (ds *DiscoveryService) GetNodes() []api.IPAddress {
+func (ds *DiscoveryService) GetNodes() []server.IPAddress {
 	ds.mutex.RLock()
 	defer ds.mutex.RUnlock()
 
 	// Convert the map of IP addresses to a slice
-	ipList := make([]api.IPAddress, 0, len(ds.ips))
+	ipList := make([]server.IPAddress, 0, len(ds.ips))
 	for _, ip := range ds.ips {
 		ipList = append(ipList, ip)
 	}
@@ -68,7 +67,7 @@ func (ds *DiscoveryService) RemoveNode(ip string) error {
 }
 
 // UpdateNode updates an existing IP address entry
-func (ds *DiscoveryService) UpdateNode(ip string, newInfo api.IPAddress) error {
+func (ds *DiscoveryService) UpdateNode(ip string, newInfo server.IPAddress) error {
 	ds.mutex.Lock()
 	defer ds.mutex.Unlock()
 

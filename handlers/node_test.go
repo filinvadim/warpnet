@@ -3,7 +3,6 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/handlers"
@@ -40,7 +39,7 @@ func TestPostNodes(t *testing.T) {
 	controller := handlers.NewNodeController(nodeRepo)
 
 	// Пример ноды
-	node := api.Node{
+	node := server.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "TestPostNodes",
 	}
@@ -57,7 +56,7 @@ func TestPostNodes(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostNodes(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdNode api.Node
+		var createdNode server.Node
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdNode)) {
 			assert.Equal(t, node.Ip, createdNode.Ip)
 			assert.Equal(t, node.OwnerId, createdNode.OwnerId)
@@ -74,7 +73,7 @@ func TestGetNodes(t *testing.T) {
 	controller := handlers.NewNodeController(nodeRepo)
 
 	// Добавляем тестовую ноду в базу данных
-	node := api.Node{
+	node := server.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "TestGetNodes",
 	}
@@ -88,7 +87,7 @@ func TestGetNodes(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetNodes(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var nodes []api.Node
+		var nodes []server.Node
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &nodes)) {
 			assert.Len(t, nodes, 1)
 			assert.Equal(t, node.Ip, nodes[0].Ip)
@@ -105,14 +104,14 @@ func TestPostNodesPing(t *testing.T) {
 	controller := handlers.NewNodeController(nodeRepo)
 
 	// Добавляем тестовую ноду в базу данных
-	node := api.Node{
+	node := server.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "Test Node",
 	}
 	_ = nodeRepo.Create(node)
 
 	// Создаем HTTP запрос для пинга
-	pingRequest := api.Node{
+	pingRequest := server.Node{
 		Ip: "127.0.0.1",
 	}
 	pingJson, _ := json.Marshal(pingRequest)

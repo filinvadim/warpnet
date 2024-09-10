@@ -9,14 +9,15 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f8fa;
+            background-color: #15202b;
+            color: #ffffff;
         }
 
         #container {
             width: 100%;
             max-width: 600px;
             margin: 20px auto;
-            background-color: white;
+            background-color: #192734;
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
@@ -24,26 +25,29 @@
 
         h1 {
             text-align: center;
+            color: #ffffff;
         }
 
-        #registration, #timeline-container {
+        #login, #timeline-container {
             display: none;
         }
 
-        #registration.active, #timeline-container.active {
+        #login.active, #timeline-container.active {
             display: block;
         }
 
-        #new-user input {
+        #login input {
             width: 100%;
             padding: 10px;
             font-size: 16px;
             margin-bottom: 10px;
             border-radius: 5px;
-            border: 1px solid #ccd6dd;
+            border: 1px solid #657786;
+            background-color: #192734;
+            color: #ffffff;
         }
 
-        #new-user button {
+        #login button {
             background-color: #1da1f2;
             color: white;
             border: none;
@@ -52,12 +56,12 @@
             cursor: pointer;
         }
 
-        #new-user button:hover {
+        #login button:hover {
             background-color: #0d95e8;
         }
 
         .tweet {
-            border-bottom: 1px solid #e1e8ed;
+            border-bottom: 1px solid #657786;
             padding: 10px 0;
         }
 
@@ -68,20 +72,35 @@
         .tweet-text {
             font-size: 16px;
             margin-bottom: 10px;
+            color: #ffffff;
         }
 
         .tweet-user {
-            color: #657786;
+            color: #8899a6;
             font-size: 14px;
         }
 
+        .tweet-time {
+            color: #8899a6;
+            font-size: 12px;
+        }
+
+        #new-tweet {
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #657786;
+        }
+
         #new-tweet textarea {
+            width: 100%;
             padding: 10px;
             font-size: 16px;
             border-radius: 5px;
-            border: 1px solid #ccd6dd;
+            border: 1px solid #657786;
             margin-bottom: 10px;
             resize: none;
+            background-color: #192734;
+            color: #ffffff;
         }
 
         #new-tweet button {
@@ -96,35 +115,20 @@
         #new-tweet button:hover {
             background-color: #0d95e8;
         }
-
-        .delete-button {
-            background-color: #e0245e;
-            color: white;
-            border: none;
-            padding: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-
-        .delete-button:hover {
-            background-color: #c41e4d;
-        }
     </style>
 </head>
 <body>
 <div id="container">
-    <div id="registration" class="active">
-        <h1>Create Your Account</h1>
-        <div id="new-user">
+    <div id="login" class="active">
+        <h1>Login</h1>
+        <div id="login-form">
             <input id="username" type="text" placeholder="Enter your username">
-            <button onclick="createUser()">Create Account</button>
+            <input id="password" type="password" placeholder="Enter your password (up to 32 bytes)">
+            <button onclick="login()">Login</button>
         </div>
     </div>
 
     <div id="timeline-container">
-        <h1>Twitter Timeline</h1>
-
         <div id="new-tweet">
             <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
             <button onclick="postTweet()">Tweet</button>
@@ -135,46 +139,66 @@
 </div>
 
 <script>
-    const apiUrl = 'http://localhost:6969'; // Укажите свой API-эндпоинт
+    const apiUrl = 'http://localhost:6969'; // Укажите ваш API-эндпоинт
     let currentUserId = null;
+    let currentUsername = null;
 
-    function createUser() {
+    function login() {
         const username = document.getElementById('username').value;
-        if (username === '') {
-            alert('Username cannot be empty');
+        const password = document.getElementById('password').value;
+
+        if (username === '' || password === '') {
+            alert('Username and password cannot be empty');
             return;
         }
 
-        const newUser = {
+        // Проверка, что пароль не длиннее 32 байт
+        if (password.length > 32) {
+            alert('Password must be a maximum of 32 bytes');
+            return;
+        }
+
+        const loginData = {
             username: username,
+            password: password
         };
 
-        fetch(`${apiUrl}/users`, {
+        fetch(`${apiUrl}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(newUser)
+            body: JSON.stringify(loginData)
         })
             .then(response => response.json())
             .then(data => {
                 if (data.user_id) {
+                    // Сохраняем user_id в sessionStorage
+                    sessionStorage.setItem('userId', data.user_id);
+                    sessionStorage.setItem('username', data.username);
                     currentUserId = data.user_id;
                     showTimeline();
                 } else {
-                    alert('Failed to create user');
+                    alert('Login failed');
                 }
             })
-            .catch(error => console.error('Error creating user:', error));
+            .catch(error => console.error('Error during login:', error));
     }
 
     function showTimeline() {
-        document.getElementById('registration').classList.remove('active');
+        document.getElementById('login').classList.remove('active');
         document.getElementById('timeline-container').classList.add('active');
         loadTimeline();
     }
 
     function loadTimeline() {
+        currentUsername = sessionStorage.getItem('username'); // Получаем user_id из sessionStorage
+        currentUserId = sessionStorage.getItem('userId'); // Получаем user_id из sessionStorage
+        if (!currentUserId) {
+            alert('User not logged in');
+            return;
+        }
+
         fetch(`${apiUrl}/tweets/timeline/${currentUserId}`)
             .then(response => response.json())
             .then(data => {
@@ -183,11 +207,12 @@
                 data.tweets.forEach(tweet => {
                     const tweetDiv = document.createElement('div');
                     tweetDiv.classList.add('tweet');
+                    const tweetTime = new Date(tweet.created_at).toLocaleString();
                     tweetDiv.innerHTML = `
-                            <div class="tweet-text">${tweet.content}</div>
-                            <div class="tweet-user">${tweet.user_id}</div>
-                            <button class="delete-button" onclick="deleteTweet('${tweet.user_id}', '${tweet.tweet_id}')">Delete</button>
-                        `;
+                        <div class="tweet-text">${tweet.content}</div>
+                        <div class="tweet-user">@${tweet.username}</div>
+                        <div class="tweet-time">${tweetTime}</div>
+                    `;
                     timelineDiv.appendChild(tweetDiv);
                 });
             })
@@ -195,6 +220,8 @@
     }
 
     function postTweet() {
+        currentUsername = sessionStorage.getItem('username'); // Получаем user_id из sessionStorage
+
         const tweetText = document.getElementById('tweet-text').value;
         if (tweetText === '') {
             alert('Tweet cannot be empty');
@@ -203,7 +230,8 @@
 
         const newTweet = {
             content: tweetText,
-            user_id: currentUserId
+            user_id: currentUserId,
+            username: currentUsername
         };
 
         fetch(`${apiUrl}/tweets`, {
@@ -224,22 +252,9 @@
             .catch(error => console.error('Error posting tweet:', error));
     }
 
-    function deleteTweet(userId, tweetId) {
-        fetch(`${apiUrl}/tweets/${userId}/${tweetId}`, {
-            method: 'DELETE'
-        })
-            .then(response => {
-                if (response.ok) {
-                    loadTimeline(); // Перезагрузим ленту после удаления твита
-                } else {
-                    alert('Failed to delete tweet');
-                }
-            })
-            .catch(error => console.error('Error deleting tweet:', error));
-    }
-
-    // Если пользователь уже авторизован, показываем таймлайн
     window.onload = function() {
+        // Проверяем, есть ли уже user_id в sessionStorage
+        currentUserId = sessionStorage.getItem('userId');
         if (currentUserId) {
             showTimeline();
         }

@@ -1,7 +1,8 @@
 package database
 
 import (
-	"github.com/filinvadim/dWighter/api"
+	"fmt"
+	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -20,10 +21,10 @@ func NewTweetRepo(db *storage.DB) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet api.Tweet) (*api.Tweet, error) {
+func (repo *TweetRepo) Create(userID string, tweet server.Tweet) (*server.Tweet, error) {
 	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tweet marshal: %w", err)
 	}
 	if tweet.TweetId == nil {
 		id := uuid.New().String()
@@ -36,20 +37,20 @@ func (repo *TweetRepo) Create(userID string, tweet api.Tweet) (*api.Tweet, error
 	if tweet.Sequence == nil {
 		seq, err := repo.db.NextSequence()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("add tweet sequence: %w", err)
 		}
 		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
 	}
 
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build timeline key: %w", err)
 	}
 	return &tweet, repo.db.Set(key, data)
 }
 
 // Get retrieves a tweet by its ID
-func (repo *TweetRepo) Get(userID, tweetID string) (*api.Tweet, error) {
+func (repo *TweetRepo) Get(userID, tweetID string) (*server.Tweet, error) {
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func (repo *TweetRepo) Get(userID, tweetID string) (*api.Tweet, error) {
 		return nil, err
 	}
 
-	var tweet api.Tweet
+	var tweet server.Tweet
 	err = json.JSON.Unmarshal(data, &tweet)
 	if err != nil {
 		return nil, err
@@ -76,15 +77,15 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	return repo.db.Delete(key)
 }
 
-func (repo *TweetRepo) List(userId string) ([]api.Tweet, error) {
+func (repo *TweetRepo) List(userId string) ([]server.Tweet, error) {
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	tweets := make([]api.Tweet, 0, 20)
+	tweets := make([]server.Tweet, 0, 20)
 	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var tweet api.Tweet
+		var tweet server.Tweet
 		err := json.JSON.Unmarshal(value, &tweet)
 		if err != nil {
 			return err

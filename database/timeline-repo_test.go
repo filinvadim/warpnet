@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filinvadim/dWighter/api"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -24,8 +23,8 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 	return db
 }
 
-func createTestTweet(id string, timestamp time.Time) api.Tweet {
-	return api.Tweet{
+func createTestTweet(id string, timestamp time.Time) server.Tweet {
+	return server.Tweet{
 		TweetId:   &id,
 		Content:   "Test content",
 		UserId:    uuid.New().String(),
