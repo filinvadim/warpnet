@@ -73,33 +73,30 @@ func (repo *AuthRepo) SetOwner(u *server.User) (_ *server.User, err error) {
 	if u == nil {
 		return nil, errors.New("user is nil")
 	}
-	if u.UserId == nil {
-		id := uuid.New().String()
-		u.UserId = &id
-	}
-	if u.CreatedAt == nil {
-		now := time.Now()
-		u.CreatedAt = &now
-	}
-	//if u.ReferredBy == nil {
-	//	return errors.New("")
-	//}
-	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUserId(*u.UserId).Build()
+
+	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUsername(u.Username).Build()
 	if err != nil {
 		return nil, err
 	}
+
+	owner, err := repo.GetOwner(u.Username)
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, err
+	}
+	if owner != nil {
+		return owner, nil
+	}
+
+	now := time.Now()
+	u.CreatedAt = &now
+
+	id := uuid.New().String()
+	u.UserId = &id
+
 	data, err := json.JSON.Marshal(u)
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.GetOwner(*u.UserId)
-	if err == nil {
-		return nil, errors.New("user already exists")
-	}
-	if err != badger.ErrKeyNotFound {
-		return nil, err
-	}
-
 	return u, repo.db.Set(key, data)
 }
 
@@ -123,8 +120,8 @@ func (repo *AuthRepo) UpdateOwner(u *server.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) GetOwner(userId string) (*server.User, error) {
-	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUserId(userId).Build()
+func (repo *AuthRepo) GetOwner(username string) (*server.User, error) {
+	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUsername(username).Build()
 	if err != nil {
 		return nil, err
 	}

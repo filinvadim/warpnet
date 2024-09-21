@@ -63,29 +63,6 @@ func main() {
 	})
 	e.Use(lg)
 	e.Use(echomiddleware.CORS())
-	//e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-	//	return func(c echo.Context) error {
-	//		// Проксируем только запросы, которые идут на корневой URI "/"
-	//		if c.Request().URL.RequestURI() != "/" {
-	//			return next(c) // Продолжаем выполнение цепочки для других URI
-	//		}
-	//
-	//		// Настраиваем прокси для перенаправления на localhost:6969
-	//		target, _ := url.Parse("http://localhost:6969")
-	//		proxy := httputil.NewSingleHostReverseProxy(target)
-	//
-	//		// Изменяем заголовки запроса, чтобы соответствовать целевому серверу
-	//		c.Request().Host = target.Host
-	//		c.Request().URL.Host = target.Host
-	//		c.Request().URL.Scheme = target.Scheme
-	//
-	//		// Проксируем запрос на локальный сервер
-	//		proxy.ServeHTTP(c.Response(), c.Request())
-	//
-	//		// Возвращаем nil, т.к. запрос уже обработан прокси
-	//		return nil
-	//	}
-	//})
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
@@ -101,7 +78,7 @@ func main() {
 		handlers.NewNodeController(nodeRepo),
 		handlers.NewUserController(userRepo, followRepo, nodeRepo),
 		handlers.NewStaticController(),
-		handlers.NewAuthController(authRepo),
+		handlers.NewAuthController(authRepo, interrupt),
 	})
 
 	go e.Start(net.JoinHostPort("localhost", "6969"))

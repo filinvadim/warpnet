@@ -59,6 +59,22 @@ func (pb *PrefixBuilder) AddUserId(userId string) *PrefixBuilder {
 	return pb
 }
 
+// AddUserId adds a user ID segment to the key after validation
+func (pb *PrefixBuilder) AddUsername(username string) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
+		return pb
+	}
+
+	// Perform validation and store the error if validation fails
+	if username == "" {
+		pb.err = errors.New("username cannot be empty")
+		return pb
+	}
+	pb.key = fmt.Sprintf("%s:%s", pb.key, username)
+	return pb
+}
+
 func (pb *PrefixBuilder) AddReverseTimestamp(tm time.Time) *PrefixBuilder {
 	// Skip processing if there's already an error
 	if pb.err != nil {

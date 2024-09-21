@@ -252,6 +252,25 @@
             .catch(error => console.error('Error posting tweet:', error));
     }
 
+    // Отправка команды при закрытии вкладки
+    window.addEventListener('beforeunload', function (e) {
+        sendCloseServiceCommand();
+    });
+
+    function sendCloseServiceCommand() {
+        fetch(`${apiUrl}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: currentUserId
+            })
+        }).catch(error => {
+            console.error('Error closing service:', error);
+        });
+    }
+
     window.onload = function() {
         // Проверяем, есть ли уже user_id в sessionStorage
         currentUserId = sessionStorage.getItem('userId');

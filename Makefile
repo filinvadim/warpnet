@@ -1,5 +1,5 @@
 oapi-codegen-install:
-	go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen
+	go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
 gen:
 	~/go/bin/oapi-codegen -generate server,types,spec,skip-prune -package server ./spec/api.yml > api/server/server.gen.go
 	~/go/bin/oapi-codegen -generate client,types,spec,skip-prune -package client ./spec/api.yml > api/client/client.gen.go

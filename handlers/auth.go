@@ -6,14 +6,16 @@ import (
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"os"
 )
 
 type AuthController struct {
-	authRepo *database.AuthRepo
+	authRepo  *database.AuthRepo
+	interrupt chan os.Signal
 }
 
-func NewAuthController(authRepo *database.AuthRepo) *AuthController {
-	return &AuthController{authRepo}
+func NewAuthController(authRepo *database.AuthRepo, interrupt chan os.Signal) *AuthController {
+	return &AuthController{authRepo, interrupt}
 }
 
 func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
@@ -21,7 +23,7 @@ func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
 	if err := ctx.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	hashSum := crypto.ConvertToSHA256([]byte(req.Password))
+	hashSum := crypto.ConvertToSHA256([]byte(req.Password + req.Username)) // aaaa + vadim
 	if err := c.authRepo.InitWithPassword(hashSum); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -48,4 +50,9 @@ func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
 	// TODO broadcast id
 
 	return ctx.JSON(http.StatusOK, u)
+}
+
+func (c *AuthController) PostAuthLogout(ctx echo.Context) error {
+	c.interrupt <- os.Interrupt
+	return ctx.NoContent(http.StatusOK)
 }
