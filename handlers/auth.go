@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
@@ -23,9 +25,17 @@ func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
 	if err := ctx.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	hashSum := crypto.ConvertToSHA256([]byte(req.Password + req.Username)) // aaaa + vadim
+	hashSum := crypto.ConvertToSHA256([]byte(req.Password + ":" + req.Username)) // aaaa + vadim
 	if err := c.authRepo.InitWithPassword(hashSum); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	owner, err := c.authRepo.GetOwnerByUsername(req.Username)
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if owner != nil {
+		return ctx.JSON(http.StatusOK, owner)
 	}
 
 	u, err := c.authRepo.SetOwner(&server.User{

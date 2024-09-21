@@ -79,14 +79,6 @@ func (repo *AuthRepo) SetOwner(u *server.User) (_ *server.User, err error) {
 		return nil, err
 	}
 
-	owner, err := repo.GetOwner(u.Username)
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return nil, err
-	}
-	if owner != nil {
-		return owner, nil
-	}
-
 	now := time.Now()
 	u.CreatedAt = &now
 
@@ -120,7 +112,7 @@ func (repo *AuthRepo) UpdateOwner(u *server.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) GetOwner(username string) (*server.User, error) {
+func (repo *AuthRepo) GetOwnerByUsername(username string) (*server.User, error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUsername(username).Build()
 	if err != nil {
 		return nil, err
