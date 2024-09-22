@@ -230,8 +230,6 @@ func (db *DB) GC() {
 }
 
 func (db *DB) Close() error {
-	defer db.isRunning.Store(false)
-
 	close(db.stopChan)
 	if db.sequence != nil {
 		db.sequence.Release()
@@ -239,5 +237,9 @@ func (db *DB) Close() error {
 	if db.badger == nil {
 		return nil
 	}
+	if !db.isRunning.Load() {
+		return nil
+	}
+	db.isRunning.Store(false)
 	return db.badger.Close()
 }

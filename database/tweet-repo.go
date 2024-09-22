@@ -22,10 +22,7 @@ func NewTweetRepo(db *storage.DB) *TweetRepo {
 
 // Create adds a new tweet to the database
 func (repo *TweetRepo) Create(userID string, tweet server.Tweet) (*server.Tweet, error) {
-	data, err := json.JSON.Marshal(tweet)
-	if err != nil {
-		return nil, fmt.Errorf("tweet marshal: %w", err)
-	}
+
 	if tweet.TweetId == nil {
 		id := uuid.New().String()
 		tweet.TweetId = &id
@@ -40,6 +37,11 @@ func (repo *TweetRepo) Create(userID string, tweet server.Tweet) (*server.Tweet,
 			return nil, fmt.Errorf("add tweet sequence: %w", err)
 		}
 		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
+	}
+
+	data, err := json.JSON.Marshal(tweet)
+	if err != nil {
+		return nil, fmt.Errorf("tweet marshal: %w", err)
 	}
 
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/client"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/dWighter/discovery"
 	"github.com/filinvadim/dWighter/handlers"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -20,7 +22,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"time"
 )
 
 var version string
@@ -47,7 +48,7 @@ func main() {
 	authRepo := database.NewAuthRepo(db)
 
 	e := echo.New()
-
+	e.HideBanner = true
 	e.Logger.SetLevel(echoLog.INFO)
 	e.Logger.SetPrefix("universal-fix-gateway")
 
@@ -82,7 +83,13 @@ func main() {
 	})
 
 	go e.Start(net.JoinHostPort("localhost", "6969"))
-	time.Sleep(1 * time.Second)
+
+	cli := client.New(context.Background(), e.Logger)
+	ds, err := discovery.NewDiscoveryService(cli, nodeRepo, e.Logger)
+	if err != nil {
+		log.Fatalf("failed to run discovery: %v", err)
+	}
+	go ds.StartDiscovery()
 
 	err = browser.OpenURL("http://localhost:6969")
 	if err != nil {

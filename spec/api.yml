@@ -74,35 +74,6 @@ paths:
       tags:
         - Node
       summary: Ping another node to check its status
-      parameters:
-        - name: ip
-          in: query
-          required: true
-          schema:
-            type: string
-            format: ipv4
-            description: The IP address of the node to ping
-      responses:
-        '200':
-          description: Ping response from the node
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
-        '404':
-          description: Node not found or not responding
-        '500':
-          description: Internal server error
-    post:
-      tags:
-        - Node
-      summary: Send node status
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Node'
       responses:
         '200':
           description: Ping response from the node
@@ -469,6 +440,9 @@ components:
           type: string
           format: ipv4
           description: The IP address
+        port:
+          type: string
+          default: 6969
         is_active:
           type: boolean
           description: Whether the IP address is currently active
@@ -493,6 +467,7 @@ components:
           type: string
       required:
         - ip
+        - port
         - is_active
         - last_seen
         - owner_id
@@ -504,13 +479,19 @@ components:
           type: string
           format: ipv4
           description: The IP address that was pinged
+        port:
+          type: string
+          default: 6969
         latency:
           type: integer
           format: int64
           description: The latency to the IP address in milliseconds
+        requester_ip:
+          type: string
       required:
         - ip
         - latency
+        - port
 
     Error:
       type: object

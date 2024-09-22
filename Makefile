@@ -13,3 +13,6 @@ govendor:
 
 prune:
 	rm -rf /Users/vadim/.badgerdb
+
+run:
+	go run main.go

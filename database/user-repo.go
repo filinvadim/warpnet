@@ -21,11 +21,6 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 
 // Create adds a new user to the database
 func (repo *UserRepo) Create(user server.User) (*server.User, error) {
-	data, err := json.JSON.Marshal(user)
-	if err != nil {
-		return nil, err
-	}
-
 	if user.UserId == nil {
 		id := uuid.New().String()
 		user.UserId = &id
@@ -34,7 +29,10 @@ func (repo *UserRepo) Create(user server.User) (*server.User, error) {
 		now := time.Now()
 		user.CreatedAt = &now
 	}
-
+	data, err := json.JSON.Marshal(user)
+	if err != nil {
+		return nil, err
+	}
 	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).Build()
 	if err != nil {
 		return nil, err

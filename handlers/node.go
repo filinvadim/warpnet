@@ -5,7 +5,6 @@ import (
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"time"
 )
 
 type NodeController struct {
@@ -53,29 +52,6 @@ func (c *NodeController) PostNodes(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, node)
 }
 
-// PostNodesPing handles a ping request to a node
-func (c *NodeController) PostNodesPing(ctx echo.Context) error {
-	var pingRequest server.Node
-	err := ctx.Bind(&pingRequest)
-	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
-	}
-
-	// Handle ping logic (for example, updating the node's last ping time)
-	node, err := c.nodeRepo.GetByIP(pingRequest.Ip)
-	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
-	}
-
-	node.LastSeen = time.Now()
-	err = c.nodeRepo.Update(node)
-	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
-	}
-
-	return ctx.NoContent(http.StatusOK)
-}
-
-func (c *NodeController) GetNodesPing(ctx echo.Context, _ server.GetNodesPingParams) error {
+func (c *NodeController) GetNodesPing(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusOK)
 }

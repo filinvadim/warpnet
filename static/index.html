@@ -7,117 +7,62 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #15202b;
-            color: #ffffff;
+            margin: 0; padding: 0;
+            background-color: #15202b; color: #fff; display: flex;
         }
-
+        #navigation {
+            width: 200px; padding: 20px;
+            background-color: #192734; display: none;
+            flex-direction: column; height: 100vh;
+            position: fixed; top: 0; left: 0;
+        }
+        #navigation.active { display: flex; }
+        #navigation a {
+            text-decoration: none; color: #fff;
+            font-size: 18px; padding: 10px 0;
+            margin-bottom: 10px; border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        #navigation a:hover { background-color: #1da1f2; }
         #container {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #192734;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
+            width: 100%; max-width: 600px; margin: 20px auto;
+            background-color: #192734; padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px;
+            margin-left: 220px;
         }
-
-        h1 {
-            text-align: center;
-            color: #ffffff;
+        h1 { text-align: center; color: #fff; }
+        #login.active, #timeline-container.active, #profile-container.active { display: block; }
+        #login, #timeline-container, #profile-container { display: none; }
+        #login input, #new-tweet textarea {
+            width: 100%; padding: 10px; font-size: 16px;
+            margin-bottom: 10px; border-radius: 5px;
+            border: 1px solid #657786; background-color: #192734; color: #fff;
         }
-
-        #login, #timeline-container {
-            display: none;
+        #login button, #new-tweet button {
+            background-color: #1da1f2; color: #fff;
+            border: none; padding: 10px; border-radius: 5px; cursor: pointer;
         }
-
-        #login.active, #timeline-container.active {
-            display: block;
-        }
-
-        #login input {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #657786;
-            background-color: #192734;
-            color: #ffffff;
-        }
-
-        #login button {
-            background-color: #1da1f2;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #login button:hover {
-            background-color: #0d95e8;
-        }
-
-        .tweet {
-            border-bottom: 1px solid #657786;
-            padding: 10px 0;
-        }
-
-        .tweet:last-child {
-            border-bottom: none;
-        }
-
-        .tweet-text {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #ffffff;
-        }
-
-        .tweet-user {
-            color: #8899a6;
-            font-size: 14px;
-        }
-
-        .tweet-time {
-            color: #8899a6;
-            font-size: 12px;
-        }
-
-        #new-tweet {
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #657786;
-        }
-
-        #new-tweet textarea {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #657786;
-            margin-bottom: 10px;
-            resize: none;
-            background-color: #192734;
-            color: #ffffff;
-        }
-
-        #new-tweet button {
-            background-color: #1da1f2;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #new-tweet button:hover {
-            background-color: #0d95e8;
-        }
+        #login button:hover, #new-tweet button:hover { background-color: #0d95e8; }
+        .tweet { border-bottom: 1px solid #657786; padding: 10px 0; }
+        .tweet:last-child { border-bottom: none; }
+        .tweet-text { font-size: 16px; color: #fff; }
+        .tweet-user, .tweet-time { color: #8899a6; font-size: 14px; }
+        /* Profile Styles */
+        #profile-header { display: flex; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #657786; }
+        #profile-header img { border-radius: 50%; width: 80px; height: 80px; margin-right: 20px; }
+        #profile-buttons { display: flex; justify-content: space-around; margin-top: 10px; }
+        #profile-buttons button { background-color: #1da1f2; color: #fff; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100px; }
+        #profile-buttons button:hover { background-color: #0d95e8; }
     </style>
 </head>
 <body>
+<div id="navigation">
+    <a href="#" onclick="navigateHome()">Home</a>
+    <a href="#">Notifications</a>
+    <a href="#">Messages</a>
+    <a href="#" onclick="navigateProfile()">Profile</a>
+    <a href="#">Settings</a>
+</div>
 <div id="container">
     <div id="login" class="active">
         <h1>Login</h1>
@@ -127,156 +72,134 @@
             <button onclick="login()">Login</button>
         </div>
     </div>
-
     <div id="timeline-container">
         <div id="new-tweet">
             <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
             <button onclick="postTweet()">Tweet</button>
         </div>
-
         <div id="timeline"></div>
     </div>
+    <div id="profile-container">
+        <div id="profile-header">
+            <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture">
+            <div>
+                <h2 id="profile-username">@username</h2>
+                <p id="profile-id"></p>
+                <p id="profile-description">This is a short bio about the user.</p>
+            </div>
+        </div>
+        <div id="profile-buttons">
+            <button onclick="loadFollowers()">Followers</button>
+            <button onclick="loadFollowing()">Following</button>
+        </div>
+        <div id="profile-tweets"></div>
+    </div>
 </div>
-
 <script>
-    const apiUrl = 'http://localhost:6969'; // Укажите ваш API-эндпоинт
-    let currentUserId = null;
-    let currentUsername = null;
+    const apiUrl = 'http://localhost:6969';
+    let currentUserId = null, currentUsername = null;
 
     function login() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        if (username === '' || password === '') {
-            alert('Username and password cannot be empty');
-            return;
-        }
-
-        // Проверка, что пароль не длиннее 32 байт
-        if (password.length > 32) {
-            alert('Password must be a maximum of 32 bytes');
-            return;
-        }
-
-        const loginData = {
-            username: username,
-            password: password
-        };
-
+        const username = document.getElementById('username').value, password = document.getElementById('password').value;
+        if (username === '' || password === '' || password.length > 32) return alert('Invalid credentials');
         fetch(`${apiUrl}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(loginData)
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
         })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 if (data.user_id) {
-                    // Сохраняем user_id в sessionStorage
                     sessionStorage.setItem('userId', data.user_id);
                     sessionStorage.setItem('username', data.username);
                     currentUserId = data.user_id;
                     showTimeline();
-                } else {
-                    alert('Login failed');
-                }
-            })
-            .catch(error => console.error('Error during login:', error));
+                } else alert('Login failed');
+            }).catch(console.error);
     }
 
     function showTimeline() {
         document.getElementById('login').classList.remove('active');
         document.getElementById('timeline-container').classList.add('active');
+        document.getElementById('profile-container').classList.remove('active');
+        document.getElementById('navigation').classList.add('active');
         loadTimeline();
     }
 
     function loadTimeline() {
-        currentUsername = sessionStorage.getItem('username'); // Получаем user_id из sessionStorage
-        currentUserId = sessionStorage.getItem('userId'); // Получаем user_id из sessionStorage
-        if (!currentUserId) {
-            alert('User not logged in');
-            return;
-        }
-
+        currentUsername = sessionStorage.getItem('username');
+        currentUserId = sessionStorage.getItem('userId');
+        if (!currentUserId) return alert('User not logged in');
         fetch(`${apiUrl}/tweets/timeline/${currentUserId}`)
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 const timelineDiv = document.getElementById('timeline');
                 timelineDiv.innerHTML = '';
                 data.tweets.forEach(tweet => {
-                    const tweetDiv = document.createElement('div');
-                    tweetDiv.classList.add('tweet');
                     const tweetTime = new Date(tweet.created_at).toLocaleString();
-                    tweetDiv.innerHTML = `
-                        <div class="tweet-text">${tweet.content}</div>
-                        <div class="tweet-user">@${tweet.username}</div>
-                        <div class="tweet-time">${tweetTime}</div>
-                    `;
-                    timelineDiv.appendChild(tweetDiv);
+                    timelineDiv.innerHTML += `<div class="tweet"><div class="tweet-text">${tweet.content}</div><div class="tweet-user">@${tweet.username}</div><div class="tweet-time">${tweetTime}</div></div>`;
                 });
-            })
-            .catch(error => console.error('Error loading timeline:', error));
+            }).catch(console.error);
     }
 
     function postTweet() {
-        currentUsername = sessionStorage.getItem('username'); // Получаем user_id из sessionStorage
-
         const tweetText = document.getElementById('tweet-text').value;
-        if (tweetText === '') {
-            alert('Tweet cannot be empty');
-            return;
-        }
-
-        const newTweet = {
-            content: tweetText,
-            user_id: currentUserId,
-            username: currentUsername
-        };
-
+        if (tweetText === '') return alert('Tweet cannot be empty');
         fetch(`${apiUrl}/tweets`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(newTweet)
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
         })
-            .then(response => {
-                if (response.ok) {
-                    document.getElementById('tweet-text').value = '';
-                    loadTimeline(); // Перезагрузим ленту после добавления твита
-                } else {
-                    alert('Failed to post tweet');
-                }
-            })
-            .catch(error => console.error('Error posting tweet:', error));
+            .then(res => { if (res.ok) document.getElementById('tweet-text').value = '', loadTimeline(); else alert('Failed to post tweet'); })
+            .catch(console.error);
     }
 
-    // Отправка команды при закрытии вкладки
-    window.addEventListener('beforeunload', function (e) {
-        sendCloseServiceCommand();
+    function navigateHome() { showTimeline(); }
+
+    function navigateProfile() {
+        document.getElementById('login').classList.remove('active');
+        document.getElementById('timeline-container').classList.remove('active');
+        document.getElementById('profile-container').classList.add('active');
+        loadProfile();
+    }
+
+    function loadProfile() {
+        const userId = sessionStorage.getItem('userId');
+        const username = sessionStorage.getItem('username');
+        document.getElementById('profile-username').innerText = '@' + username;
+        document.getElementById('profile-id').innerText = 'User ID: ' + userId;
+
+        fetch(`${apiUrl}/tweets/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                const profileTweetsDiv = document.getElementById('profile-tweets');
+                profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
+                data.forEach(tweet => {
+                    // Преобразование строки даты в объект Date
+                    const tweetDate = new Date(tweet.created_at);
+
+                    // Проверяем, является ли дата валидной
+                    const formattedDate = !isNaN(tweetDate.getTime()) ? tweetDate.toLocaleString() : 'Invalid Date';
+
+                    profileTweetsDiv.innerHTML += `
+                    <div class="tweet">
+                        <div class="tweet-text">${tweet.content}</div>
+                        <div class="tweet-time">${formattedDate}</div>
+                    </div>`;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching profile tweets:', error);
+            });
+    }
+
+    function loadFollowers() { alert('Load followers list'); }
+    function loadFollowing() { alert('Load following list'); }
+
+    window.addEventListener('beforeunload', () => {
+        fetch(`${apiUrl}/auth/logout`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: sessionStorage.getItem('userId') })
+        }).catch(console.error);
     });
 
-    function sendCloseServiceCommand() {
-        fetch(`${apiUrl}/auth/logout`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                user_id: currentUserId
-            })
-        }).catch(error => {
-            console.error('Error closing service:', error);
-        });
-    }
-
-    window.onload = function() {
-        // Проверяем, есть ли уже user_id в sessionStorage
-        currentUserId = sessionStorage.getItem('userId');
-        if (currentUserId) {
-            showTimeline();
-        }
+    window.onload = function () {
+        if (sessionStorage.getItem('userId')) showTimeline();
     }
 </script>
 </body>

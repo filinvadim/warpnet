@@ -45,11 +45,11 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet server.Tweet) 
 		return fmt.Errorf("build timeline key: %w", err)
 	}
 
-	bt, err := json.JSON.Marshal(tweet)
+	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
 		return fmt.Errorf("timeline marshal: %w", err)
 	}
-	return repo.db.Set(key, bt)
+	return repo.db.Set(key, data)
 }
 
 func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.Time, seqNum int64) error {

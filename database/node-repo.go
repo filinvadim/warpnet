@@ -8,6 +8,8 @@ import (
 	"github.com/filinvadim/dWighter/json"
 )
 
+var ErrNodeNotFound = errors.New("node not found")
+
 const NodesRepoName = "NODES"
 
 type NodeRepo struct {
@@ -25,15 +27,12 @@ func (repo *NodeRepo) Create(node server.Node) error {
 	if node.Ip == "" {
 		return errors.New("node IP address is missing")
 	}
-	data, err := json.JSON.Marshal(node)
-	if err != nil {
-		return err
-	}
-	_, err = repo.GetByUserId(node.OwnerId)
+
+	_, err := repo.GetByUserId(node.OwnerId)
 	if err == nil {
 		return errors.New("node already exists")
 	}
-	if err != badger.ErrKeyNotFound {
+	if !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
 	}
 
@@ -43,6 +42,10 @@ func (repo *NodeRepo) Create(node server.Node) error {
 			return err
 		}
 		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
+		if err != nil {
+			return err
+		}
+		data, err := json.JSON.Marshal(node)
 		if err != nil {
 			return err
 		}
@@ -77,6 +80,9 @@ func (repo *NodeRepo) GetByIP(ip string) (*server.Node, error) {
 		return nil, err
 	}
 	data, err := repo.db.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, ErrNodeNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +97,9 @@ func (repo *NodeRepo) GetByIP(ip string) (*server.Node, error) {
 
 func (repo *NodeRepo) DeleteByIP(ip string) error {
 	node, err := repo.GetByIP(ip)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return ErrNodeNotFound
+	}
 	if err != nil {
 		return err
 	}
@@ -118,6 +127,9 @@ func (repo *NodeRepo) GetByUserId(userId string) (*server.Node, error) {
 		return nil, err
 	}
 	data, err := repo.db.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, ErrNodeNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +144,9 @@ func (repo *NodeRepo) GetByUserId(userId string) (*server.Node, error) {
 
 func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	node, err := repo.GetByUserId(userId)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return ErrNodeNotFound
+	}
 	if err != nil {
 		return err
 	}

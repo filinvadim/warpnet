@@ -61,6 +61,7 @@ type Node struct {
 	// Latency The network latency to this IP in milliseconds
 	Latency *int64 `json:"latency,omitempty"`
 	OwnerId string `json:"owner_id"`
+	Port    string `json:"port"`
 
 	// Uptime Uptime of the node in seconds
 	Uptime *int64 `json:"uptime,omitempty"`
@@ -72,7 +73,9 @@ type PingResponse struct {
 	Ip string `json:"ip"`
 
 	// Latency The latency to the IP address in milliseconds
-	Latency int64 `json:"latency"`
+	Latency     int64   `json:"latency"`
+	Port        string  `json:"port"`
+	RequesterIp *string `json:"requester_ip,omitempty"`
 }
 
 // Retweet defines model for Retweet.
@@ -124,11 +127,6 @@ type User struct {
 	Username     string     `json:"username"`
 }
 
-// GetNodesPingParams defines parameters for GetNodesPing.
-type GetNodesPingParams struct {
-	Ip string `form:"ip" json:"ip"`
-}
-
 // GetTweetsTimelineUserIdParams defines parameters for GetTweetsTimelineUserId.
 type GetTweetsTimelineUserIdParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
@@ -140,9 +138,6 @@ type PostAuthLoginJSONRequestBody = AuthRequest
 
 // PostNodesJSONRequestBody defines body for PostNodes for application/json ContentType.
 type PostNodesJSONRequestBody = Node
-
-// PostNodesPingJSONRequestBody defines body for PostNodesPing for application/json ContentType.
-type PostNodesPingJSONRequestBody = Node
 
 // PostTweetsJSONRequestBody defines body for PostTweets for application/json ContentType.
 type PostTweetsJSONRequestBody = Tweet
@@ -249,12 +244,7 @@ type ClientInterface interface {
 	PostNodes(ctx context.Context, body PostNodesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodesPing request
-	GetNodesPing(ctx context.Context, params *GetNodesPingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodesPingWithBody request with any body
-	PostNodesPingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostNodesPing(ctx context.Context, body PostNodesPingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetNodesPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostTweetsWithBody request with any body
 	PostTweetsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -373,32 +363,8 @@ func (c *Client) PostNodes(ctx context.Context, body PostNodesJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodesPing(ctx context.Context, params *GetNodesPingParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodesPingRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodesPingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodesPingRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodesPing(ctx context.Context, body PostNodesPingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodesPingRequest(c.Server, body)
+func (c *Client) GetNodesPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodesPingRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +681,7 @@ func NewPostNodesRequestWithBody(server string, contentType string, body io.Read
 }
 
 // NewGetNodesPingRequest generates requests for GetNodesPing
-func NewGetNodesPingRequest(server string, params *GetNodesPingParams) (*http.Request, error) {
+func NewGetNodesPingRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -731,70 +697,12 @@ func NewGetNodesPingRequest(server string, params *GetNodesPingParams) (*http.Re
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "ip", runtime.ParamLocationQuery, params.Ip); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewPostNodesPingRequest calls the generic PostNodesPing builder with application/json body
-func NewPostNodesPingRequest(server string, body PostNodesPingJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostNodesPingRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostNodesPingRequestWithBody generates requests for PostNodesPing with any type of body
-func NewPostNodesPingRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/nodes/ping")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1203,12 +1111,7 @@ type ClientWithResponsesInterface interface {
 	PostNodesWithResponse(ctx context.Context, body PostNodesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodesResponse, error)
 
 	// GetNodesPingWithResponse request
-	GetNodesPingWithResponse(ctx context.Context, params *GetNodesPingParams, reqEditors ...RequestEditorFn) (*GetNodesPingResponse, error)
-
-	// PostNodesPingWithBodyWithResponse request with any body
-	PostNodesPingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodesPingResponse, error)
-
-	PostNodesPingWithResponse(ctx context.Context, body PostNodesPingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodesPingResponse, error)
+	GetNodesPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesPingResponse, error)
 
 	// PostTweetsWithBodyWithResponse request with any body
 	PostTweetsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTweetsResponse, error)
@@ -1370,28 +1273,6 @@ func (r GetNodesPingResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodesPingResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodesPingResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *PingResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodesPingResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodesPingResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1633,29 +1514,12 @@ func (c *ClientWithResponses) PostNodesWithResponse(ctx context.Context, body Po
 }
 
 // GetNodesPingWithResponse request returning *GetNodesPingResponse
-func (c *ClientWithResponses) GetNodesPingWithResponse(ctx context.Context, params *GetNodesPingParams, reqEditors ...RequestEditorFn) (*GetNodesPingResponse, error) {
-	rsp, err := c.GetNodesPing(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetNodesPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNodesPingResponse, error) {
+	rsp, err := c.GetNodesPing(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetNodesPingResponse(rsp)
-}
-
-// PostNodesPingWithBodyWithResponse request with arbitrary body returning *PostNodesPingResponse
-func (c *ClientWithResponses) PostNodesPingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodesPingResponse, error) {
-	rsp, err := c.PostNodesPingWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodesPingResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostNodesPingWithResponse(ctx context.Context, body PostNodesPingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodesPingResponse, error) {
-	rsp, err := c.PostNodesPing(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodesPingResponse(rsp)
 }
 
 // PostTweetsWithBodyWithResponse request with arbitrary body returning *PostTweetsResponse
@@ -1901,32 +1765,6 @@ func ParseGetNodesPingResponse(rsp *http.Response) (*GetNodesPingResponse, error
 	return response, nil
 }
 
-// ParsePostNodesPingResponse parses an HTTP response from a PostNodesPingWithResponse call
-func ParsePostNodesPingResponse(rsp *http.Response) (*PostNodesPingResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodesPingResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest PingResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParsePostTweetsResponse parses an HTTP response from a PostTweetsWithResponse call
 func ParsePostTweetsResponse(rsp *http.Response) (*PostTweetsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2108,37 +1946,36 @@ func ParseGetUsersUserIdResponse(rsp *http.Response) (*GetUsersUserIdResponse, e
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"AA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
