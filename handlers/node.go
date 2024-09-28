@@ -44,7 +44,7 @@ func (c *NodeController) PostNodes(ctx echo.Context) error {
 	}
 
 	// Add node to the database
-	err = c.nodeRepo.Create(node)
+	_, err = c.nodeRepo.Create(node)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}

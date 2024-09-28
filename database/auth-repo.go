@@ -69,12 +69,8 @@ func (repo *AuthRepo) IsCAExists() bool {
 	return true
 }
 
-func (repo *AuthRepo) SetOwner(u *server.User) (_ *server.User, err error) {
-	if u == nil {
-		return nil, errors.New("user is nil")
-	}
-
-	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUsername(u.Username).Build()
+func (repo *AuthRepo) SetOwner(u server.User) (_ *server.User, err error) {
+	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +85,7 @@ func (repo *AuthRepo) SetOwner(u *server.User) (_ *server.User, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return u, repo.db.Set(key, data)
+	return &u, repo.db.Set(key, data)
 }
 
 func (repo *AuthRepo) UpdateOwner(u *server.User) error {
@@ -103,7 +99,7 @@ func (repo *AuthRepo) UpdateOwner(u *server.User) error {
 		return errors.New("user id is empty")
 	}
 
-	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUserId(*u.UserId).Build()
+	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return err
 	}
@@ -112,8 +108,8 @@ func (repo *AuthRepo) UpdateOwner(u *server.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) GetOwnerByUsername(username string) (*server.User, error) {
-	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).AddUsername(username).Build()
+func (repo *AuthRepo) GetOwner() (*server.User, error) {
+	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
 	}

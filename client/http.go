@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/filinvadim/dWighter/api/client"
+	cr "github.com/filinvadim/dWighter/crypto"
 	"net/http"
+	"time"
 )
 
 type ClientLogger interface {
@@ -16,8 +18,18 @@ type Client struct {
 	l   ClientLogger
 }
 
-func New(ctx context.Context, l ClientLogger) *Client {
-	return &Client{ctx, http.DefaultClient, l}
+func New(ctx context.Context, nodeID string, l ClientLogger) (*Client, error) {
+	conf, err := cr.GenerateTLSConfig(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	cli := http.DefaultClient
+	tr := &http.Transport{
+		TLSClientConfig: conf,
+	}
+	cli.Transport = tr
+	cli.Timeout = 10 * time.Second
+	return &Client{ctx, cli, l}, nil
 }
 
 func (cli *Client) Ping(addr string) (*client.PingResponse, error) {

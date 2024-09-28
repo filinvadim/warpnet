@@ -117,7 +117,8 @@ func (ds *DiscoveryService) pingNode(ip, port string) error {
 	n.LastSeen = time.Now()
 	n.Latency = &resp.Latency
 
-	return ds.nodeRepo.Create(*n)
+	_, err = ds.nodeRepo.Create(*n)
+	return err
 }
 
 // updateCache updates the cache with the ping response from a node

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/client"
+	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/discovery"
@@ -16,19 +17,26 @@ import (
 	"github.com/pkg/browser"
 	_ "go.uber.org/automaxprocs"
 	"log"
-	"net"
+	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
-	"syscall"
 )
 
-var version string
+var (
+	version string
+)
+
+type API struct {
+	*handlers.TweetController
+	*handlers.NodeController
+	*handlers.UserController
+	*handlers.StaticController
+	*handlers.AuthController
+}
 
 func main() {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, syscall.SIGINT)
+	interrupt := make(chan struct{}, 1)
 
 	swagger, err := server.GetSwagger()
 	if err != nil {
@@ -41,14 +49,10 @@ func main() {
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
-	userRepo := database.NewUserRepo(db)
 	authRepo := database.NewAuthRepo(db)
 
 	e := echo.New()
-	e.HideBanner = true
+	//e.HideBanner = true
 	e.Logger.SetLevel(echoLog.INFO)
 	e.Logger.SetPrefix("universal-fix-gateway")
 
@@ -68,33 +72,61 @@ func main() {
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	server.RegisterHandlers(e, &struct {
-		*handlers.TweetController
-		*handlers.NodeController
-		*handlers.UserController
-		*handlers.StaticController
-		*handlers.AuthController
-	}{
+	server.RegisterHandlers(e, &API{
+		StaticController: handlers.NewStaticController(),
+		AuthController:   handlers.NewAuthController(authRepo, nodeRepo, interrupt),
+	})
+
+	go e.Start(":6969")
+	err = browser.OpenURL("https://localhost:6969")
+	if err != nil {
+		fmt.Println("failed to open browser:", err)
+	}
+	<-interrupt
+	e.Shutdown(context.Background())
+	fmt.Println("AUTH SERVER CLOSED!")
+
+	o, err := authRepo.GetOwner()
+	if err != nil {
+		log.Fatal("main: failed to get owner:", err)
+	}
+	n, err := nodeRepo.GetByUserId(*o.UserId)
+	if err != nil || n == nil {
+		log.Fatal("main: failed to get owner node:", err)
+	}
+
+	followRepo := database.NewFollowRepo(db)
+	timelineRepo := database.NewTimelineRepo(db)
+	tweetRepo := database.NewTweetRepo(db)
+	userRepo := database.NewUserRepo(db)
+
+	server.RegisterHandlers(e, &API{
 		handlers.NewTweetController(timelineRepo, tweetRepo),
 		handlers.NewNodeController(nodeRepo),
 		handlers.NewUserController(userRepo, followRepo, nodeRepo),
 		handlers.NewStaticController(),
-		handlers.NewAuthController(authRepo, interrupt),
+		handlers.NewAuthController(authRepo, nodeRepo, interrupt),
 	})
+	conf, err := crypto.GenerateTLSConfig(n.Id.String())
+	if err != nil {
+		log.Fatalf("failed to generate TLS config: %v", err)
+	}
 
-	go e.Start(net.JoinHostPort("localhost", "6969"))
+	srv := &http.Server{
+		Addr:      ":6969",
+		TLSConfig: conf,
+	}
+	go e.StartServer(srv)
 
-	cli := client.New(context.Background(), e.Logger)
+	cli, err := client.New(context.Background(), n.Id.String(), e.Logger)
+	if err != nil {
+		log.Fatalf("failed to run client: %v", err)
+	}
 	ds, err := discovery.NewDiscoveryService(cli, nodeRepo, e.Logger)
 	if err != nil {
 		log.Fatalf("failed to run discovery: %v", err)
 	}
 	go ds.StartDiscovery()
-
-	err = browser.OpenURL("http://localhost:6969")
-	if err != nil {
-		fmt.Println("Failed to open browser:", err)
-	}
 
 	<-interrupt
 

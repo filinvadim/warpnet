@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for a distributed Twitter-like application
 servers:
-  - url: http://localhost:8080
+  - url: https://localhost:6969
     description: Local development server
 
 paths:
@@ -301,6 +301,9 @@ components:
       properties:
         user_id:
           type: string
+        node_id:
+          type: string
+          format: uuid
         username:
           type: string
           minLength: 1
@@ -339,6 +342,7 @@ components:
           format: date-time
       required:
         - username
+        - node_id
 
     Tweet:
       type: object
@@ -436,6 +440,9 @@ components:
     Node:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         ip:
           type: string
           format: ipv4
@@ -465,12 +472,14 @@ components:
           format: date-time
         owner_id:
           type: string
+          description: user ID
       required:
         - ip
         - port
         - is_active
         - last_seen
         - owner_id
+        - id
 
     PingResponse:
       type: object

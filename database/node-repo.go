@@ -6,6 +6,7 @@ import (
 	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
+	"github.com/google/uuid"
 )
 
 var ErrNodeNotFound = errors.New("node not found")
@@ -20,23 +21,18 @@ func NewNodeRepo(db *storage.DB) *NodeRepo {
 	return &NodeRepo{db: db}
 }
 
-func (repo *NodeRepo) Create(node server.Node) error {
+func (repo *NodeRepo) Create(node server.Node) (uuid.UUID, error) {
 	if node.OwnerId == "" {
-		return errors.New("owner id is required")
+		return uuid.UUID{}, errors.New("owner id is required")
 	}
 	if node.Ip == "" {
-		return errors.New("node IP address is missing")
+		return uuid.UUID{}, errors.New("node IP address is missing")
+	}
+	if node.Id.String() == "" {
+		node.Id = uuid.New()
 	}
 
-	_, err := repo.GetByUserId(node.OwnerId)
-	if err == nil {
-		return errors.New("node already exists")
-	}
-	if !errors.Is(err, badger.ErrKeyNotFound) {
-		return err
-	}
-
-	return repo.db.Txn(func(tx *badger.Txn) error {
+	return node.Id, repo.db.Txn(func(tx *badger.Txn) error {
 		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(node.Ip).Build()
 		if err != nil {
 			return err
@@ -45,11 +41,21 @@ func (repo *NodeRepo) Create(node server.Node) error {
 		if err != nil {
 			return err
 		}
+		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).Build()
+		if err != nil {
+			return err
+		}
+
 		data, err := json.JSON.Marshal(node)
 		if err != nil {
 			return err
 		}
+
 		err = repo.db.Set(ipKey, data)
+		if err != nil {
+			return err
+		}
+		err = repo.db.Set(idKey, data)
 		if err != nil {
 			return err
 		}

@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"math"
 	"net"
 	"strconv"
@@ -56,6 +57,20 @@ func (pb *PrefixBuilder) AddUserId(userId string) *PrefixBuilder {
 		return pb
 	}
 	pb.key = fmt.Sprintf("%s:%s", pb.key, userId)
+	return pb
+}
+
+func (pb *PrefixBuilder) AddNodeId(nodeId string) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
+		return pb
+	}
+
+	if err := uuid.Validate(nodeId); err != nil {
+		pb.err = err
+		return pb
+	}
+	pb.key = fmt.Sprintf("%s:%s", pb.key, nodeId)
 	return pb
 }
 

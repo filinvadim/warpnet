@@ -22,6 +22,9 @@ func NewUserController(userRepo *database.UserRepo, followRepo *database.FollowR
 }
 
 func (c *UserController) PostUsersFollow(ctx echo.Context) error {
+	if c == nil {
+		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
 	var req server.FollowRequest
 	err := ctx.Bind(&req)
 	if err != nil {
@@ -52,6 +55,9 @@ func (c *UserController) PostUsersFollow(ctx echo.Context) error {
 
 // PostUsersUnfollow allows a user to unfollow another user
 func (c *UserController) PostUsersUnfollow(ctx echo.Context) error {
+	if c == nil {
+		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
 	var req server.FollowRequest
 	err := ctx.Bind(&req)
 	if err != nil {
@@ -80,6 +86,9 @@ func (c *UserController) PostUsersUnfollow(ctx echo.Context) error {
 }
 
 func (c *UserController) PostUsers(ctx echo.Context) error {
+	if c == nil {
+		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
 	var user server.User
 	err := ctx.Bind(&user)
 	if err != nil {
@@ -104,6 +113,9 @@ func (c *UserController) PostUsers(ctx echo.Context) error {
 
 // GetUsersUserId retrieves a user by their userId
 func (c *UserController) GetUsersUserId(ctx echo.Context, userId string) error {
+	if c == nil {
+		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
 	node, err := c.nodeRepo.GetByUserId(userId)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
