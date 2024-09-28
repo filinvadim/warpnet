@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/api/discovery"
-	"github.com/filinvadim/dWighter/client"
 	"github.com/filinvadim/dWighter/database"
 	"golang.org/x/sync/errgroup"
 	"strings"
@@ -30,13 +29,13 @@ type DiscoveryService struct {
 	nodeRepo *database.NodeRepo
 	cache    map[PingIP]PingPort
 	mx       *sync.RWMutex
-	cli      *client.Client
+	cli      *Client
 
 	l DiscoveryLogger
 }
 
 func NewDiscoveryService(
-	cli *client.Client,
+	cli *Client,
 	nodeRepo *database.NodeRepo,
 	l DiscoveryLogger,
 ) (*DiscoveryService, error) {

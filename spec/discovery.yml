@@ -124,13 +124,11 @@ components:
       properties:
         event_type:
           type: string
-          enum: [ping]
+          enum: [ ping ]
           default: ping
         owner_node:
-          type: object
           $ref: './components.yml#/components/schemas/Node'
         owner_info:
-          type: object
           $ref: './components.yml#/components/schemas/User'
         dest_ip:
           type: string

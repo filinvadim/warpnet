@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/api/api"
 	"github.com/filinvadim/dWighter/api/components"
-	"github.com/filinvadim/dWighter/client"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/discovery"
 	"github.com/filinvadim/dWighter/handlers"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -50,6 +48,10 @@ func main() {
 
 	nodeRepo := database.NewNodeRepo(db)
 	authRepo := database.NewAuthRepo(db)
+	followRepo := database.NewFollowRepo(db)
+	timelineRepo := database.NewTimelineRepo(db)
+	tweetRepo := database.NewTweetRepo(db)
+	userRepo := database.NewUserRepo(db)
 
 	e := echo.New()
 	//e.HideBanner = true
@@ -81,11 +83,6 @@ func main() {
 		log.Fatal("main: failed to get owner node:", err)
 	}
 
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
-	userRepo := database.NewUserRepo(db)
-
 	api.RegisterHandlers(e, &API{
 		handlers.NewTweetController(timelineRepo, tweetRepo),
 		handlers.NewUserController(userRepo, followRepo, nodeRepo),
@@ -107,16 +104,6 @@ func main() {
 	if err != nil {
 		fmt.Println("failed to open browser:", err)
 	}
-
-	cli, err := client.New(context.Background(), n.Id.String(), e.Logger)
-	if err != nil {
-		log.Fatalf("failed to run client: %v", err)
-	}
-	ds, err := discovery.NewDiscoveryService(cli, nodeRepo, e.Logger)
-	if err != nil {
-		log.Fatalf("failed to run discovery: %v", err)
-	}
-	go ds.StartDiscovery()
 
 	<-interrupt
 

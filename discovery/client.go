@@ -1,8 +1,9 @@
-package client
+package discovery
 
 import (
 	"context"
 	"errors"
+	"github.com/filinvadim/dWighter/api/discovery"
 	cr "github.com/filinvadim/dWighter/crypto"
 	"net/http"
 	"time"
@@ -31,8 +32,8 @@ func New(ctx context.Context, nodeID string, l ClientLogger) (*Client, error) {
 	return &Client{ctx, cli, l}, nil
 }
 
-func (cli *Client) Ping(addr string) (*client.PingResponse, error) {
-	req, err := client.NewGetNodesPingRequest(addr)
+func (cli *Client) Ping(addr string) (*discovery.Event, error) {
+	req, err := discovery.NewNewEventRequest(addr, discovery.Event{}) // TODO
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (cli *Client) Ping(addr string) (*client.PingResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	pingResp, err := client.ParseGetNodesPingResponse(resp)
+	pingResp, err := discovery.ParseNewEventResponse(resp)
 	if err != nil {
 		return nil, err
 	}
