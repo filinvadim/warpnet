@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	genClient "github.com/filinvadim/dWighter/api/client"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/components"
+	"github.com/filinvadim/dWighter/api/discovery"
 	"github.com/filinvadim/dWighter/client"
 	"github.com/filinvadim/dWighter/database"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -112,7 +110,7 @@ func (ds *DiscoveryService) pingNode(ip, port string) error {
 		return err
 	}
 	if errors.Is(err, database.ErrNodeNotFound) {
-		n = new(server.Node)
+		n = new(components.Node)
 	}
 	n.LastSeen = time.Now()
 	n.Latency = &resp.Latency
@@ -122,7 +120,7 @@ func (ds *DiscoveryService) pingNode(ip, port string) error {
 }
 
 // updateCache updates the cache with the ping response from a node
-func (ds *DiscoveryService) updateCache(pingResponse genClient.PingResponse) {
+func (ds *DiscoveryService) updateCache(pingResponse discovery.PingEvent) {
 	ds.mx.Lock()
 	defer ds.mx.Unlock()
 	ds.cache[pingResponse.Ip] = pingResponse.Port
@@ -138,23 +136,4 @@ func (ds *DiscoveryService) removeNodeFromCacheAndDB(ip string) {
 	if err != nil {
 		ds.l.Errorf("Error deleting node %s from database: %v", ip, err)
 	}
-}
-
-func getPublicIP() {
-	resp, err := http.Get("https://api.ipify.org?format=text")
-	if err != nil {
-		fmt.Println("Ошибка при запросе IP адреса:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Читаем ответ
-	ip, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Ошибка при чтении ответа:", err)
-		return
-	}
-
-	// Выводим внешний IP адрес
-	fmt.Printf("Ваш внешний IP: %s\n", string(ip))
 }

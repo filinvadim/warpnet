@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"math"
@@ -20,7 +19,7 @@ func NewTimelineRepo(db *storage.DB) *TimelineRepo {
 	return &TimelineRepo{db: db}
 }
 
-func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet server.Tweet) error {
+func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet api.Tweet) error {
 	if tweet.TweetId == nil {
 		return fmt.Errorf("tweet id should not be nil")
 	}
@@ -72,7 +71,7 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.
 }
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
-func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]server.Tweet, string, error) {
+func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]api.Tweet, string, error) {
 	if limit == nil {
 		limit = new(uint64)
 		*limit = 20
@@ -81,7 +80,7 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 		limit = new(uint64)
 		*limit = 20
 	}
-	tweets := make([]server.Tweet, 0, *limit)
+	tweets := make([]api.Tweet, 0, *limit)
 	prefix, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, "", err
@@ -101,7 +100,7 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 			return nil
 		}
 
-		var t server.Tweet
+		var t api.Tweet
 		if err = json.JSON.Unmarshal(value, &t); err != nil {
 			return err
 		}

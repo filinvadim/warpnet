@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"fmt"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/api"
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -17,25 +17,25 @@ func NewTweetController(timelineRepo *database.TimelineRepo, tweetRepo *database
 	return &TweetController{timelineRepo: timelineRepo, tweetRepo: tweetRepo}
 }
 
-func (c *TweetController) PostTweets(ctx echo.Context) error {
+func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {
 	if c == nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	var t server.Tweet
+	var t components.Tweet
 	err := ctx.Bind(&t)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "bind" + err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "bind" + err.Error()})
 	}
 
 	userID := t.UserId
 	tweet, err := c.tweetRepo.Create(userID, t)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "tweet:" + err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "tweet:" + err.Error()})
 	}
 	err = c.timelineRepo.AddTweetToTimeline(userID, *tweet)
 	if err != nil {
 		_ = c.tweetRepo.Delete(userID, *tweet.TweetId)
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "timeline:" + err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "timeline:" + err.Error()})
 	}
 
 	// TODO broadcast
@@ -44,17 +44,16 @@ func (c *TweetController) PostTweets(ctx echo.Context) error {
 }
 
 // GetTweetsTimelineUserId returns a user's timeline (tweets)
-func (c *TweetController) GetTweetsTimelineUserId(ctx echo.Context, userId string, params server.GetTweetsTimelineUserIdParams) error {
+func (c *TweetController) GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId string, params api.GetV1ApiTweetsTimelineUserIdParams) error {
 	if c == nil {
-		fmt.Println("NOOOOOOOOOOOT INIT!!!!!!!!!!!!")
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
 	tweets, nextCursor, err := c.timelineRepo.GetTimeline(userId, params.Limit, params.Cursor)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
-	response := server.TimelineResponse{
+	response := api.TimelineResponse{
 		Tweets: tweets,
 		Cursor: nextCursor,
 	}
@@ -63,26 +62,26 @@ func (c *TweetController) GetTweetsTimelineUserId(ctx echo.Context, userId strin
 }
 
 // GetTweetsUserIdTweetId returns a specific tweet by userId and tweetId
-func (c *TweetController) GetTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string) error {
+func (c *TweetController) GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string) error {
 	if c == nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
 	tweet, err := c.tweetRepo.Get(userId, tweetId)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
 	return ctx.JSON(http.StatusOK, tweet)
 }
 
 // GetTweetsUserId returns all tweets by a specific user
-func (c *TweetController) GetTweetsUserId(ctx echo.Context, userId string) error {
+func (c *TweetController) GetV1ApiTweetsUserId(ctx echo.Context, userId string) error {
 	if c == nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: "not init"})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
 	tweets, err := c.tweetRepo.List(userId)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
 	return ctx.JSON(http.StatusOK, tweets)

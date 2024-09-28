@@ -1,0 +1,206 @@
+openapi: 3.0.0
+info:
+  title: Distributed Twitter API
+  version: 1.0.0
+  description: Components for a distributed Twitter-like application
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+        node_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        followers_num:
+          type: integer
+          format: int64
+        followed_num:
+          type: integer
+          format: int64
+        link:
+          type: string
+          format: url
+        location:
+          type: string
+        birthdate:
+          type: string
+          format: date-time
+        followers:
+          type: array
+          items:
+            type: string
+        followed:
+          type: array
+          items:
+            type: string
+        referred_by:
+          type: string
+        my_referrals:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - username
+        - node_id
+
+    Tweet:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+        username:
+          type: string
+        tweet_id:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        sequence:
+          type: integer
+          format: int64
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        likes_count:
+          type: integer
+          format: int64
+          minimum: 0
+        retweets_count:
+          type: integer
+          format: int64
+          minimum: 0
+        likes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Like'
+        retweets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Retweet'
+      required:
+        - user_id
+        - content
+
+    Like:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+        tweet_id:
+          type: string
+          minLength: 1
+      required:
+        - user_id
+        - tweet_id
+
+    Retweet:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+        tweet_id:
+          type: string
+          minLength: 1
+      required:
+        - user_id
+        - tweet_id
+
+    FollowRequest:
+      type: object
+      properties:
+        reader_id:
+          type: string
+          minLength: 1
+        writer_id:
+          type: string
+          minLength: 1
+      required:
+        - reader_id
+        - writer_id
+
+    UnfollowRequest:
+      type: object
+      properties:
+        reader_id:
+          type: string
+          minLength: 1
+        writer_id:
+          type: string
+          minLength: 1
+      required:
+        - reader_id
+        - writer_id
+
+    Node:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ip:
+          type: string
+          format: ipv4
+          description: The IP address
+        port:
+          type: string
+          default: 6969
+        is_active:
+          type: boolean
+          description: Whether the IP address is currently active
+        latency:
+          type: integer
+          format: int64
+          description: The network latency to this IP in milliseconds
+          example: 120
+        last_seen:
+          type: string
+          format: date-time
+          description: The timestamp when this IP address was last active
+        uptime:
+          type: integer
+          format: int64
+          description: Uptime of the node in seconds
+          example: 3600
+        created_at:
+          type: string
+          format: date-time
+        owner_id:
+          type: string
+          description: user ID
+      required:
+        - ip
+        - port
+        - is_active
+        - last_seen
+        - owner_id
+        - id
+
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+

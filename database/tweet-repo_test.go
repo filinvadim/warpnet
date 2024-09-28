@@ -30,12 +30,12 @@ func TestTweetRepo_Create(t *testing.T) {
 
 	tweetID := uuid.New().String()
 
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
 
 	id := uuid.New().String()
-	user := server.User{
+	user := api.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -55,12 +55,12 @@ func TestTweetRepo_Get(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := server.User{
+	user := api.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -79,12 +79,12 @@ func TestTweetRepo_Delete(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := server.User{
+	user := api.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -107,15 +107,15 @@ func TestTweetRepo_List(t *testing.T) {
 
 	id1 := "1"
 	id2 := "2"
-	tweet1 := server.Tweet{
+	tweet1 := api.Tweet{
 		TweetId: &id1,
 	}
-	tweet2 := server.Tweet{
+	tweet2 := api.Tweet{
 		TweetId: &id2,
 	}
 	id := uuid.New().String()
 
-	user := server.User{
+	user := api.User{
 		Username: "User",
 		UserId:   &id,
 	}

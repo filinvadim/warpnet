@@ -26,7 +26,7 @@ func TestNodeRepo_Create(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := server.Node{
+	node := api.Node{
 		Ip:      "192.168.1.1",
 		OwnerId: uuid.New().String(),
 	}
@@ -57,7 +57,7 @@ func TestNodeRepo_GetByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := server.Node{
+	node := api.Node{
 		Ip:      "10.0.0.1",
 		OwnerId: uuid.New().String(),
 	}
@@ -81,7 +81,7 @@ func TestNodeRepo_DeleteByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := server.Node{
+	node := api.Node{
 		Ip:      "10.0.0.2",
 		OwnerId: uuid.New().String(),
 	}
@@ -107,7 +107,7 @@ func TestNodeRepo_DeleteByUserId(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := server.Node{
+	node := api.Node{
 		Ip:      "10.0.0.3",
 		OwnerId: uuid.New().String(),
 	}

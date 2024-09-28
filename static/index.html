@@ -102,7 +102,7 @@
     function login() {
         const username = document.getElementById('username').value, password = document.getElementById('password').value;
         if (username === '' || password === '' || password.length > 32) return alert('Invalid credentials');
-        fetch(`${apiUrl}/auth/login`, {
+        fetch(`${apiUrl}/v1/api/auth/login`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
         })
             .then(res => res.json())
@@ -128,7 +128,7 @@
         currentUsername = sessionStorage.getItem('username');
         currentUserId = sessionStorage.getItem('userId');
         if (!currentUserId) return alert('User not logged in');
-        fetch(`${apiUrl}/tweets/timeline/${currentUserId}`)
+        fetch(`${apiUrl}/v1/api/tweets/timeline/${currentUserId}`)
             .then(res => res.json())
             .then(data => {
                 const timelineDiv = document.getElementById('timeline');
@@ -143,7 +143,7 @@
     function postTweet() {
         const tweetText = document.getElementById('tweet-text').value;
         if (tweetText === '') return alert('Tweet cannot be empty');
-        fetch(`${apiUrl}/tweets`, {
+        fetch(`${apiUrl}/v1/api/tweets`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
         })
             .then(res => { if (res.ok) document.getElementById('tweet-text').value = '', loadTimeline(); else alert('Failed to post tweet'); })
@@ -165,7 +165,7 @@
         document.getElementById('profile-username').innerText = '@' + username;
         document.getElementById('profile-id').innerText = 'User ID: ' + userId;
 
-        fetch(`${apiUrl}/tweets/${userId}`)
+        fetch(`${apiUrl}/v1/api/tweets/${userId}`)
             .then(response => response.json())
             .then(data => {
                 const profileTweetsDiv = document.getElementById('profile-tweets');
@@ -193,7 +193,7 @@
     function loadFollowing() { alert('Load following list'); }
 
     window.addEventListener('beforeunload', () => {
-        fetch(`${apiUrl}/auth/logout`, {
+        fetch(`${apiUrl}/v1/api/auth/logout`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: sessionStorage.getItem('userId') })
         }).catch(console.error);
     });

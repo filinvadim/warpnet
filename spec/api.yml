@@ -2,9 +2,9 @@ openapi: 3.0.0
 info:
   title: Distributed Twitter API
   version: 1.0.0
-  description: API for a distributed Twitter-like application
+  description: Extrenal API for a distributed Twitter-like application
 servers:
-  - url: https://localhost:6969
+  - url: http://localhost:6969
     description: Local development server
 
 paths:
@@ -35,7 +35,7 @@ paths:
                     type: string
                     example: Internal Server Error
 
-  /auth/login:
+  /v1/api/auth/login:
     post:
       tags:
         - Auth
@@ -52,13 +52,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './components.yml#/components/schemas/User'
         '401':
           description: Auth failed
         '500':
           description: Internal server error
 
-  /auth/logout:
+  /v1/api/auth/logout:
     post:
       tags:
         - Auth
@@ -69,24 +69,7 @@ paths:
         '500':
           description: Internal server error
 
-  /nodes/ping:
-    get:
-      tags:
-        - Node
-      summary: Ping another node to check its status
-      responses:
-        '200':
-          description: Ping response from the node
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
-        '404':
-          description: Node not found or not responding
-        '500':
-          description: Internal server error
-
-  /users:
+  /v1/api/users:
     post:
       tags:
         - User
@@ -96,18 +79,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: './components.yml#/components/schemas/User'
       responses:
         '200':
           description: User successfully created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './components.yml#/components/schemas/User'
         '400':
           description: Invalid input
 
-  /users/{user_id}:
+  /v1/api/users/{user_id}:
     get:
       tags:
         - User
@@ -124,11 +107,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './components.yml#/components/schemas/User'
         '404':
           description: User not found
 
-  /tweets:
+  /v1/api/tweets:
     post:
       tags:
         - Tweet
@@ -138,18 +121,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tweet'
+              $ref: './components.yml#/components/schemas/Tweet'
       responses:
         '200':
           description: Tweet successfully created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Tweet'
+                $ref: './components.yml#/components/schemas/Tweet'
         '400':
           description: Invalid input
 
-  /tweets/{user_id}/{tweet_id}:
+  /v1/api/tweets/{user_id}/{tweet_id}:
     get:
       tags:
         - Tweet
@@ -171,7 +154,7 @@ paths:
         '400':
           description: Invalid input
 
-  /tweets/{user_id}:
+  /v1/api/tweets/{user_id}:
     get:
       tags:
         - Tweet
@@ -190,11 +173,11 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Tweet'
+                  $ref: './components.yml#/components/schemas/Tweet'
         '404':
           description: User or tweets not found
 
-  /tweets/timeline/{user_id}:
+  /v1/api/tweets/timeline/{user_id}:
     get:
       tags:
         - Tweet
@@ -225,8 +208,7 @@ paths:
         '404':
           description: User or timeline not found
 
-
-  /users/follow:
+  /v1/api/users/follow:
     post:
       tags:
         - User
@@ -236,14 +218,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FollowRequest'
+              $ref: './components.yml#/components/schemas/FollowRequest'
       responses:
         '201':
           description: Successfully followed the user
         '400':
           description: Invalid input
 
-  /users/unfollow:
+  /v1/api/users/unfollow:
     post:
       tags:
         - User
@@ -253,266 +235,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UnfollowRequest'
+              $ref: './components.yml#/components/schemas/UnfollowRequest'
       responses:
         '200':
           description: Successfully unfollowed the user
         '400':
           description: Invalid input
 
-  /nodes:
-    get:
-      tags:
-        - Node
-      summary: Get node info
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Node'
-        '500':
-          description: Server error
-        '404':
-          description: Not found
-    post:
-      tags:
-        - Node
-      summary: Send node info
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-                $ref: '#/components/schemas/Node'
-      responses:
-        '200':
-          description: Success
-        '400':
-          description: Invalid input
-
 components:
   schemas:
-    User:
-      type: object
-      properties:
-        user_id:
-          type: string
-        node_id:
-          type: string
-          format: uuid
-        username:
-          type: string
-          minLength: 1
-        description:
-          type: string
-        followers_num:
-          type: integer
-          format: int64
-        followed_num:
-          type: integer
-          format: int64
-        link:
-          type: string
-          format: url
-        location:
-          type: string
-        birthdate:
-          type: string
-          format: date-time
-        followers:
-          type: array
-          items:
-            type: string
-        followed:
-          type: array
-          items:
-            type: string
-        referred_by:
-          type: string
-        my_referrals:
-          type: array
-          items:
-            type: string
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - username
-        - node_id
-
-    Tweet:
-      type: object
-      properties:
-        user_id:
-          type: string
-          minLength: 1
-        username:
-          type: string
-        tweet_id:
-          type: string
-          minLength: 1
-        content:
-          type: string
-          minLength: 1
-        sequence:
-          type: integer
-          format: int64
-          minimum: 0
-        created_at:
-          type: string
-          format: date-time
-        likes_count:
-          type: integer
-          format: int64
-          minimum: 0
-        retweets_count:
-          type: integer
-          format: int64
-          minimum: 0
-        likes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Like'
-        retweets:
-          type: array
-          items:
-            $ref: '#/components/schemas/Retweet'
-      required:
-        - user_id
-        - content
-
-    Like:
-      type: object
-      properties:
-        user_id:
-          type: string
-          minLength: 1
-        tweet_id:
-          type: string
-          minLength: 1
-      required:
-        - user_id
-        - tweet_id
-
-    Retweet:
-      type: object
-      properties:
-        user_id:
-          type: string
-          minLength: 1
-        tweet_id:
-          type: string
-          minLength: 1
-      required:
-        - user_id
-        - tweet_id
-
-    FollowRequest:
-      type: object
-      properties:
-        reader_id:
-          type: string
-          minLength: 1
-        writer_id:
-          type: string
-          minLength: 1
-      required:
-        - reader_id
-        - writer_id
-
-    UnfollowRequest:
-      type: object
-      properties:
-        reader_id:
-          type: string
-          minLength: 1
-        writer_id:
-          type: string
-          minLength: 1
-      required:
-        - reader_id
-        - writer_id
-
-    Node:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        ip:
-          type: string
-          format: ipv4
-          description: The IP address
-        port:
-          type: string
-          default: 6969
-        is_active:
-          type: boolean
-          description: Whether the IP address is currently active
-        latency:
-          type: integer
-          format: int64
-          description: The network latency to this IP in milliseconds
-          example: 120
-        last_seen:
-          type: string
-          format: date-time
-          description: The timestamp when this IP address was last active
-        uptime:
-          type: integer
-          format: int64
-          description: Uptime of the node in seconds
-          example: 3600
-        created_at:
-          type: string
-          format: date-time
-        owner_id:
-          type: string
-          description: user ID
-      required:
-        - ip
-        - port
-        - is_active
-        - last_seen
-        - owner_id
-        - id
-
-    PingResponse:
-      type: object
-      properties:
-        ip:
-          type: string
-          format: ipv4
-          description: The IP address that was pinged
-        port:
-          type: string
-          default: 6969
-        latency:
-          type: integer
-          format: int64
-          description: The latency to the IP address in milliseconds
-        requester_ip:
-          type: string
-      required:
-        - ip
-        - latency
-        - port
-
-    Error:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-        - code
-        - message
-
     TimelineResponse:
       type: object
       properties:
@@ -521,7 +252,7 @@ components:
         tweets:
           type: array
           items:
-            $ref: '#/components/schemas/Tweet'
+            $ref: './components.yml#/components/schemas/Tweet'
       required:
         - cursor
         - tweets

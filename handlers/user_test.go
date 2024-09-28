@@ -43,7 +43,7 @@ func TestPostUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo)
 
 	// Пример пользователя
-	user := server.User{
+	user := api.User{
 		UserId:   uuid.New().String(),
 		Username: "testuser",
 	}
@@ -60,7 +60,7 @@ func TestPostUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostUsers(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdUser server.User
+		var createdUser api.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdUser)) {
 			assert.Equal(t, user.Username, createdUser.Username)
 			assert.Equal(t, user.UserId, createdUser.UserId)
@@ -77,7 +77,7 @@ func TestGetUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo)
 
 	// Пример пользователя
-	user := server.User{
+	user := api.User{
 		UserId:   uuid.New().String(),
 		Username: "testuser",
 	}
@@ -94,7 +94,7 @@ func TestGetUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetUsersUserId(ctx, user.UserId)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var fetchedUser server.User
+		var fetchedUser api.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedUser)) {
 			assert.Equal(t, user.Username, fetchedUser.Username)
 			assert.Equal(t, user.UserId, fetchedUser.UserId)
@@ -111,11 +111,11 @@ func TestFollowUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo)
 
 	// Пример пользователей
-	reader := server.User{
+	reader := api.User{
 		UserId:   uuid.New().String(),
 		Username: "reader",
 	}
-	writer := server.User{
+	writer := api.User{
 		UserId:   uuid.New().String(),
 		Username: "writer",
 	}
@@ -126,7 +126,7 @@ func TestFollowUser(t *testing.T) {
 	reader.UserId = r.UserId
 	writer.UserId = w.UserId
 	// Пример запроса на подписку
-	followRequest := server.FollowRequest{
+	followRequest := api.FollowRequest{
 		ReaderId: reader.UserId,
 		WriterId: writer.UserId,
 	}
@@ -158,11 +158,11 @@ func TestUnfollowUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo)
 
 	// Пример пользователей
-	reader := server.User{
+	reader := api.User{
 		UserId:   uuid.New().String(),
 		Username: "reader",
 	}
-	writer := server.User{
+	writer := api.User{
 		UserId:   uuid.New().String(),
 		Username: "writer",
 	}
@@ -177,7 +177,7 @@ func TestUnfollowUser(t *testing.T) {
 	_ = followRepo.Follow(reader.UserId, writer.UserId)
 
 	// Пример запроса на отписку
-	unfollowRequest := server.FollowRequest{
+	unfollowRequest := api.FollowRequest{
 		ReaderId: reader.UserId,
 		WriterId: writer.UserId,
 	}

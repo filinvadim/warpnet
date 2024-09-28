@@ -1,0 +1,213 @@
+openapi: 3.0.0
+info:
+  title: Distributed Twitter API
+  version: 1.0.0
+  description: Discovery API for a distributed Twitter-like application
+servers:
+  - url: https://localhost:16969
+    description: Local development server
+
+paths:
+  /v1/discovery/event/new:
+    post:
+      tags:
+        - Event
+      summary: Create a new user
+      operationId: newEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid input
+        '401':
+          description: Auth failed
+        '500':
+          description: Discovery server error
+
+  /v1/discovery/users/{user_id}:
+    get:
+      tags:
+        - User
+      summary: Get user information
+      operationId: getUserDiscovery
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: './components.yml#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /v1/discovery/tweets/{user_id}/{tweet_id}:
+    get:
+      tags:
+        - Tweet
+      summary: Get a certain tweet
+      operationId: getTweetDiscovery
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tweet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tweet successfully fetched
+        '400':
+          description: Invalid input
+
+  /v1/discovery/tweets/{user_id}:
+    get:
+      tags:
+        - Tweet
+      summary: Get user's tweets
+      operationId: getTweetListDiscovery
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of user's tweets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: './components.yml#/components/schemas/Tweet'
+        '404':
+          description: User or tweets not found
+
+components:
+  schemas:
+    Event:
+      type: object
+      properties:
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/PingEvent'
+            - $ref: '#/components/schemas/ErrorEvent'
+            - $ref: '#/components/schemas/NewTweetEvent'
+            - $ref: '#/components/schemas/NewUserEvent'
+            - $ref: '#/components/schemas/NewFollowEvent'
+            - $ref: '#/components/schemas/NewUnfollowEvent'
+      required:
+        - data
+
+    PingEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ping]
+          default: ping
+        owner_node:
+          type: object
+          $ref: './components.yml#/components/schemas/Node'
+        owner_info:
+          type: object
+          $ref: './components.yml#/components/schemas/User'
+        dest_ip:
+          type: string
+        cached_nodes:
+          type: array
+          items:
+            $ref: './components.yml#/components/schemas/Node'
+      required:
+        - owner_node
+        - owner_info
+        - cached_nodes
+        - event_type
+
+    ErrorEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ error ]
+          default: error
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - event_type
+        - code
+        - message
+
+    NewTweetEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ tweet ]
+          default: tweet
+        tweet:
+          $ref: './components.yml#/components/schemas/Tweet'
+      required:
+        - event_type
+        - tweet
+
+    NewUserEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ user ]
+          default: user
+        user:
+          $ref: './components.yml#/components/schemas/User'
+      required:
+        - event_type
+        - user
+
+    NewFollowEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ follow ]
+          default: follow
+        request:
+          $ref: './components.yml#/components/schemas/FollowRequest'
+      required:
+        - event_type
+        - request
+
+    NewUnfollowEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ unfollow ]
+          default: unfollow
+        request:
+          $ref: './components.yml#/components/schemas/UnfollowRequest'
+      required:
+        - event_type
+        - request

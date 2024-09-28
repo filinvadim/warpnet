@@ -1,7 +1,6 @@
-package handlers
+package discovery
 
 import (
-	"github.com/filinvadim/dWighter/api/server"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -19,15 +18,15 @@ func NewNodeController(nodeRepo *database.NodeRepo) *NodeController {
 func (c *NodeController) GetNodes(ctx echo.Context) error {
 	nodes, err := c.nodeRepo.List()
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
-	uniqueNodes := make(map[string]server.Node, len(nodes))
+	uniqueNodes := make(map[string]api.Node, len(nodes))
 	for _, n := range nodes {
 		uniqueNodes[n.Ip] = n
 	}
 
 	// Преобразуем map обратно в срез
-	result := make([]server.Node, 0, len(uniqueNodes))
+	result := make([]api.Node, 0, len(uniqueNodes))
 	for _, node := range uniqueNodes {
 		result = append(result, node)
 	}
@@ -37,16 +36,16 @@ func (c *NodeController) GetNodes(ctx echo.Context) error {
 
 // PostNodes creates a new node
 func (c *NodeController) PostNodes(ctx echo.Context) error {
-	var node server.Node
+	var node api.Node
 	err := ctx.Bind(&node)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
 	// Add node to the database
 	_, err = c.nodeRepo.Create(node)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, server.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
 	return ctx.JSON(http.StatusOK, node)

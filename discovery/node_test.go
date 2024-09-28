@@ -1,11 +1,11 @@
-package handlers_test
+package discovery_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/handlers"
+	"github.com/filinvadim/dWighter/discovery"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -36,10 +36,10 @@ func TestPostNodes(t *testing.T) {
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewNodeController(nodeRepo)
+	controller := discovery.NewNodeController(nodeRepo)
 
 	// Пример ноды
-	node := server.Node{
+	node := api.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "TestPostNodes",
 	}
@@ -56,7 +56,7 @@ func TestPostNodes(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostNodes(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdNode server.Node
+		var createdNode api.Node
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdNode)) {
 			assert.Equal(t, node.Ip, createdNode.Ip)
 			assert.Equal(t, node.OwnerId, createdNode.OwnerId)
@@ -70,10 +70,10 @@ func TestGetNodes(t *testing.T) {
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewNodeController(nodeRepo)
+	controller := discovery.NewNodeController(nodeRepo)
 
 	// Добавляем тестовую ноду в базу данных
-	node := server.Node{
+	node := api.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "TestGetNodes",
 	}
@@ -87,7 +87,7 @@ func TestGetNodes(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetNodes(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var nodes []server.Node
+		var nodes []api.Node
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &nodes)) {
 			assert.Len(t, nodes, 1)
 			assert.Equal(t, node.Ip, nodes[0].Ip)
@@ -101,17 +101,17 @@ func TestPostNodesPing(t *testing.T) {
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewNodeController(nodeRepo)
+	controller := discovery.NewNodeController(nodeRepo)
 
 	// Добавляем тестовую ноду в базу данных
-	node := server.Node{
+	node := api.Node{
 		Ip:      "127.0.0.1",
 		OwnerId: "Test Node",
 	}
 	_ = nodeRepo.Create(node)
 
 	// Создаем HTTP запрос для пинга
-	pingRequest := server.Node{
+	pingRequest := api.Node{
 		Ip: "127.0.0.1",
 	}
 	pingJson, _ := json.Marshal(pingRequest)

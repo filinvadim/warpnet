@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -69,7 +69,7 @@ func (repo *AuthRepo) IsCAExists() bool {
 	return true
 }
 
-func (repo *AuthRepo) SetOwner(u server.User) (_ *server.User, err error) {
+func (repo *AuthRepo) SetOwner(u components.User) (_ *components.User, err error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (repo *AuthRepo) SetOwner(u server.User) (_ *server.User, err error) {
 	return &u, repo.db.Set(key, data)
 }
 
-func (repo *AuthRepo) UpdateOwner(u *server.User) error {
+func (repo *AuthRepo) UpdateOwner(u *components.User) error {
 	if u == nil {
 		return errors.New("user is nil")
 	}
@@ -108,7 +108,7 @@ func (repo *AuthRepo) UpdateOwner(u *server.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) GetOwner() (*server.User, error) {
+func (repo *AuthRepo) GetOwner() (*components.User, error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (repo *AuthRepo) GetOwner() (*server.User, error) {
 		return nil, err
 	}
 
-	var u server.User
+	var u components.User
 	err = json.JSON.Unmarshal(data, &u)
 	if err != nil {
 		return nil, err

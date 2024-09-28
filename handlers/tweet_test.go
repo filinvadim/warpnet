@@ -43,7 +43,7 @@ func TestPostTweet(t *testing.T) {
 	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
 
 	// Пример твита
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		Content: "Hello, world!",
 		UserId:  uuid.New().String(),
 	}
@@ -60,7 +60,7 @@ func TestPostTweet(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostTweets(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdTweet server.Tweet
+		var createdTweet api.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdTweet)) {
 			assert.Equal(t, tweet.Content, createdTweet.Content)
 			assert.Equal(t, tweet.UserId, createdTweet.UserId)
@@ -78,7 +78,7 @@ func TestGetTweetsByUser(t *testing.T) {
 
 	// Пример твита
 	userID := uuid.New().String()
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
@@ -95,7 +95,7 @@ func TestGetTweetsByUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetTweetsUserId(ctx, userID)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var tweets []server.Tweet
+		var tweets []api.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tweets)) {
 			assert.Len(t, tweets, 1)
 			assert.Equal(t, tweet.Content, tweets[0].Content)
@@ -114,7 +114,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	// Пример твита
 	userID := uuid.New().String()
 	tweetID := uuid.New().String()
-	tweet := server.Tweet{
+	tweet := api.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
 		TweetId:   &tweetID,
@@ -132,7 +132,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetTweetsUserIdTweetId(ctx, userID, tweetID)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var fetchedTweet server.Tweet
+		var fetchedTweet api.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedTweet)) {
 			assert.Equal(t, tweet.Content, fetchedTweet.Content)
 			assert.Equal(t, tweet.UserId, fetchedTweet.UserId)
@@ -151,12 +151,12 @@ func TestGetTimeline(t *testing.T) {
 
 	// Пример твитов
 	userID := uuid.New().String()
-	tweet1 := server.Tweet{
+	tweet1 := api.Tweet{
 		Content:   "First tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now().Add(-time.Hour)),
 	}
-	tweet2 := server.Tweet{
+	tweet2 := api.Tweet{
 		Content:   "Second tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
@@ -179,13 +179,13 @@ func TestGetTimeline(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	params := server.GetTweetsTimelineUserIdParams{
+	params := api.GetTweetsTimelineUserIdParams{
 		Limit:  nil,
 		Cursor: nil,
 	}
 	if assert.NoError(t, controller.GetTweetsTimelineUserId(ctx, userID, params)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response server.TimelineResponse
+		var response api.TimelineResponse
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response)) {
 			assert.Len(t, response.Tweets, 2)
 			assert.Equal(t, tweet2.Content, response.Tweets[0].Content)

@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -21,7 +21,7 @@ func NewNodeRepo(db *storage.DB) *NodeRepo {
 	return &NodeRepo{db: db}
 }
 
-func (repo *NodeRepo) Create(node server.Node) (uuid.UUID, error) {
+func (repo *NodeRepo) Create(node components.Node) (uuid.UUID, error) {
 	if node.OwnerId == "" {
 		return uuid.UUID{}, errors.New("owner id is required")
 	}
@@ -63,7 +63,7 @@ func (repo *NodeRepo) Create(node server.Node) (uuid.UUID, error) {
 	})
 }
 
-func (repo *NodeRepo) Update(n *server.Node) error {
+func (repo *NodeRepo) Update(n *components.Node) error {
 	if n == nil {
 		return errors.New("node is nil")
 	}
@@ -80,7 +80,7 @@ func (repo *NodeRepo) Update(n *server.Node) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *NodeRepo) GetByIP(ip string) (*server.Node, error) {
+func (repo *NodeRepo) GetByIP(ip string) (*components.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(ip).Build()
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (repo *NodeRepo) GetByIP(ip string) (*server.Node, error) {
 		return nil, err
 	}
 
-	var node server.Node
+	var node components.Node
 	err = json.JSON.Unmarshal(data, &node)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (repo *NodeRepo) DeleteByIP(ip string) error {
 	})
 }
 
-func (repo *NodeRepo) GetByUserId(userId string) (*server.Node, error) {
+func (repo *NodeRepo) GetByUserId(userId string) (*components.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(userId).Build()
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (repo *NodeRepo) GetByUserId(userId string) (*server.Node, error) {
 		return nil, err
 	}
 
-	var node server.Node
+	var node components.Node
 	err = json.JSON.Unmarshal(data, &node)
 	if err != nil {
 		return nil, err
@@ -174,15 +174,15 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	})
 }
 
-func (repo *NodeRepo) List() ([]server.Node, error) {
+func (repo *NodeRepo) List() ([]components.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]server.Node, 0, 20)
+	nodes := make([]components.Node, 0, 20)
 	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var n server.Node
+		var n components.Node
 		err := json.JSON.Unmarshal(value, &n)
 		if err != nil {
 			return err

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/filinvadim/dWighter/api/client"
 	cr "github.com/filinvadim/dWighter/crypto"
 	"net/http"
 	"time"

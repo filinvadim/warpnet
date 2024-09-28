@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/api"
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/json"
@@ -33,8 +34,8 @@ func NewAuthController(
 	return &AuthController{authRepo, nodeRepo, interrupt}
 }
 
-func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
-	var req server.AuthRequest
+func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
+	var req api.AuthRequest
 	if err := ctx.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -58,7 +59,7 @@ func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
 		c.interrupt <- struct{}{}
 		return ctx.JSON(http.StatusOK, owner)
 	}
-	u, err := c.authRepo.SetOwner(server.User{
+	u, err := c.authRepo.SetOwner(components.User{
 		UserId:   nil,
 		NodeId:   types.UUID{},
 		Username: req.Username,
@@ -87,7 +88,7 @@ func (c *AuthController) PostAuthLogin(ctx echo.Context) error {
 	fmt.Println("YOUR OWN IP", ip)
 
 	now := time.Now()
-	id, err := c.nodeRepo.Create(server.Node{
+	id, err := c.nodeRepo.Create(components.Node{
 		CreatedAt: &now,
 		Ip:        ip,
 		IsActive:  true,
@@ -127,7 +128,7 @@ func getOwnIPAddress() (string, error) {
 	return ipResp.IP, err
 }
 
-func (c *AuthController) PostAuthLogout(ctx echo.Context) error {
+func (c *AuthController) PostV1ApiAuthLogout(ctx echo.Context) error {
 	c.interrupt <- struct{}{}
 	return ctx.NoContent(http.StatusOK)
 }

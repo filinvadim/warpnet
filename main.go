@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/dWighter/api/server"
+	"github.com/filinvadim/dWighter/api/api"
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/client"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
@@ -29,7 +30,6 @@ var (
 
 type API struct {
 	*handlers.TweetController
-	*handlers.NodeController
 	*handlers.UserController
 	*handlers.StaticController
 	*handlers.AuthController
@@ -38,7 +38,7 @@ type API struct {
 func main() {
 	interrupt := make(chan struct{}, 1)
 
-	swagger, err := server.GetSwagger()
+	swagger, err := components.GetSwagger()
 	if err != nil {
 		log.Fatalf("loading swagger spec: %v", err)
 	}
@@ -72,20 +72,6 @@ func main() {
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	server.RegisterHandlers(e, &API{
-		StaticController: handlers.NewStaticController(),
-		AuthController:   handlers.NewAuthController(authRepo, nodeRepo, interrupt),
-	})
-
-	go e.Start(":6969")
-	err = browser.OpenURL("https://localhost:6969")
-	if err != nil {
-		fmt.Println("failed to open browser:", err)
-	}
-	<-interrupt
-	e.Shutdown(context.Background())
-	fmt.Println("AUTH SERVER CLOSED!")
-
 	o, err := authRepo.GetOwner()
 	if err != nil {
 		log.Fatal("main: failed to get owner:", err)
@@ -100,9 +86,8 @@ func main() {
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	server.RegisterHandlers(e, &API{
+	api.RegisterHandlers(e, &API{
 		handlers.NewTweetController(timelineRepo, tweetRepo),
-		handlers.NewNodeController(nodeRepo),
 		handlers.NewUserController(userRepo, followRepo, nodeRepo),
 		handlers.NewStaticController(),
 		handlers.NewAuthController(authRepo, nodeRepo, interrupt),
@@ -117,6 +102,11 @@ func main() {
 		TLSConfig: conf,
 	}
 	go e.StartServer(srv)
+
+	err = browser.OpenURL("https://localhost:6969")
+	if err != nil {
+		fmt.Println("failed to open browser:", err)
+	}
 
 	cli, err := client.New(context.Background(), n.Id.String(), e.Logger)
 	if err != nil {

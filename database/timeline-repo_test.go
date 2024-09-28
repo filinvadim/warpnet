@@ -23,8 +23,8 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 	return db
 }
 
-func createTestTweet(id string, timestamp time.Time) server.Tweet {
-	return server.Tweet{
+func createTestTweet(id string, timestamp time.Time) api.Tweet {
+	return api.Tweet{
 		TweetId:   &id,
 		Content:   "Test content",
 		UserId:    uuid.New().String(),
