@@ -25,26 +25,30 @@ type discoveryHandler struct {
 	userRepo   *database.UserRepo
 	tweetRepo  *database.TweetRepo
 	cli        DiscoveryRequester
-	hostsCache map[string]struct{}
-	ownNodeId  string
+	hostsCache map[string]components.Node
+	owner      components.User
 }
 
 func newDiscoveryHandler(
-	ownNodeId string,
+	owner components.User,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
 	userRepo *database.UserRepo,
 	tweetRepo *database.TweetRepo,
 	cli DiscoveryRequester,
 ) (*discoveryHandler, error) {
-	hosts := map[string]struct{}{defaultDiscoveryPort: {}}
+	ownNode, err := nodeRepo.GetByUserId(*owner.UserId)
+	if err != nil {
+		return nil, err
+	}
+	hosts := map[string]components.Node{ownNode.Ip + ":" + ownNode.Port: *ownNode}
 	nodes, err := nodeRepo.List()
 	if err != nil {
 		return nil, err
 	}
 	for _, n := range nodes {
 		h := n.Ip + ":" + n.Port
-		hosts[h] = struct{}{}
+		hosts[h] = n
 	}
 	return &discoveryHandler{
 		nodeRepo:   nodeRepo,
@@ -53,7 +57,7 @@ func newDiscoveryHandler(
 		tweetRepo:  tweetRepo,
 		cli:        cli,
 		hostsCache: hosts,
-		ownNodeId:  ownNodeId,
+		owner:      owner,
 	}, nil
 }
 
@@ -73,7 +77,7 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) error {
 		if err != nil {
 			return err
 		}
-		d.hostsCache[ctx.Request().Host] = struct{}{}
+		d.hostsCache[ctx.Request().Host] = pingEvent.OwnerNode
 
 		_, err = d.userRepo.Create(pingEvent.OwnerInfo)
 		if err != nil {
@@ -84,18 +88,19 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) error {
 			return err
 		}
 
-		_, err = d.cli.Pong(ctx.Request().Host, discovery.PongEvent{
+		destHost := ctx.Request().Host
+		_, err = d.cli.Pong(destHost, discovery.PongEvent{
 			CachedNodes: nil,
-			DestIp:      nil,
-			OwnerInfo:   components.User{},
-			OwnerNode:   components.Node{},
+			DestIp:      &destHost,
+			OwnerInfo:   d.owner,
+			OwnerNode:   ,
 		}) // my own node
 		if err != nil {
 			return err
 		}
 		for _, n := range pingEvent.CachedNodes {
 			host := n.Ip + ":" + n.Port
-			d.hostsCache[host] = struct{}{}
+			d.hostsCache[host] = n
 
 			_, err = d.nodeRepo.Create(n)
 			if err != nil {

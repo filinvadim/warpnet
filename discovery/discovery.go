@@ -33,7 +33,7 @@ func RunDiscoveryService(
 	}
 
 	handler, err := newDiscoveryHandler(
-		nodeId,
+		u,
 		nodeRepo,
 		authRepo,
 		userRepo,
