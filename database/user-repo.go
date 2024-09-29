@@ -1,6 +1,7 @@
 package database
 
 import (
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user api.User) (*api.User, error) {
+func (repo *UserRepo) Create(user components.User) (*components.User, error) {
 	if user.UserId == nil {
 		id := uuid.New().String()
 		user.UserId = &id
@@ -40,7 +41,7 @@ func (repo *UserRepo) Create(user api.User) (*api.User, error) {
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userID string) (*api.User, error) {
+func (repo *UserRepo) Get(userID string) (*components.User, error) {
 	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func (repo *UserRepo) Get(userID string) (*api.User, error) {
 		return nil, err
 	}
 
-	var user api.User
+	var user components.User
 	err = json.JSON.Unmarshal(data, &user)
 	if err != nil {
 		return nil, err
@@ -67,15 +68,15 @@ func (repo *UserRepo) Delete(userID string) error {
 	return repo.db.Delete(key)
 }
 
-func (repo *UserRepo) List() ([]api.User, error) {
+func (repo *UserRepo) List() ([]components.User, error) {
 	key, err := storage.NewPrefixBuilder(UsersRepoName).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	users := make([]api.User, 0, 20)
+	users := make([]components.User, 0, 20)
 	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var user api.User
+		var user components.User
 		err := json.JSON.Unmarshal(value, &user)
 		if err != nil {
 			return err

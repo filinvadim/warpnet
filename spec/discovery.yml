@@ -34,80 +34,18 @@ paths:
         '500':
           description: Discovery server error
 
-  /v1/discovery/users/{user_id}:
-    get:
-      tags:
-        - User
-      summary: Get user information
-      operationId: getUserDiscovery
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                $ref: './components.yml#/components/schemas/User'
-        '404':
-          description: User not found
-
-  /v1/discovery/tweets/{user_id}/{tweet_id}:
-    get:
-      tags:
-        - Tweet
-      summary: Get a certain tweet
-      operationId: getTweetDiscovery
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: tweet_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Tweet successfully fetched
-        '400':
-          description: Invalid input
-
-  /v1/discovery/tweets/{user_id}:
-    get:
-      tags:
-        - Tweet
-      summary: Get user's tweets
-      operationId: getTweetListDiscovery
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of user's tweets
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: './components.yml#/components/schemas/Tweet'
-        '404':
-          description: User or tweets not found
-
 components:
   schemas:
     Event:
       type: object
       properties:
+        event_type:
+          type: string
+          enum: [ ping,pong,error,user,tweet,follow,unfollow ]
+          default: ping
+        timestamp:
+          type: string
+          format: date-time
         data:
           oneOf:
             - $ref: '#/components/schemas/PingEvent'
@@ -117,15 +55,12 @@ components:
             - $ref: '#/components/schemas/NewFollowEvent'
             - $ref: '#/components/schemas/NewUnfollowEvent'
       required:
-        - data
+        - timestamp
+        - event_type
 
     PingEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ ping ]
-          default: ping
         owner_node:
           $ref: './components.yml#/components/schemas/Node'
         owner_info:
@@ -140,72 +75,49 @@ components:
         - owner_node
         - owner_info
         - cached_nodes
-        - event_type
+
+    PongEvent:
+      $ref: '#/components/schemas/PingEvent'
 
     ErrorEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ error ]
-          default: error
         code:
           type: integer
         message:
           type: string
       required:
-        - event_type
         - code
         - message
 
     NewTweetEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ tweet ]
-          default: tweet
         tweet:
           $ref: './components.yml#/components/schemas/Tweet'
       required:
-        - event_type
         - tweet
 
     NewUserEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ user ]
-          default: user
         user:
           $ref: './components.yml#/components/schemas/User'
       required:
-        - event_type
         - user
 
     NewFollowEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ follow ]
-          default: follow
         request:
           $ref: './components.yml#/components/schemas/FollowRequest'
       required:
-        - event_type
         - request
 
     NewUnfollowEvent:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ unfollow ]
-          default: unfollow
         request:
           $ref: './components.yml#/components/schemas/UnfollowRequest'
       required:
-        - event_type
         - request

@@ -5,62 +5,46 @@ package discovery
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
+	"time"
 
 	externalRef0 "github.com/filinvadim/dWighter/api/components"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
 )
 
-// Defines values for ErrorEventEventType.
+// Defines values for EventEventType.
 const (
-	Error ErrorEventEventType = "error"
-)
-
-// Defines values for NewFollowEventEventType.
-const (
-	Follow NewFollowEventEventType = "follow"
-)
-
-// Defines values for NewTweetEventEventType.
-const (
-	Tweet NewTweetEventEventType = "tweet"
-)
-
-// Defines values for NewUnfollowEventEventType.
-const (
-	Unfollow NewUnfollowEventEventType = "unfollow"
-)
-
-// Defines values for NewUserEventEventType.
-const (
-	User NewUserEventEventType = "user"
-)
-
-// Defines values for PingEventEventType.
-const (
-	Ping PingEventEventType = "ping"
+	Error    EventEventType = "error"
+	Follow   EventEventType = "follow"
+	Ping     EventEventType = "ping"
+	Pong     EventEventType = "pong"
+	Tweet    EventEventType = "tweet"
+	Unfollow EventEventType = "unfollow"
+	User     EventEventType = "user"
 )
 
 // ErrorEvent defines model for ErrorEvent.
 type ErrorEvent struct {
-	Code      int                 `json:"code"`
-	EventType ErrorEventEventType `json:"event_type"`
-	Message   string              `json:"message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
-
-// ErrorEventEventType defines model for ErrorEvent.EventType.
-type ErrorEventEventType string
 
 // Event defines model for Event.
 type Event struct {
-	Data Event_Data `json:"data"`
+	Data      *Event_Data    `json:"data,omitempty"`
+	EventType EventEventType `json:"event_type"`
+	Timestamp time.Time      `json:"timestamp"`
 }
 
 // Event_Data defines model for Event.Data.
@@ -68,53 +52,39 @@ type Event_Data struct {
 	union json.RawMessage
 }
 
+// EventEventType defines model for Event.EventType.
+type EventEventType string
+
 // NewFollowEvent defines model for NewFollowEvent.
 type NewFollowEvent struct {
-	EventType NewFollowEventEventType    `json:"event_type"`
-	Request   externalRef0.FollowRequest `json:"request"`
+	Request externalRef0.FollowRequest `json:"request"`
 }
-
-// NewFollowEventEventType defines model for NewFollowEvent.EventType.
-type NewFollowEventEventType string
 
 // NewTweetEvent defines model for NewTweetEvent.
 type NewTweetEvent struct {
-	EventType NewTweetEventEventType `json:"event_type"`
-	Tweet     externalRef0.Tweet     `json:"tweet"`
+	Tweet externalRef0.Tweet `json:"tweet"`
 }
-
-// NewTweetEventEventType defines model for NewTweetEvent.EventType.
-type NewTweetEventEventType string
 
 // NewUnfollowEvent defines model for NewUnfollowEvent.
 type NewUnfollowEvent struct {
-	EventType NewUnfollowEventEventType    `json:"event_type"`
-	Request   externalRef0.UnfollowRequest `json:"request"`
+	Request externalRef0.UnfollowRequest `json:"request"`
 }
-
-// NewUnfollowEventEventType defines model for NewUnfollowEvent.EventType.
-type NewUnfollowEventEventType string
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent struct {
-	EventType NewUserEventEventType `json:"event_type"`
-	User      externalRef0.User     `json:"user"`
+	User externalRef0.User `json:"user"`
 }
-
-// NewUserEventEventType defines model for NewUserEvent.EventType.
-type NewUserEventEventType string
 
 // PingEvent defines model for PingEvent.
 type PingEvent struct {
 	CachedNodes []externalRef0.Node `json:"cached_nodes"`
 	DestIp      *string             `json:"dest_ip,omitempty"`
-	EventType   PingEventEventType  `json:"event_type"`
 	OwnerInfo   externalRef0.User   `json:"owner_info"`
 	OwnerNode   externalRef0.Node   `json:"owner_node"`
 }
 
-// PingEventEventType defines model for PingEvent.EventType.
-type PingEventEventType string
+// PongEvent defines model for PongEvent.
+type PongEvent = PingEvent
 
 // NewEventJSONRequestBody defines body for NewEvent for application/json ContentType.
 type NewEventJSONRequestBody = Event
@@ -362,15 +332,6 @@ type ClientInterface interface {
 	NewEventWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	NewEvent(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTweetListDiscovery request
-	GetTweetListDiscovery(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTweetDiscovery request
-	GetTweetDiscovery(ctx context.Context, userId string, tweetId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetUserDiscovery request
-	GetUserDiscovery(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) NewEventWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -387,42 +348,6 @@ func (c *Client) NewEventWithBody(ctx context.Context, contentType string, body 
 
 func (c *Client) NewEvent(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewNewEventRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetTweetListDiscovery(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTweetListDiscoveryRequest(c.Server, userId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetTweetDiscovery(ctx context.Context, userId string, tweetId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTweetDiscoveryRequest(c.Server, userId, tweetId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetUserDiscovery(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserDiscoveryRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -469,115 +394,6 @@ func NewNewEventRequestWithBody(server string, contentType string, body io.Reade
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetTweetListDiscoveryRequest generates requests for GetTweetListDiscovery
-func NewGetTweetListDiscoveryRequest(server string, userId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/discovery/tweets/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetTweetDiscoveryRequest generates requests for GetTweetDiscovery
-func NewGetTweetDiscoveryRequest(server string, userId string, tweetId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "tweet_id", runtime.ParamLocationPath, tweetId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/discovery/tweets/%s/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetUserDiscoveryRequest generates requests for GetUserDiscovery
-func NewGetUserDiscoveryRequest(server string, userId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/discovery/users/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -629,15 +445,6 @@ type ClientWithResponsesInterface interface {
 	NewEventWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
 
 	NewEventWithResponse(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
-
-	// GetTweetListDiscoveryWithResponse request
-	GetTweetListDiscoveryWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTweetListDiscoveryResponse, error)
-
-	// GetTweetDiscoveryWithResponse request
-	GetTweetDiscoveryWithResponse(ctx context.Context, userId string, tweetId string, reqEditors ...RequestEditorFn) (*GetTweetDiscoveryResponse, error)
-
-	// GetUserDiscoveryWithResponse request
-	GetUserDiscoveryWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserDiscoveryResponse, error)
 }
 
 type NewEventResponse struct {
@@ -662,71 +469,6 @@ func (r NewEventResponse) StatusCode() int {
 	return 0
 }
 
-type GetTweetListDiscoveryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *[]externalRef0.Tweet
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTweetListDiscoveryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTweetListDiscoveryResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTweetDiscoveryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTweetDiscoveryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTweetDiscoveryResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetUserDiscoveryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *externalRef0.User
-}
-
-// Status returns HTTPResponse.Status
-func (r GetUserDiscoveryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetUserDiscoveryResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // NewEventWithBodyWithResponse request with arbitrary body returning *NewEventResponse
 func (c *ClientWithResponses) NewEventWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
 	rsp, err := c.NewEventWithBody(ctx, contentType, body, reqEditors...)
@@ -742,33 +484,6 @@ func (c *ClientWithResponses) NewEventWithResponse(ctx context.Context, body New
 		return nil, err
 	}
 	return ParseNewEventResponse(rsp)
-}
-
-// GetTweetListDiscoveryWithResponse request returning *GetTweetListDiscoveryResponse
-func (c *ClientWithResponses) GetTweetListDiscoveryWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetTweetListDiscoveryResponse, error) {
-	rsp, err := c.GetTweetListDiscovery(ctx, userId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTweetListDiscoveryResponse(rsp)
-}
-
-// GetTweetDiscoveryWithResponse request returning *GetTweetDiscoveryResponse
-func (c *ClientWithResponses) GetTweetDiscoveryWithResponse(ctx context.Context, userId string, tweetId string, reqEditors ...RequestEditorFn) (*GetTweetDiscoveryResponse, error) {
-	rsp, err := c.GetTweetDiscovery(ctx, userId, tweetId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTweetDiscoveryResponse(rsp)
-}
-
-// GetUserDiscoveryWithResponse request returning *GetUserDiscoveryResponse
-func (c *ClientWithResponses) GetUserDiscoveryWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserDiscoveryResponse, error) {
-	rsp, err := c.GetUserDiscovery(ctx, userId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetUserDiscoveryResponse(rsp)
 }
 
 // ParseNewEventResponse parses an HTTP response from a NewEventWithResponse call
@@ -797,88 +512,11 @@ func ParseNewEventResponse(rsp *http.Response) (*NewEventResponse, error) {
 	return response, nil
 }
 
-// ParseGetTweetListDiscoveryResponse parses an HTTP response from a GetTweetListDiscoveryWithResponse call
-func ParseGetTweetListDiscoveryResponse(rsp *http.Response) (*GetTweetListDiscoveryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTweetListDiscoveryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []externalRef0.Tweet
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetTweetDiscoveryResponse parses an HTTP response from a GetTweetDiscoveryWithResponse call
-func ParseGetTweetDiscoveryResponse(rsp *http.Response) (*GetTweetDiscoveryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTweetDiscoveryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParseGetUserDiscoveryResponse parses an HTTP response from a GetUserDiscoveryWithResponse call
-func ParseGetUserDiscoveryResponse(rsp *http.Response) (*GetUserDiscoveryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetUserDiscoveryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest externalRef0.User
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new user
 	// (POST /v1/discovery/event/new)
 	NewEvent(ctx echo.Context) error
-	// Get user's tweets
-	// (GET /v1/discovery/tweets/{user_id})
-	GetTweetListDiscovery(ctx echo.Context, userId string) error
-	// Get a certain tweet
-	// (GET /v1/discovery/tweets/{user_id}/{tweet_id})
-	GetTweetDiscovery(ctx echo.Context, userId string, tweetId string) error
-	// Get user information
-	// (GET /v1/discovery/users/{user_id})
-	GetUserDiscovery(ctx echo.Context, userId string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -892,62 +530,6 @@ func (w *ServerInterfaceWrapper) NewEvent(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.NewEvent(ctx)
-	return err
-}
-
-// GetTweetListDiscovery converts echo context to params.
-func (w *ServerInterfaceWrapper) GetTweetListDiscovery(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetTweetListDiscovery(ctx, userId)
-	return err
-}
-
-// GetTweetDiscovery converts echo context to params.
-func (w *ServerInterfaceWrapper) GetTweetDiscovery(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
-
-	// ------------- Path parameter "tweet_id" -------------
-	var tweetId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "tweet_id", ctx.Param("tweet_id"), &tweetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tweet_id: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetTweetDiscovery(ctx, userId, tweetId)
-	return err
-}
-
-// GetUserDiscovery converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUserDiscovery(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetUserDiscovery(ctx, userId)
 	return err
 }
 
@@ -980,8 +562,110 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/v1/discovery/event/new", wrapper.NewEvent)
-	router.GET(baseURL+"/v1/discovery/tweets/:user_id", wrapper.GetTweetListDiscovery)
-	router.GET(baseURL+"/v1/discovery/tweets/:user_id/:tweet_id", wrapper.GetTweetDiscovery)
-	router.GET(baseURL+"/v1/discovery/users/:user_id", wrapper.GetUserDiscovery)
 
+}
+
+// Base64 encoded, gzipped, json marshaled Swagger object
+var swaggerSpec = []string{
+
+	"H4sIAAAAAAAC/+xYX2/bNhD/KgS3R7W22y5A9datHRAsWIMiwR6KQGDEs8VGIlnyZM0I/N0HkpIlWUys",
+	"GCjQhz3Zoo73+91fHvVIc1VpJUGipekjtXkBFfN/PxmjzKctSHRP2igNBgX4d7ni4H5xp4GmVEiEDRi6",
+	"T2gF1rLN8KVFI+SG7vcJNfC9FgY4Tb8GFb38XdLJq/tvkKPT9QQ4Z8jcr5LweU3Tr4/0VwNrmtJfFr0x",
+	"i9aSxbWQm6BonzwvOTD4lOjf0Nw0ADhb+tbCfNV/qrJUzXzdcj3ccLdPKLi/WXDoI+WwZnWJNKXaRSKh",
+	"IOvKxaB91CqsOvtpQmsL7gedgTShQblbb3EGsepim1AUFVhklXaAa2Uq5vA4Q3jlXtHkRDr0+0fsY2kR",
+	"3PMFvtdgI+lhgHEwmeDuoRLyCuQGC5quIqwbI3Ce7BHdHmSoJMb2SjzAlKR37jyOLhxnMOy2JT1WjN5R",
+	"ukW8eXDzc2k4jsnUW2H9CQKDUoo76hS6VzBNKb/6BOa4aM41u9NypuF9V5gQ8EV4Ct3JxOIex2t79lEn",
+	"N8AQeMZwbuEmNCTjQbauQ5pNxHRoPjY3QqNQkqb0pgByeU0Y5was9d2l1SL09l1Ui81YjmILU2X/FIAF",
+	"GIIjpURYktfGgMRyR9q9B8X3SpXApNNcMouZBZBxmoeORJoCJMFC2CFKwyxxGnqEec4rGYLMd3FMCdgo",
+	"80BaIYLqgCskqURZCgu5kty5Dv5llS6Bpqs3y6EjJV4MPDk4m1UjD61kjO2Shlx+jPHVyuDoELl4f/E+",
+	"1qa0t3ii+tavE7X2YZKKgzMlYsXbi+UcM47SXWjachymyjC4A7t96sZqox8SpgXC8gJ45oj7Z4FQ2VOV",
+	"6WttfwBixrCde+ZgMQt1MXFgy1Ku1by673bItq5P8zly3WD7CD0Z2xz1l/rfXy/x1xc4nGM/6RxwE+eX",
+	"K4ltmE/QO+cgKcXDC5LET1KRJPFaslzVcgzddZBKSFG5gXcZa4omhGY+jS6WESadrrPJWDcvyBzO2PoD",
+	"MilISlbNuM71adalTCzLjueln314v22nsDHJe2GwcIk9P9PPqY7RORppgMGVwEeZO72YHeVotyvzd8DH",
+	"OXNDu8XYs5CMfQFUKeTDeLg0ZbRzqJw96ZhqlxlYgzGsfCFl18GzmeNtgACe3e+iugdV9mxdvbSZ+309",
+	"1Wnauk3dsTiexT4Km6stmB35cH1J1soQRrhwWPc1Aic3jUAE88p1VMK0LkXrZXe/RzekORXH4k4ZTegW",
+	"jA0wq9fL10t/4GqQTAua0rd+KaGaYeFDsdiuFryjs/A3/oWExhebCp3BlZyHv+Q0ddelMHEk3a3qd8V3",
+	"R2fUgPPimw3pEfr2qa7efjwZOxxNDX7BaiVtKP43y+WPAB0H6vNfzn3vAtT41aXcslJwIqSuMUitplIf",
+	"aizImokSuJP5LaapzwYLZguGhA9Ajo2tq4qZHU3pH75xEUYkNKT7MsQ21mVjoH/n+QcV1n+OG8NcqZyV",
+	"hMMWSqUrkNjC0cQXd0oLRG3TxcLVdFkoi+nK3THo/m7/XwAAAP//0ORLep8UAAA=",
+}
+
+// GetSwagger returns the content of the embedded swagger specification file
+// or error if failed to decode
+func decodeSpec() ([]byte, error) {
+	zipped, err := base64.StdEncoding.DecodeString(strings.Join(swaggerSpec, ""))
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(zipped))
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(zr)
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cached of a decoded swagger spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	pathPrefix := path.Dir(pathToFile)
+
+	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(pathPrefix, "./components.yml")) {
+		if _, ok := res[rawPath]; ok {
+			// it is not possible to compare functions in golang, so always overwrite the old value
+		}
+		res[rawPath] = rawFunc
+	}
+	return res
+}
+
+// GetSwagger returns the Swagger specification corresponding to the generated code
+// in this file. The external references of Swagger specification are resolved.
+// The logic of resolving external references is tightly connected to "import-mapping" feature.
+// Externally referenced files must be embedded in the corresponding golang packages.
+// Urls can be supported but this task was out of the scope.
+func GetSwagger() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
 }

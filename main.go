@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/dWighter/api/api"
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
@@ -36,7 +35,7 @@ type API struct {
 func main() {
 	interrupt := make(chan struct{}, 1)
 
-	swagger, err := components.GetSwagger()
+	swagger, err := api.GetSwagger()
 	if err != nil {
 		log.Fatalf("loading swagger spec: %v", err)
 	}
@@ -56,7 +55,7 @@ func main() {
 	e := echo.New()
 	//e.HideBanner = true
 	e.Logger.SetLevel(echoLog.INFO)
-	e.Logger.SetPrefix("universal-fix-gateway")
+	e.Logger.SetPrefix("")
 
 	logFile, err := os.Create(filepath.Join(path, "node.log"))
 	if err != nil {
