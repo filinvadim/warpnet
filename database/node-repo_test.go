@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"github.com/filinvadim/dWighter/api/components"
 	"os"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func setupNodeTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtestnodes"
-	db := storage.New("nodetest", path, false, true, "error")
+	db := storage.New(path, false, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -26,17 +27,17 @@ func TestNodeRepo_Create(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := api.Node{
+	node := &components.Node{
 		Ip:      "192.168.1.1",
 		OwnerId: uuid.New().String(),
 	}
 
 	// Create new node
-	err := repo.Create(node)
+	_, err := repo.Create(node)
 	assert.NoError(t, err)
 
 	// Attempt to create the same node again (should fail)
-	err = repo.Create(node)
+	_, err = repo.Create(node)
 	assert.Error(t, err)
 	assert.Equal(t, "node already exists", err.Error())
 
@@ -57,13 +58,13 @@ func TestNodeRepo_GetByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := api.Node{
+	node := &components.Node{
 		Ip:      "10.0.0.1",
 		OwnerId: uuid.New().String(),
 	}
 
 	// Create a new node
-	err := repo.Create(node)
+	_, err := repo.Create(node)
 	assert.NoError(t, err)
 
 	// Retrieve the node by its IP address
@@ -81,13 +82,13 @@ func TestNodeRepo_DeleteByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := api.Node{
+	node := &components.Node{
 		Ip:      "10.0.0.2",
 		OwnerId: uuid.New().String(),
 	}
 
 	// Create a new node
-	err := repo.Create(node)
+	_, err := repo.Create(node)
 	assert.NoError(t, err)
 
 	// Delete the node by its IP address
@@ -107,13 +108,13 @@ func TestNodeRepo_DeleteByUserId(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := api.Node{
+	node := &components.Node{
 		Ip:      "10.0.0.3",
 		OwnerId: uuid.New().String(),
 	}
 
 	// Create a new node
-	err := repo.Create(node)
+	_, err := repo.Create(node)
 	assert.NoError(t, err)
 
 	// Delete the node by its UserId

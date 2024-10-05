@@ -108,7 +108,7 @@ func (repo *AuthRepo) UpdateOwner(u *components.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) GetOwner() (*components.User, error) {
+func (repo *AuthRepo) Owner() (*components.User, error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err

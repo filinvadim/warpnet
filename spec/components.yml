@@ -153,13 +153,9 @@ components:
         id:
           type: string
           format: uuid
-        ip:
+        host:
           type: string
-          format: ipv4
           description: The IP address
-        port:
-          type: string
-          default: 6969
         is_active:
           type: boolean
           description: Whether the IP address is currently active
@@ -183,9 +179,11 @@ components:
         owner_id:
           type: string
           description: user ID
+        is_owned:
+          type: boolean
       required:
-        - ip
-        - port
+        - is_owned
+        - host
         - is_active
         - last_seen
         - owner_id

@@ -88,7 +88,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	fmt.Println("YOUR OWN IP", ip)
 
 	now := time.Now()
-	id, err := c.nodeRepo.Create(components.Node{
+	id, err := c.nodeRepo.Create(&components.Node{
 		CreatedAt: &now,
 		Ip:        ip,
 		IsActive:  true,
@@ -97,6 +97,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		OwnerId:   *u.UserId,
 		Port:      "6969",
 		Uptime:    func(i int64) *int64 { return &i }(0),
+		IsOwned:   true,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

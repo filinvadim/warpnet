@@ -14,14 +14,18 @@ var ErrNodeNotFound = errors.New("node not found")
 const NodesRepoName = "NODES"
 
 type NodeRepo struct {
-	db *storage.DB
+	db      *storage.DB
+	ownNode *components.Node
 }
 
 func NewNodeRepo(db *storage.DB) *NodeRepo {
 	return &NodeRepo{db: db}
 }
 
-func (repo *NodeRepo) Create(node components.Node) (uuid.UUID, error) {
+func (repo *NodeRepo) Create(node *components.Node) (uuid.UUID, error) {
+	if node == nil {
+		return uuid.UUID{}, errors.New("nil node")
+	}
 	if node.OwnerId == "" {
 		return uuid.UUID{}, errors.New("owner id is required")
 	}
@@ -32,7 +36,7 @@ func (repo *NodeRepo) Create(node components.Node) (uuid.UUID, error) {
 		node.Id = uuid.New()
 	}
 
-	return node.Id, repo.db.Txn(func(tx *badger.Txn) error {
+	err := repo.db.Txn(func(tx *badger.Txn) error {
 		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(node.Ip).Build()
 		if err != nil {
 			return err
@@ -46,7 +50,7 @@ func (repo *NodeRepo) Create(node components.Node) (uuid.UUID, error) {
 			return err
 		}
 
-		data, err := json.JSON.Marshal(node)
+		data, err := json.JSON.Marshal(*node)
 		if err != nil {
 			return err
 		}
@@ -61,6 +65,18 @@ func (repo *NodeRepo) Create(node components.Node) (uuid.UUID, error) {
 		}
 		return repo.db.Set(userKey, data)
 	})
+	if err != nil {
+		return node.Id, err
+	}
+	if node.IsOwned {
+		repo.ownNode = node
+	}
+
+	return node.Id, nil
+}
+
+func (repo *NodeRepo) OwnNode() *components.Node {
+	return repo.ownNode
 }
 
 func (repo *NodeRepo) Update(n *components.Node) error {

@@ -57,30 +57,30 @@ type EventEventType string
 
 // NewFollowEvent defines model for NewFollowEvent.
 type NewFollowEvent struct {
-	Request externalRef0.FollowRequest `json:"request"`
+	Request *externalRef0.FollowRequest `json:"request,omitempty"`
 }
 
 // NewTweetEvent defines model for NewTweetEvent.
 type NewTweetEvent struct {
-	Tweet externalRef0.Tweet `json:"tweet"`
+	Tweet *externalRef0.Tweet `json:"tweet,omitempty"`
 }
 
 // NewUnfollowEvent defines model for NewUnfollowEvent.
 type NewUnfollowEvent struct {
-	Request externalRef0.UnfollowRequest `json:"request"`
+	Request *externalRef0.UnfollowRequest `json:"request,omitempty"`
 }
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent struct {
-	User externalRef0.User `json:"user"`
+	User *externalRef0.User `json:"user,omitempty"`
 }
 
 // PingEvent defines model for PingEvent.
 type PingEvent struct {
 	CachedNodes []externalRef0.Node `json:"cached_nodes"`
-	DestIp      *string             `json:"dest_ip,omitempty"`
-	OwnerInfo   externalRef0.User   `json:"owner_info"`
-	OwnerNode   externalRef0.Node   `json:"owner_node"`
+	DestHost    *string             `json:"dest_host,omitempty"`
+	OwnerInfo   *externalRef0.User  `json:"owner_info,omitempty"`
+	OwnerNode   *externalRef0.Node  `json:"owner_node,omitempty"`
 }
 
 // PongEvent defines model for PongEvent.
@@ -450,7 +450,6 @@ type ClientWithResponsesInterface interface {
 type NewEventResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Event
 }
 
 // Status returns HTTPResponse.Status
@@ -497,16 +496,6 @@ func ParseNewEventResponse(rsp *http.Response) (*NewEventResponse, error) {
 	response := &NewEventResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Event
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	}
 
 	return response, nil
@@ -568,26 +557,26 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"4uL9xXu+u9v9FwAA//8k5XHcthMAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

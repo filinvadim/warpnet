@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filinvadim/dWighter/api/discovery"
 	"github.com/filinvadim/dWighter/crypto"
+	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	echoLog "github.com/labstack/gommon/log"
@@ -14,18 +15,17 @@ import (
 const defaultDiscoveryPort = ":16969"
 
 type DiscoveryServicer interface {
-	// Create a new user
-	// (POST /v1/discovery/event/new)
 	NewEvent(ctx echo.Context) error
 }
 
 type discoveryServer struct {
+	ctx context.Context
 	e   *echo.Echo
 	srv *http.Server
 }
 
 func newDiscoveryServer(
-	ctx context.Context, service DiscoveryServicer, nodeID string, loggerMw echo.MiddlewareFunc,
+	ctx context.Context, service DiscoveryServicer, nodeRepo *database.NodeRepo, loggerMw echo.MiddlewareFunc,
 ) (*discoveryServer, error) {
 	swagger, err := discovery.GetSwagger()
 	if err != nil {
@@ -43,7 +43,7 @@ func newDiscoveryServer(
 
 	discovery.RegisterHandlers(e, service)
 
-	conf, err := crypto.GenerateTLSConfig(nodeID) // TODO just once
+	conf, err := crypto.GenerateTLSConfig(nodeRepo.OwnNode().Id.String()) // TODO just once
 	if err != nil {
 		return nil, err
 	}
@@ -53,9 +53,13 @@ func newDiscoveryServer(
 		TLSConfig: conf,
 	}
 
-	return &discoveryServer{e, srv}, nil
+	return &discoveryServer{ctx, e, srv}, nil
 }
 
 func (ds *discoveryServer) Start() error {
 	return ds.e.StartServer(ds.srv)
+}
+
+func (ds *discoveryServer) Stop() error {
+	return ds.e.Shutdown(ds.ctx)
 }

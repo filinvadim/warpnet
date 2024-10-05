@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/api/discovery"
 	cr "github.com/filinvadim/dWighter/crypto"
+	"github.com/filinvadim/dWighter/database"
 	"net/http"
 	"strings"
 	"time"
@@ -16,8 +17,8 @@ type discoveryClient struct {
 	cli *discovery.ClientWithResponses
 }
 
-func newDiscoveryClient(ctx context.Context, nodeID string) (*discoveryClient, error) {
-	tlsCli, err := newTLSClient(nodeID)
+func newDiscoveryClient(ctx context.Context, nodeRepo *database.NodeRepo) (*discoveryClient, error) {
+	tlsCli, err := newTLSClient(nodeRepo.OwnNode().Id.String())
 	if err != nil {
 		return nil, err
 	}
@@ -42,99 +43,99 @@ func newTLSClient(nodeID string) (discovery.HttpRequestDoer, error) {
 	return cli, err
 }
 
-func (c *discoveryClient) Ping(host string, ping discovery.PingEvent) (*discovery.Event, error) {
+func (c *discoveryClient) Ping(host string, ping discovery.PingEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Ping
 	event.Timestamp = time.Now()
 	if err := event.Data.FromPingEvent(ping); err != nil {
-		return nil, err
+		return err
 	}
 	return c.sendEvent(host, event)
 }
-func (c *discoveryClient) Pong(host string, ping discovery.PongEvent) (*discovery.Event, error) {
+func (c *discoveryClient) Pong(host string, ping discovery.PongEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Pong
 	event.Timestamp = time.Now()
 	if err := event.Data.FromPingEvent(ping); err != nil {
-		return nil, err
+		return err
 	}
 	return c.sendEvent(host, event)
 }
 
-func (c *discoveryClient) SendNewTweet(host string, t discovery.NewTweetEvent) (*discovery.Event, error) {
+func (c *discoveryClient) SendNewTweet(host string, t discovery.NewTweetEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Tweet
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewTweetEvent(t); err != nil {
-		return nil, err
+		return err
 	}
 	return c.sendEvent(host, event)
 
 }
 
-func (c *discoveryClient) SendNewUser(host string, u discovery.NewUserEvent) (*discovery.Event, error) {
+func (c *discoveryClient) SendNewUser(host string, u discovery.NewUserEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.User
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewUserEvent(u); err != nil {
-		return nil, err
+		return err
 	}
 	return c.sendEvent(host, event)
 
 }
 
-func (c *discoveryClient) SendError(host string, e discovery.ErrorEvent) (*discovery.Event, error) {
+func (c *discoveryClient) SendError(host string, e discovery.ErrorEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Error
 	event.Timestamp = time.Now()
 	if err := event.Data.FromErrorEvent(e); err != nil {
-		return nil, err
+		return err
 	}
 
 	return c.sendEvent(host, event)
 }
 
-func (c *discoveryClient) SendNewFollow(host string, f discovery.NewFollowEvent) (*discovery.Event, error) {
+func (c *discoveryClient) SendNewFollow(host string, f discovery.NewFollowEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Follow
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewFollowEvent(f); err != nil {
-		return nil, err
+		return err
 	}
 
 	return c.sendEvent(host, event)
 }
 
-func (c *discoveryClient) SendNewUnfollow(host string, uf discovery.NewUnfollowEvent) (*discovery.Event, error) {
+func (c *discoveryClient) SendNewUnfollow(host string, uf discovery.NewUnfollowEvent) error {
 	event := discovery.Event{}
 	event.EventType = discovery.Unfollow
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewUnfollowEvent(uf); err != nil {
-		return nil, err
+		return err
 	}
 
 	return c.sendEvent(host, event)
 }
 
-func (c *discoveryClient) sendEvent(host string, event discovery.Event) (*discovery.Event, error) {
+func (c *discoveryClient) sendEvent(host string, event discovery.Event) error {
 	if validateAddr(host) {
-		return nil, errors.New("invalid host")
+		return errors.New("invalid host")
 	}
-	eventResp, err := c.cli.NewEventWithResponse(c.ctx, event, func(ctx context.Context, req *http.Request) error {
+	resp, err := c.cli.NewEventWithResponse(c.ctx, event, func(ctx context.Context, req *http.Request) error {
 		req.Host = host
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if eventResp == nil {
-		return nil, errors.New("empty event response")
+	if resp == nil {
+		return errors.New("empty event response")
 	}
-	if eventResp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("request failed with code: %d, body: %s", eventResp.StatusCode(), eventResp.Body)
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("request failed with code: %d, body: %s", resp.StatusCode(), resp.Body)
 	}
-	return eventResp.JSON200, eventResp.HTTPResponse.Body.Close()
+	return resp.HTTPResponse.Body.Close()
 }
 
 func validateAddr(addr string) bool {

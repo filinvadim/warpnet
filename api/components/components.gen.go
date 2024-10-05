@@ -37,14 +37,15 @@ type Like struct {
 
 // Node defines model for Node.
 type Node struct {
-	CreatedAt *time.Time         `json:"created_at,omitempty"`
-	Id        openapi_types.UUID `json:"id"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 
-	// Ip The IP address
-	Ip string `json:"ip"`
+	// Host The IP address
+	Host string             `json:"host"`
+	Id   openapi_types.UUID `json:"id"`
 
 	// IsActive Whether the IP address is currently active
 	IsActive bool `json:"is_active"`
+	IsOwned  bool `json:"is_owned"`
 
 	// LastSeen The timestamp when this IP address was last active
 	LastSeen time.Time `json:"last_seen"`
@@ -54,7 +55,6 @@ type Node struct {
 
 	// OwnerId user ID
 	OwnerId string `json:"owner_id"`
-	Port    string `json:"port"`
 
 	// Uptime Uptime of the node in seconds
 	Uptime *int64 `json:"uptime,omitempty"`
@@ -107,19 +107,19 @@ type User struct {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"V9WjQOaKUydDLIzZ/woAAP//oOeqKQEMAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

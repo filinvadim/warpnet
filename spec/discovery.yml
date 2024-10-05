@@ -23,10 +23,6 @@ paths:
       responses:
         '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Event'
         '400':
           description: Invalid input
         '401':
@@ -65,15 +61,13 @@ components:
           $ref: './components.yml#/components/schemas/Node'
         owner_info:
           $ref: './components.yml#/components/schemas/User'
-        dest_ip:
+        dest_host:
           type: string
         cached_nodes:
           type: array
           items:
             $ref: './components.yml#/components/schemas/Node'
       required:
-        - owner_node
-        - owner_info
         - cached_nodes
 
     PongEvent:
@@ -95,29 +89,21 @@ components:
       properties:
         tweet:
           $ref: './components.yml#/components/schemas/Tweet'
-      required:
-        - tweet
 
     NewUserEvent:
       type: object
       properties:
         user:
           $ref: './components.yml#/components/schemas/User'
-      required:
-        - user
 
     NewFollowEvent:
       type: object
       properties:
         request:
           $ref: './components.yml#/components/schemas/FollowRequest'
-      required:
-        - request
 
     NewUnfollowEvent:
       type: object
       properties:
         request:
           $ref: './components.yml#/components/schemas/UnfollowRequest'
-      required:
-        - request

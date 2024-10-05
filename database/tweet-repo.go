@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
@@ -21,8 +22,10 @@ func NewTweetRepo(db *storage.DB) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet components.Tweet) (*components.Tweet, error) {
-
+func (repo *TweetRepo) Create(userID string, tweet *components.Tweet) (*components.Tweet, error) {
+	if tweet == nil {
+		return nil, errors.New("nil tweet")
+	}
 	if tweet.TweetId == nil {
 		id := uuid.New().String()
 		tweet.TweetId = &id
@@ -39,7 +42,7 @@ func (repo *TweetRepo) Create(userID string, tweet components.Tweet) (*component
 		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
 	}
 
-	data, err := json.JSON.Marshal(tweet)
+	data, err := json.JSON.Marshal(*tweet)
 	if err != nil {
 		return nil, fmt.Errorf("tweet marshal: %w", err)
 	}
@@ -48,7 +51,7 @@ func (repo *TweetRepo) Create(userID string, tweet components.Tweet) (*component
 	if err != nil {
 		return nil, fmt.Errorf("build timeline key: %w", err)
 	}
-	return &tweet, repo.db.Set(key, data)
+	return tweet, repo.db.Set(key, data)
 }
 
 // Get retrieves a tweet by its ID
