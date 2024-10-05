@@ -35,10 +35,11 @@ func GenerateTLSConfig(orgs ...string) (*tls.Config, error) {
 
 	// Создаем TLS-конфигурацию
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{certPem},
-		RootCAs:      rootCAs, // Доверяем этому сертификату как корневому
-		MinVersion:   tls.VersionTLS12,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		Certificates:       []tls.Certificate{certPem},
+		RootCAs:            rootCAs, // Доверяем этому сертификату как корневому
+		MinVersion:         tls.VersionTLS12,
+		ClientAuth:         tls.RequireAndVerifyClientCert,
+		InsecureSkipVerify: true,
 	}
 
 	return tlsConfig, nil

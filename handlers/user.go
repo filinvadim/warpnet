@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type UserController struct {
@@ -85,7 +86,7 @@ func (c *UserController) PostV1ApiUsers(ctx echo.Context) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	var user components.User
+	var user *components.User
 	err := ctx.Bind(&user)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: err.Error()})

@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ import (
 func setupTweetTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttweet"
 	// Открываем базу данных в этой директории
-	db := storage.New("tweettest", path, false, true, "error")
+	db := storage.New(path, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -30,12 +31,12 @@ func TestTweetRepo_Create(t *testing.T) {
 
 	tweetID := uuid.New().String()
 
-	tweet := api.Tweet{
+	tweet := &components.Tweet{
 		TweetId: &tweetID,
 	}
 
 	id := uuid.New().String()
-	user := api.User{
+	user := components.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -55,12 +56,12 @@ func TestTweetRepo_Get(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := api.Tweet{
+	tweet := &components.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := api.User{
+	user := components.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -79,12 +80,12 @@ func TestTweetRepo_Delete(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := api.Tweet{
+	tweet := &components.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := api.User{
+	user := components.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -107,15 +108,15 @@ func TestTweetRepo_List(t *testing.T) {
 
 	id1 := "1"
 	id2 := "2"
-	tweet1 := api.Tweet{
+	tweet1 := &components.Tweet{
 		TweetId: &id1,
 	}
-	tweet2 := api.Tweet{
+	tweet2 := &components.Tweet{
 		TweetId: &id2,
 	}
 	id := uuid.New().String()
 
-	user := api.User{
+	user := components.User{
 		Username: "User",
 		UserId:   &id,
 	}

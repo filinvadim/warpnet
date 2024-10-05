@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/dWighter/api/discovery"
-	cr "github.com/filinvadim/dWighter/crypto"
-	"github.com/filinvadim/dWighter/database"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/filinvadim/dWighter/api/discovery"
+	cr "github.com/filinvadim/dWighter/crypto"
 )
 
 type discoveryClient struct {
@@ -17,8 +17,8 @@ type discoveryClient struct {
 	cli *discovery.ClientWithResponses
 }
 
-func newDiscoveryClient(ctx context.Context, nodeRepo *database.NodeRepo) (*discoveryClient, error) {
-	tlsCli, err := newTLSClient(nodeRepo.OwnNode().Id.String())
+func newDiscoveryClient(ctx context.Context) (*discoveryClient, error) {
+	tlsCli, err := newTLSClient("")
 	if err != nil {
 		return nil, err
 	}

@@ -3,27 +3,30 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/handlers"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"testing"
 )
 
 // setupUserTest initializes a new Echo instance and test database for users and follows
-func setupUserTest(t *testing.T) (*echo.Echo, *database.UserRepo, *database.FollowRepo, func()) {
+func setupUserTest(t *testing.T) (*echo.Echo, *database.UserRepo, *database.FollowRepo, *database.NodeRepo, func()) {
 	e := echo.New()
 
 	// Инициализация тестовой базы данных для пользователей и подписок
 	path := "../var/handlertest"
-	db := storage.New("tweettest", path, false, true, "error")
+	db := storage.New(path, true, "error")
 	userRepo := database.NewUserRepo(db)
 	followRepo := database.NewFollowRepo(db)
+	nodeRepo := database.NewNodeRepo(db)
 
 	// Возвращаем echo, репозитории и функцию очистки базы данных
 	cleanup := func() {
@@ -31,20 +34,20 @@ func setupUserTest(t *testing.T) (*echo.Echo, *database.UserRepo, *database.Foll
 		os.RemoveAll(path)
 		t.Log("CLEANED")
 	}
-	return e, userRepo, followRepo, cleanup
+	return e, userRepo, followRepo, nodeRepo, cleanup
 }
 
 // TestPostUser tests the creation of a new user
 func TestPostUser(t *testing.T) {
-	e, userRepo, followRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo)
+	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
-	// Пример пользователя
-	user := api.User{
-		UserId:   uuid.New().String(),
+	userId := uuid.New().String()
+	user := &components.User{
+		UserId:   &userId,
 		Username: "testuser",
 	}
 
@@ -58,9 +61,9 @@ func TestPostUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostUsers(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsers(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdUser api.User
+		var createdUser components.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdUser)) {
 			assert.Equal(t, user.Username, createdUser.Username)
 			assert.Equal(t, user.UserId, createdUser.UserId)
@@ -70,15 +73,15 @@ func TestPostUser(t *testing.T) {
 
 // TestGetUser tests retrieving a user by userId
 func TestGetUser(t *testing.T) {
-	e, userRepo, followRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo)
+	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
-	// Пример пользователя
-	user := api.User{
-		UserId:   uuid.New().String(),
+	userId := uuid.New().String()
+	user := &components.User{
+		UserId:   &userId,
 		Username: "testuser",
 	}
 
@@ -87,14 +90,14 @@ func TestGetUser(t *testing.T) {
 	user.UserId = u.UserId
 
 	// Создаем HTTP запрос для получения пользователя по userId
-	req := httptest.NewRequest(http.MethodGet, "/users/"+user.UserId, nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/"+*user.UserId, nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.GetUsersUserId(ctx, user.UserId)) {
+	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, *user.UserId)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var fetchedUser api.User
+		var fetchedUser components.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedUser)) {
 			assert.Equal(t, user.Username, fetchedUser.Username)
 			assert.Equal(t, user.UserId, fetchedUser.UserId)
@@ -104,19 +107,20 @@ func TestGetUser(t *testing.T) {
 
 // TestFollowUser tests following another user
 func TestFollowUser(t *testing.T) {
-	e, userRepo, followRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo)
+	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
-	// Пример пользователей
-	reader := api.User{
-		UserId:   uuid.New().String(),
+	userId := uuid.New().String()
+	reader := &components.User{
+		UserId:   &userId,
 		Username: "reader",
 	}
-	writer := api.User{
-		UserId:   uuid.New().String(),
+	userId = uuid.New().String()
+	writer := &components.User{
+		UserId:   &userId,
 		Username: "writer",
 	}
 
@@ -126,9 +130,9 @@ func TestFollowUser(t *testing.T) {
 	reader.UserId = r.UserId
 	writer.UserId = w.UserId
 	// Пример запроса на подписку
-	followRequest := api.FollowRequest{
-		ReaderId: reader.UserId,
-		WriterId: writer.UserId,
+	followRequest := components.FollowRequest{
+		ReaderId: *reader.UserId,
+		WriterId: *writer.UserId,
 	}
 
 	// Создаем HTTP запрос на подписку
@@ -139,11 +143,11 @@ func TestFollowUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostUsersFollow(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsersFollow(ctx)) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 
 		// Проверяем, что подписка существует
-		following, err := followRepo.GetWriters(reader.UserId)
+		following, err := followRepo.GetWriters(*reader.UserId)
 		assert.NoError(t, err)
 		assert.Contains(t, following, writer.UserId)
 	}
@@ -151,19 +155,20 @@ func TestFollowUser(t *testing.T) {
 
 // TestUnfollowUser tests unfollowing a user
 func TestUnfollowUser(t *testing.T) {
-	e, userRepo, followRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo)
+	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
-	// Пример пользователей
-	reader := api.User{
-		UserId:   uuid.New().String(),
+	userId := uuid.New().String()
+	reader := &components.User{
+		UserId:   &userId,
 		Username: "reader",
 	}
-	writer := api.User{
-		UserId:   uuid.New().String(),
+	userId = uuid.New().String()
+	writer := &components.User{
+		UserId:   &userId,
 		Username: "writer",
 	}
 
@@ -174,12 +179,12 @@ func TestUnfollowUser(t *testing.T) {
 	writer.UserId = w.UserId
 
 	// Подписываем reader на writer
-	_ = followRepo.Follow(reader.UserId, writer.UserId)
+	_ = followRepo.Follow(*reader.UserId, *writer.UserId)
 
 	// Пример запроса на отписку
-	unfollowRequest := api.FollowRequest{
-		ReaderId: reader.UserId,
-		WriterId: writer.UserId,
+	unfollowRequest := components.FollowRequest{
+		ReaderId: *reader.UserId,
+		WriterId: *writer.UserId,
 	}
 
 	// Создаем HTTP запрос на отписку
@@ -190,11 +195,11 @@ func TestUnfollowUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostUsersUnfollow(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsersUnfollow(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		// Проверяем, что подписка была удалена
-		following, err := followRepo.GetWriters(reader.UserId)
+		following, err := followRepo.GetWriters(*reader.UserId)
 		assert.NoError(t, err)
 		assert.NotContains(t, following, writer.UserId)
 	}

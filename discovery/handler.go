@@ -82,7 +82,7 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) error {
 
 		if err = d.cli.Pong(destHost, discovery.PongEvent{
 			CachedNodes: d.cache.GetNodes(),
-			DestIp:      &destHost,
+			DestHost:    &destHost,
 			OwnerInfo:   owner,
 			OwnerNode:   d.nodeRepo.OwnNode(),
 		}); err != nil {

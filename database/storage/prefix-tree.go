@@ -3,12 +3,13 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"math"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -165,12 +166,18 @@ func validateIPAddress(ip string) error {
 }
 
 // AddIPAddress adds an IP address segment to the key after validation
-func (pb *PrefixBuilder) AddIPAddress(ip string) *PrefixBuilder {
+func (pb *PrefixBuilder) AddHostAddress(host string) *PrefixBuilder {
 	// Skip processing if there's already an error
 	if pb.err != nil {
 		return pb
 	}
 
+	splitted := strings.Split(host, ":")
+	if len(splitted) != 2 {
+		pb.err = errors.New("invalid host notation: {ip}:{port}")
+		return pb
+	}
+	ip := splitted[0]
 	// Perform validation and store the error if validation fails
 	if err := validateIPAddress(ip); err != nil {
 		pb.err = err

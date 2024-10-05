@@ -3,17 +3,18 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/api/api"
 	"github.com/filinvadim/dWighter/api/components"
-	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
-	"io"
-	"net/http"
-	"time"
 )
 
 const apifyAddr = "https://api.ipify.org?format=json"
@@ -25,11 +26,25 @@ type apifyResponse struct {
 type AuthController struct {
 	authRepo  *database.AuthRepo
 	nodeRepo  *database.NodeRepo
-	interrupt chan struct{}
+	interrupt chan os.Signal
 }
 
+const (
+	AuthSuccess = "success"
+	AuthFailed  = "failed"
+)
+
+type AuthResult struct {
+	result string
+}
+
+func (ar *AuthResult) String() string {
+	return ar.result
+}
+func (ar *AuthResult) Signal() {}
+
 func NewAuthController(
-	authRepo *database.AuthRepo, nodeRepo *database.NodeRepo, interrupt chan struct{},
+	authRepo *database.AuthRepo, nodeRepo *database.NodeRepo, interrupt chan os.Signal,
 ) *AuthController {
 	return &AuthController{authRepo, nodeRepo, interrupt}
 }
@@ -40,23 +55,19 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	hashSum := crypto.ConvertToSHA256([]byte(req.Password + ":" + req.Username)) // aaaa + vadim
-	if err := c.authRepo.InitWithPassword(hashSum); err != nil {
+	if err := c.authRepo.InitWithPassword(req.Username, req.Password); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	owner, err := c.authRepo.GetOwner()
+	owner, err := c.authRepo.Owner()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	if owner != nil && owner.Username != req.Username {
-		fmt.Println("OOOPS", owner)
-
 		return ctx.JSON(http.StatusBadRequest, errors.New("wrong username"))
 	}
 	if owner != nil && owner.Username == req.Username {
-		fmt.Println("HERE", owner)
-		c.interrupt <- struct{}{}
+		c.interrupt <- &AuthResult{AuthSuccess}
 		return ctx.JSON(http.StatusOK, owner)
 	}
 	u, err := c.authRepo.SetOwner(components.User{
@@ -70,7 +81,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 
 	_, err = c.nodeRepo.GetByUserId(*u.UserId)
 	if err == nil {
-		c.interrupt <- struct{}{}
+		c.interrupt <- &AuthResult{AuthSuccess}
 		return ctx.JSON(http.StatusOK, u)
 	}
 	if !errors.Is(err, database.ErrNodeNotFound) {
@@ -90,12 +101,11 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	now := time.Now()
 	id, err := c.nodeRepo.Create(&components.Node{
 		CreatedAt: &now,
-		Ip:        ip,
+		Host:      ip + ":16969",
 		IsActive:  true,
 		LastSeen:  now,
 		Latency:   nil,
 		OwnerId:   *u.UserId,
-		Port:      "6969",
 		Uptime:    func(i int64) *int64 { return &i }(0),
 		IsOwned:   true,
 	})
@@ -108,8 +118,8 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-	// TODO broadcast id
-	c.interrupt <- struct{}{}
+
+	c.interrupt <- &AuthResult{AuthSuccess}
 	return ctx.JSON(http.StatusOK, u)
 }
 
@@ -130,6 +140,6 @@ func getOwnIPAddress() (string, error) {
 }
 
 func (c *AuthController) PostV1ApiAuthLogout(ctx echo.Context) error {
-	c.interrupt <- struct{}{}
+	c.interrupt <- &AuthResult{AuthFailed}
 	return ctx.NoContent(http.StatusOK)
 }

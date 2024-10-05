@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 
 func setupTimelineTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttimeline"
-	db := storage.New("timelinetest", path, false, true, "error")
+	db := storage.New(path, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -23,8 +24,8 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 	return db
 }
 
-func createTestTweet(id string, timestamp time.Time) api.Tweet {
-	return api.Tweet{
+func createTestTweet(id string, timestamp time.Time) components.Tweet {
+	return components.Tweet{
 		TweetId:   &id,
 		Content:   "Test content",
 		UserId:    uuid.New().String(),

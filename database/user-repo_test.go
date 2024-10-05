@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 func setupUserTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtestuser"
 	// Открываем базу данных в этой директории
-	db := storage.New("usertest", path, false, true, "error")
+	db := storage.New(path, true, "error")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -27,12 +28,11 @@ func TestUserRepo_Create(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := database.NewUserRepo(db)
 
-	user := api.User{
+	user := &components.User{
 		Username: "Test User",
-		UserId:   uuid.New().String(),
 	}
 	userID := uuid.New().String()
-	user.UserId = userID
+	user.UserId = &userID
 
 	_, err := repo.Create(user)
 
@@ -50,9 +50,9 @@ func TestUserRepo_Get(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := api.User{
+	user := &components.User{
 		Username: "Test User",
-		UserId:   userID,
+		UserId:   &userID,
 	}
 
 	_, err := repo.Create(user)
@@ -70,9 +70,9 @@ func TestUserRepo_Delete(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := api.User{
+	user := &components.User{
 		Username: "Test User",
-		UserId:   userID,
+		UserId:   &userID,
 	}
 
 	_, err := repo.Create(user)
@@ -92,13 +92,15 @@ func TestUserRepo_List(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := database.NewUserRepo(db)
 
-	user1 := api.User{
+	userID := uuid.New().String()
+	user1 := &components.User{
 		Username: "User1",
-		UserId:   (uuid.New().String()),
+		UserId:   &userID,
 	}
-	user2 := api.User{
+	userID = uuid.New().String()
+	user2 := &components.User{
 		Username: "User2",
-		UserId:   (uuid.New().String()),
+		UserId:   &userID,
 	}
 
 	_, err := repo.Create(user1)

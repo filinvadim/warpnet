@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/filinvadim/dWighter/api/api"
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type TweetController struct {
@@ -28,7 +29,7 @@ func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {
 	}
 
 	userID := t.UserId
-	tweet, err := c.tweetRepo.Create(userID, t)
+	tweet, err := c.tweetRepo.Create(userID, &t)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, components.Error{Code: http.StatusInternalServerError, Message: "tweet:" + err.Error()})
 	}

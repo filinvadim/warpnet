@@ -2,14 +2,14 @@ package discovery
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/filinvadim/dWighter/api/discovery"
 	"github.com/filinvadim/dWighter/crypto"
-	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	echoLog "github.com/labstack/gommon/log"
 	middleware "github.com/oapi-codegen/echo-middleware"
-	"net/http"
 )
 
 const defaultDiscoveryPort = ":16969"
@@ -25,7 +25,7 @@ type discoveryServer struct {
 }
 
 func newDiscoveryServer(
-	ctx context.Context, service DiscoveryServicer, nodeRepo *database.NodeRepo, loggerMw echo.MiddlewareFunc,
+	ctx context.Context, service DiscoveryServicer, loggerMw echo.MiddlewareFunc,
 ) (*discoveryServer, error) {
 	swagger, err := discovery.GetSwagger()
 	if err != nil {
@@ -43,7 +43,7 @@ func newDiscoveryServer(
 
 	discovery.RegisterHandlers(e, service)
 
-	conf, err := crypto.GenerateTLSConfig(nodeRepo.OwnNode().Id.String()) // TODO just once
+	conf, err := crypto.GenerateTLSConfig("") // TODO just once
 	if err != nil {
 		return nil, err
 	}

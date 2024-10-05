@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
@@ -29,15 +30,15 @@ func (repo *NodeRepo) Create(node *components.Node) (uuid.UUID, error) {
 	if node.OwnerId == "" {
 		return uuid.UUID{}, errors.New("owner id is required")
 	}
-	if node.Ip == "" {
-		return uuid.UUID{}, errors.New("node IP address is missing")
+	if node.Host == "" {
+		return uuid.UUID{}, errors.New("node host address is missing")
 	}
 	if node.Id.String() == "" {
 		node.Id = uuid.New()
 	}
 
 	err := repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(node.Ip).Build()
+		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
 		if err != nil {
 			return err
 		}
@@ -83,21 +84,21 @@ func (repo *NodeRepo) Update(n *components.Node) error {
 	if n == nil {
 		return errors.New("node is nil")
 	}
-	if n.Ip == "" {
+	if n.Host == "" {
 		return errors.New("node IP address is missing")
 	}
 
-	key, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(n.Ip).Build()
+	key, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(n.Host).Build()
 	if err != nil {
 		return err
 	}
 
-	bt, err := json.JSON.Marshal(*n)
+	bt, _ := json.JSON.Marshal(*n)
 	return repo.db.Update(key, bt)
 }
 
-func (repo *NodeRepo) GetByIP(ip string) (*components.Node, error) {
-	key, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(ip).Build()
+func (repo *NodeRepo) GetByHost(host string) (*components.Node, error) {
+	key, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(host).Build()
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +118,8 @@ func (repo *NodeRepo) GetByIP(ip string) (*components.Node, error) {
 	return &node, nil
 }
 
-func (repo *NodeRepo) DeleteByIP(ip string) error {
-	node, err := repo.GetByIP(ip)
+func (repo *NodeRepo) DeleteByHost(host string) error {
+	node, err := repo.GetByHost(host)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return ErrNodeNotFound
 	}
@@ -127,7 +128,7 @@ func (repo *NodeRepo) DeleteByIP(ip string) error {
 	}
 
 	return repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(node.Ip).Build()
+		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
 		if err != nil {
 			return err
 		}
@@ -174,7 +175,7 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	}
 
 	return repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddIPAddress(node.Ip).Build()
+		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
 		if err != nil {
 			return err
 		}

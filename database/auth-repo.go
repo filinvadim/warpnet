@@ -2,19 +2,20 @@ package database
 
 import (
 	"errors"
+	"time"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/api/components"
+	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
-	"time"
 )
 
 const (
 	AuthRepoName = "AUTH"
 	PassSubName  = "PASS"
 	OwnerSubName = "OWNER"
-	CASubName    = "CA"
 )
 
 var ErrWrongPassword = errors.New("wrong password")
@@ -27,37 +28,21 @@ func NewAuthRepo(db *storage.DB) *AuthRepo {
 	return &AuthRepo{db: db}
 }
 
-func (repo *AuthRepo) InitWithPassword(h []byte) error {
-	if err := repo.db.Run(h); err != nil {
+func (repo *AuthRepo) InitWithPassword(username string, password string) error {
+	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
+
+	if err := repo.db.Run(hashSum); err != nil {
 		if err == badger.ErrEncryptionKeyMismatch {
 			return ErrWrongPassword
 		}
 		return err
 	}
 	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(PassSubName).Build()
-	return repo.db.Set(key, h)
+	return repo.db.Set(key, hashSum)
 }
 
 func (repo *AuthRepo) IsPasswordExists() bool {
 	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(PassSubName).Build()
-
-	p, err := repo.db.Get(key)
-	if err != nil {
-		return false
-	}
-	if p == nil {
-		return false
-	}
-	return true
-}
-
-func (repo *AuthRepo) SetCA(CA []byte) error {
-	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(CASubName).Build()
-	return repo.db.Set(key, CA)
-}
-
-func (repo *AuthRepo) IsCAExists() bool {
-	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(CASubName).Build()
 
 	p, err := repo.db.Get(key)
 	if err != nil {
@@ -104,7 +89,7 @@ func (repo *AuthRepo) UpdateOwner(u *components.User) error {
 		return err
 	}
 
-	bt, err := json.JSON.Marshal(*u)
+	bt, _ := json.JSON.Marshal(*u)
 	return repo.db.Update(key, bt)
 }
 

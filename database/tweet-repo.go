@@ -3,11 +3,13 @@ package database
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
-	"time"
 )
 
 const TweetsRepoName = "TWEETS"
@@ -101,5 +103,8 @@ func (repo *TweetRepo) List(userId string) ([]components.Tweet, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.SliceStable(tweets, func(i, j int) bool {
+		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
+	})
 	return tweets, nil
 }

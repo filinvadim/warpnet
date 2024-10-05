@@ -2,11 +2,12 @@ package discovery
 
 import (
 	"context"
+	"time"
+
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/api/discovery"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
-	"time"
 )
 
 type DiscoveryServer interface {
@@ -32,7 +33,7 @@ type DiscoveryService struct {
 	stopChan chan struct{}
 }
 
-const PresetNodeAddress = "127.0.0.1:6969"
+const PresetNodeAddress = "127.0.0.1:16969"
 
 func NewDiscoveryService(
 	ctx context.Context,
@@ -42,7 +43,7 @@ func NewDiscoveryService(
 	tweetRepo *database.TweetRepo,
 	loggerMw echo.MiddlewareFunc,
 ) (*DiscoveryService, error) {
-	cli, err := newDiscoveryClient(ctx, nodeRepo)
+	cli, err := newDiscoveryClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func NewDiscoveryService(
 	if err != nil {
 		return nil, err
 	}
-	server, err := newDiscoveryServer(ctx, handler, nodeRepo, loggerMw)
+	server, err := newDiscoveryServer(ctx, handler, loggerMw)
 	if err != nil {
 		return nil, err
 	}

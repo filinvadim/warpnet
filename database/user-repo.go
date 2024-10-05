@@ -1,11 +1,12 @@
 package database
 
 import (
+	"time"
+
 	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
-	"time"
 )
 
 const UsersRepoName = "USERS"

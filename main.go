@@ -2,23 +2,19 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"github.com/filinvadim/dWighter/api/api"
-	"github.com/filinvadim/dWighter/crypto"
-	"github.com/filinvadim/dWighter/database"
-	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/handlers"
-	"github.com/labstack/echo/v4"
-	echomiddleware "github.com/labstack/echo/v4/middleware"
-	echoLog "github.com/labstack/gommon/log"
-	middleware "github.com/oapi-codegen/echo-middleware"
-	"github.com/pkg/browser"
-	_ "go.uber.org/automaxprocs"
 	"log"
-	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"syscall"
+
+	"github.com/filinvadim/dWighter/database"
+	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/dWighter/discovery"
+	"github.com/filinvadim/dWighter/handlers"
+	"github.com/filinvadim/dWighter/server"
+	_ "go.uber.org/automaxprocs"
 )
 
 var (
@@ -33,13 +29,13 @@ type API struct {
 }
 
 func main() {
-	interrupt := make(chan struct{}, 1)
+	var (
+		interruptChan = make(chan os.Signal, 1)
+	)
+	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
-	swagger, err := api.GetSwagger()
-	if err != nil {
-		log.Fatalf("loading swagger spec: %v", err)
-	}
-	swagger.Servers = nil
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	path := getAppPath()
 	db := storage.New(path, false, "debug")
@@ -52,61 +48,31 @@ func main() {
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	e := echo.New()
-	//e.HideBanner = true
-	e.Logger.SetLevel(echoLog.INFO)
-	e.Logger.SetPrefix("")
-
-	logFile, err := os.Create(filepath.Join(path, "node.log"))
+	srv, err := server.NewPublicServer(path, 1)
 	if err != nil {
-		e.Logger.Fatal(err)
-	}
-	defer logFile.Close()
-
-	lg := echomiddleware.LoggerWithConfig(echomiddleware.LoggerConfig{
-		//Output: logFile,
-		Output: os.Stderr,
-	})
-	e.Use(lg)
-	e.Use(echomiddleware.CORS())
-	e.Use(echomiddleware.Recover())
-	e.Use(echomiddleware.Gzip())
-	e.Use(middleware.OapiRequestValidator(swagger))
-
-	o, err := authRepo.GetOwner()
-	if err != nil {
-		log.Fatal("main: failed to get owner:", err)
-	}
-	n, err := nodeRepo.GetByUserId(*o.UserId)
-	if err != nil || n == nil {
-		log.Fatal("main: failed to get owner node:", err)
+		log.Fatalf("failed to run public server: %v", err)
 	}
 
-	api.RegisterHandlers(e, &API{
+	srv.RegisterHandlers(&API{
 		handlers.NewTweetController(timelineRepo, tweetRepo),
 		handlers.NewUserController(userRepo, followRepo, nodeRepo),
 		handlers.NewStaticController(),
-		handlers.NewAuthController(authRepo, nodeRepo, interrupt),
+		handlers.NewAuthController(authRepo, nodeRepo, interruptChan),
 	})
-	conf, err := crypto.GenerateTLSConfig(n.Id.String())
-	if err != nil {
-		log.Fatalf("failed to generate TLS config: %v", err)
+	go srv.Start()
+
+	authResult := <-interruptChan
+	if authResult.String() == handlers.AuthSuccess {
+		discSvc, err := discovery.NewDiscoveryService(ctx, nodeRepo, authRepo, userRepo, tweetRepo, nil)
+		if err != nil {
+			log.Fatalf("failed to run discovery service: %v", err)
+		}
+		go discSvc.Run()
+		defer discSvc.Stop()
 	}
 
-	srv := &http.Server{
-		Addr:      ":6969",
-		TLSConfig: conf,
-	}
-	go e.StartServer(srv)
-
-	err = browser.OpenURL("https://localhost:6969")
-	if err != nil {
-		fmt.Println("failed to open browser:", err)
-	}
-
-	<-interrupt
-
-	e.Shutdown(context.Background())
+	<-interruptChan
+	srv.Shutdown(ctx)
 }
 
 func getAppPath() string {
