@@ -1,11 +1,11 @@
 package database_test
 
 import (
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -24,8 +24,8 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 	return db
 }
 
-func createTestTweet(id string, timestamp time.Time) components.Tweet {
-	return components.Tweet{
+func createTestTweet(id string, timestamp time.Time) domain_gen.Tweet {
+	return domain_gen.Tweet{
 		TweetId:   &id,
 		Content:   "Test content",
 		UserId:    uuid.New().String(),

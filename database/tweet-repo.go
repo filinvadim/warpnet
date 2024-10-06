@@ -3,10 +3,10 @@ package database
 import (
 	"errors"
 	"fmt"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"sort"
 	"time"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -24,7 +24,7 @@ func NewTweetRepo(db *storage.DB) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet *components.Tweet) (*components.Tweet, error) {
+func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_gen.Tweet, error) {
 	if tweet == nil {
 		return nil, errors.New("nil tweet")
 	}
@@ -57,7 +57,7 @@ func (repo *TweetRepo) Create(userID string, tweet *components.Tweet) (*componen
 }
 
 // Get retrieves a tweet by its ID
-func (repo *TweetRepo) Get(userID, tweetID string) (*components.Tweet, error) {
+func (repo *TweetRepo) Get(userID, tweetID string) (*domain_gen.Tweet, error) {
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (repo *TweetRepo) Get(userID, tweetID string) (*components.Tweet, error) {
 		return nil, err
 	}
 
-	var tweet components.Tweet
+	var tweet domain_gen.Tweet
 	err = json.JSON.Unmarshal(data, &tweet)
 	if err != nil {
 		return nil, err
@@ -84,15 +84,36 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	return repo.db.Delete(key)
 }
 
-func (repo *TweetRepo) List(userId string) ([]components.Tweet, error) {
-	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
+func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+	if limit == nil {
+		limit = new(uint64)
+		*limit = 20
+	}
+	if *limit == 0 {
+		limit = new(uint64)
+		*limit = 20
+	}
+	prefix, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	tweets := make([]components.Tweet, 0, 20)
-	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var tweet components.Tweet
+	var lastKey string
+	if cursor != nil && *cursor != "" {
+		prefix = *cursor
+	}
+
+	tweets := make([]domain_gen.Tweet, 0, *limit)
+	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
+		if len(tweets) >= int(*limit) {
+			lastKey = key
+			return storage.ErrStopIteration
+		}
+		if !IsValidForPrefix(key, prefix) {
+			return nil
+		}
+
+		var tweet domain_gen.Tweet
 		err := json.JSON.Unmarshal(value, &tweet)
 		if err != nil {
 			return err
@@ -101,10 +122,18 @@ func (repo *TweetRepo) List(userId string) ([]components.Tweet, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	if errors.Is(err, storage.ErrStopIteration) || err == nil {
+		if len(tweets) < int(*limit) {
+			lastKey = ""
+		}
+		return tweets, lastKey, nil
+	}
+
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
 	})
-	return tweets, nil
+
+	return tweets, lastKey, nil
 }

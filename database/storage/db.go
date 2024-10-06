@@ -1,15 +1,20 @@
 package storage
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"github.com/filinvadim/dWighter/crypto"
 	"sync/atomic"
 	"time"
 )
 
-var ErrStopIteration = errors.New("stop iteration")
+var (
+	ErrStopIteration = errors.New("stop iteration")
+	ErrWrongPassword = errors.New("wrong password")
+)
 
 type DB struct {
 	badger   *badger.DB
@@ -17,23 +22,26 @@ type DB struct {
 
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
-
-	runF func(opt badger.Options) (*badger.DB, error)
-	opts badger.Options
+	token     string
 }
 
 func New(
 	path string,
 	isInMemory bool,
-	logLvl string,
-) *DB {
+	logLvl, username, password string,
+	recoveryPhrase *string,
+) (_ *DB, err error) {
+
+	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
+
 	opts := badger.
 		DefaultOptions(path + "/storage").
 		WithSyncWrites(false).
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2).
-		WithLogger(nil)
+		WithLogger(nil).
+		WithEncryptionKey(hashSum)
 
 	if isInMemory {
 		opts.WithDir("").WithValueDir("").WithInMemory(isInMemory)
@@ -41,33 +49,38 @@ func New(
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil, runF: badger.Open, opts: opts,
+		sequence: nil,
+	}
+	storage.badger, err = badger.Open(opts)
+	if errors.Is(err, badger.ErrEncryptionKeyMismatch) {
+		return nil, ErrWrongPassword
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	return storage
+	storage.isRunning.Store(true)
+	fmt.Println("DATABASE IS RUNNING!")
+	storage.sequence, err = storage.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
+	if err != nil {
+		return nil, err
+	}
+	go storage.runEventualGC()
+
+	var phrase []byte
+	phrase, err = storage.Get("RECOVERY-PHRASE")
+	if errors.Is(err, badger.ErrEmptyKey) && recoveryPhrase != nil {
+		storage.Set("RECOVERY-PHRASE", []byte(*recoveryPhrase))
+		phrase = []byte(*recoveryPhrase)
+	}
+	storage.token = base64.StdEncoding.EncodeToString(
+		crypto.ConvertToSHA256([]byte(username + "@" + password + "@" + string(phrase))),
+	)
+	return storage, nil
 }
 
-func (db *DB) Run(password []byte) (err error) {
-	if db.isRunning.Load() {
-		return nil
-	}
-	if len(password) != 0 {
-		db.opts.EncryptionKey = password
-	}
-
-	db.badger, err = db.runF(db.opts)
-	if err != nil {
-		return err
-	}
-
-	db.isRunning.Store(true)
-	fmt.Println("DATABASE IS RUNNING!")
-	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
-	if err != nil {
-		return err
-	}
-	go db.runEventualGC()
-	return nil
+func (db *DB) Token() string {
+	return db.token
 }
 
 func (db *DB) runEventualGC() {
@@ -83,7 +96,6 @@ func (db *DB) runEventualGC() {
 				}
 				time.Sleep(time.Second)
 			}
-
 		case <-db.stopChan:
 			return
 		}

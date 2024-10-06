@@ -2,11 +2,9 @@ package database
 
 import (
 	"errors"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/dWighter/api/components"
-	"github.com/filinvadim/dWighter/crypto"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -28,19 +26,6 @@ func NewAuthRepo(db *storage.DB) *AuthRepo {
 	return &AuthRepo{db: db}
 }
 
-func (repo *AuthRepo) InitWithPassword(username string, password string) error {
-	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
-
-	if err := repo.db.Run(hashSum); err != nil {
-		if err == badger.ErrEncryptionKeyMismatch {
-			return ErrWrongPassword
-		}
-		return err
-	}
-	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(PassSubName).Build()
-	return repo.db.Set(key, hashSum)
-}
-
 func (repo *AuthRepo) IsPasswordExists() bool {
 	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(PassSubName).Build()
 
@@ -54,7 +39,7 @@ func (repo *AuthRepo) IsPasswordExists() bool {
 	return true
 }
 
-func (repo *AuthRepo) SetOwner(u components.User) (_ *components.User, err error) {
+func (repo *AuthRepo) SetOwner(u domain_gen.User) (_ *domain_gen.User, err error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
@@ -73,7 +58,7 @@ func (repo *AuthRepo) SetOwner(u components.User) (_ *components.User, err error
 	return &u, repo.db.Set(key, data)
 }
 
-func (repo *AuthRepo) UpdateOwner(u *components.User) error {
+func (repo *AuthRepo) UpdateOwner(u *domain_gen.User) error {
 	if u == nil {
 		return errors.New("user is nil")
 	}
@@ -93,7 +78,7 @@ func (repo *AuthRepo) UpdateOwner(u *components.User) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *AuthRepo) Owner() (*components.User, error) {
+func (repo *AuthRepo) Owner() (*domain_gen.User, error) {
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return nil, err
@@ -103,7 +88,7 @@ func (repo *AuthRepo) Owner() (*components.User, error) {
 		return nil, err
 	}
 
-	var u components.User
+	var u domain_gen.User
 	err = json.JSON.Unmarshal(data, &u)
 	if err != nil {
 		return nil, err

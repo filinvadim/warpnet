@@ -19,7 +19,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: './domain.yml#/components/schemas/Event'
       responses:
         '200':
           description: OK
@@ -30,80 +30,4 @@ paths:
         '500':
           description: Discovery server error
 
-components:
-  schemas:
-    Event:
-      type: object
-      properties:
-        event_type:
-          type: string
-          enum: [ ping,pong,error,user,tweet,follow,unfollow ]
-          default: ping
-        timestamp:
-          type: string
-          format: date-time
-        data:
-          oneOf:
-            - $ref: '#/components/schemas/PingEvent'
-            - $ref: '#/components/schemas/ErrorEvent'
-            - $ref: '#/components/schemas/NewTweetEvent'
-            - $ref: '#/components/schemas/NewUserEvent'
-            - $ref: '#/components/schemas/NewFollowEvent'
-            - $ref: '#/components/schemas/NewUnfollowEvent'
-      required:
-        - timestamp
-        - event_type
 
-    PingEvent:
-      type: object
-      properties:
-        owner_node:
-          $ref: './components.yml#/components/schemas/Node'
-        owner_info:
-          $ref: './components.yml#/components/schemas/User'
-        dest_host:
-          type: string
-        cached_nodes:
-          type: array
-          items:
-            $ref: './components.yml#/components/schemas/Node'
-      required:
-        - cached_nodes
-
-    PongEvent:
-      $ref: '#/components/schemas/PingEvent'
-
-    ErrorEvent:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-        - code
-        - message
-
-    NewTweetEvent:
-      type: object
-      properties:
-        tweet:
-          $ref: './components.yml#/components/schemas/Tweet'
-
-    NewUserEvent:
-      type: object
-      properties:
-        user:
-          $ref: './components.yml#/components/schemas/User'
-
-    NewFollowEvent:
-      type: object
-      properties:
-        request:
-          $ref: './components.yml#/components/schemas/FollowRequest'
-
-    NewUnfollowEvent:
-      type: object
-      properties:
-        request:
-          $ref: './components.yml#/components/schemas/UnfollowRequest'

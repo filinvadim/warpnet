@@ -2,15 +2,11 @@ package server
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net/http"
+	api_gen "github.com/filinvadim/dWighter/local/api-gen"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/filinvadim/dWighter/api/api"
-	"github.com/filinvadim/dWighter/crypto"
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -20,8 +16,8 @@ import (
 )
 
 type (
-	Router            = api.EchoRouter
-	HandlersInterface = api.ServerInterface
+	Router            = api_gen.EchoRouter
+	HandlersInterface = api_gen.ServerInterface
 )
 
 type PublicServerStarter interface {
@@ -32,14 +28,13 @@ type PublicServerStarter interface {
 }
 
 type publicServer struct {
-	e    *echo.Echo
-	conf *tls.Config
+	e *echo.Echo
 }
 
-const PublicServerHost = "localhost:6969"
+const OwnerServerHost = "localhost:6969"
 
-func NewPublicServer(path string, logLevel uint8) (PublicServerStarter, error) {
-	swagger, err := api.GetSwagger()
+func NewOwnerServer(path string, logLevel uint8) (PublicServerStarter, error) {
+	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
 	}
@@ -66,31 +61,26 @@ func NewPublicServer(path string, logLevel uint8) (PublicServerStarter, error) {
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	conf, err := crypto.GenerateTLSConfig("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TLS config: %v", err)
 	}
-	conf.ClientAuth = tls.NoClientCert
 
-	return &publicServer{e, conf}, nil
+	return &publicServer{e}, nil
 }
 
 func (p *publicServer) Start() error {
 	go func() {
 		time.Sleep(time.Second)
-		err := browser.OpenURL("https://" + PublicServerHost)
+		err := browser.OpenURL("http://" + OwnerServerHost) // NOTE connection is not protected!
 		if err != nil {
 			p.e.Logger.Errorf("failed to open browser: %v", err)
 		}
 	}()
-	return p.e.StartServer(&http.Server{
-		Addr:      PublicServerHost,
-		TLSConfig: p.conf,
-	})
+	return p.e.Start(OwnerServerHost)
 }
 
 func (p *publicServer) RegisterHandlers(publicAPI HandlersInterface) {
-	api.RegisterHandlers(p.e, publicAPI)
+	api_gen.RegisterHandlers(p.e, publicAPI)
 }
 
 func (p *publicServer) Router() Router {

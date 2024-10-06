@@ -1,7 +1,7 @@
 package database_test
 
 import (
-	"github.com/filinvadim/dWighter/api/components"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"os"
 	"testing"
 
@@ -27,8 +27,8 @@ func TestNodeRepo_Create(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := &components.Node{
-		Ip:      "192.168.1.1",
+	node := &domain_gen.Node{
+		Host:    "192.168.1.1:16969",
 		OwnerId: uuid.New().String(),
 	}
 
@@ -42,15 +42,15 @@ func TestNodeRepo_Create(t *testing.T) {
 	assert.Equal(t, "node already exists", err.Error())
 
 	// Verify node was created correctly by IP
-	retrievedNode, err := repo.GetByIP(node.Ip)
+	retrievedNode, err := repo.GetByHost(node.Host)
 	assert.NoError(t, err)
-	assert.Equal(t, node.Ip, retrievedNode.Ip)
+	assert.Equal(t, node.Host, retrievedNode.Host)
 	assert.Equal(t, node.OwnerId, retrievedNode.OwnerId)
 
 	// Verify node was created correctly by UserId
 	retrievedNode, err = repo.GetByUserId(node.OwnerId)
 	assert.NoError(t, err)
-	assert.Equal(t, node.Ip, retrievedNode.Ip)
+	assert.Equal(t, node.Host, retrievedNode.Host)
 	assert.Equal(t, node.OwnerId, retrievedNode.OwnerId)
 }
 
@@ -58,8 +58,8 @@ func TestNodeRepo_GetByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := &components.Node{
-		Ip:      "10.0.0.1",
+	node := &domain_gen.Node{
+		Host:    "10.0.0.1:16969",
 		OwnerId: uuid.New().String(),
 	}
 
@@ -68,13 +68,13 @@ func TestNodeRepo_GetByIP(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Retrieve the node by its IP address
-	retrievedNode, err := repo.GetByIP(node.Ip)
+	retrievedNode, err := repo.GetByHost(node.Host)
 	assert.NoError(t, err)
-	assert.Equal(t, node.Ip, retrievedNode.Ip)
+	assert.Equal(t, node.Host, retrievedNode.Host)
 	assert.Equal(t, node.OwnerId, retrievedNode.OwnerId)
 
 	// Attempt to retrieve a non-existent IP
-	_, err = repo.GetByIP("192.168.1.100")
+	_, err = repo.GetByHost("192.168.1.100")
 	assert.Error(t, err)
 }
 
@@ -82,8 +82,8 @@ func TestNodeRepo_DeleteByIP(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := &components.Node{
-		Ip:      "10.0.0.2",
+	node := &domain_gen.Node{
+		Host:    "10.0.0.2:16969",
 		OwnerId: uuid.New().String(),
 	}
 
@@ -92,11 +92,11 @@ func TestNodeRepo_DeleteByIP(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Delete the node by its IP address
-	err = repo.DeleteByIP(node.Ip)
+	err = repo.DeleteByHost(node.Host)
 	assert.NoError(t, err)
 
 	// Verify the node no longer exists
-	_, err = repo.GetByIP(node.Ip)
+	_, err = repo.GetByHost(node.Host)
 	assert.Error(t, err)
 
 	// Verify the node is also removed by UserId
@@ -108,8 +108,8 @@ func TestNodeRepo_DeleteByUserId(t *testing.T) {
 	db := setupNodeTestDB(t)
 	repo := database.NewNodeRepo(db)
 
-	node := &components.Node{
-		Ip:      "10.0.0.3",
+	node := &domain_gen.Node{
+		Host:    "10.0.0.3:16969",
 		OwnerId: uuid.New().String(),
 	}
 
@@ -122,7 +122,7 @@ func TestNodeRepo_DeleteByUserId(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify the node no longer exists by IP
-	_, err = repo.GetByIP(node.Ip)
+	_, err = repo.GetByHost(node.Host)
 	assert.Error(t, err)
 
 	// Verify the node no longer exists by UserId

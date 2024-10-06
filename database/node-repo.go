@@ -2,9 +2,9 @@ package database
 
 import (
 	"errors"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -16,14 +16,14 @@ const NodesRepoName = "NODES"
 
 type NodeRepo struct {
 	db      *storage.DB
-	ownNode *components.Node
+	ownNode *domain_gen.Node
 }
 
 func NewNodeRepo(db *storage.DB) *NodeRepo {
 	return &NodeRepo{db: db}
 }
 
-func (repo *NodeRepo) Create(node *components.Node) (uuid.UUID, error) {
+func (repo *NodeRepo) Create(node *domain_gen.Node) (uuid.UUID, error) {
 	if node == nil {
 		return uuid.UUID{}, errors.New("nil node")
 	}
@@ -76,11 +76,11 @@ func (repo *NodeRepo) Create(node *components.Node) (uuid.UUID, error) {
 	return node.Id, nil
 }
 
-func (repo *NodeRepo) OwnNode() *components.Node {
+func (repo *NodeRepo) OwnNode() *domain_gen.Node {
 	return repo.ownNode
 }
 
-func (repo *NodeRepo) Update(n *components.Node) error {
+func (repo *NodeRepo) Update(n *domain_gen.Node) error {
 	if n == nil {
 		return errors.New("node is nil")
 	}
@@ -97,7 +97,7 @@ func (repo *NodeRepo) Update(n *components.Node) error {
 	return repo.db.Update(key, bt)
 }
 
-func (repo *NodeRepo) GetByHost(host string) (*components.Node, error) {
+func (repo *NodeRepo) GetByHost(host string) (*domain_gen.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(host).Build()
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (repo *NodeRepo) GetByHost(host string) (*components.Node, error) {
 		return nil, err
 	}
 
-	var node components.Node
+	var node domain_gen.Node
 	err = json.JSON.Unmarshal(data, &node)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (repo *NodeRepo) DeleteByHost(host string) error {
 	})
 }
 
-func (repo *NodeRepo) GetByUserId(userId string) (*components.Node, error) {
+func (repo *NodeRepo) GetByUserId(userId string) (*domain_gen.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(userId).Build()
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (repo *NodeRepo) GetByUserId(userId string) (*components.Node, error) {
 		return nil, err
 	}
 
-	var node components.Node
+	var node domain_gen.Node
 	err = json.JSON.Unmarshal(data, &node)
 	if err != nil {
 		return nil, err
@@ -191,15 +191,15 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	})
 }
 
-func (repo *NodeRepo) List() ([]components.Node, error) {
+func (repo *NodeRepo) List() ([]domain_gen.Node, error) {
 	key, err := storage.NewPrefixBuilder(NodesRepoName).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]components.Node, 0, 20)
+	nodes := make([]domain_gen.Node, 0, 20)
 	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var n components.Node
+		var n domain_gen.Node
 		err := json.JSON.Unmarshal(value, &n)
 		if err != nil {
 			return err

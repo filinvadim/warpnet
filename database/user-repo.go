@@ -1,9 +1,9 @@
 package database
 
 import (
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"time"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
@@ -21,7 +21,7 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user *components.User) (*components.User, error) {
+func (repo *UserRepo) Create(user *domain_gen.User) (*domain_gen.User, error) {
 	if user.UserId == nil {
 		id := uuid.New().String()
 		user.UserId = &id
@@ -42,7 +42,7 @@ func (repo *UserRepo) Create(user *components.User) (*components.User, error) {
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userID string) (*components.User, error) {
+func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
 	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (repo *UserRepo) Get(userID string) (*components.User, error) {
 		return nil, err
 	}
 
-	var user components.User
+	var user domain_gen.User
 	err = json.JSON.Unmarshal(data, &user)
 	if err != nil {
 		return nil, err
@@ -69,15 +69,15 @@ func (repo *UserRepo) Delete(userID string) error {
 	return repo.db.Delete(key)
 }
 
-func (repo *UserRepo) List() ([]components.User, error) {
+func (repo *UserRepo) List() ([]domain_gen.User, error) {
 	key, err := storage.NewPrefixBuilder(UsersRepoName).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	users := make([]components.User, 0, 20)
+	users := make([]domain_gen.User, 0, 20)
 	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var user components.User
+		var user domain_gen.User
 		err := json.JSON.Unmarshal(value, &user)
 		if err != nil {
 			return err

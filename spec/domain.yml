@@ -149,6 +149,7 @@ components:
 
     Node:
       type: object
+      nullable: true
       properties:
         id:
           type: string
@@ -189,7 +190,6 @@ components:
         - owner_id
         - id
 
-
     Error:
       type: object
       properties:
@@ -201,4 +201,157 @@ components:
         - code
         - message
 
+    TweetsResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        tweets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tweet'
+      required:
+        - cursor
+        - tweets
 
+    AuthRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    Event:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [ ping,pong,error,getUser,getTweet,getTweets,newUser,newTweet,follow,unfollow,login,logout,getTimeline ]
+          default: ping
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/PingEvent'
+            - $ref: '#/components/schemas/ErrorEvent'
+            - $ref: '#/components/schemas/NewTweetEvent'
+            - $ref: '#/components/schemas/NewUserEvent'
+            - $ref: '#/components/schemas/NewFollowEvent'
+            - $ref: '#/components/schemas/NewUnfollowEvent'
+            - $ref: '#/components/schemas/GetAllTweetsEvent'
+            - $ref: '#/components/schemas/GetTimelineEvent'
+            - $ref: '#/components/schemas/GetTweetEvent'
+            - $ref: '#/components/schemas/GetUserEvent'
+            - $ref: '#/components/schemas/LoginEvent'
+            - $ref: '#/components/schemas/LogoutEvent'
+      required:
+        - timestamp
+        - event_type
+
+    PingEvent:
+      type: object
+      properties:
+        owner_node:
+          $ref: '#/components/schemas/Node'
+        owner_info:
+          $ref: '#/components/schemas/User'
+        dest_host:
+          type: string
+        cached_nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+      required:
+        - cached_nodes
+
+    PongEvent:
+      $ref: '#/components/schemas/PingEvent'
+
+    LoginEvent:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LogoutEvent:
+      type: object
+
+    ErrorEvent:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    NewTweetEvent:
+      type: object
+      properties:
+        tweet:
+          $ref: '#/components/schemas/Tweet'
+
+    GetTweetEvent:
+      type: object
+      properties:
+        userId:
+          type: string
+        tweetId:
+          type: string
+      required:
+        - userId
+        - tweetId
+
+    GetTimelineEvent:
+      $ref: '#/components/schemas/GetAllTweetsEvent'
+
+    GetAllTweetsEvent:
+      type: object
+      properties:
+        userId:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - userId
+
+    NewUserEvent:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+
+    GetUserEvent:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+
+    NewFollowEvent:
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/FollowRequest'
+
+    NewUnfollowEvent:
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/UnfollowRequest'

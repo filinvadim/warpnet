@@ -1,9 +1,9 @@
 oapi-codegen-install:
 	go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
 gen:
-	~/go/bin/oapi-codegen -generate types,spec,skip-prune -package components ./spec/components.yml > api/components/components.gen.go
-	~/go/bin/oapi-codegen -import-mapping ./components.yml:github.com/filinvadim/dWighter/api/components -generate server,types,spec,skip-prune -package api ./spec/api.yml > api/api/api.gen.go
-	~/go/bin/oapi-codegen -import-mapping ./components.yml:github.com/filinvadim/dWighter/api/components -generate client,server,types,spec,skip-prune -package discovery ./spec/discovery.yml > api/discovery/discovery.gen.go
+	~/go/bin/oapi-codegen -generate types,spec,skip-prune -package domain ./spec/domain.yml > domain-gen/domain.gen.go
+	~/go/bin/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/dWighter/domain-gen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > local/api-gen/api.gen.go
+	~/go/bin/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/dWighter/domain-gen -generate client,server,types,spec,skip-prune -package discovery ./spec/discovery.yml > exposed/discovery-gen/api.gen.go
 
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
@@ -17,3 +17,9 @@ prune:
 
 run:
 	go run main.go
+
+prune-idea:
+	rm -r .local/share/JetBrains
+	rm -r .config/JetBrains
+	rm -r .cache/JetBrains
+	rm -r .java/.userPrefs

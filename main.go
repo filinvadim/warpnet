@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"github.com/filinvadim/dWighter/exposed/discovery"
+	"github.com/filinvadim/dWighter/local/handlers"
+	"github.com/filinvadim/dWighter/local/server"
 	"log"
 	"os"
 	"os/signal"
@@ -11,9 +14,6 @@ import (
 
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/discovery"
-	"github.com/filinvadim/dWighter/handlers"
-	"github.com/filinvadim/dWighter/server"
 	_ "go.uber.org/automaxprocs"
 )
 
@@ -48,31 +48,48 @@ func main() {
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	srv, err := server.NewPublicServer(path, 1)
+	srv, err := server.NewOwnerServer(path, 1)
 	if err != nil {
-		log.Fatalf("failed to run public server: %v", err)
+		log.Fatalf("failed to run owner server: %v", err)
 	}
 
 	srv.RegisterHandlers(&API{
-		handlers.NewTweetController(timelineRepo, tweetRepo),
-		handlers.NewUserController(userRepo, followRepo, nodeRepo),
+		handlers.NewTweetController(),
+		handlers.NewUserController(),
 		handlers.NewStaticController(),
-		handlers.NewAuthController(authRepo, nodeRepo, interruptChan),
+		handlers.NewAuthController(interruptChan),
 	})
-	go srv.Start()
-
-	authResult := <-interruptChan
-	if authResult.String() == handlers.AuthSuccess {
-		discSvc, err := discovery.NewDiscoveryService(ctx, nodeRepo, authRepo, userRepo, tweetRepo, nil)
+	go func() {
+		err := srv.Start()
 		if err != nil {
-			log.Fatalf("failed to run discovery service: %v", err)
+			log.Fatalf("failed to start owner server: %v", err)
 		}
-		go discSvc.Run()
-		defer discSvc.Stop()
+	}()
+
+	var discSvc *discovery.DiscoveryService
+	for authResult := range interruptChan {
+		if authResult.String() == handlers.AuthSuccess {
+			discSvc, err = discovery.NewDiscoveryService(
+				ctx, nodeRepo, authRepo, userRepo, tweetRepo, timelineRepo, nil,
+			)
+			if err != nil {
+				log.Fatalf("failed to run discovery-gen service: %v", err)
+			}
+			go discSvc.Run()
+		}
 	}
 
 	<-interruptChan
-	srv.Shutdown(ctx)
+
+	if err = srv.Shutdown(ctx); err != nil {
+		log.Printf("failed to shutdown owner server: %v", err)
+	}
+	if discSvc == nil {
+		return
+	}
+	if err = discSvc.Stop(); err != nil {
+		log.Printf("failed to stop discovery service: %v", err)
+	}
 }
 
 func getAppPath() string {

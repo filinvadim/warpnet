@@ -1,12 +1,13 @@
 package database
 
 import (
+	"errors"
 	"fmt"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"math"
 	"sort"
 	"time"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/filinvadim/dWighter/json"
 )
@@ -22,7 +23,7 @@ func NewTimelineRepo(db *storage.DB) *TimelineRepo {
 	return &TimelineRepo{db: db}
 }
 
-func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet components.Tweet) error {
+func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Tweet) error {
 	if tweet.TweetId == nil {
 		return fmt.Errorf("tweet id should not be nil")
 	}
@@ -74,7 +75,7 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.
 }
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
-func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]components.Tweet, string, error) {
+func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
 	if limit == nil {
 		limit = new(uint64)
 		*limit = 20
@@ -83,7 +84,7 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 		limit = new(uint64)
 		*limit = 20
 	}
-	tweets := make([]components.Tweet, 0, *limit)
+	tweets := make([]domain_gen.Tweet, 0, *limit)
 	prefix, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, "", err
@@ -103,26 +104,28 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 			return nil
 		}
 
-		var t components.Tweet
+		var t domain_gen.Tweet
 		if err = json.JSON.Unmarshal(value, &t); err != nil {
 			return err
 		}
 		tweets = append(tweets, t)
 		return nil
 	})
-
-	if err == storage.ErrStopIteration || err == nil {
+	if errors.Is(err, storage.ErrStopIteration) || err == nil {
 		if len(tweets) < int(*limit) {
 			lastKey = ""
 		}
 		return tweets, lastKey, nil
+	}
+	if err != nil {
+		return nil, "", err
 	}
 
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
 	})
 
-	return tweets, lastKey, err
+	return tweets, lastKey, nil
 }
 
 func IsValidForPrefix(key string, prefix string) bool {

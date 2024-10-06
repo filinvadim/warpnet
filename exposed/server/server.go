@@ -1,10 +1,10 @@
-package discovery
+package server
 
 import (
 	"context"
+	discovery_gen "github.com/filinvadim/dWighter/exposed/discovery-gen"
 	"net/http"
 
-	"github.com/filinvadim/dWighter/api/discovery"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -12,7 +12,7 @@ import (
 	middleware "github.com/oapi-codegen/echo-middleware"
 )
 
-const defaultDiscoveryPort = ":16969"
+const DefaultDiscoveryPort = ":16969"
 
 type DiscoveryServicer interface {
 	NewEvent(ctx echo.Context) error
@@ -24,10 +24,10 @@ type discoveryServer struct {
 	srv *http.Server
 }
 
-func newDiscoveryServer(
+func NewDiscoveryServer(
 	ctx context.Context, service DiscoveryServicer, loggerMw echo.MiddlewareFunc,
 ) (*discoveryServer, error) {
-	swagger, err := discovery.GetSwagger()
+	swagger, err := discovery_gen.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func newDiscoveryServer(
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	discovery.RegisterHandlers(e, service)
+	discovery_gen.RegisterHandlers(e, service)
 
 	conf, err := crypto.GenerateTLSConfig("") // TODO just once
 	if err != nil {
@@ -49,7 +49,7 @@ func newDiscoveryServer(
 	}
 
 	srv := &http.Server{
-		Addr:      defaultDiscoveryPort,
+		Addr:      DefaultDiscoveryPort,
 		TLSConfig: conf,
 	}
 

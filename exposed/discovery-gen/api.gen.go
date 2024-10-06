@@ -15,245 +15,14 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
-	externalRef0 "github.com/filinvadim/dWighter/api/components"
+	externalRef0 "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
-	"github.com/oapi-codegen/runtime"
 )
-
-// Defines values for EventEventType.
-const (
-	Error    EventEventType = "error"
-	Follow   EventEventType = "follow"
-	Ping     EventEventType = "ping"
-	Pong     EventEventType = "pong"
-	Tweet    EventEventType = "tweet"
-	Unfollow EventEventType = "unfollow"
-	User     EventEventType = "user"
-)
-
-// ErrorEvent defines model for ErrorEvent.
-type ErrorEvent struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// Event defines model for Event.
-type Event struct {
-	Data      *Event_Data    `json:"data,omitempty"`
-	EventType EventEventType `json:"event_type"`
-	Timestamp time.Time      `json:"timestamp"`
-}
-
-// Event_Data defines model for Event.Data.
-type Event_Data struct {
-	union json.RawMessage
-}
-
-// EventEventType defines model for Event.EventType.
-type EventEventType string
-
-// NewFollowEvent defines model for NewFollowEvent.
-type NewFollowEvent struct {
-	Request *externalRef0.FollowRequest `json:"request,omitempty"`
-}
-
-// NewTweetEvent defines model for NewTweetEvent.
-type NewTweetEvent struct {
-	Tweet *externalRef0.Tweet `json:"tweet,omitempty"`
-}
-
-// NewUnfollowEvent defines model for NewUnfollowEvent.
-type NewUnfollowEvent struct {
-	Request *externalRef0.UnfollowRequest `json:"request,omitempty"`
-}
-
-// NewUserEvent defines model for NewUserEvent.
-type NewUserEvent struct {
-	User *externalRef0.User `json:"user,omitempty"`
-}
-
-// PingEvent defines model for PingEvent.
-type PingEvent struct {
-	CachedNodes []externalRef0.Node `json:"cached_nodes"`
-	DestHost    *string             `json:"dest_host,omitempty"`
-	OwnerInfo   *externalRef0.User  `json:"owner_info,omitempty"`
-	OwnerNode   *externalRef0.Node  `json:"owner_node,omitempty"`
-}
-
-// PongEvent defines model for PongEvent.
-type PongEvent = PingEvent
 
 // NewEventJSONRequestBody defines body for NewEvent for application/json ContentType.
-type NewEventJSONRequestBody = Event
-
-// AsPingEvent returns the union data inside the Event_Data as a PingEvent
-func (t Event_Data) AsPingEvent() (PingEvent, error) {
-	var body PingEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromPingEvent overwrites any union data inside the Event_Data as the provided PingEvent
-func (t *Event_Data) FromPingEvent(v PingEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergePingEvent performs a merge with any union data inside the Event_Data, using the provided PingEvent
-func (t *Event_Data) MergePingEvent(v PingEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsErrorEvent returns the union data inside the Event_Data as a ErrorEvent
-func (t Event_Data) AsErrorEvent() (ErrorEvent, error) {
-	var body ErrorEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromErrorEvent overwrites any union data inside the Event_Data as the provided ErrorEvent
-func (t *Event_Data) FromErrorEvent(v ErrorEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeErrorEvent performs a merge with any union data inside the Event_Data, using the provided ErrorEvent
-func (t *Event_Data) MergeErrorEvent(v ErrorEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewTweetEvent returns the union data inside the Event_Data as a NewTweetEvent
-func (t Event_Data) AsNewTweetEvent() (NewTweetEvent, error) {
-	var body NewTweetEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewTweetEvent overwrites any union data inside the Event_Data as the provided NewTweetEvent
-func (t *Event_Data) FromNewTweetEvent(v NewTweetEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewTweetEvent performs a merge with any union data inside the Event_Data, using the provided NewTweetEvent
-func (t *Event_Data) MergeNewTweetEvent(v NewTweetEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewUserEvent returns the union data inside the Event_Data as a NewUserEvent
-func (t Event_Data) AsNewUserEvent() (NewUserEvent, error) {
-	var body NewUserEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewUserEvent overwrites any union data inside the Event_Data as the provided NewUserEvent
-func (t *Event_Data) FromNewUserEvent(v NewUserEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewUserEvent performs a merge with any union data inside the Event_Data, using the provided NewUserEvent
-func (t *Event_Data) MergeNewUserEvent(v NewUserEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewFollowEvent returns the union data inside the Event_Data as a NewFollowEvent
-func (t Event_Data) AsNewFollowEvent() (NewFollowEvent, error) {
-	var body NewFollowEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewFollowEvent overwrites any union data inside the Event_Data as the provided NewFollowEvent
-func (t *Event_Data) FromNewFollowEvent(v NewFollowEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewFollowEvent performs a merge with any union data inside the Event_Data, using the provided NewFollowEvent
-func (t *Event_Data) MergeNewFollowEvent(v NewFollowEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewUnfollowEvent returns the union data inside the Event_Data as a NewUnfollowEvent
-func (t Event_Data) AsNewUnfollowEvent() (NewUnfollowEvent, error) {
-	var body NewUnfollowEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewUnfollowEvent overwrites any union data inside the Event_Data as the provided NewUnfollowEvent
-func (t *Event_Data) FromNewUnfollowEvent(v NewUnfollowEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewUnfollowEvent performs a merge with any union data inside the Event_Data, using the provided NewUnfollowEvent
-func (t *Event_Data) MergeNewUnfollowEvent(v NewUnfollowEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t Event_Data) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *Event_Data) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
+type NewEventJSONRequestBody = externalRef0.Event
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -557,26 +326,28 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xYX2/bNhD/KgS3R7W22y5A9datHRAsWIMiwR6KQGDEs8VGIlXyZM8I/N2HIyVLsplY",
-	"MTCgD32yJR3v97v/Jz3y3FS10aDR8fSRu7yASvi/n6w19tMaNNJVbU0NFhX4Z7mRQL+4rYGnXGmEFVi+",
-	"S3gFzonV8KFDq/SK73YJt/C9URYkT78GFb38XdLJm/tvkCPpegJcChT0azR8XvL06yP/1cKSp/yXWW/M",
-	"rLVkdq30KijaJc9LDgw+Jfo3bG42ADhZ+tbBdNV/mrI0m+m69XJ44G6XcKC/WXDoI5ewFE2JPOU1RSLh",
-	"oJuKYtBe1ibcJft5whsH9INkIE94UE73W5xBrLrYJhxVBQ5FVRPg0thKEJ4UCK/oEU9OpEN/fsQ+lhbB",
-	"PV/gewMukh4WhASbKUkXldJXoFdY8HQRYb2xCqfJHtDtQYZKYmyv1AMck/TOncaRwnEGw+5Y0mPF6B2k",
-	"W8Sbezc/l4bjmBCXGNKgZuIeOQXjFTypflwI55rSaTllTF/SR0i+gk7BkExcd9tcD1quBYEgM4FTKyzh",
-	"hQnmSnC5VTUqo3nKbwpgl9dMSGnBudi5kG17jKYJeXQk5jKRo1rDMcY/BWABluEIiynH8sZa0FhuWXt2",
-	"r/jemBKEbjWbjQY5GCODp6VwmDkAHbdt30rYpgDNsFBuyGEjHCMNPf40Z5YCQefbOKYG3Bj7wFohhmaP",
-	"qzSrVFkqB7nRkvwN/4qqLoGnizfzAbrSePGuRx4MVfJF1wPG2JRp7PJjjG9Te0uOjtz6+8wsfXC0kUAU",
-	"I+zeXsyn0DvoO/vQtek3TJNh6AZW+YSLNad+dh+Xg8gLkBnR99cKoXKnas5XVl9ywlqxpWsJDrOuWI4c",
-	"2fLUSzOtprsTuq3j04wOV6OhbVG/mJ9+ifnlC+ynyA86bm/i/HKjsQ3nCXrnjIFSPbwgGfzCEkkGryXL",
-	"TaPH0F1fqJRWFe2V81gLsyE002l0sYww6XSdTcbRaNc5nHH0f8ikIKlFNeGtqU+zLmViWXa4wvzoO/Jt",
-	"uy+NSd4riwUl9vRMP6c6RtMx0uaCK8Muss/c4/efgxztTmX+VetxypRvj1h3FpJ1L4AqlX4Yr3i2jHYO",
-	"k4snHVNtMwtLsFaUL6RMHTybuGQGCJDZ/Taqe1Blz9bVS5u5P9dTPU5bOtQNv/GG9VG53KzBbtmH60u2",
-	"NJYJJhVh3TcIkt1sFCLYV9RRmajrUrVeptdopNWLVByKkzKe8DVYF2AWr+ev536s1qBFrXjK3/pbCa8F",
-	"Fj4Us/ViJjs6M/9iPdOw8cXWznUqOQ9/KXlKLzZhs0i696XfjdwezKgB59k3F9Ij9O1TXb39RjF2ONoG",
-	"/A1XG+1C8b+Zz48d+/kvMvdd7NGlXotSSaZ03WCQWhxLfWiwYEuhSpAk81tMUx89B3YNloXvIkTZNVUl",
-	"7Jan/A/faJhgGjas+2AiVo6yJ9h4540MKpz/SjWGuTK5KJmENZSmrkBjC8cTX4wpLxBrl85mVIMlLWHp",
-	"4uL9xXu+u9v9FwAA//8k5XHcthMAAA==",
+	"H4sIAAAAAAAC/9RYTY/bNhP+KwTf96iNvUm6QHRLmzRYdNEEwQY9BAuDFscWsxSpkCM7xsL/vSApWZJF",
+	"r2SjBdKTvoYzzwyf+aCeaKaLUitQaGn6RG2WQ8H87XtjtHm/AYXuqTS6BIMC/LdMc3BX3JVAUyoUwhoM",
+	"3Se0AGvZuvvRohFqTff7hBr4XgkDnKZfg4pW/iFp5PXyG2TodJ0wzhkyd9UKPq5o+vWJ/t/Aiqb0f7PW",
+	"mVntyeyTUOugaJ88L9lxeEz0T9jebwFwsvQXC9NV/66l1NvputXqjAUfAN9K6dHbySvuRQFSKJi+YHp0",
+	"PgBOj86dXgs1WVRXDYaHfULB3S4Cy54ohxWrJNKUlo6eCQVVFY6Y9WOpw1tHCprQdUAZ7rx3nVtLE6rC",
+	"Joe7RiBsDE1opQ630rkQrrpqtNTx7aRBkzYJRVGARVaUDvZKm4I51JwhXLlPNBnJtHZ9LwaxjAvM+wzf",
+	"K7CRzDPAOJiF4O6hEOoO1Bpzml5HUG+NwGmyR3BbI10lMbRDKg8LVWWsNpFqlFApCoGRIpbQH1drfVW/",
+	"rYTCm9dOvrJgbvl4YavlTgDuZ9J/AG+byAOw6L5FTZxtPTkoO4GjLREDGP+Ao3fiEU74N43tTvcFXG+W",
+	"Ja2tKLy26g1AlszarTand0GxAqYFx0smrcYTUA5VtVXafj9qX5EScqgtzxXvfiFyYGOWRsk5ZibU6VPq",
+	"+431UlcaLWPOjDB81IyTieuuhzVVScmWEmiKpoLkuPIYYAh8wXBqm0loroP7HGxmRIlCK5rS+xzI7SfC",
+	"ODdgbWxdSJSDjaoKKTAQswuWodjA0MZfOWAOhmDPFhGWZJUxoFDuSL32oHiptQSmas16q6CbNJ2vkllc",
+	"WAAV9+3QT8k2B0UwF7aLYcsscRpa+9OCKRmCynZxmwpwq80jqYUI6oNdoUghpBQWMq24izf8YEXp9vn6",
+	"5bxjPXSGJDK0u1g05atv2zGP3L6L4a1K78lgyRf/nuiV3xylOTiIEXSvbuZT4B0VqsPW1fTr0qS7dR2v",
+	"POFixaw9GwwbMcty4AsH3z8LhMKO5aDPtDYFmTFs5545WFw0yTIIZI1TrfS0HG9WqDqvxxEdH726vsXi",
+	"8hkO1fMn7Yj3cXyZVlhv5wi8S8qdFI9nkMHPFBEyeC2LTFeqb7rhfyGUKNxRZB5LVRO2ZjqMZi8jSBpd",
+	"F4OxrqWpDC5Y+i8w6dxxJ9CsoUyMZcet+2c/EH2p54Q+yKUwmDtiT2f6JdnR6wKRMhdCGXrugbnDw+4R",
+	"R5tVC386f5rSzeolxl5kydgzTEmhHvujjJHRyqEzdjIwxW5hYAXGMHkmZFfBFxOHqWAC+GK5O3lUqHU9",
+	"m1fnFvP6UNFAHdLWLWqaX3+SeCdspjdgduTtp1uy0oYwwoWztawQOLnfCkQwV66iElaWUtRRTigKdCOG",
+	"U3Es7pTRhG7A2GDm+sX8xdy31RIUKwVN6Sv/yh2FMPdbMdtcz3gDZ+b/oswUbH2y1X3dpZw3786ibqAP",
+	"k0XSnBN+1Xx31KM6mGffbKBHqNtjVb3+rdUPuBvr/QtbamVD8r+cz4eB/fiHc/d17NOt2jApOBGqrDBI",
+	"XQ+l3laYkxUTEriT+SWmqd09C2YDhoRfaQ6yrYqCmR1N6W++0BBGFGxJFf6fIVtbx57g44N3Mqiw/m9v",
+	"38ydzpgkHDYgdVmAwtocTXwypjRHLG06m7kclG4IS69v3ty8ofuH/d8BAAD//+yOa3z+FgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
@@ -618,7 +389,7 @@ func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
 
 	pathPrefix := path.Dir(pathToFile)
 
-	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(pathPrefix, "./components.yml")) {
+	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(pathPrefix, "./domain.yml")) {
 		if _, ok := res[rawPath]; ok {
 			// it is not possible to compare functions in golang, so always overwrite the old value
 		}

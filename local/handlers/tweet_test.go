@@ -3,17 +3,17 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	api_gen "github.com/filinvadim/dWighter/local/api-gen"
+	"github.com/filinvadim/dWighter/local/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/filinvadim/dWighter/api/api"
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/handlers"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestPostTweet(t *testing.T) {
 	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
 
 	// Пример твита
-	tweet := components.Tweet{
+	tweet := domain_gen.Tweet{
 		Content: "Hello, world!",
 		UserId:  uuid.New().String(),
 	}
@@ -63,7 +63,7 @@ func TestPostTweet(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostV1ApiTweets(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdTweet components.Tweet
+		var createdTweet domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdTweet)) {
 			assert.Equal(t, tweet.Content, createdTweet.Content)
 			assert.Equal(t, tweet.UserId, createdTweet.UserId)
@@ -81,7 +81,7 @@ func TestGetTweetsByUser(t *testing.T) {
 
 	// Пример твита
 	userID := uuid.New().String()
-	tweet := components.Tweet{
+	tweet := domain_gen.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
@@ -98,7 +98,7 @@ func TestGetTweetsByUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetV1ApiTweetsUserId(ctx, userID)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var tweets []components.Tweet
+		var tweets []domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tweets)) {
 			assert.Len(t, tweets, 1)
 			assert.Equal(t, tweet.Content, tweets[0].Content)
@@ -117,7 +117,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	// Пример твита
 	userID := uuid.New().String()
 	tweetID := uuid.New().String()
-	tweet := &components.Tweet{
+	tweet := &domain_gen.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
 		TweetId:   &tweetID,
@@ -135,7 +135,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetV1ApiTweetsUserIdTweetId(ctx, userID, tweetID)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var fetchedTweet components.Tweet
+		var fetchedTweet domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedTweet)) {
 			assert.Equal(t, tweet.Content, fetchedTweet.Content)
 			assert.Equal(t, tweet.UserId, fetchedTweet.UserId)
@@ -154,12 +154,12 @@ func TestGetTimeline(t *testing.T) {
 
 	// Пример твитов
 	userID := uuid.New().String()
-	tweet1 := &components.Tweet{
+	tweet1 := &domain_gen.Tweet{
 		Content:   "First tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now().Add(-time.Hour)),
 	}
-	tweet2 := &components.Tweet{
+	tweet2 := &domain_gen.Tweet{
 		Content:   "Second tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
@@ -182,13 +182,13 @@ func TestGetTimeline(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	params := api.GetV1ApiTweetsTimelineUserIdParams{
+	params := api_gen.GetV1ApiTweetsTimelineUserIdParams{
 		Limit:  nil,
 		Cursor: nil,
 	}
 	if assert.NoError(t, controller.GetV1ApiTweetsTimelineUserId(ctx, userID, params)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response api.TimelineResponse
+		var response api_gen.TimelineResponse
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response)) {
 			assert.Len(t, response.Tweets, 2)
 			assert.Equal(t, tweet2.Content, response.Tweets[0].Content)

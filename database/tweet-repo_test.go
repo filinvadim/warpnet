@@ -2,10 +2,10 @@ package database_test
 
 import (
 	"fmt"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"os"
 	"testing"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -31,12 +31,12 @@ func TestTweetRepo_Create(t *testing.T) {
 
 	tweetID := uuid.New().String()
 
-	tweet := &components.Tweet{
+	tweet := &domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 
 	id := uuid.New().String()
-	user := components.User{
+	user := domain_gen.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -56,12 +56,12 @@ func TestTweetRepo_Get(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := &components.Tweet{
+	tweet := &domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := components.User{
+	user := domain_gen.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -80,12 +80,12 @@ func TestTweetRepo_Delete(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := &components.Tweet{
+	tweet := &domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
 
-	user := components.User{
+	user := domain_gen.User{
 		Username: "User",
 		UserId:   &id,
 	}
@@ -108,15 +108,15 @@ func TestTweetRepo_List(t *testing.T) {
 
 	id1 := "1"
 	id2 := "2"
-	tweet1 := &components.Tweet{
+	tweet1 := &domain_gen.Tweet{
 		TweetId: &id1,
 	}
-	tweet2 := &components.Tweet{
+	tweet2 := &domain_gen.Tweet{
 		TweetId: &id2,
 	}
 	id := uuid.New().String()
 
-	user := components.User{
+	user := domain_gen.User{
 		Username: "User",
 		UserId:   &id,
 	}

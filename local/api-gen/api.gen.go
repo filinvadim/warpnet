@@ -13,23 +13,11 @@ import (
 	"path"
 	"strings"
 
-	externalRef0 "github.com/filinvadim/dWighter/api/components"
+	externalRef0 "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
 )
-
-// AuthRequest defines model for AuthRequest.
-type AuthRequest struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-
-// TimelineResponse defines model for TimelineResponse.
-type TimelineResponse struct {
-	Cursor string               `json:"cursor"`
-	Tweets []externalRef0.Tweet `json:"tweets"`
-}
 
 // GetV1ApiTweetsTimelineUserIdParams defines parameters for GetV1ApiTweetsTimelineUserId.
 type GetV1ApiTweetsTimelineUserIdParams struct {
@@ -38,7 +26,7 @@ type GetV1ApiTweetsTimelineUserIdParams struct {
 }
 
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
-type PostV1ApiAuthLoginJSONRequestBody = AuthRequest
+type PostV1ApiAuthLoginJSONRequestBody = externalRef0.AuthRequest
 
 // PostV1ApiTweetsJSONRequestBody defines body for PostV1ApiTweets for application/json ContentType.
 type PostV1ApiTweetsJSONRequestBody = externalRef0.Tweet
@@ -290,30 +278,30 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"7XJtcfHs+bPndH2x/i8AAP//74wkkB4cAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
@@ -355,7 +343,7 @@ func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
 
 	pathPrefix := path.Dir(pathToFile)
 
-	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(pathPrefix, "./components.yml")) {
+	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(pathPrefix, "./domain.yml")) {
 		if _, ok := res[rawPath]; ok {
 			// it is not possible to compare functions in golang, so always overwrite the old value
 		}

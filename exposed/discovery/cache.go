@@ -1,8 +1,8 @@
 package discovery
 
 import (
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"sync"
 )
 
@@ -10,18 +10,20 @@ type host = string
 
 // DiscoveryCache manages IP addresses
 type discoveryCache struct {
-	nodes map[host]components.Node
+	nodes map[host]domain_gen.Node
 	mutex *sync.RWMutex
 
-	ownNode components.Node
+	ownNode domain_gen.Node
 }
 
 // NewDiscoveryService creates a new DiscoveryService instance
 func newDiscoveryCache(nodeRepo *database.NodeRepo) (*discoveryCache, error) {
 	dc := &discoveryCache{
-		nodes: make(map[host]components.Node),
+		nodes: make(map[host]domain_gen.Node),
 		mutex: new(sync.RWMutex),
 	}
+	own := nodeRepo.OwnNode()
+	dc.nodes[PresetNodeAddress] = *own
 	nodes, err := nodeRepo.List()
 	if err != nil {
 		return nil, err
@@ -34,18 +36,15 @@ func newDiscoveryCache(nodeRepo *database.NodeRepo) (*discoveryCache, error) {
 }
 
 // AddNode adds a new IP address to the service
-func (ds *discoveryCache) AddNode(n *components.Node) {
-	if n == nil {
-		return
-	}
+func (ds *discoveryCache) AddNode(n domain_gen.Node) {
 	ds.mutex.Lock()
-	ds.nodes[n.Host] = *n
+	ds.nodes[n.Host] = n
 	ds.mutex.Unlock()
 }
 
 // GetNodes retrieves the list of all IP addresses
-func (ds *discoveryCache) GetNodes() []components.Node {
-	nodes := make([]components.Node, 0, len(ds.nodes))
+func (ds *discoveryCache) GetNodes() []domain_gen.Node {
+	nodes := make([]domain_gen.Node, 0, len(ds.nodes))
 	ds.mutex.RLock()
 	for _, n := range ds.nodes {
 		nodes = append(nodes, n)
@@ -55,7 +54,7 @@ func (ds *discoveryCache) GetNodes() []components.Node {
 }
 
 // RemoveNode removes an IP address from the service
-func (ds *discoveryCache) RemoveNode(n *components.Node) {
+func (ds *discoveryCache) RemoveNode(n *domain_gen.Node) {
 	if n == nil {
 		return
 	}

@@ -45,14 +45,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthRequest'
+              $ref: './domain.yml#/components/schemas/AuthRequest'
       responses:
         '200':
           description: User details
           content:
             application/json:
               schema:
-                $ref: './components.yml#/components/schemas/User'
+                $ref: './domain.yml#/components/schemas/User'
         '401':
           description: Auth failed
         '500':
@@ -79,14 +79,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './components.yml#/components/schemas/User'
+              $ref: './domain.yml#/components/schemas/User'
       responses:
         '200':
           description: User successfully created
           content:
             application/json:
               schema:
-                $ref: './components.yml#/components/schemas/User'
+                $ref: './domain.yml#/components/schemas/User'
         '400':
           description: Invalid input
 
@@ -107,7 +107,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './components.yml#/components/schemas/User'
+                $ref: './domain.yml#/components/schemas/User'
         '404':
           description: User not found
 
@@ -121,14 +121,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './components.yml#/components/schemas/Tweet'
+              $ref: './domain.yml#/components/schemas/Tweet'
       responses:
         '200':
           description: Tweet successfully created
           content:
             application/json:
               schema:
-                $ref: './components.yml#/components/schemas/Tweet'
+                $ref: './domain.yml#/components/schemas/Tweet'
         '400':
           description: Invalid input
 
@@ -171,9 +171,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: './components.yml#/components/schemas/Tweet'
+                $ref: './domain.yml#/components/schemas/TweetsResponse'
         '404':
           description: User or tweets not found
 
@@ -204,7 +202,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TimelineResponse'
+                $ref: './domain.yml#/components/schemas/TweetsResponse'
         '404':
           description: User or timeline not found
 
@@ -218,7 +216,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './components.yml#/components/schemas/FollowRequest'
+              $ref: './domain.yml#/components/schemas/FollowRequest'
       responses:
         '201':
           description: Successfully followed the user
@@ -235,35 +233,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './components.yml#/components/schemas/UnfollowRequest'
+              $ref: './domain.yml#/components/schemas/UnfollowRequest'
       responses:
         '200':
           description: Successfully unfollowed the user
         '400':
           description: Invalid input
 
-components:
-  schemas:
-    TimelineResponse:
-      type: object
-      properties:
-        cursor:
-          type: string
-        tweets:
-          type: array
-          items:
-            $ref: './components.yml#/components/schemas/Tweet'
-      required:
-        - cursor
-        - tweets
-
-    AuthRequest:
-      type: object
-      properties:
-        username:
-          type: string
-        password:
-          type: string
-      required:
-        - username
-        - password

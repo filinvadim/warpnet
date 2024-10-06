@@ -3,15 +3,15 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
+	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"github.com/filinvadim/dWighter/local/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/filinvadim/dWighter/api/components"
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/handlers"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestPostUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
 	userId := uuid.New().String()
-	user := &components.User{
+	user := &domain_gen.User{
 		UserId:   &userId,
 		Username: "testuser",
 	}
@@ -63,7 +63,7 @@ func TestPostUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.PostV1ApiUsers(ctx)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var createdUser components.User
+		var createdUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdUser)) {
 			assert.Equal(t, user.Username, createdUser.Username)
 			assert.Equal(t, user.UserId, createdUser.UserId)
@@ -80,7 +80,7 @@ func TestGetUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
 	userId := uuid.New().String()
-	user := &components.User{
+	user := &domain_gen.User{
 		UserId:   &userId,
 		Username: "testuser",
 	}
@@ -97,7 +97,7 @@ func TestGetUser(t *testing.T) {
 	// Выполняем запрос
 	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, *user.UserId)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var fetchedUser components.User
+		var fetchedUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedUser)) {
 			assert.Equal(t, user.Username, fetchedUser.Username)
 			assert.Equal(t, user.UserId, fetchedUser.UserId)
@@ -114,12 +114,12 @@ func TestFollowUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
 	userId := uuid.New().String()
-	reader := &components.User{
+	reader := &domain_gen.User{
 		UserId:   &userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
-	writer := &components.User{
+	writer := &domain_gen.User{
 		UserId:   &userId,
 		Username: "writer",
 	}
@@ -130,7 +130,7 @@ func TestFollowUser(t *testing.T) {
 	reader.UserId = r.UserId
 	writer.UserId = w.UserId
 	// Пример запроса на подписку
-	followRequest := components.FollowRequest{
+	followRequest := domain_gen.FollowRequest{
 		ReaderId: *reader.UserId,
 		WriterId: *writer.UserId,
 	}
@@ -162,12 +162,12 @@ func TestUnfollowUser(t *testing.T) {
 	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
 
 	userId := uuid.New().String()
-	reader := &components.User{
+	reader := &domain_gen.User{
 		UserId:   &userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
-	writer := &components.User{
+	writer := &domain_gen.User{
 		UserId:   &userId,
 		Username: "writer",
 	}
@@ -182,7 +182,7 @@ func TestUnfollowUser(t *testing.T) {
 	_ = followRepo.Follow(*reader.UserId, *writer.UserId)
 
 	// Пример запроса на отписку
-	unfollowRequest := components.FollowRequest{
+	unfollowRequest := domain_gen.FollowRequest{
 		ReaderId: *reader.UserId,
 		WriterId: *writer.UserId,
 	}
