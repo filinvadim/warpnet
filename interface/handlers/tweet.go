@@ -2,22 +2,22 @@ package handlers
 
 import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/exposed/client"
-	"github.com/filinvadim/dWighter/exposed/server"
-	api_gen "github.com/filinvadim/dWighter/local/api-gen"
+	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
+	"github.com/filinvadim/dWighter/node/client"
+	"github.com/filinvadim/dWighter/node/server"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
 type TweetController struct {
-	cli           *client.DiscoveryClient
-	discoveryHost string
+	cli        *client.NodeClient
+	owNodeHost string
 }
 
 func NewTweetController(
-	cli *client.DiscoveryClient,
+	cli *client.NodeClient,
 ) *TweetController {
-	return &TweetController{cli, "localhost" + server.DefaultDiscoveryPort}
+	return &TweetController{cli, "http://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {
@@ -30,7 +30,7 @@ func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "bind" + err.Error()})
 	}
 
-	tweet, err := c.cli.SendNewTweet(c.discoveryHost, domain_gen.NewTweetEvent{Tweet: &t})
+	tweet, err := c.cli.BroadcastNewTweet(c.owNodeHost, domain_gen.NewTweetEvent{Tweet: &t})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -42,17 +42,19 @@ func (c *TweetController) GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId 
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	tweets, nextCursor, err := c.timelineRepo.GetTimeline(userId, params.Limit, params.Cursor)
+
+	tweetsResp, err := c.cli.SendGetTimeline(
+		c.owNodeHost, domain_gen.GetTimelineEvent{
+			UserId: userId,
+			Limit:  params.Limit,
+			Cursor: params.Cursor,
+		},
+	)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	response := domain_gen.TweetsResponse{
-		Tweets: tweets,
-		Cursor: nextCursor,
-	}
-
-	return ctx.JSON(http.StatusOK, response)
+	return ctx.JSON(http.StatusOK, tweetsResp)
 }
 
 // GetTweetsUserIdTweetId returns a specific tweet by userId and tweetId
@@ -60,9 +62,10 @@ func (c *TweetController) GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId s
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	tweet, err := c.tweetRepo.Get(userId, tweetId)
+
+	tweet, err := c.cli.SendGetTweet(c.owNodeHost, domain_gen.GetTweetEvent{TweetId: tweetId, UserId: userId})
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, tweet)
@@ -73,10 +76,9 @@ func (c *TweetController) GetV1ApiTweetsUserId(ctx echo.Context, userId string) 
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	tweets, err := c.tweetRepo.List(userId)
+	tweets, err := c.cli.SendGetAllTweets(c.owNodeHost, domain_gen.GetAllTweetsEvent{UserId: userId})
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-
 	return ctx.JSON(http.StatusOK, tweets)
 }

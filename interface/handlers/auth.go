@@ -2,24 +2,21 @@ package handlers
 
 import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/exposed/client"
-	"github.com/filinvadim/dWighter/exposed/server"
+	"github.com/filinvadim/dWighter/node/client"
+	"github.com/filinvadim/dWighter/node/server"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"os"
 )
 
 type AuthController struct {
-	cli           *client.DiscoveryClient
-	interrupt     chan os.Signal
+	cli           *client.NodeClient
 	discoveryHost string
 }
 
 func NewAuthController(
-	cli *client.DiscoveryClient,
-	interrupt chan os.Signal,
+	cli *client.NodeClient,
 ) *AuthController {
-	return &AuthController{cli, interrupt, "localhost" + server.DefaultDiscoveryPort}
+	return &AuthController{cli, "localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {

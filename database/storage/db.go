@@ -7,6 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/dWighter/crypto"
+	"github.com/labstack/gommon/log"
 	"sync/atomic"
 	"time"
 )
@@ -22,61 +23,60 @@ type DB struct {
 
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
-	token     string
+
+	runF  func(opt badger.Options) (*badger.DB, error)
+	opts  badger.Options
+	token string
 }
 
 func New(
 	path string,
 	isInMemory bool,
-	logLvl, username, password string,
-	recoveryPhrase *string,
-) (_ *DB, err error) {
-
-	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
-
+) *DB {
 	opts := badger.
 		DefaultOptions(path + "/storage").
 		WithSyncWrites(false).
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2).
-		WithLogger(nil).
-		WithEncryptionKey(hashSum)
+		WithLogger(nil)
 
 	if isInMemory {
-		opts.WithDir("").WithValueDir("").WithInMemory(isInMemory)
+		opts.WithInMemory(isInMemory)
 	}
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil,
-	}
-	storage.badger, err = badger.Open(opts)
-	if errors.Is(err, badger.ErrEncryptionKeyMismatch) {
-		return nil, ErrWrongPassword
-	}
-	if err != nil {
-		return nil, err
+		sequence: nil, runF: badger.Open, opts: opts,
 	}
 
-	storage.isRunning.Store(true)
+	return storage
+}
+
+func (db *DB) Run(username, password string) (err error) {
+	if db.isRunning.Load() {
+		return nil
+	}
+	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
+	db.opts.WithEncryptionKey(hashSum)
+
+	db.badger, err = db.runF(db.opts)
+	if err != nil {
+		return err
+	}
+
+	db.isRunning.Store(true)
 	fmt.Println("DATABASE IS RUNNING!")
-	storage.sequence, err = storage.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
+	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	go storage.runEventualGC()
 
-	var phrase []byte
-	phrase, err = storage.Get("RECOVERY-PHRASE")
-	if errors.Is(err, badger.ErrEmptyKey) && recoveryPhrase != nil {
-		storage.Set("RECOVERY-PHRASE", []byte(*recoveryPhrase))
-		phrase = []byte(*recoveryPhrase)
-	}
-	storage.token = base64.StdEncoding.EncodeToString(
-		crypto.ConvertToSHA256([]byte(username + "@" + password + "@" + string(phrase))),
+	db.token = base64.StdEncoding.EncodeToString(
+		crypto.ConvertToSHA256([]byte(username + "@" + password + "@" + time.Now().String())),
 	)
-	return storage, nil
+	go db.runEventualGC()
+	return nil
 }
 
 func (db *DB) Token() string {
@@ -91,7 +91,7 @@ func (db *DB) runEventualGC() {
 		case <-time.After(time.Hour * 24):
 			for {
 				err := db.badger.RunValueLogGC(0.5)
-				if err == badger.ErrNoRewrite {
+				if errors.Is(err, badger.ErrNoRewrite) {
 					break
 				}
 				time.Sleep(time.Second)
@@ -241,17 +241,19 @@ func (db *DB) GC() {
 	}
 }
 
-func (db *DB) Close() error {
+func (db *DB) Close() {
 	close(db.stopChan)
 	if db.sequence != nil {
 		db.sequence.Release()
 	}
 	if db.badger == nil {
-		return nil
+		return
 	}
 	if !db.isRunning.Load() {
-		return nil
+		return
 	}
 	db.isRunning.Store(false)
-	return db.badger.Close()
+	if err := db.badger.Close(); err != nil {
+		log.Error(err)
+	}
 }

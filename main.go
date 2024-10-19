@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
-	"github.com/filinvadim/dWighter/exposed/discovery"
-	"github.com/filinvadim/dWighter/local/handlers"
-	"github.com/filinvadim/dWighter/local/server"
+	"fmt"
+	"github.com/filinvadim/dWighter/interface/handlers"
+	"github.com/filinvadim/dWighter/interface/server"
+	"github.com/filinvadim/dWighter/node/client"
+	"github.com/filinvadim/dWighter/node/node"
+	"github.com/labstack/echo/v4"
 	"log"
 	"os"
 	"os/signal"
@@ -12,7 +15,6 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
 	_ "go.uber.org/automaxprocs"
 )
@@ -29,67 +31,58 @@ type API struct {
 }
 
 func main() {
-	var (
-		interruptChan = make(chan os.Signal, 1)
-	)
+	var interruptChan = make(chan os.Signal, 1)
+
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	path := getAppPath()
-	db := storage.New(path, false, "debug")
+	db := storage.New(
+		path, false,
+	)
 	defer db.Close()
 
-	nodeRepo := database.NewNodeRepo(db)
-	authRepo := database.NewAuthRepo(db)
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
-	userRepo := database.NewUserRepo(db)
-
-	srv, err := server.NewOwnerServer(path, 1)
+	interfaceServer, err := server.NewInterfaceServer()
 	if err != nil {
 		log.Fatalf("failed to run owner server: %v", err)
 	}
 
-	srv.RegisterHandlers(&API{
-		handlers.NewTweetController(),
-		handlers.NewUserController(),
-		handlers.NewStaticController(),
-		handlers.NewAuthController(interruptChan),
-	})
-	go func() {
-		err := srv.Start()
-		if err != nil {
-			log.Fatalf("failed to start owner server: %v", err)
-		}
-	}()
-
-	var discSvc *discovery.DiscoveryService
-	for authResult := range interruptChan {
-		if authResult.String() == handlers.AuthSuccess {
-			discSvc, err = discovery.NewDiscoveryService(
-				ctx, nodeRepo, authRepo, userRepo, tweetRepo, timelineRepo, nil,
-			)
-			if err != nil {
-				log.Fatalf("failed to run discovery-gen service: %v", err)
-			}
-			go discSvc.Run()
-		}
+	cli, err := client.NewNodeClient(ctx)
+	if err != nil {
+		log.Fatal("nide client loading: ", err)
 	}
+
+	ip, err := cli.GetOwnIPAddress()
+	if err != nil {
+		log.Fatal("failed to get own node ip address")
+	}
+	fmt.Println("YOUR OWN IP", ip)
+
+	interfaceServer.RegisterHandlers(&API{
+		handlers.NewTweetController(cli),
+		handlers.NewUserController(cli),
+		handlers.NewStaticController(),
+		handlers.NewAuthController(cli),
+	})
+	go interfaceServer.Start()
+	defer interfaceServer.Shutdown(ctx)
+
+	n, err := node.NewNodeService(
+		ctx, ip, cli, db, interruptChan,
+		func(next echo.HandlerFunc) echo.HandlerFunc {
+			return nil
+		},
+	)
+	if err != nil {
+		log.Fatalf("failed to init node service: %v", err)
+	}
+	go n.Run()
+	defer n.Stop()
 
 	<-interruptChan
 
-	if err = srv.Shutdown(ctx); err != nil {
-		log.Printf("failed to shutdown owner server: %v", err)
-	}
-	if discSvc == nil {
-		return
-	}
-	if err = discSvc.Stop(); err != nil {
-		log.Printf("failed to stop discovery service: %v", err)
-	}
 }
 
 func getAppPath() string {

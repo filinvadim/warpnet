@@ -14,7 +14,8 @@ import (
 func setupUserTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtestuser"
 	// Открываем базу данных в этой директории
-	db := storage.New(path, true, "error")
+	db := storage.New(path, true)
+	db.Run("", "")
 
 	t.Cleanup(func() {
 		db.Close()

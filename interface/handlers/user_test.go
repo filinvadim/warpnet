@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/local/handlers"
+	"github.com/filinvadim/dWighter/interface/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -23,7 +23,9 @@ func setupUserTest(t *testing.T) (*echo.Echo, *database.UserRepo, *database.Foll
 
 	// Инициализация тестовой базы данных для пользователей и подписок
 	path := "../var/handlertest"
-	db := storage.New(path, true, "error")
+	db := storage.New(path, true)
+	db.Run("", "")
+
 	userRepo := database.NewUserRepo(db)
 	followRepo := database.NewFollowRepo(db)
 	nodeRepo := database.NewNodeRepo(db)
@@ -39,11 +41,11 @@ func setupUserTest(t *testing.T) (*echo.Echo, *database.UserRepo, *database.Foll
 
 // TestPostUser tests the creation of a new user
 func TestPostUser(t *testing.T) {
-	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
+	e, _, _, _, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
+	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
 	user := &domain_gen.User{
@@ -73,11 +75,11 @@ func TestPostUser(t *testing.T) {
 
 // TestGetUser tests retrieving a user by userId
 func TestGetUser(t *testing.T) {
-	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
+	e, userRepo, _, _, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
+	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
 	user := &domain_gen.User{
@@ -107,11 +109,11 @@ func TestGetUser(t *testing.T) {
 
 // TestFollowUser tests following another user
 func TestFollowUser(t *testing.T) {
-	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, _, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
+	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
 	reader := &domain_gen.User{
@@ -155,11 +157,11 @@ func TestFollowUser(t *testing.T) {
 
 // TestUnfollowUser tests unfollowing a user
 func TestUnfollowUser(t *testing.T) {
-	e, userRepo, followRepo, nodeRepo, cleanup := setupUserTest(t)
+	e, userRepo, followRepo, _, cleanup := setupUserTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewUserController(userRepo, followRepo, nodeRepo)
+	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
 	reader := &domain_gen.User{

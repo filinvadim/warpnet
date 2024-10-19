@@ -15,7 +15,8 @@ import (
 func setupTweetTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttweet"
 	// Открываем базу данных в этой директории
-	db := storage.New(path, true, "error")
+	db := storage.New(path, true)
+	db.Run("", "")
 
 	t.Cleanup(func() {
 		db.Close()
@@ -126,7 +127,7 @@ func TestTweetRepo_List(t *testing.T) {
 	_, err = repo.Create(*user.UserId, tweet2)
 	assert.NoError(t, err)
 
-	tweets, err := repo.List(*user.UserId)
+	tweets, _, err := repo.List(*user.UserId, nil, nil)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 2)
 

@@ -1,4 +1,4 @@
-package discovery
+package node
 
 import (
 	"github.com/filinvadim/dWighter/database"

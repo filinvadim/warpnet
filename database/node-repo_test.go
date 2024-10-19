@@ -13,7 +13,8 @@ import (
 
 func setupNodeTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtestnodes"
-	db := storage.New(path, false, "error")
+	db := storage.New(path, false)
+	db.Run("", "")
 
 	t.Cleanup(func() {
 		db.Close()

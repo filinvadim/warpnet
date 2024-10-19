@@ -2,20 +2,20 @@ package handlers
 
 import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"github.com/filinvadim/dWighter/node/client"
+	"github.com/filinvadim/dWighter/node/server"
 	"net/http"
 
-	"github.com/filinvadim/dWighter/database"
 	"github.com/labstack/echo/v4"
 )
 
 type UserController struct {
-	userRepo   *database.UserRepo
-	followRepo *database.FollowRepo
-	nodeRepo   *database.NodeRepo
+	cli        *client.NodeClient
+	owNodeHost string
 }
 
-func NewUserController() *UserController {
-	return &UserController{}
+func NewUserController(cli *client.NodeClient) *UserController {
+	return &UserController{cli: cli, owNodeHost: "http://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {
@@ -30,22 +30,22 @@ func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {
 	readerId := req.ReaderId
 	writerId := req.WriterId
 
-	_, err = c.userRepo.Get(readerId)
+	_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: readerId})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
-	_, err = c.userRepo.Get(writerId)
+	_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: writerId})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
-	err = c.followRepo.Follow(readerId, writerId)
+	err = c.cli.BroadcastNewFollow(c.owNodeHost, domain_gen.NewFollowEvent{Request: &domain_gen.FollowRequest{
+		ReaderId: readerId,
+		WriterId: writerId,
+	}})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
-
 	}
-
-	// TODO broadcast
 
 	return ctx.NoContent(http.StatusCreated)
 }
@@ -63,21 +63,22 @@ func (c *UserController) PostV1ApiUsersUnfollow(ctx echo.Context) error {
 	readerId := req.ReaderId
 	writerId := req.WriterId
 
-	_, err = c.userRepo.Get(readerId)
+	_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: readerId})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
-	_, err = c.userRepo.Get(writerId)
-	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
-	}
-
-	err = c.followRepo.Unfollow(readerId, writerId)
+	_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: writerId})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
-	// TODO broadcast
+	err = c.cli.BroadcastNewUnfollow(c.owNodeHost, domain_gen.NewUnfollowEvent{Request: &domain_gen.UnfollowRequest{
+		ReaderId: readerId,
+		WriterId: writerId,
+	}})
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+	}
 
 	return ctx.NoContent(http.StatusOK)
 }
@@ -93,17 +94,16 @@ func (c *UserController) PostV1ApiUsers(ctx echo.Context) error {
 	}
 
 	if user.UserId != nil {
-		if _, err := c.userRepo.Get(*user.UserId); err == nil {
+		_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: *user.UserId})
+		if err == nil {
 			return ctx.JSON(http.StatusForbidden, domain_gen.Error{Code: http.StatusForbidden, Message: "user already exists"})
 		}
 	}
 
-	userCreated, err := c.userRepo.Create(user)
+	userCreated, err := c.cli.BroadcastNewUser(c.owNodeHost, domain_gen.NewUserEvent{User: user})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
-
-	// TODO broadcast
 
 	return ctx.JSON(http.StatusOK, userCreated)
 }
@@ -114,6 +114,9 @@ func (c *UserController) GetV1ApiUsersUserId(ctx echo.Context, userId string) er
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
 
-	// TODO
-	return ctx.JSON(http.StatusOK, nil)
+	u, err := c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: userId})
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+	}
+	return ctx.JSON(http.StatusOK, u)
 }

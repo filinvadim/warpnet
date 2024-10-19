@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	discovery_gen "github.com/filinvadim/dWighter/exposed/discovery-gen"
+	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"net/http"
 
 	"github.com/filinvadim/dWighter/crypto"
@@ -27,7 +27,7 @@ type discoveryServer struct {
 func NewDiscoveryServer(
 	ctx context.Context, service DiscoveryServicer, loggerMw echo.MiddlewareFunc,
 ) (*discoveryServer, error) {
-	swagger, err := discovery_gen.GetSwagger()
+	swagger, err := node_gen.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func NewDiscoveryServer(
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	discovery_gen.RegisterHandlers(e, service)
+	node_gen.RegisterHandlers(e, service)
 
 	conf, err := crypto.GenerateTLSConfig("") // TODO just once
 	if err != nil {

@@ -14,7 +14,8 @@ import (
 
 func setupTimelineTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttimeline"
-	db := storage.New(path, true, "error")
+	db := storage.New(path, true)
+	db.Run("", "")
 
 	t.Cleanup(func() {
 		db.Close()

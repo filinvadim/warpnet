@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	api_gen "github.com/filinvadim/dWighter/local/api-gen"
-	"github.com/filinvadim/dWighter/local/handlers"
+	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
+	"github.com/filinvadim/dWighter/interface/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -24,7 +24,8 @@ func setupTweetTest(t *testing.T) (*echo.Echo, *database.TweetRepo, *database.Ti
 	e := echo.New()
 
 	path := "../var/handlertest"
-	db := storage.New(path, true, "error")
+	db := storage.New(path, true)
+	db.Run("", "")
 	tweetRepo := database.NewTweetRepo(db)
 	timelineRepo := database.NewTimelineRepo(db)
 
@@ -39,11 +40,11 @@ func setupTweetTest(t *testing.T) (*echo.Echo, *database.TweetRepo, *database.Ti
 
 // TestPostTweet tests the creation of a new tweet
 func TestPostTweet(t *testing.T) {
-	e, tweetRepo, timelineRepo, cleanup := setupTweetTest(t)
+	e, _, _, cleanup := setupTweetTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
+	controller := handlers.NewTweetController(nil)
 
 	// Пример твита
 	tweet := domain_gen.Tweet{
@@ -73,11 +74,11 @@ func TestPostTweet(t *testing.T) {
 
 // TestGetTweetsByUser tests fetching all tweets by a specific user
 func TestGetTweetsByUser(t *testing.T) {
-	e, tweetRepo, timelineRepo, cleanup := setupTweetTest(t)
+	e, tweetRepo, _, cleanup := setupTweetTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
+	controller := handlers.NewTweetController(nil)
 
 	// Пример твита
 	userID := uuid.New().String()
@@ -108,11 +109,11 @@ func TestGetTweetsByUser(t *testing.T) {
 
 // TestGetSpecificTweet tests fetching a specific tweet by tweet ID
 func TestGetSpecificTweet(t *testing.T) {
-	e, tweetRepo, timelineRepo, cleanup := setupTweetTest(t)
+	e, tweetRepo, _, cleanup := setupTweetTest(t)
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
+	controller := handlers.NewTweetController(nil)
 
 	// Пример твита
 	userID := uuid.New().String()
@@ -150,7 +151,7 @@ func TestGetTimeline(t *testing.T) {
 	defer cleanup()
 
 	// Создаем контроллер
-	controller := handlers.NewTweetController(timelineRepo, tweetRepo)
+	controller := handlers.NewTweetController(nil)
 
 	// Пример твитов
 	userID := uuid.New().String()
@@ -188,7 +189,7 @@ func TestGetTimeline(t *testing.T) {
 	}
 	if assert.NoError(t, controller.GetV1ApiTweetsTimelineUserId(ctx, userID, params)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var response api_gen.TimelineResponse
+		var response domain_gen.TweetsResponse
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response)) {
 			assert.Len(t, response.Tweets, 2)
 			assert.Equal(t, tweet2.Content, response.Tweets[0].Content)

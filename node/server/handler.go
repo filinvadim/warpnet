@@ -6,14 +6,16 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/database"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/exposed/discovery"
+	"github.com/filinvadim/dWighter/node/client"
+	"github.com/filinvadim/dWighter/node/node"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"net/http"
+	"os"
 	"time"
 )
 
-type DiscoveryRequester interface {
+type NodeRequester interface {
 	Ping(host string, ping domain_gen.PingEvent) error
 	Pong(host string, ping domain_gen.PongEvent) error
 	SendNewTweet(host string, t domain_gen.NewTweetEvent) error
@@ -23,41 +25,47 @@ type DiscoveryRequester interface {
 	SendNewUnfollow(host string, uf domain_gen.NewUnfollowEvent) error
 }
 
-type discoveryHandler struct {
+type nodeEventHandler struct {
 	ownIP        string
 	nodeRepo     *database.NodeRepo
 	authRepo     *database.AuthRepo
 	userRepo     *database.UserRepo
 	tweetRepo    *database.TweetRepo
 	timelineRepo *database.TimelineRepo
-	cli          DiscoveryRequester
-	cache        discovery.DiscoveryCacher
+	followRepo   *database.FollowRepo
+	cli          *client.NodeClient
+	cache        node.NodeCacher
+	interrupt    chan os.Signal
 }
 
-func NewDiscoveryHandler(
+func NewNodeHandler(
 	ownIP string,
-	cache discovery.DiscoveryCacher,
+	cache node.NodeCacher,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
 	userRepo *database.UserRepo,
 	tweetRepo *database.TweetRepo,
 	timelineRepo *database.TimelineRepo,
-	cli DiscoveryRequester,
-) (*discoveryHandler, error) {
+	followRepo *database.FollowRepo,
+	cli *client.NodeClient,
+	interrupt chan os.Signal,
+) (*nodeEventHandler, error) {
 
-	return &discoveryHandler{
+	return &nodeEventHandler{
 		ownIP:        ownIP,
 		nodeRepo:     nodeRepo,
 		authRepo:     authRepo,
 		userRepo:     userRepo,
 		tweetRepo:    tweetRepo,
 		timelineRepo: timelineRepo,
+		followRepo:   followRepo,
 		cli:          cli,
 		cache:        cache,
+		interrupt:    interrupt,
 	}, nil
 }
 
-func (d *discoveryHandler) NewEvent(ctx echo.Context) (err error) {
+func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 	var receivedEvent domain_gen.Event
 	if err := ctx.Bind(&receivedEvent); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -91,10 +99,11 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 		for _, n := range d.cache.GetNodes() {
-			if err := d.cli.SendNewUser(n.Host, userEvent); err != nil {
+			if _, err := d.cli.BroadcastNewUser(n.Host, userEvent); err != nil {
 				return err
 			}
 		}
+		response = userEvent.User
 	case domain_gen.EventEventTypeNewTweet:
 		tweetEvent, err := d.handleNewTweet(ctx, receivedEvent.Data)
 		if err != nil {
@@ -102,10 +111,11 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 		for _, n := range d.cache.GetNodes() {
-			if err = d.cli.SendNewTweet(n.Host, tweetEvent); err != nil {
+			if _, err = d.cli.BroadcastNewTweet(n.Host, tweetEvent); err != nil {
 				return err
 			}
 		}
+		response = tweetEvent.Tweet
 	case domain_gen.EventEventTypeFollow, domain_gen.EventEventTypeUnfollow:
 		// TODO
 	case domain_gen.EventEventTypeLogin:
@@ -163,7 +173,7 @@ func (d *discoveryHandler) NewEvent(ctx echo.Context) (err error) {
 	return ctx.JSON(http.StatusOK, response)
 }
 
-func (d *discoveryHandler) handlePing(ctx echo.Context, data *domain_gen.Event_Data) error {
+func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_Data) error {
 	if ctx.Request().Context().Err() != nil {
 		return ctx.Request().Context().Err()
 	}
@@ -198,7 +208,7 @@ func (d *discoveryHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 	return nil
 }
 
-func (d *discoveryHandler) handleNewUser(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.NewUserEvent, error) {
+func (d *nodeEventHandler) handleNewUser(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.NewUserEvent, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.NewUserEvent{}, ctx.Request().Context().Err()
 	}
@@ -210,7 +220,7 @@ func (d *discoveryHandler) handleNewUser(ctx echo.Context, data *domain_gen.Even
 	return userEvent, err
 }
 
-func (d *discoveryHandler) handleNewTweet(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.NewTweetEvent, error) {
+func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.NewTweetEvent, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.NewTweetEvent{}, ctx.Request().Context().Err()
 	}
@@ -223,7 +233,7 @@ func (d *discoveryHandler) handleNewTweet(ctx echo.Context, data *domain_gen.Eve
 	return domain_gen.NewTweetEvent{}, err
 }
 
-func (d *discoveryHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.User, error) {
+func (d *nodeEventHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.User, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.User{}, ctx.Request().Context().Err()
 	}
@@ -232,7 +242,9 @@ func (d *discoveryHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_
 		return domain_gen.User{}, err
 	}
 
-	// TODO wait db auth
+	if err = d.authRepo.Authenticate(login.Username, login.Password); err != nil {
+		return domain_gen.User{}, err
+	}
 
 	owner, err := d.authRepo.Owner()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
@@ -282,17 +294,17 @@ func (d *discoveryHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_
 	return *u, err
 }
 
-func (d *discoveryHandler) handleLogout(ctx echo.Context, data *domain_gen.Event_Data) error {
+func (d *nodeEventHandler) handleLogout(ctx echo.Context, _ *domain_gen.Event_Data) error {
 	if ctx.Request().Context().Err() != nil {
 		return ctx.Request().Context().Err()
 	}
-	//c.interrupt <- &AuthResult{AuthFailed}
+	d.interrupt <- os.Interrupt
 	return ctx.NoContent(http.StatusOK)
 }
 
 type TweetsResponse = domain_gen.TweetsResponse
 
-func (d *discoveryHandler) handleGetTimeline(ctx echo.Context, data *domain_gen.Event_Data) (TweetsResponse, error) {
+func (d *nodeEventHandler) handleGetTimeline(ctx echo.Context, data *domain_gen.Event_Data) (TweetsResponse, error) {
 	if ctx.Request().Context().Err() != nil {
 		return TweetsResponse{}, ctx.Request().Context().Err()
 	}
@@ -312,7 +324,7 @@ func (d *discoveryHandler) handleGetTimeline(ctx echo.Context, data *domain_gen.
 	return response, nil
 }
 
-func (d *discoveryHandler) handleGetTweets(ctx echo.Context, data *domain_gen.Event_Data) (TweetsResponse, error) {
+func (d *nodeEventHandler) handleGetTweets(ctx echo.Context, data *domain_gen.Event_Data) (TweetsResponse, error) {
 	if ctx.Request().Context().Err() != nil {
 		return TweetsResponse{}, ctx.Request().Context().Err()
 	}
@@ -332,7 +344,7 @@ func (d *discoveryHandler) handleGetTweets(ctx echo.Context, data *domain_gen.Ev
 	return response, nil
 }
 
-func (d *discoveryHandler) handleGetSingleTweet(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.Tweet, error) {
+func (d *nodeEventHandler) handleGetSingleTweet(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.Tweet, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.Tweet{}, ctx.Request().Context().Err()
 	}
@@ -347,7 +359,7 @@ func (d *discoveryHandler) handleGetSingleTweet(ctx echo.Context, data *domain_g
 	return *tweet, nil
 }
 
-func (d *discoveryHandler) handleGetUser(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.User, error) {
+func (d *nodeEventHandler) handleGetUser(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.User, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.User{}, ctx.Request().Context().Err()
 	}

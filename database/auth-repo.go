@@ -26,17 +26,11 @@ func NewAuthRepo(db *storage.DB) *AuthRepo {
 	return &AuthRepo{db: db}
 }
 
-func (repo *AuthRepo) IsPasswordExists() bool {
-	key, _ := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(PassSubName).Build()
-
-	p, err := repo.db.Get(key)
-	if err != nil {
-		return false
+func (repo *AuthRepo) Authenticate(username, password string) error {
+	if err := repo.db.Run(username, password); err != nil {
+		return ErrWrongPassword
 	}
-	if p == nil {
-		return false
-	}
-	return true
+	return nil
 }
 
 func (repo *AuthRepo) SetOwner(u domain_gen.User) (_ *domain_gen.User, err error) {
