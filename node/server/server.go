@@ -36,7 +36,7 @@ func NewNodeServer(
 	e.HideBanner = true
 	e.Logger.SetLevel(echoLog.INFO)
 	e.Logger.SetPrefix("node-server")
-	e.Use(loggerMw)
+	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.Gzip())

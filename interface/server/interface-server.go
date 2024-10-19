@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -41,7 +42,10 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 	e.HideBanner = true
 	e.Logger.SetPrefix("interface-server")
 
-	e.Use(echomiddleware.CORS())
+	defaultConf := echomiddleware.DefaultCORSConfig
+	defaultConf.AllowMethods = append(defaultConf.AllowMethods, http.MethodOptions)
+	e.Use(echomiddleware.CORSWithConfig(defaultConf))
+	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))

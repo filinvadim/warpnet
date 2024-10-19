@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/node/client"
 	"github.com/filinvadim/dWighter/node/server"
@@ -16,10 +17,11 @@ type AuthController struct {
 func NewAuthController(
 	cli *client.NodeClient,
 ) *AuthController {
-	return &AuthController{cli, "localhost" + server.DefaultDiscoveryPort}
+	return &AuthController{cli, "http://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
+	fmt.Println(ctx.Request().URL.String(), "????????????????")
 	var req domain_gen.AuthRequest
 	if err := ctx.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
