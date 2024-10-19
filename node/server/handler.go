@@ -6,8 +6,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/database"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/node/client"
-	"github.com/filinvadim/dWighter/node/node"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"net/http"
@@ -15,14 +13,20 @@ import (
 	"time"
 )
 
+type HandlerNodeCacher interface {
+	AddNode(n domain_gen.Node)
+	GetNodes() []domain_gen.Node
+	RemoveNode(n *domain_gen.Node)
+}
+
 type NodeRequester interface {
 	Ping(host string, ping domain_gen.PingEvent) error
 	Pong(host string, ping domain_gen.PongEvent) error
-	SendNewTweet(host string, t domain_gen.NewTweetEvent) error
-	SendNewUser(host string, u domain_gen.NewUserEvent) error
+	BroadcastNewTweet(host string, t domain_gen.NewTweetEvent) (domain_gen.Tweet, error)
+	BroadcastNewUser(host string, u domain_gen.NewUserEvent) (domain_gen.User, error)
 	SendError(host string, e domain_gen.ErrorEvent) error
-	SendNewFollow(host string, f domain_gen.NewFollowEvent) error
-	SendNewUnfollow(host string, uf domain_gen.NewUnfollowEvent) error
+	BroadcastNewFollow(host string, f domain_gen.NewFollowEvent) error
+	BroadcastNewUnfollow(host string, uf domain_gen.NewUnfollowEvent) error
 }
 
 type nodeEventHandler struct {
@@ -33,21 +37,21 @@ type nodeEventHandler struct {
 	tweetRepo    *database.TweetRepo
 	timelineRepo *database.TimelineRepo
 	followRepo   *database.FollowRepo
-	cli          *client.NodeClient
-	cache        node.NodeCacher
+	cli          NodeRequester
+	cache        HandlerNodeCacher
 	interrupt    chan os.Signal
 }
 
 func NewNodeHandler(
 	ownIP string,
-	cache node.NodeCacher,
+	cache HandlerNodeCacher,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
 	userRepo *database.UserRepo,
 	tweetRepo *database.TweetRepo,
 	timelineRepo *database.TimelineRepo,
 	followRepo *database.FollowRepo,
-	cli *client.NodeClient,
+	cli NodeRequester,
 	interrupt chan os.Signal,
 ) (*nodeEventHandler, error) {
 

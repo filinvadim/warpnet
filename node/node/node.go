@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/dWighter/database/storage"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/node/client"
@@ -37,8 +38,6 @@ type NodeService struct {
 	stopChan chan struct{}
 }
 
-const PresetNodeAddress = "127.0.0.1:16969"
-
 func NewNodeService(
 	ctx context.Context,
 	ownIP string,
@@ -55,9 +54,9 @@ func NewNodeService(
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	cache, err := newDiscoveryCache(nodeRepo)
+	cache, err := newNodeCache(nodeRepo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("node cache: %w", err)
 	}
 
 	handler, err := server.NewNodeHandler(
@@ -73,11 +72,11 @@ func NewNodeService(
 		interrupt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("node handler: %w", err)
 	}
-	srv, err := server.NewDiscoveryServer(ctx, handler, loggerMw)
+	srv, err := server.NewNodeServer(ctx, handler, loggerMw)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("node server: %w", err)
 	}
 
 	return &NodeService{

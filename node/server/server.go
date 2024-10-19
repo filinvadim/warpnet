@@ -18,23 +18,24 @@ type DiscoveryServicer interface {
 	NewEvent(ctx echo.Context) error
 }
 
-type discoveryServer struct {
+type nodeServer struct {
 	ctx context.Context
 	e   *echo.Echo
 	srv *http.Server
 }
 
-func NewDiscoveryServer(
+func NewNodeServer(
 	ctx context.Context, service DiscoveryServicer, loggerMw echo.MiddlewareFunc,
-) (*discoveryServer, error) {
+) (*nodeServer, error) {
 	swagger, err := node_gen.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
 	swagger.Servers = nil
 	e := echo.New()
+	e.HideBanner = true
 	e.Logger.SetLevel(echoLog.INFO)
-	e.Logger.SetPrefix("")
+	e.Logger.SetPrefix("node-server")
 	e.Use(loggerMw)
 	e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Recover())
@@ -53,13 +54,13 @@ func NewDiscoveryServer(
 		TLSConfig: conf,
 	}
 
-	return &discoveryServer{ctx, e, srv}, nil
+	return &nodeServer{ctx, e, srv}, nil
 }
 
-func (ds *discoveryServer) Start() error {
+func (ds *nodeServer) Start() error {
 	return ds.e.StartServer(ds.srv)
 }
 
-func (ds *discoveryServer) Stop() error {
+func (ds *nodeServer) Stop() error {
 	return ds.e.Shutdown(ds.ctx)
 }

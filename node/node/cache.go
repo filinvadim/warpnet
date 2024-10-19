@@ -9,7 +9,7 @@ import (
 type host = string
 
 // DiscoveryCache manages IP addresses
-type discoveryCache struct {
+type nodeCache struct {
 	nodes map[host]domain_gen.Node
 	mutex *sync.RWMutex
 
@@ -17,33 +17,33 @@ type discoveryCache struct {
 }
 
 // NewDiscoveryService creates a new DiscoveryService instance
-func newDiscoveryCache(nodeRepo *database.NodeRepo) (*discoveryCache, error) {
-	dc := &discoveryCache{
+func newNodeCache(nodeRepo *database.NodeRepo) (*nodeCache, error) {
+	dc := &nodeCache{
 		nodes: make(map[host]domain_gen.Node),
 		mutex: new(sync.RWMutex),
 	}
-	own := nodeRepo.OwnNode()
-	dc.nodes[PresetNodeAddress] = *own
-	nodes, err := nodeRepo.List()
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range nodes {
-		dc.nodes[n.Host] = n
-	}
+	//own := nodeRepo.OwnNode()
+	//dc.nodes[client.PresetNodeAddress] = *own
+	//nodes, err := nodeRepo.List()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//for _, n := range nodes {
+	//	dc.nodes[n.Host] = n
+	//}
 
 	return dc, nil
 }
 
 // AddNode adds a new IP address to the service
-func (ds *discoveryCache) AddNode(n domain_gen.Node) {
+func (ds *nodeCache) AddNode(n domain_gen.Node) {
 	ds.mutex.Lock()
 	ds.nodes[n.Host] = n
 	ds.mutex.Unlock()
 }
 
 // GetNodes retrieves the list of all IP addresses
-func (ds *discoveryCache) GetNodes() []domain_gen.Node {
+func (ds *nodeCache) GetNodes() []domain_gen.Node {
 	nodes := make([]domain_gen.Node, 0, len(ds.nodes))
 	ds.mutex.RLock()
 	for _, n := range ds.nodes {
@@ -54,7 +54,7 @@ func (ds *discoveryCache) GetNodes() []domain_gen.Node {
 }
 
 // RemoveNode removes an IP address from the service
-func (ds *discoveryCache) RemoveNode(n *domain_gen.Node) {
+func (ds *nodeCache) RemoveNode(n *domain_gen.Node) {
 	if n == nil {
 		return
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/json"
-	"github.com/filinvadim/dWighter/node/node"
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"io"
 	"net/http"
@@ -16,7 +15,10 @@ import (
 	cr "github.com/filinvadim/dWighter/crypto"
 )
 
-const apifyAddr = "https://api.ipify.org?format=json"
+const (
+	apifyAddr         = "https://api.ipify.org?format=json"
+	PresetNodeAddress = "127.0.0.1:16969"
+)
 
 type NodeClient struct {
 	ctx context.Context
@@ -28,7 +30,7 @@ func NewNodeClient(ctx context.Context) (*NodeClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	cli, err := node_gen.NewClientWithResponses(node.PresetNodeAddress, node_gen.WithHTTPClient(tlsCli))
+	cli, err := node_gen.NewClientWithResponses(PresetNodeAddress, node_gen.WithHTTPClient(tlsCli))
 	if err != nil {
 		return nil, err
 	}
