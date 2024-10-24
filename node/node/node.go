@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/filinvadim/dWighter/database"
-	"github.com/labstack/echo/v4"
 )
 
 type NodeServer interface {
@@ -44,7 +43,6 @@ func NewNodeService(
 	cli *client.NodeClient,
 	db *storage.DB,
 	interrupt chan os.Signal,
-	loggerMw echo.MiddlewareFunc,
 ) (*NodeService, error) {
 
 	nodeRepo := database.NewNodeRepo(db)
@@ -74,7 +72,7 @@ func NewNodeService(
 	if err != nil {
 		return nil, fmt.Errorf("node handler: %w", err)
 	}
-	srv, err := server.NewNodeServer(ctx, handler, loggerMw)
+	srv, err := server.NewNodeServer(ctx, handler)
 	if err != nil {
 		return nil, fmt.Errorf("node server: %w", err)
 	}
@@ -85,11 +83,7 @@ func NewNodeService(
 }
 
 func (ds *NodeService) Run() {
-	go func() {
-		if err := ds.server.Start(); err != nil {
-			panic(err)
-		}
-	}()
+	go ds.server.Start()
 
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/interface/handlers"
+	"github.com/filinvadim/dWighter/interface/server/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"

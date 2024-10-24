@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/dWighter/interface/handlers"
 	"github.com/filinvadim/dWighter/interface/server"
+	"github.com/filinvadim/dWighter/interface/server/handlers"
 	"github.com/filinvadim/dWighter/node/client"
 	"github.com/filinvadim/dWighter/node/node"
-	"github.com/labstack/echo/v4"
 	"log"
 	"os"
 	"os/signal"
@@ -51,7 +50,7 @@ func main() {
 
 	cli, err := client.NewNodeClient(ctx)
 	if err != nil {
-		log.Fatal("nide client loading: ", err)
+		log.Fatal("node client loading: ", err)
 	}
 
 	ip, err := cli.GetOwnIPAddress()
@@ -69,17 +68,13 @@ func main() {
 	go interfaceServer.Start()
 	defer interfaceServer.Shutdown(ctx)
 
-	n, err := node.NewNodeService(
-		ctx, ip, cli, db, interruptChan,
-		func(next echo.HandlerFunc) echo.HandlerFunc {
-			return nil
-		},
-	)
+	n, err := node.NewNodeService(ctx, ip, cli, db, interruptChan)
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}
-	go n.Run()
 	defer n.Stop()
+
+	go n.Run()
 
 	<-interruptChan
 
