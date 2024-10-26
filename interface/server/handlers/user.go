@@ -15,7 +15,7 @@ type UserController struct {
 }
 
 func NewUserController(cli *client.NodeClient) *UserController {
-	return &UserController{cli: cli, owNodeHost: "http://localhost" + server.DefaultDiscoveryPort}
+	return &UserController{cli: cli, owNodeHost: "https://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {

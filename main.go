@@ -55,7 +55,7 @@ func main() {
 
 	ip, err := cli.GetOwnIPAddress()
 	if err != nil {
-		log.Fatal("failed to get own node ip address")
+		log.Println("failed to get own node ip address")
 	}
 	fmt.Println("YOUR OWN IP", ip)
 

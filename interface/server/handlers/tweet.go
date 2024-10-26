@@ -17,7 +17,7 @@ type TweetController struct {
 func NewTweetController(
 	cli *client.NodeClient,
 ) *TweetController {
-	return &TweetController{cli, "http://localhost" + server.DefaultDiscoveryPort}
+	return &TweetController{cli, "https://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {

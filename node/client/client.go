@@ -18,7 +18,7 @@ const (
 	apifyAddr         = "https://api.ipify.org?format=txt"
 	ipInfoAddr        = "https://ipinfo.io/ip"
 	seeIpAddr         = "https://api.seeip.org"
-	PresetNodeAddress = "127.0.0.1:16969"
+	PresetNodeAddress = "http://127.0.0.1:16969"
 )
 
 var IPProviders = []string{apifyAddr, ipInfoAddr, seeIpAddr}
@@ -39,7 +39,7 @@ func NewNodeClient(ctx context.Context) (*NodeClient, error) {
 }
 
 func newTLSClient(nodeID string) (node_gen.HttpRequestDoer, error) {
-	conf, err := cr.GenerateTLSConfig(nodeID) // TODO check db for existing certs
+	conf, err := cr.GenerateTLSConfig(nil, nil) // TODO check db for existing certs
 	if err != nil {
 		return nil, err
 	}
