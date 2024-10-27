@@ -63,14 +63,8 @@ func (c *NodeClient) Ping(host string, ping domain_gen.PingEvent) error {
 	return err
 }
 func (c *NodeClient) Pong(host string, ping domain_gen.PongEvent) error {
-	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypePong
-	event.Timestamp = time.Now()
-	if err := event.Data.FromPingEvent(ping); err != nil {
-		return err
-	}
-	_, err := c.sendEvent(host, event)
-	return err
+
+	return nil
 }
 
 func (c *NodeClient) BroadcastNewTweet(host string, t domain_gen.NewTweetEvent) (domain_gen.Tweet, error) {

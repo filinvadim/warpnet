@@ -236,7 +236,7 @@ components:
           type: string
           format: date-time
         data:
-          oneOf:
+          anyOf:
             - $ref: '#/components/schemas/PingEvent'
             - $ref: '#/components/schemas/ErrorEvent'
             - $ref: '#/components/schemas/NewTweetEvent'

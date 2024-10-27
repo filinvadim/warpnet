@@ -57,6 +57,7 @@ func (p *interfaceServer) Start() {
 			p.e.Logger.Errorf("failed to open browser: %v", err)
 		}
 	}()
+
 	if err := p.e.Start(":6969"); err != nil {
 		p.e.Logger.Fatal(err)
 	}

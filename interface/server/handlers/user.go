@@ -15,7 +15,7 @@ type UserController struct {
 }
 
 func NewUserController(cli *client.NodeClient) *UserController {
-	return &UserController{cli: cli, owNodeHost: "https://localhost" + server.DefaultDiscoveryPort}
+	return &UserController{cli: cli, owNodeHost: "http://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {
@@ -91,6 +91,9 @@ func (c *UserController) PostV1ApiUsers(ctx echo.Context) error {
 	err := ctx.Bind(&user)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+	}
+	if user == nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "user is nil"})
 	}
 
 	if user.UserId != nil {

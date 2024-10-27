@@ -4,11 +4,11 @@ info:
   version: 1.0.0
   description: Discovery API for a distributed Twitter-like application
 servers:
-  - url: https://localhost:16969
+  - url: http://localhost:16969
     description: Local development server
 
 paths:
-  /v1/discovery/event/new:
+  /v1/node/event/new:
     post:
       tags:
         - Event

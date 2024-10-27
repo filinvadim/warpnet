@@ -16,7 +16,7 @@ type AuthController struct {
 func NewAuthController(
 	cli *client.NodeClient,
 ) *AuthController {
-	return &AuthController{cli, "https://localhost" + server.DefaultDiscoveryPort}
+	return &AuthController{cli, "http://localhost" + server.DefaultDiscoveryPort}
 }
 
 func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {

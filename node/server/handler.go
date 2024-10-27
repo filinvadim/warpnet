@@ -8,6 +8,7 @@ import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -167,6 +168,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 
 		fmt.Printf("received event: %d %s", errEvent.Code, errEvent.Message)
 	default:
+		log.Fatal("UNKNOWN EVENT!!!", receivedEvent.EventType)
 		if err := d.cli.SendError(ctx.Request().Host, domain_gen.ErrorEvent{
 			Code:    -1,
 			Message: "unknown event",
