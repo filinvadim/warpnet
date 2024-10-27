@@ -8,11 +8,18 @@ servers:
     description: Local development server
 
 paths:
-  /v1/node/event/new:
+  /v1/node/event/{event_type}:
     post:
       tags:
         - Event
       summary: Create a new user
+      parameters:
+        - name: event_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [ ping,pong,error,get_user,get_tweet,get_tweets,new_user,new_tweet,follow,unfollow,login,logout,get_timeline ]
       operationId: newEvent
       requestBody:
         required: true

@@ -54,12 +54,11 @@ func newTLSClient(nodeID string) (node_gen.HttpRequestDoer, error) {
 
 func (c *NodeClient) Ping(host string, ping domain_gen.PingEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypePing
 	event.Timestamp = time.Now()
 	if err := event.Data.FromPingEvent(ping); err != nil {
 		return err
 	}
-	_, err := c.sendEvent(host, event)
+	_, err := c.sendEvent(host, node_gen.Ping, event)
 	return err
 }
 func (c *NodeClient) Pong(host string, ping domain_gen.PongEvent) error {
@@ -69,13 +68,12 @@ func (c *NodeClient) Pong(host string, ping domain_gen.PongEvent) error {
 
 func (c *NodeClient) BroadcastNewTweet(host string, t domain_gen.NewTweetEvent) (domain_gen.Tweet, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeNewTweet
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewTweetEvent(t); err != nil {
 		return domain_gen.Tweet{}, err
 	}
 
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.NewTweet, event)
 	if err != nil {
 		return domain_gen.Tweet{}, err
 	}
@@ -86,13 +84,12 @@ func (c *NodeClient) BroadcastNewTweet(host string, t domain_gen.NewTweetEvent) 
 
 func (c *NodeClient) SendGetTweet(host string, t domain_gen.GetTweetEvent) (domain_gen.Tweet, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeGetTweet
 	event.Timestamp = time.Now()
 	if err := event.Data.FromGetTweetEvent(t); err != nil {
 		return domain_gen.Tweet{}, err
 	}
 
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.GetTweet, event)
 	if err != nil {
 		return domain_gen.Tweet{}, err
 	}
@@ -103,13 +100,12 @@ func (c *NodeClient) SendGetTweet(host string, t domain_gen.GetTweetEvent) (doma
 
 func (c *NodeClient) SendGetTimeline(host string, t domain_gen.GetTimelineEvent) (domain_gen.TweetsResponse, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeGetTimeline
 	event.Timestamp = time.Now()
 	if err := event.Data.FromGetTimelineEvent(t); err != nil {
 		return domain_gen.TweetsResponse{}, err
 	}
 
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.GetTimeline, event)
 	if err != nil {
 		return domain_gen.TweetsResponse{}, err
 	}
@@ -120,13 +116,12 @@ func (c *NodeClient) SendGetTimeline(host string, t domain_gen.GetTimelineEvent)
 
 func (c *NodeClient) SendGetAllTweets(host string, t domain_gen.GetAllTweetsEvent) (domain_gen.TweetsResponse, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeGetTweets
 	event.Timestamp = time.Now()
 	if err := event.Data.FromGetAllTweetsEvent(t); err != nil {
 		return domain_gen.TweetsResponse{}, err
 	}
 
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.GetTweets, event)
 	if err != nil {
 		return domain_gen.TweetsResponse{}, err
 	}
@@ -137,12 +132,11 @@ func (c *NodeClient) SendGetAllTweets(host string, t domain_gen.GetAllTweetsEven
 
 func (c *NodeClient) GetUser(host string, e domain_gen.GetUserEvent) (domain_gen.User, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeGetUser
 	event.Timestamp = time.Now()
 	if err := event.Data.FromGetUserEvent(e); err != nil {
 		return domain_gen.User{}, err
 	}
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.GetUser, event)
 	if err != nil {
 		return domain_gen.User{}, err
 	}
@@ -153,12 +147,11 @@ func (c *NodeClient) GetUser(host string, e domain_gen.GetUserEvent) (domain_gen
 
 func (c *NodeClient) BroadcastNewUser(host string, u domain_gen.NewUserEvent) (domain_gen.User, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeNewUser
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewUserEvent(u); err != nil {
 		return domain_gen.User{}, err
 	}
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.NewUser, event)
 	if err != nil {
 		return domain_gen.User{}, err
 	}
@@ -169,49 +162,45 @@ func (c *NodeClient) BroadcastNewUser(host string, u domain_gen.NewUserEvent) (d
 
 func (c *NodeClient) SendError(host string, e domain_gen.ErrorEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeError
 	event.Timestamp = time.Now()
 	if err := event.Data.FromErrorEvent(e); err != nil {
 		return err
 	}
 
-	_, err := c.sendEvent(host, event)
+	_, err := c.sendEvent(host, node_gen.Error, event)
 	return err
 }
 
 func (c *NodeClient) BroadcastNewFollow(host string, f domain_gen.NewFollowEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeFollow
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewFollowEvent(f); err != nil {
 		return err
 	}
 
-	_, err := c.sendEvent(host, event)
+	_, err := c.sendEvent(host, node_gen.Follow, event)
 	return err
 }
 
 func (c *NodeClient) BroadcastNewUnfollow(host string, uf domain_gen.NewUnfollowEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeUnfollow
 	event.Timestamp = time.Now()
 	if err := event.Data.FromNewUnfollowEvent(uf); err != nil {
 		return err
 	}
 
-	_, err := c.sendEvent(host, event)
+	_, err := c.sendEvent(host, node_gen.Unfollow, event)
 	return err
 }
 
 func (c *NodeClient) SendLogin(host string, l domain_gen.LoginEvent) (domain_gen.User, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeLogin
 	event.Timestamp = time.Now()
 	if err := event.Data.FromLoginEvent(l); err != nil {
 		return domain_gen.User{}, err
 	}
 
-	resp, err := c.sendEvent(host, event)
+	resp, err := c.sendEvent(host, node_gen.Login, event)
 	if err != nil {
 		return domain_gen.User{}, err
 	}
@@ -222,18 +211,19 @@ func (c *NodeClient) SendLogin(host string, l domain_gen.LoginEvent) (domain_gen
 
 func (c *NodeClient) SendLogout(host string, l domain_gen.LogoutEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
-	event.EventType = domain_gen.EventEventTypeLogout
 	event.Timestamp = time.Now()
 	if err := event.Data.FromLogoutEvent(l); err != nil {
 		return err
 	}
 
-	_, err := c.sendEvent(host, event)
+	_, err := c.sendEvent(host, node_gen.Logout, event)
 	return err
 }
 
-func (c *NodeClient) sendEvent(host string, event domain_gen.Event) ([]byte, error) {
-	resp, err := c.cli.NewEventWithResponse(c.ctx, event, func(ctx context.Context, req *http.Request) error {
+func (c *NodeClient) sendEvent(
+	host string, eventType node_gen.NewEventParamsEventType, event domain_gen.Event,
+) ([]byte, error) {
+	resp, err := c.cli.NewEventWithResponse(c.ctx, eventType, event, func(ctx context.Context, req *http.Request) error {
 		req.Host = host
 		return nil
 	})

@@ -96,6 +96,7 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 	}
 
 	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
+		fmt.Println(string(key), string(value), "@@@@@@@@@")
 		if len(tweets) >= int(*limit) {
 			lastKey = key
 			return storage.ErrStopIteration

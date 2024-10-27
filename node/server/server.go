@@ -5,14 +5,14 @@ import (
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	echoLog "github.com/labstack/gommon/log"
 	middleware "github.com/oapi-codegen/echo-middleware"
+	"io/ioutil"
 )
 
 const DefaultDiscoveryPort = ":16969"
 
-type DiscoveryServicer interface {
-	NewEvent(ctx echo.Context) error
+type NodeServicer interface {
+	NewEvent(ctx echo.Context, eventType node_gen.NewEventParamsEventType) error
 }
 
 type nodeServer struct {
@@ -21,7 +21,7 @@ type nodeServer struct {
 }
 
 func NewNodeServer(
-	ctx context.Context, service DiscoveryServicer,
+	ctx context.Context, service NodeServicer,
 ) (*nodeServer, error) {
 	swagger, err := node_gen.GetSwagger()
 	if err != nil {
@@ -30,9 +30,9 @@ func NewNodeServer(
 	swagger.Servers = nil
 	e := echo.New()
 	e.HideBanner = true
-	e.Logger.SetLevel(echoLog.INFO)
-	e.Logger.SetPrefix("node-server")
-	e.Use(echomiddleware.Logger())
+
+	e.Logger.SetOutput(ioutil.Discard)
+
 	//e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))

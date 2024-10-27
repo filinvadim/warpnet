@@ -19,7 +19,28 @@ import (
 	externalRef0 "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
 )
+
+// Defines values for NewEventParamsEventType.
+const (
+	Error       NewEventParamsEventType = "error"
+	Follow      NewEventParamsEventType = "follow"
+	GetTimeline NewEventParamsEventType = "get_timeline"
+	GetTweet    NewEventParamsEventType = "get_tweet"
+	GetTweets   NewEventParamsEventType = "get_tweets"
+	GetUser     NewEventParamsEventType = "get_user"
+	Login       NewEventParamsEventType = "login"
+	Logout      NewEventParamsEventType = "logout"
+	NewTweet    NewEventParamsEventType = "new_tweet"
+	NewUser     NewEventParamsEventType = "new_user"
+	Ping        NewEventParamsEventType = "ping"
+	Pong        NewEventParamsEventType = "pong"
+	Unfollow    NewEventParamsEventType = "unfollow"
+)
+
+// NewEventParamsEventType defines parameters for NewEvent.
+type NewEventParamsEventType string
 
 // NewEventJSONRequestBody defines body for NewEvent for application/json ContentType.
 type NewEventJSONRequestBody = externalRef0.Event
@@ -98,13 +119,13 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 	// NewEventWithBody request with any body
-	NewEventWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	NewEventWithBody(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	NewEvent(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	NewEvent(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) NewEventWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewNewEventRequestWithBody(c.Server, contentType, body)
+func (c *Client) NewEventWithBody(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewNewEventRequestWithBody(c.Server, eventType, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +136,8 @@ func (c *Client) NewEventWithBody(ctx context.Context, contentType string, body 
 	return c.Client.Do(req)
 }
 
-func (c *Client) NewEvent(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewNewEventRequest(c.Server, body)
+func (c *Client) NewEvent(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewNewEventRequest(c.Server, eventType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -128,26 +149,33 @@ func (c *Client) NewEvent(ctx context.Context, body NewEventJSONRequestBody, req
 }
 
 // NewNewEventRequest calls the generic NewEvent builder with application/json body
-func NewNewEventRequest(server string, body NewEventJSONRequestBody) (*http.Request, error) {
+func NewNewEventRequest(server string, eventType NewEventParamsEventType, body NewEventJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewNewEventRequestWithBody(server, "application/json", bodyReader)
+	return NewNewEventRequestWithBody(server, eventType, "application/json", bodyReader)
 }
 
 // NewNewEventRequestWithBody generates requests for NewEvent with any type of body
-func NewNewEventRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewNewEventRequestWithBody(server string, eventType NewEventParamsEventType, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "event_type", runtime.ParamLocationPath, eventType)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/node/event/new")
+	operationPath := fmt.Sprintf("/v1/node/event/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -211,9 +239,9 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// NewEventWithBodyWithResponse request with any body
-	NewEventWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
+	NewEventWithBodyWithResponse(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
 
-	NewEventWithResponse(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
+	NewEventWithResponse(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
 }
 
 type NewEventResponse struct {
@@ -238,16 +266,16 @@ func (r NewEventResponse) StatusCode() int {
 }
 
 // NewEventWithBodyWithResponse request with arbitrary body returning *NewEventResponse
-func (c *ClientWithResponses) NewEventWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
-	rsp, err := c.NewEventWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) NewEventWithBodyWithResponse(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
+	rsp, err := c.NewEventWithBody(ctx, eventType, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseNewEventResponse(rsp)
 }
 
-func (c *ClientWithResponses) NewEventWithResponse(ctx context.Context, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
-	rsp, err := c.NewEvent(ctx, body, reqEditors...)
+func (c *ClientWithResponses) NewEventWithResponse(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
+	rsp, err := c.NewEvent(ctx, eventType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -273,8 +301,8 @@ func ParseNewEventResponse(rsp *http.Response) (*NewEventResponse, error) {
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new user
-	// (POST /v1/node/event/new)
-	NewEvent(ctx echo.Context) error
+	// (POST /v1/node/event/{event_type})
+	NewEvent(ctx echo.Context, eventType NewEventParamsEventType) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -285,9 +313,16 @@ type ServerInterfaceWrapper struct {
 // NewEvent converts echo context to params.
 func (w *ServerInterfaceWrapper) NewEvent(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "event_type" -------------
+	var eventType NewEventParamsEventType
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_type", ctx.Param("event_type"), &eventType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter event_type: %s", err))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.NewEvent(ctx)
+	err = w.Handler.NewEvent(ctx, eventType)
 	return err
 }
 
@@ -319,35 +354,36 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/v1/node/event/new", wrapper.NewEvent)
+	router.POST(baseURL+"/v1/node/event/:event_type", wrapper.NewEvent)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/9RY32/buA//VwR9v4/ukm67AvPb7rYbiituw9DiHooiUG0m0SpLnkQnC4r87wdK/pVY",
+	"aZzgDtg9+RdFfkh+SFF+5pkpSqNBo+PpM3fZEgrhbz9aa+zHFWikp9KaEixK8N8ykwNdcVMCT7nUCAuw",
+	"fJvwApwTi/5Hh1bqBd9uE27heyUt5Dy9Dyo6+YekkTeP3yBD0nXAeC5Q0FXozec5T++f+f8tzHnK/zfp",
+	"nJnUnky+SL0IirbJy5I9h4+J/gnr2zUAjpa+czBe9e9GKbMer1vPT1jwCfC9Uh69G73iVhagpIbxC8ZH",
+	"5xPg+OjcmIXUo0VN1WB42CYcZQEORVESeebGFgJ5SmyCC/rEkyOM7dbHyBqS9hW+V+AipLUgcrAzmdND",
+	"IfUN6AUueXo5sJrwtZU4TnYPYWekrySGdsiCYY1X1hkbKeSEK1lIjNR/wn9cLMxF/baSGq/eknzlwF7n",
+	"x3tCLXcA8C4J/wN4uxoYgEX6FjVxsvWkVXYAR1ddAxj/gKM38gkO+DeO7aT7DK43y5LOVhRe1zAGIEvh",
+	"3NrYw1nQooBxwfGSSafxAJS2IXVKu+97nT/SQtre8lLf221EBDZm6Sg5j5nxCg6q392TznWl0XLMmSMM",
+	"P2qGZOK66zlHV0qJRwU8RVtBst95LAiEfCZw7M6S8KUJ7ufgMitLlEbzlN8ugV1/YSLPLTgXWxcKpbVR",
+	"VaEEBmJuJjKUKxja+GsJuATLcMcWk45llbWgUW1YvbZV/GiMAqFrzWatoV80va9KOJw5AB33rd1C2XoJ",
+	"muFSuj6GtXCMNHT2xwVTCQSdbeI2NeDa2CdWCzE0rV2pWSGVkg4yo3OKN/wQRUl5vnw97VkPO0MSmXcp",
+	"Fk372rVNzGPXH2J4q9J7Mlhy598zM/fJ0SYHghhB9+ZqOgbeXqNqU1fTr0+Tfup6XnnCxZpZN1YPN2KR",
+	"LSGfEXz/LBEKd6wGfaV1JSisFRt6zsHhrCmWQSBrnHpuxtV4s0LXdX0c0f6ppe9bLC5foe2eP+mOeBvH",
+	"lxmNdTqPwDun3Sn5dAIZ/EwRIYPXMstMpXdNN/wvpJZFVfB0GitVG1IzHkaTywiSRtfZYBxtaTqDM5b+",
+	"C0w6ddwJNGsoE2PZ/tb9sx+I7uo5YRfko7S4JGKPZ/o51bGzC0TaXAhl2HNb5g6k9jnarJppotLzmN2s",
+	"XmLdWZasO8GUkvppd5SxKto5TCYOBqbYzCzMwVqhToRMHXw2cpgKJiCfPW4OHhVqXS/W1anNvD5UNFCH",
+	"tKVFzea3O0l8kC4zK7Ab9v7LNZsbywTLJdl6rBBydruWiGAvqKMyUZZK1lFOOEqkEYNU7IuTMp7wFVgX",
+	"zFy+mr6a+m21BC1KyVP+xr+ioxAufSomq8sJuTABGhcmz/4yI0+2vuDqvZ3KzkOg8ygN9WG6IEVWFICe",
+	"lPfPXJJdUk6R8YHlnUbeD2IY1UMzJwvgyXnPS4p3wkvjL2CtsTzhC8CZPyyE29D5e/c0f2lYNzJ028gE",
+	"+vOEV7q9VXTuDFdTtYrqPxi9VLbpf0iaU9GvJt/s7ci9DE2+uVAMnWMv/tQM/7926UWR8S9cabQLre71",
+	"dDqk0ec/KLlvY5+u9UoomTOpywqD1OVQ6n2FSzYXUkFOMr/ENHVcdWBXYFlICUF2VVEIu+Ep/823VSaY",
+	"hjWrc4BiQZyo/xM/eCeDikCVXTM3JhOK5bACZcoCNNbmKG9W8ZQvEct0MqGGo2jiTC+v3l2949uH7d8B",
+	"AAD//5TNdYomFwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

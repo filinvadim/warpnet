@@ -228,10 +228,6 @@ components:
     Event:
       type: object
       properties:
-        event_type:
-          type: string
-          enum: [ ping,pong,error,getUser,getTweet,getTweets,newUser,newTweet,follow,unfollow,login,logout,getTimeline ]
-          default: ping
         timestamp:
           type: string
           format: date-time
@@ -251,7 +247,6 @@ components:
             - $ref: '#/components/schemas/LogoutEvent'
       required:
         - timestamp
-        - event_type
 
     PingEvent:
       type: object

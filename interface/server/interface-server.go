@@ -12,6 +12,11 @@ import (
 	"github.com/pkg/browser"
 )
 
+var logFormat = `
+	{"time":"${time_datetime_only}",` +
+	`"method":"${method}","host":"${host}","uri":"${uri}",` +
+	`"status":${status},"error":"${error}"` + "\n"
+
 type (
 	Router            = api_gen.EchoRouter
 	HandlersInterface = api_gen.ServerInterface
@@ -39,9 +44,12 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 	e := echo.New()
 	e.HideBanner = true
-	e.Logger.SetPrefix("interface-server")
 
-	e.Use(echomiddleware.Logger())
+	dlc := echomiddleware.DefaultLoggerConfig
+	dlc.Format = logFormat
+	dlc.Output = e.Logger.Output()
+
+	e.Use(echomiddleware.LoggerWithConfig(dlc))
 	//e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))

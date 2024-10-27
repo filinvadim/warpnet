@@ -6,6 +6,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/database"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"log"
@@ -70,7 +71,8 @@ func NewNodeHandler(
 	}, nil
 }
 
-func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
+func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEventParamsEventType) (err error) {
+	fmt.Println("RECEIVED EVENT: ", eventType)
 	var receivedEvent domain_gen.Event
 	if err := ctx.Bind(&receivedEvent); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -82,8 +84,8 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 	callerHost := ctx.Request().Host + DefaultDiscoveryPort
 	var response any
 
-	switch receivedEvent.EventType {
-	case domain_gen.EventEventTypePing:
+	switch eventType {
+	case node_gen.Ping:
 		if err := d.handlePing(ctx, receivedEvent.Data); err != nil {
 			fmt.Printf("handle ping event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -97,7 +99,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 		}); err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-	case domain_gen.EventEventTypeNewUser:
+	case node_gen.NewUser:
 		userEvent, err := d.handleNewUser(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle new user event failure: %v", err)
@@ -109,7 +111,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 			}
 		}
 		response = userEvent.User
-	case domain_gen.EventEventTypeNewTweet:
+	case node_gen.NewTweet:
 		tweetEvent, err := d.handleNewTweet(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle new tweet event failure: %v", err)
@@ -121,43 +123,43 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 			}
 		}
 		response = tweetEvent.Tweet
-	case domain_gen.EventEventTypeFollow, domain_gen.EventEventTypeUnfollow:
+	case node_gen.Follow, node_gen.Unfollow:
 		// TODO
-	case domain_gen.EventEventTypeLogin:
+	case node_gen.Login:
 		if response, err = d.handleLogin(ctx, receivedEvent.Data); err != nil {
 			fmt.Printf("handle login event failure: %v", err)
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-	case domain_gen.EventEventTypeLogout:
+	case node_gen.Logout:
 		if err := d.handleLogout(ctx, receivedEvent.Data); err != nil {
 			fmt.Printf("handle logout event failure: %v", err)
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-	case domain_gen.EventEventTypeGetTimeline:
+	case node_gen.GetTimeline:
 		response, err = d.handleGetTimeline(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle timeline event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-	case domain_gen.EventEventTypeGetTweets:
+	case node_gen.GetTweets:
 		response, err = d.handleGetTweets(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle tweets event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-	case domain_gen.EventEventTypeGetTweet:
+	case node_gen.GetTweet:
 		response, err = d.handleGetSingleTweet(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle single tweet event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-	case domain_gen.EventEventTypeGetUser:
+	case node_gen.GetUser:
 		response, err = d.handleGetUser(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle tweets event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-	case domain_gen.EventEventTypeError:
+	case node_gen.Error:
 		if receivedEvent.Data == nil {
 			return nil
 		}
@@ -167,15 +169,13 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context) (err error) {
 		}
 
 		fmt.Printf("received event: %d %s", errEvent.Code, errEvent.Message)
+		response = errEvent
 	default:
-		log.Fatal("UNKNOWN EVENT!!!", receivedEvent.EventType)
-		if err := d.cli.SendError(ctx.Request().Host, domain_gen.ErrorEvent{
-			Code:    -1,
-			Message: "unknown event",
-		}); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		log.Fatal("UNKNOWN EVENT!!!", eventType)
 	}
+
+	fmt.Println("EVENT RESPONSE SUCCESS: ", eventType)
+
 	return ctx.JSON(http.StatusOK, response)
 }
 
@@ -234,8 +234,12 @@ func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domain_gen.Eve
 	if err != nil {
 		return domain_gen.NewTweetEvent{}, err
 	}
-	_, err = d.tweetRepo.Create(tweetEvent.Tweet.UserId, tweetEvent.Tweet)
-
+	fmt.Println("NEW TWEET", tweetEvent.Tweet.UserId, tweetEvent.Tweet.Content)
+	t, err := d.tweetRepo.Create(tweetEvent.Tweet.UserId, tweetEvent.Tweet)
+	if err != nil {
+		return domain_gen.NewTweetEvent{}, err
+	}
+	err = d.timelineRepo.AddTweetToTimeline(tweetEvent.Tweet.UserId, *t)
 	return domain_gen.NewTweetEvent{}, err
 }
 
@@ -297,6 +301,7 @@ func (d *nodeEventHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_
 
 	u.NodeId = id
 	err = d.authRepo.UpdateOwner(u)
+	fmt.Printf("USER:        %#v\n", *u)
 	return *u, err
 }
 
@@ -318,6 +323,7 @@ func (d *nodeEventHandler) handleGetTimeline(ctx echo.Context, data *domain_gen.
 	if err != nil {
 		return TweetsResponse{}, err
 	}
+	fmt.Println("GET TIMELINE:", event.UserId)
 	tweets, nextCursor, err := d.timelineRepo.GetTimeline(event.UserId, event.Limit, event.Cursor)
 	if err != nil {
 		return TweetsResponse{}, err
