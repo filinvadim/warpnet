@@ -170,7 +170,7 @@
             .then(data => {
                 const profileTweetsDiv = document.getElementById('profile-tweets');
                 profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
-                data.forEach(tweet => {
+                data.tweets.forEach(tweet => {
                     // Преобразование строки даты в объект Date
                     const tweetDate = new Date(tweet.created_at);
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/gommon/log"
 	"sync/atomic"
@@ -34,7 +35,7 @@ func New(
 	isInMemory bool,
 ) *DB {
 	opts := badger.
-		DefaultOptions(path + "/storage").
+		DefaultOptions(path + config.DatabaseFolder).
 		WithSyncWrites(false).
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
@@ -57,7 +58,7 @@ func (db *DB) Run(username, password string) (err error) {
 	if db.isRunning.Load() {
 		return nil
 	}
-	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password)) // aaaa + vadim
+	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 
 	db.badger, err = db.runF(db.opts)

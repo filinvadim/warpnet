@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/node/client"
-	"github.com/filinvadim/dWighter/node/server"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -16,7 +16,7 @@ type AuthController struct {
 func NewAuthController(
 	cli *client.NodeClient,
 ) *AuthController {
-	return &AuthController{cli, "http://localhost" + server.DefaultDiscoveryPort}
+	return &AuthController{cli, config.InternalNodeAddress.String()}
 }
 
 func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {

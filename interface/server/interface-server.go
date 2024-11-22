@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/filinvadim/dWighter/config"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
 	"time"
 
@@ -11,11 +12,6 @@ import (
 	middleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/pkg/browser"
 )
-
-var logFormat = `
-	{"time":"${time_datetime_only}",` +
-	`"method":"${method}","host":"${host}","uri":"${uri}",` +
-	`"status":${status},"error":"${error}"` + "\n"
 
 type (
 	Router            = api_gen.EchoRouter
@@ -33,8 +29,6 @@ type interfaceServer struct {
 	e *echo.Echo
 }
 
-const InterfaceServerHost = "http://localhost:6969"
-
 func NewInterfaceServer() (PublicServerStarter, error) {
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
@@ -46,11 +40,11 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 	e.HideBanner = true
 
 	dlc := echomiddleware.DefaultLoggerConfig
-	dlc.Format = logFormat
+	dlc.Format = config.LogFormat
 	dlc.Output = e.Logger.Output()
 
 	e.Use(echomiddleware.LoggerWithConfig(dlc))
-	//e.Use(echomiddleware.Recover())
+	e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
@@ -60,13 +54,13 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 func (p *interfaceServer) Start() {
 	go func() {
 		time.Sleep(time.Second)
-		err := browser.OpenURL(InterfaceServerHost) // NOTE connection is not protected!
+		err := browser.OpenURL(config.ExternalNodeAddress.String()) // NOTE connection is not protected!
 		if err != nil {
 			p.e.Logger.Errorf("failed to open browser: %v", err)
 		}
 	}()
 
-	if err := p.e.Start(":6969"); err != nil {
+	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
 		p.e.Logger.Fatal(err)
 	}
 }

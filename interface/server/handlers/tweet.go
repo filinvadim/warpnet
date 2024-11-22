@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
 	"github.com/filinvadim/dWighter/node/client"
-	"github.com/filinvadim/dWighter/node/server"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -17,7 +17,7 @@ type TweetController struct {
 func NewTweetController(
 	cli *client.NodeClient,
 ) *TweetController {
-	return &TweetController{cli, "https://localhost" + server.DefaultDiscoveryPort}
+	return &TweetController{cli, config.InternalNodeAddress.String()}
 }
 
 func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {

@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/node/client"
-	"github.com/filinvadim/dWighter/node/server"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -15,7 +15,7 @@ type UserController struct {
 }
 
 func NewUserController(cli *client.NodeClient) *UserController {
-	return &UserController{cli: cli, owNodeHost: "http://localhost" + server.DefaultDiscoveryPort}
+	return &UserController{cli: cli, owNodeHost: config.InternalNodeAddress.String()}
 }
 
 func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {

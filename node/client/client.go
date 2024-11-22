@@ -4,24 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/json"
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"io"
 	"net/http"
 	"time"
-
-	cr "github.com/filinvadim/dWighter/crypto"
 )
-
-const (
-	apifyAddr         = "https://api.ipify.org?format=txt"
-	ipInfoAddr        = "https://ipinfo.io/ip"
-	seeIpAddr         = "https://api.seeip.org"
-	PresetNodeAddress = "http://127.0.0.1:16969"
-)
-
-var IPProviders = []string{apifyAddr, ipInfoAddr, seeIpAddr}
 
 type NodeClient struct {
 	ctx context.Context
@@ -29,27 +19,13 @@ type NodeClient struct {
 }
 
 func NewNodeClient(ctx context.Context) (*NodeClient, error) {
-	cli, err := node_gen.NewClientWithResponses(PresetNodeAddress, func(client *node_gen.Client) error {
+	cli, err := node_gen.NewClientWithResponses(config.InternalNodeAddress.String(), func(client *node_gen.Client) error {
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &NodeClient{ctx, cli}, nil
-}
-
-func newTLSClient(nodeID string) (node_gen.HttpRequestDoer, error) {
-	conf, err := cr.GenerateTLSConfig(nil, nil) // TODO check db for existing certs
-	if err != nil {
-		return nil, err
-	}
-	cli := http.DefaultClient
-	tr := &http.Transport{
-		TLSClientConfig: conf,
-	}
-	cli.Transport = tr
-	cli.Timeout = 10 * time.Second
-	return cli, err
 }
 
 func (c *NodeClient) Ping(host string, ping domain_gen.PingEvent) error {
@@ -242,7 +218,7 @@ func (c *NodeClient) sendEvent(
 }
 
 func (c *NodeClient) GetOwnIPAddress() (string, error) {
-	for _, addr := range IPProviders {
+	for _, addr := range config.IPProviders {
 		resp, err := http.Get(addr)
 		if err != nil {
 			continue

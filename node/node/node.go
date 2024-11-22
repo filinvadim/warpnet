@@ -83,7 +83,11 @@ func NewNodeService(
 }
 
 func (ds *NodeService) Run() {
-	go ds.server.Start()
+	go func() {
+		if err := ds.server.Start(); err != nil {
+			log.Fatalf("node server: %v", err)
+		}
+	}()
 
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()

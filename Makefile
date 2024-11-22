@@ -19,7 +19,7 @@ run:
 	go run main.go
 
 prune-idea:
-	rm -r .local/share/JetBrains
-	rm -r .config/JetBrains
-	rm -r .cache/JetBrains
-	rm -r .java/.userPrefs
+	rm -rf .local/share/JetBrains
+	rm -rf .config/JetBrains
+	rm -rf .cache/JetBrains
+	rm -rf .java/.userPrefs

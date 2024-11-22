@@ -2,14 +2,13 @@ package server
 
 import (
 	"context"
+	"github.com/filinvadim/dWighter/config"
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	middleware "github.com/oapi-codegen/echo-middleware"
 	"io/ioutil"
 )
-
-const DefaultDiscoveryPort = ":16969"
 
 type NodeServicer interface {
 	NewEvent(ctx echo.Context, eventType node_gen.NewEventParamsEventType) error
@@ -33,7 +32,7 @@ func NewNodeServer(
 
 	e.Logger.SetOutput(ioutil.Discard)
 
-	//e.Use(echomiddleware.Recover())
+	//e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 
@@ -43,7 +42,7 @@ func NewNodeServer(
 }
 
 func (ds *nodeServer) Start() error {
-	return ds.e.Start(DefaultDiscoveryPort)
+	return ds.e.Start(":" + config.InternalNodeAddress.Port())
 }
 
 func (ds *nodeServer) Stop() error {

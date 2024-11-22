@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/database"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"github.com/filinvadim/dWighter/json"
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -81,7 +83,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 	if receivedEvent.Data == nil {
 		return nil
 	}
-	callerHost := ctx.Request().Host + DefaultDiscoveryPort
+	callerHost := ctx.Request().Host + config.InternalNodeAddress.Port()
 	var response any
 
 	switch eventType {
@@ -174,7 +176,9 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 		log.Fatal("UNKNOWN EVENT!!!", eventType)
 	}
 
-	fmt.Println("EVENT RESPONSE SUCCESS: ", eventType)
+	bt, _ := json.JSON.Marshal(response)
+
+	fmt.Println("EVENT RESPONSE SUCCESS: ", eventType, string(bt))
 
 	return ctx.JSON(http.StatusOK, response)
 }
@@ -187,7 +191,7 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 	if err != nil {
 		return err
 	}
-	destHost := ctx.Request().Host + DefaultDiscoveryPort
+	destHost := ctx.Request().Host + config.InternalNodeAddress.Port()
 
 	if pingEvent.OwnerNode.Host == "" {
 		pingEvent.OwnerNode.Host = destHost
@@ -287,7 +291,7 @@ func (d *nodeEventHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_
 	now := time.Now()
 	id, err := d.nodeRepo.Create(&domain_gen.Node{
 		CreatedAt: &now,
-		Host:      d.ownIP + DefaultDiscoveryPort,
+		Host:      d.ownIP + config.InternalNodeAddress.Port(),
 		IsActive:  true,
 		LastSeen:  now,
 		Latency:   nil,
@@ -323,7 +327,6 @@ func (d *nodeEventHandler) handleGetTimeline(ctx echo.Context, data *domain_gen.
 	if err != nil {
 		return TweetsResponse{}, err
 	}
-	fmt.Println("GET TIMELINE:", event.UserId)
 	tweets, nextCursor, err := d.timelineRepo.GetTimeline(event.UserId, event.Limit, event.Cursor)
 	if err != nil {
 		return TweetsResponse{}, err
@@ -344,6 +347,7 @@ func (d *nodeEventHandler) handleGetTweets(ctx echo.Context, data *domain_gen.Ev
 	if err != nil {
 		return TweetsResponse{}, err
 	}
+	fmt.Println("GET TWEETS:", event.UserId)
 	tweets, nextCursor, err := d.tweetRepo.List(event.UserId, event.Limit, event.Cursor)
 	if err != nil {
 		return TweetsResponse{}, err
