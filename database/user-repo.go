@@ -21,7 +21,7 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user *domain_gen.User) (*domain_gen.User, error) {
+func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 	if user.UserId == nil {
 		id := uuid.New().String()
 		user.UserId = &id
@@ -38,7 +38,7 @@ func (repo *UserRepo) Create(user *domain_gen.User) (*domain_gen.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return user, repo.db.Set(key, data)
+	return &user, repo.db.Set(key, data)
 }
 
 // Get retrieves a user by their ID

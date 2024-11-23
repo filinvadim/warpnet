@@ -10,10 +10,10 @@ import (
 	"github.com/filinvadim/dWighter/json"
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"github.com/labstack/echo/v4"
-	"github.com/oapi-codegen/runtime/types"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -83,7 +83,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 	if receivedEvent.Data == nil {
 		return nil
 	}
-	callerHost := ctx.Request().Host + config.InternalNodeAddress.Port()
+	callerHost := ctx.Request().Host
 	var response any
 
 	switch eventType {
@@ -93,13 +93,12 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 		owner, _ := d.authRepo.Owner()
-		if err := d.cli.Pong(callerHost, domain_gen.PongEvent{
+		u, _ := d.userRepo.Get(owner)
+		response = domain_gen.PongEvent{
 			CachedNodes: d.cache.GetNodes(),
 			DestHost:    &callerHost,
-			OwnerInfo:   owner,
+			OwnerInfo:   u,
 			OwnerNode:   d.nodeRepo.OwnNode(),
-		}); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	case node_gen.NewUser:
 		userEvent, err := d.handleNewUser(ctx, receivedEvent.Data)
@@ -120,6 +119,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 		for _, n := range d.cache.GetNodes() {
+			fmt.Println("BROADCAST NEW TWEET: ", n.Host)
 			if _, err = d.cli.BroadcastNewTweet(n.Host, tweetEvent); err != nil {
 				return err
 			}
@@ -146,7 +146,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 	case node_gen.GetTweets:
 		response, err = d.handleGetTweets(ctx, receivedEvent.Data)
 		if err != nil {
-			fmt.Printf("handle tweets event failure: %v", err)
+			fmt.Printf("get tweets event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	case node_gen.GetTweet:
@@ -158,7 +158,13 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 	case node_gen.GetUser:
 		response, err = d.handleGetUser(ctx, receivedEvent.Data)
 		if err != nil {
-			fmt.Printf("handle tweets event failure: %v", err)
+			fmt.Printf("handle get user event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+	case node_gen.GetUsers:
+		response, err = d.handleGetAllUsers(ctx)
+		if err != nil {
+			fmt.Printf("handle get all users event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	case node_gen.Error:
@@ -191,14 +197,21 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 	if err != nil {
 		return err
 	}
-	destHost := ctx.Request().Host + config.InternalNodeAddress.Port()
 
+	if strings.Contains(ctx.Request().Host, "localhost") {
+		return nil
+	}
+
+	destHost := ctx.Request().Host
 	if pingEvent.OwnerNode.Host == "" {
 		pingEvent.OwnerNode.Host = destHost
 	}
+	if pingEvent.OwnerNode == nil {
+		return nil
+	}
 	d.cache.AddNode(*pingEvent.OwnerNode)
 
-	_, err = d.userRepo.Create(pingEvent.OwnerInfo)
+	_, err = d.userRepo.Create(*pingEvent.OwnerInfo)
 	if err != nil {
 		return err
 	}
@@ -226,7 +239,10 @@ func (d *nodeEventHandler) handleNewUser(ctx echo.Context, data *domain_gen.Even
 	if err != nil {
 		return domain_gen.NewUserEvent{}, err
 	}
-	_, err = d.userRepo.Create(userEvent.User)
+	if userEvent.User == nil {
+		return domain_gen.NewUserEvent{}, nil
+	}
+	_, err = d.userRepo.Create(*userEvent.User)
 	return userEvent, err
 }
 
@@ -238,57 +254,73 @@ func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domain_gen.Eve
 	if err != nil {
 		return domain_gen.NewTweetEvent{}, err
 	}
-	fmt.Println("NEW TWEET", tweetEvent.Tweet.UserId, tweetEvent.Tweet.Content)
+	if tweetEvent.Tweet == nil {
+		return domain_gen.NewTweetEvent{}, nil
+	}
 	t, err := d.tweetRepo.Create(tweetEvent.Tweet.UserId, tweetEvent.Tweet)
 	if err != nil {
 		return domain_gen.NewTweetEvent{}, err
 	}
-	err = d.timelineRepo.AddTweetToTimeline(tweetEvent.Tweet.UserId, *t)
+	owner, err := d.authRepo.Owner()
+	if err != nil || owner == "" {
+		return domain_gen.NewTweetEvent{}, fmt.Errorf("failed to add tweet to owner timeline: %w", err)
+	}
+
+	err = d.timelineRepo.AddTweetToTimeline(owner, *t)
 	return domain_gen.NewTweetEvent{}, err
 }
 
-func (d *nodeEventHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.User, error) {
+func (d *nodeEventHandler) handleLogin(
+	ctx echo.Context, data *domain_gen.Event_Data,
+) (domain_gen.LoginResponse, error) {
 	if ctx.Request().Context().Err() != nil {
-		return domain_gen.User{}, ctx.Request().Context().Err()
+		return domain_gen.LoginResponse{}, ctx.Request().Context().Err()
 	}
 	login, err := data.AsLoginEvent()
 	if err != nil {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
 
-	if err = d.authRepo.Authenticate(login.Username, login.Password); err != nil {
-		return domain_gen.User{}, err
+	token, err := d.authRepo.Authenticate(login.Username, login.Password)
+	if err != nil {
+		return domain_gen.LoginResponse{}, err
 	}
 
-	owner, err := d.authRepo.Owner()
+	ownerId, err := d.authRepo.Owner()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
+	owner, err := d.userRepo.Get(ownerId)
 	if owner != nil && owner.Username != login.Username {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
 	if owner != nil && owner.Username == login.Username {
-		return *owner, nil
+		return domain_gen.LoginResponse{token, *owner}, nil
 	}
-	u, err := d.authRepo.SetOwner(domain_gen.User{
-		UserId:   nil,
-		NodeId:   types.UUID{},
-		Username: login.Username,
+	newOwnerId, err := d.authRepo.NewOwner()
+	if err != nil {
+		return domain_gen.LoginResponse{}, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	now := time.Now()
+	u, err := d.userRepo.Create(domain_gen.User{
+		CreatedAt: &now,
+		UserId:    &newOwnerId,
+		Username:  login.Username,
 	})
 	if err != nil {
-		return domain_gen.User{}, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return domain_gen.LoginResponse{}, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	_, err = d.nodeRepo.GetByUserId(*u.UserId)
 	if err == nil {
-		return *u, nil
+		return domain_gen.LoginResponse{token, *u}, nil
 	}
 	if !errors.Is(err, database.ErrNodeNotFound) {
 		fmt.Println("failed to get node:", err)
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
 
-	now := time.Now()
 	id, err := d.nodeRepo.Create(&domain_gen.Node{
 		CreatedAt: &now,
 		Host:      d.ownIP + config.InternalNodeAddress.Port(),
@@ -300,13 +332,15 @@ func (d *nodeEventHandler) handleLogin(ctx echo.Context, data *domain_gen.Event_
 		IsOwned:   true,
 	})
 	if err != nil {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
 
 	u.NodeId = id
-	err = d.authRepo.UpdateOwner(u)
-	fmt.Printf("USER:        %#v\n", *u)
-	return *u, err
+	u, err = d.userRepo.Create(*u)
+	if err != nil {
+		return domain_gen.LoginResponse{}, err
+	}
+	return domain_gen.LoginResponse{token, *u}, nil
 }
 
 func (d *nodeEventHandler) handleLogout(ctx echo.Context, _ *domain_gen.Event_Data) error {
@@ -314,7 +348,7 @@ func (d *nodeEventHandler) handleLogout(ctx echo.Context, _ *domain_gen.Event_Da
 		return ctx.Request().Context().Err()
 	}
 	d.interrupt <- os.Interrupt
-	return ctx.NoContent(http.StatusOK)
+	return nil
 }
 
 type TweetsResponse = domain_gen.TweetsResponse
@@ -347,7 +381,6 @@ func (d *nodeEventHandler) handleGetTweets(ctx echo.Context, data *domain_gen.Ev
 	if err != nil {
 		return TweetsResponse{}, err
 	}
-	fmt.Println("GET TWEETS:", event.UserId)
 	tweets, nextCursor, err := d.tweetRepo.List(event.UserId, event.Limit, event.Cursor)
 	if err != nil {
 		return TweetsResponse{}, err
@@ -383,9 +416,20 @@ func (d *nodeEventHandler) handleGetUser(ctx echo.Context, data *domain_gen.Even
 	if err != nil {
 		return domain_gen.User{}, err
 	}
-	tweet, err := d.userRepo.Get(event.UserId)
+	u, err := d.userRepo.Get(event.UserId)
 	if err != nil {
 		return domain_gen.User{}, err
 	}
-	return *tweet, nil
+	return *u, nil
+}
+
+func (d *nodeEventHandler) handleGetAllUsers(ctx echo.Context) (domain_gen.UsersResponse, error) {
+	if ctx.Request().Context().Err() != nil {
+		return domain_gen.UsersResponse{}, ctx.Request().Context().Err()
+	}
+	users, err := d.userRepo.List()
+	if err != nil {
+		return domain_gen.UsersResponse{}, err
+	}
+	return domain_gen.UsersResponse{"", users}, nil
 }

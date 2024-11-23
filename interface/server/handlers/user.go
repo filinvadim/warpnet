@@ -3,7 +3,8 @@ package handlers
 import (
 	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/node/client"
+	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
+	client "github.com/filinvadim/dWighter/node/client"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -122,4 +123,16 @@ func (c *UserController) GetV1ApiUsersUserId(ctx echo.Context, userId string) er
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 	return ctx.JSON(http.StatusOK, u)
+}
+
+func (c *UserController) GetV1ApiUsers(ctx echo.Context, params api_gen.GetV1ApiUsersParams) error {
+	if c == nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
+
+	users, err := c.cli.GetUsers(c.owNodeHost)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
+	}
+	return ctx.JSON(http.StatusOK, users)
 }

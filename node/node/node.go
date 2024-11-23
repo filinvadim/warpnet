@@ -33,6 +33,7 @@ type NodeService struct {
 
 	nodeRepo *database.NodeRepo
 	authRepo *database.AuthRepo
+	userRepo *database.UserRepo
 
 	stopChan chan struct{}
 }
@@ -78,7 +79,8 @@ func NewNodeService(
 	}
 
 	return &NodeService{
-		ctx, cache, srv, cli, nodeRepo, authRepo, make(chan struct{}),
+		ctx, cache, srv, cli, nodeRepo,
+		authRepo, userRepo, make(chan struct{}),
 	}, nil
 }
 
@@ -103,13 +105,17 @@ func (ds *NodeService) Run() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+			ownUser, err := ds.userRepo.Get(owner)
+			if err != nil {
+				log.Fatalln(err)
+			}
 			ownNode := ds.nodeRepo.OwnNode()
 
 			for _, n := range nodes {
 				err = ds.client.Ping(n.Host, domain_gen.PingEvent{
 					CachedNodes: nodes,
 					DestHost:    &n.Host,
-					OwnerInfo:   owner,
+					OwnerInfo:   ownUser,
 					OwnerNode:   ownNode,
 				})
 				if err != nil {

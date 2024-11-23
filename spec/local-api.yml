@@ -70,6 +70,30 @@ paths:
           description: Internal server error
 
   /v1/api/users:
+    get:
+      tags:
+        - User
+      summary: Get users list
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            x-go-type: uint64
+            default: 20
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: './domain.yml#/components/schemas/UsersResponse'
+        '404':
+          description: User not found
     post:
       tags:
         - User

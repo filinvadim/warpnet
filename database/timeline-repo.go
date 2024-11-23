@@ -24,6 +24,9 @@ func NewTimelineRepo(db *storage.DB) *TimelineRepo {
 }
 
 func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Tweet) error {
+	if userID == "" {
+		return errors.New("userID cannot be blank")
+	}
 	if tweet.TweetId == nil {
 		return fmt.Errorf("tweet id should not be nil")
 	}
@@ -56,6 +59,9 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 }
 
 func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.Time, seqNum int64) error {
+	if userID == "" {
+		return errors.New("userID cannot be blank")
+	}
 	if createdAt.IsZero() {
 		return fmt.Errorf("createdAt should not be zero")
 	}
@@ -76,6 +82,9 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
 func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+	if userID == "" {
+		return nil, "", errors.New("userID cannot be blank")
+	}
 	if limit == nil {
 		limit = new(uint64)
 		*limit = 20

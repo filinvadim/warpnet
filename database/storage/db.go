@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/gommon/log"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -25,9 +26,8 @@ type DB struct {
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
 
-	runF  func(opt badger.Options) (*badger.DB, error)
-	opts  badger.Options
-	token string
+	runF func(opt badger.Options) (*badger.DB, error)
+	opts badger.Options
 }
 
 func New(
@@ -54,34 +54,34 @@ func New(
 	return storage
 }
 
-func (db *DB) Run(username, password string) (err error) {
+func (db *DB) Run(username, password string) (token string, err error) {
 	if db.isRunning.Load() {
-		return nil
+		return "", nil
 	}
 	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 
 	db.badger, err = db.runF(db.opts)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	db.isRunning.Store(true)
 	fmt.Println("DATABASE IS RUNNING!")
 	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	db.token = base64.StdEncoding.EncodeToString(
-		crypto.ConvertToSHA256([]byte(username + "@" + password + "@" + time.Now().String())),
-	)
-	go db.runEventualGC()
-	return nil
-}
+	seq, err := db.NextSequence()
+	if err != nil {
+		return "", err
+	}
 
-func (db *DB) Token() string {
-	return db.token
+	feed := []byte(username + "@" + password + "@" + strconv.FormatUint(seq, 10) + "@" + time.Now().String())
+	sessionToken := base64.StdEncoding.EncodeToString(crypto.ConvertToSHA256(feed))
+	go db.runEventualGC()
+	return sessionToken, nil
 }
 
 func (db *DB) runEventualGC() {

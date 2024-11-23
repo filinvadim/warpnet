@@ -31,8 +31,6 @@ func NewNodeServer(
 	e.HideBanner = true
 
 	e.Logger.SetOutput(ioutil.Discard)
-
-	//e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 

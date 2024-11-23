@@ -8,38 +8,42 @@ import (
 
 type host = string
 
-// DiscoveryCache manages IP addresses
 type nodeCache struct {
 	nodes map[host]domain_gen.Node
 	mutex *sync.RWMutex
 
-	ownNode domain_gen.Node
+	ownNode  domain_gen.Node
+	nodeRepo *database.NodeRepo
 }
 
-// NewDiscoveryService creates a new DiscoveryService instance
 func newNodeCache(nodeRepo *database.NodeRepo) (*nodeCache, error) {
 	dc := &nodeCache{
-		nodes: make(map[host]domain_gen.Node),
-		mutex: new(sync.RWMutex),
+		nodes:    make(map[host]domain_gen.Node),
+		mutex:    new(sync.RWMutex),
+		nodeRepo: nodeRepo,
 	}
-	//own := nodeRepo.OwnNode()
-	//dc.nodes[client.PresetNodeAddress] = *own
 	//nodes, err := nodeRepo.List()
 	//if err != nil {
 	//	return nil, err
 	//}
 	//for _, n := range nodes {
 	//	dc.nodes[n.Host] = n
-	//}
+	//} //  failed to init node service: node cache: db is not running
 
 	return dc, nil
 }
 
 // AddNode adds a new IP address to the service
 func (ds *nodeCache) AddNode(n domain_gen.Node) {
+	var ok bool
 	ds.mutex.Lock()
+	_, ok = ds.nodes[n.Host]
 	ds.nodes[n.Host] = n
 	ds.mutex.Unlock()
+	if ok {
+		return
+	}
+	ds.nodeRepo.Create(&n)
 }
 
 // GetNodes retrieves the list of all IP addresses
@@ -61,4 +65,6 @@ func (ds *nodeCache) RemoveNode(n *domain_gen.Node) {
 	ds.mutex.Lock()
 	delete(ds.nodes, n.Host)
 	ds.mutex.Unlock()
+	ds.nodeRepo.DeleteByHost(n.Host)
+	ds.nodeRepo.DeleteByUserId(n.OwnerId)
 }

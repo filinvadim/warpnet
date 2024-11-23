@@ -214,6 +214,30 @@ components:
         - cursor
         - tweets
 
+    UsersResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+      required:
+        - cursor
+        - users
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+
     AuthRequest:
       type: object
       properties:
@@ -243,6 +267,7 @@ components:
             - $ref: '#/components/schemas/GetTimelineEvent'
             - $ref: '#/components/schemas/GetTweetEvent'
             - $ref: '#/components/schemas/GetUserEvent'
+            - $ref: '#/components/schemas/GetAllUsersEvent'
             - $ref: '#/components/schemas/LoginEvent'
             - $ref: '#/components/schemas/LogoutEvent'
       required:
@@ -338,6 +363,9 @@ components:
           type: string
       required:
         - userId
+
+    GetAllUsersEvent:
+      type: object
 
     NewFollowEvent:
       type: object

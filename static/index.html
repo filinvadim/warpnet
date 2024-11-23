@@ -6,53 +6,50 @@
     <title>Twitter Clone</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0; padding: 0;
-            background-color: #15202b; color: #fff; display: flex;
+            font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #15202b; color: #fff; display: flex;
         }
         #navigation {
-            width: 200px; padding: 20px;
-            background-color: #192734; display: none;
-            flex-direction: column; height: 100vh;
-            position: fixed; top: 0; left: 0;
+            width: 200px; padding: 20px; background-color: #192734; display: none;
+            flex-direction: column; height: 100vh; position: fixed; top: 0; left: 0;
         }
         #navigation.active { display: flex; }
         #navigation a {
-            text-decoration: none; color: #fff;
-            font-size: 18px; padding: 10px 0;
-            margin-bottom: 10px; border-radius: 5px;
-            transition: background-color 0.2s;
+            text-decoration: none; color: #fff; font-size: 18px; padding: 10px 0;
+            margin-bottom: 10px; border-radius: 5px; transition: background-color 0.2s;
         }
         #navigation a:hover { background-color: #1da1f2; }
         #container {
             width: 100%; max-width: 600px; margin: 20px auto;
             background-color: #192734; padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px;
-            margin-left: 220px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px; margin-left: 220px;
         }
         h1 { text-align: center; color: #fff; }
         #login.active, #timeline-container.active, #profile-container.active { display: block; }
         #login, #timeline-container, #profile-container { display: none; }
         #login input, #new-tweet textarea {
-            width: 100%; padding: 10px; font-size: 16px;
-            margin-bottom: 10px; border-radius: 5px;
-            border: 1px solid #657786; background-color: #192734; color: #fff;
+            width: 100%; padding: 10px; font-size: 16px; margin-bottom: 10px;
+            border-radius: 5px; border: 1px solid #657786; background-color: #192734; color: #fff;
         }
         #login button, #new-tweet button {
-            background-color: #1da1f2; color: #fff;
-            border: none; padding: 10px; border-radius: 5px; cursor: pointer;
+            background-color: #1da1f2; color: #fff; border: none;
+            padding: 10px; border-radius: 5px; cursor: pointer;
         }
         #login button:hover, #new-tweet button:hover { background-color: #0d95e8; }
         .tweet { border-bottom: 1px solid #657786; padding: 10px 0; }
         .tweet:last-child { border-bottom: none; }
         .tweet-text { font-size: 16px; color: #fff; }
         .tweet-user, .tweet-time { color: #8899a6; font-size: 14px; }
-        /* Profile Styles */
         #profile-header { display: flex; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #657786; }
         #profile-header img { border-radius: 50%; width: 80px; height: 80px; margin-right: 20px; }
         #profile-buttons { display: flex; justify-content: space-around; margin-top: 10px; }
         #profile-buttons button { background-color: #1da1f2; color: #fff; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100px; }
         #profile-buttons button:hover { background-color: #0d95e8; }
+        #recommended { margin-top: 20px; }
+        .recommended-user { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .recommended-user img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+        .recommended-user-info { display: flex; align-items: center; }
+        .follow-button { background-color: #1da1f2; color: #fff; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .follow-button:hover { background-color: #0d95e8; }
     </style>
 </head>
 <body>
@@ -78,6 +75,10 @@
             <button onclick="postTweet()">Tweet</button>
         </div>
         <div id="timeline"></div>
+        <div id="recommended" class="active">
+            <h3>Who to follow</h3>
+            <div id="recommended-users"></div>
+        </div>
     </div>
     <div id="profile-container">
         <div id="profile-header">
@@ -97,23 +98,57 @@
 </div>
 <script>
     const apiUrl = 'http://localhost:6969';
-    let currentUserId = null, currentUsername = null;
+    let currentUserId = null, currentUsername = null, currentSessionToken = null;
 
     function login() {
         const username = document.getElementById('username').value, password = document.getElementById('password').value;
-        if (username === '' || password === '' || password.length > 32) return alert('Invalid credentials');
         fetch(`${apiUrl}/v1/api/auth/login`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
         })
             .then(res => res.json())
             .then(data => {
-                if (data.user_id) {
-                    sessionStorage.setItem('userId', data.user_id);
-                    sessionStorage.setItem('username', data.username);
-                    currentUserId = data.user_id;
+                if (data.user.user_id) {
+                    sessionStorage.setItem('userId', data.user.user_id);
+                    sessionStorage.setItem('username', data.user.username);
+                    currentUserId = data.user.user_id;
+                    currentUsername = data.user.username;
+                    currentSessionToken = data.token;
                     showTimeline();
                 } else alert('Login failed');
             }).catch(console.error);
+    }
+
+    function showTimeline() {
+        document.getElementById('login').classList.remove('active');
+        document.getElementById('timeline-container').classList.add('active');
+        document.getElementById('profile-container').classList.remove('active');
+        document.getElementById('navigation').classList.add('active');
+        loadTimeline();
+        loadRecommendedUsers();
+    }
+
+    async function loadRecommendedUsers(cursor = '') {
+        try {
+            const response = await fetch(`${apiUrl}/v1/api/users?limit=3&cursor=${cursor}`);
+            const resp = await response.json();
+            const recommendedDiv = document.getElementById('recommended-users');
+            recommendedDiv.innerHTML = '';
+            resp.users.forEach(user => {
+                recommendedDiv.innerHTML += `
+                    <div class="recommended-user">
+                        <div class="recommended-user-info">
+                            <img src="https://via.placeholder.com/40" alt="User">
+                            <div>@${user.username}</div>
+                        </div>
+                        <button class="follow-button" onclick="followUser('${user.user_id}')">Follow</button>
+                    </div>`;
+            });
+            if (nextCursor) {
+                recommendedDiv.innerHTML += `<button onclick="loadRecommendedUsers('${nextCursor}')">Show More</button>`;
+            }
+        } catch (error) {
+            console.error('Error loading recommended users:', error);
+        }
     }
 
     function showTimeline() {
@@ -140,14 +175,22 @@
             }).catch(console.error);
     }
 
+    function followUser(userId) {
+        fetch(`${apiUrl}/v1/api/users/follow`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ readerId: currentUserId, writerId: userId })
+        })
+            .then(res => res.ok ? loadRecommendedUsers() : alert('Failed to follow user'))
+            .catch(console.error);
+    }
+
     function postTweet() {
         const tweetText = document.getElementById('tweet-text').value;
         if (tweetText === '') return alert('Tweet cannot be empty');
         fetch(`${apiUrl}/v1/api/tweets`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
-        })
-            .then(res => { if (res.ok) document.getElementById('tweet-text').value = '', loadTimeline(); else alert('Failed to post tweet'); })
-            .catch(console.error);
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
+        }).then(res => res.ok ? (document.getElementById('tweet-text').value = '', loadTimeline()) : alert('Failed to post tweet')).catch(console.error);
     }
 
     function navigateHome() { showTimeline(); }
@@ -164,29 +207,21 @@
         const username = sessionStorage.getItem('username');
         document.getElementById('profile-username').innerText = '@' + username;
         document.getElementById('profile-id').innerText = 'User ID: ' + userId;
-
         fetch(`${apiUrl}/v1/api/tweets/${userId}`)
             .then(response => response.json())
             .then(data => {
                 const profileTweetsDiv = document.getElementById('profile-tweets');
                 profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
                 data.tweets.forEach(tweet => {
-                    // Преобразование строки даты в объект Date
                     const tweetDate = new Date(tweet.created_at);
-
-                    // Проверяем, является ли дата валидной
                     const formattedDate = !isNaN(tweetDate.getTime()) ? tweetDate.toLocaleString() : 'Invalid Date';
-
                     profileTweetsDiv.innerHTML += `
-                    <div class="tweet">
-                        <div class="tweet-text">${tweet.content}</div>
-                        <div class="tweet-time">${formattedDate}</div>
-                    </div>`;
+                        <div class="tweet">
+                            <div class="tweet-text">${tweet.content}</div>
+                            <div class="tweet-time">${formattedDate}</div>
+                        </div>`;
                 });
-            })
-            .catch(error => {
-                console.error('Error fetching profile tweets:', error);
-            });
+            }).catch(console.error);
     }
 
     function loadFollowers() { alert('Load followers list'); }
@@ -194,13 +229,12 @@
 
     window.addEventListener('beforeunload', () => {
         fetch(`${apiUrl}/v1/api/auth/logout`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: sessionStorage.getItem('userId') })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: sessionStorage.getItem('userId') })
         }).catch(console.error);
     });
 
-    window.onload = function () {
-        if (sessionStorage.getItem('userId')) showTimeline();
-    }
+    window.onload = () => { if (sessionStorage.getItem('userId')) showTimeline(); };
 </script>
 </body>
 </html>

@@ -10,6 +10,7 @@ import (
 	node_gen "github.com/filinvadim/dWighter/node/node-gen"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -121,6 +122,18 @@ func (c *NodeClient) GetUser(host string, e domain_gen.GetUserEvent) (domain_gen
 	return user, err
 }
 
+func (c *NodeClient) GetUsers(host string) (domain_gen.UsersResponse, error) {
+	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
+	event.Timestamp = time.Now()
+	resp, err := c.sendEvent(host, node_gen.GetUsers, event)
+	if err != nil {
+		return domain_gen.UsersResponse{}, err
+	}
+	var usersResp domain_gen.UsersResponse
+	err = json.JSON.Unmarshal(resp, &usersResp)
+	return usersResp, err
+}
+
 func (c *NodeClient) BroadcastNewUser(host string, u domain_gen.NewUserEvent) (domain_gen.User, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()
@@ -169,20 +182,20 @@ func (c *NodeClient) BroadcastNewUnfollow(host string, uf domain_gen.NewUnfollow
 	return err
 }
 
-func (c *NodeClient) SendLogin(host string, l domain_gen.LoginEvent) (domain_gen.User, error) {
+func (c *NodeClient) SendLogin(host string, l domain_gen.LoginEvent) (domain_gen.LoginResponse, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()
 	if err := event.Data.FromLoginEvent(l); err != nil {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
 
 	resp, err := c.sendEvent(host, node_gen.Login, event)
 	if err != nil {
-		return domain_gen.User{}, err
+		return domain_gen.LoginResponse{}, err
 	}
-	var authUser domain_gen.User
-	err = json.JSON.Unmarshal(resp, &authUser)
-	return authUser, err
+	var loginResp domain_gen.LoginResponse
+	err = json.JSON.Unmarshal(resp, &loginResp)
+	return loginResp, err
 }
 
 func (c *NodeClient) SendLogout(host string, l domain_gen.LogoutEvent) error {
@@ -199,6 +212,9 @@ func (c *NodeClient) SendLogout(host string, l domain_gen.LogoutEvent) error {
 func (c *NodeClient) sendEvent(
 	host string, eventType node_gen.NewEventParamsEventType, event domain_gen.Event,
 ) ([]byte, error) {
+	if strings.Contains(host, "localhost") {
+		return nil, nil
+	}
 	resp, err := c.cli.NewEventWithResponse(c.ctx, eventType, event, func(ctx context.Context, req *http.Request) error {
 		req.Host = host
 		return nil

@@ -48,7 +48,7 @@ func TestPostUser(t *testing.T) {
 	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
-	user := &domain_gen.User{
+	user := domain_gen.User{
 		UserId:   &userId,
 		Username: "testuser",
 	}
@@ -82,7 +82,7 @@ func TestGetUser(t *testing.T) {
 	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
-	user := &domain_gen.User{
+	user := domain_gen.User{
 		UserId:   &userId,
 		Username: "testuser",
 	}
@@ -116,12 +116,12 @@ func TestFollowUser(t *testing.T) {
 	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
-	reader := &domain_gen.User{
+	reader := domain_gen.User{
 		UserId:   &userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
-	writer := &domain_gen.User{
+	writer := domain_gen.User{
 		UserId:   &userId,
 		Username: "writer",
 	}
@@ -164,12 +164,12 @@ func TestUnfollowUser(t *testing.T) {
 	controller := handlers.NewUserController(nil)
 
 	userId := uuid.New().String()
-	reader := &domain_gen.User{
+	reader := domain_gen.User{
 		UserId:   &userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
-	writer := &domain_gen.User{
+	writer := domain_gen.User{
 		UserId:   &userId,
 		Username: "writer",
 	}

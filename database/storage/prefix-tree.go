@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -157,33 +156,14 @@ func (pb *PrefixBuilder) AddReaderId(readerId string) *PrefixBuilder {
 	return pb
 }
 
-// ValidateIPAddress ensures the IP address is valid (IPv4 format)
-func validateIPAddress(ip string) error {
-	if net.ParseIP(ip) == nil {
-		return errors.New("invalid IP address format")
-	}
-	return nil
-}
-
 // AddIPAddress adds an IP address segment to the key after validation
 func (pb *PrefixBuilder) AddHostAddress(host string) *PrefixBuilder {
 	// Skip processing if there's already an error
 	if pb.err != nil {
 		return pb
 	}
-
-	splitted := strings.Split(host, ":")
-	if len(splitted) != 2 {
-		pb.err = errors.New("invalid host notation: {ip}:{port}")
-		return pb
-	}
-	ip := splitted[0]
-	// Perform validation and store the error if validation fails
-	if err := validateIPAddress(ip); err != nil {
-		pb.err = err
-		return pb
-	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, ip)
+	
+	pb.key = fmt.Sprintf("%s:%s", pb.key, host)
 	return pb
 }
 

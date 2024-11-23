@@ -29,7 +29,7 @@ func TestUserRepo_Create(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := database.NewUserRepo(db)
 
-	user := &domain_gen.User{
+	user := domain_gen.User{
 		Username: "Test User",
 	}
 	userID := uuid.New().String()
@@ -51,7 +51,7 @@ func TestUserRepo_Get(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := &domain_gen.User{
+	user := domain_gen.User{
 		Username: "Test User",
 		UserId:   &userID,
 	}
@@ -71,7 +71,7 @@ func TestUserRepo_Delete(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user := &domain_gen.User{
+	user := domain_gen.User{
 		Username: "Test User",
 		UserId:   &userID,
 	}
@@ -94,12 +94,12 @@ func TestUserRepo_List(t *testing.T) {
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
-	user1 := &domain_gen.User{
+	user1 := domain_gen.User{
 		Username: "User1",
 		UserId:   &userID,
 	}
 	userID = uuid.New().String()
-	user2 := &domain_gen.User{
+	user2 := domain_gen.User{
 		Username: "User2",
 		UserId:   &userID,
 	}
