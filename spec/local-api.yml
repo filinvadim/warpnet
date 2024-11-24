@@ -62,6 +62,12 @@ paths:
     post:
       tags:
         - Auth
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       summary: Close service
       responses:
         '200':
@@ -75,6 +81,11 @@ paths:
         - User
       summary: Get users list
       parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
         - name: cursor
           in: query
           schema:
@@ -98,6 +109,12 @@ paths:
       tags:
         - User
       summary: Create a new user
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -125,6 +142,11 @@ paths:
           required: true
           schema:
             type: string
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: User details
@@ -140,6 +162,12 @@ paths:
       tags:
         - Tweet
       summary: Publish a new tweet
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -172,6 +200,11 @@ paths:
           required: true
           schema:
             type: string
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Tweet successfully fetched
@@ -186,6 +219,11 @@ paths:
       parameters:
         - name: user_id
           in: path
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-SESSION-TOKEN
           required: true
           schema:
             type: string
@@ -220,6 +258,11 @@ paths:
             type: integer
             x-go-type: uint64
             default: 20
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: User's tweet timeline
@@ -235,6 +278,12 @@ paths:
       tags:
         - User
       summary: Follow another user
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -252,6 +301,12 @@ paths:
       tags:
         - User
       summary: Unfollow a user
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:

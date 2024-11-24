@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"github.com/filinvadim/dWighter/interface/api-gen"
 	"github.com/filinvadim/dWighter/node/client"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -24,17 +25,19 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	if err := ctx.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	u, err := c.cli.SendLogin(c.discoveryHost, domain_gen.LoginEvent{
+	authResp, err := c.cli.SendLogin(c.discoveryHost, domain_gen.LoginEvent{
 		Password: req.Password,
 		Username: req.Username,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	return ctx.JSON(http.StatusOK, u)
+
+	ctx.Response().Header().Set(config.SessionTokenName, authResp.Token)
+	return ctx.JSON(http.StatusOK, authResp)
 }
 
-func (c *AuthController) PostV1ApiAuthLogout(ctx echo.Context) error {
+func (c *AuthController) PostV1ApiAuthLogout(ctx echo.Context, params api.PostV1ApiAuthLogoutParams) error {
 	err := c.cli.SendLogout(c.discoveryHost, domain_gen.LogoutEvent{})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

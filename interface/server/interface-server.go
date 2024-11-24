@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/config"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
+	ownMiddleware "github.com/filinvadim/dWighter/interface/middleware"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -47,6 +48,7 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 	e.Use(echomiddleware.CORS())
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
+	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
 	return &interfaceServer{e}, nil
 }

@@ -19,16 +19,58 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// PostV1ApiAuthLogoutParams defines parameters for PostV1ApiAuthLogout.
+type PostV1ApiAuthLogoutParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiTweetsParams defines parameters for PostV1ApiTweets.
+type PostV1ApiTweetsParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
 // GetV1ApiTweetsTimelineUserIdParams defines parameters for GetV1ApiTweetsTimelineUserId.
 type GetV1ApiTweetsTimelineUserIdParams struct {
-	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
-	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit         *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiTweetsUserIdParams defines parameters for GetV1ApiTweetsUserId.
+type GetV1ApiTweetsUserIdParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiTweetsUserIdTweetIdParams defines parameters for GetV1ApiTweetsUserIdTweetId.
+type GetV1ApiTweetsUserIdTweetIdParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
 // GetV1ApiUsersParams defines parameters for GetV1ApiUsers.
 type GetV1ApiUsersParams struct {
-	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
-	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit         *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiUsersParams defines parameters for PostV1ApiUsers.
+type PostV1ApiUsersParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiUsersFollowParams defines parameters for PostV1ApiUsersFollow.
+type PostV1ApiUsersFollowParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiUsersUnfollowParams defines parameters for PostV1ApiUsersUnfollow.
+type PostV1ApiUsersUnfollowParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiUsersUserIdParams defines parameters for GetV1ApiUsersUserId.
+type GetV1ApiUsersUserIdParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
@@ -56,34 +98,34 @@ type ServerInterface interface {
 	PostV1ApiAuthLogin(ctx echo.Context) error
 	// Close service
 	// (POST /v1/api/auth/logout)
-	PostV1ApiAuthLogout(ctx echo.Context) error
+	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
 	// Publish a new tweet
 	// (POST /v1/api/tweets)
-	PostV1ApiTweets(ctx echo.Context) error
+	PostV1ApiTweets(ctx echo.Context, params PostV1ApiTweetsParams) error
 	// Get user's tweet timeline
 	// (GET /v1/api/tweets/timeline/{user_id})
 	GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId string, params GetV1ApiTweetsTimelineUserIdParams) error
 	// Get user's tweets
 	// (GET /v1/api/tweets/{user_id})
-	GetV1ApiTweetsUserId(ctx echo.Context, userId string) error
+	GetV1ApiTweetsUserId(ctx echo.Context, userId string, params GetV1ApiTweetsUserIdParams) error
 	// Get a certain tweet
 	// (GET /v1/api/tweets/{user_id}/{tweet_id})
-	GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string) error
+	GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string, params GetV1ApiTweetsUserIdTweetIdParams) error
 	// Get users list
 	// (GET /v1/api/users)
 	GetV1ApiUsers(ctx echo.Context, params GetV1ApiUsersParams) error
 	// Create a new user
 	// (POST /v1/api/users)
-	PostV1ApiUsers(ctx echo.Context) error
+	PostV1ApiUsers(ctx echo.Context, params PostV1ApiUsersParams) error
 	// Follow another user
 	// (POST /v1/api/users/follow)
-	PostV1ApiUsersFollow(ctx echo.Context) error
+	PostV1ApiUsersFollow(ctx echo.Context, params PostV1ApiUsersFollowParams) error
 	// Unfollow a user
 	// (POST /v1/api/users/unfollow)
-	PostV1ApiUsersUnfollow(ctx echo.Context) error
+	PostV1ApiUsersUnfollow(ctx echo.Context, params PostV1ApiUsersUnfollowParams) error
 	// Get user information
 	// (GET /v1/api/users/{user_id})
-	GetV1ApiUsersUserId(ctx echo.Context, userId string) error
+	GetV1ApiUsersUserId(ctx echo.Context, userId string, params GetV1ApiUsersUserIdParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -113,8 +155,30 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogin(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiAuthLogoutParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiAuthLogout(ctx)
+	err = w.Handler.PostV1ApiAuthLogout(ctx, params)
 	return err
 }
 
@@ -122,8 +186,30 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostV1ApiTweets(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiTweetsParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiTweets(ctx)
+	err = w.Handler.PostV1ApiTweets(ctx, params)
 	return err
 }
 
@@ -154,6 +240,25 @@ func (w *ServerInterfaceWrapper) GetV1ApiTweetsTimelineUserId(ctx echo.Context) 
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
 	}
 
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetV1ApiTweetsTimelineUserId(ctx, userId, params)
 	return err
@@ -170,8 +275,30 @@ func (w *ServerInterfaceWrapper) GetV1ApiTweetsUserId(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiTweetsUserIdParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiTweetsUserId(ctx, userId)
+	err = w.Handler.GetV1ApiTweetsUserId(ctx, userId, params)
 	return err
 }
 
@@ -194,8 +321,30 @@ func (w *ServerInterfaceWrapper) GetV1ApiTweetsUserIdTweetId(ctx echo.Context) e
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tweet_id: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiTweetsUserIdTweetIdParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiTweetsUserIdTweetId(ctx, userId, tweetId)
+	err = w.Handler.GetV1ApiTweetsUserIdTweetId(ctx, userId, tweetId, params)
 	return err
 }
 
@@ -219,6 +368,25 @@ func (w *ServerInterfaceWrapper) GetV1ApiUsers(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
 	}
 
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetV1ApiUsers(ctx, params)
 	return err
@@ -228,8 +396,30 @@ func (w *ServerInterfaceWrapper) GetV1ApiUsers(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostV1ApiUsers(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiUsersParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiUsers(ctx)
+	err = w.Handler.PostV1ApiUsers(ctx, params)
 	return err
 }
 
@@ -237,8 +427,30 @@ func (w *ServerInterfaceWrapper) PostV1ApiUsers(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostV1ApiUsersFollow(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiUsersFollowParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiUsersFollow(ctx)
+	err = w.Handler.PostV1ApiUsersFollow(ctx, params)
 	return err
 }
 
@@ -246,8 +458,30 @@ func (w *ServerInterfaceWrapper) PostV1ApiUsersFollow(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostV1ApiUsersUnfollow(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiUsersUnfollowParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiUsersUnfollow(ctx)
+	err = w.Handler.PostV1ApiUsersUnfollow(ctx, params)
 	return err
 }
 
@@ -262,8 +496,30 @@ func (w *ServerInterfaceWrapper) GetV1ApiUsersUserId(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiUsersUserIdParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiUsersUserId(ctx, userId)
+	err = w.Handler.GetV1ApiUsersUserId(ctx, userId, params)
 	return err
 }
 
@@ -313,31 +569,32 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RZb2/bthP+KgR/P2Ab4ERO/wH1u67rugAZUHTp9qILDEY8W2wpUiWPSYzA330gKVl/",
-	"bctu07XYm0CRjseH99wdH9L3NNV5oRUotHR2T22aQc7CI9c5E2r+wmH2Fj45sOjfFkYXYFBAsCmYtbfa",
-	"cP+MqwLojFo0Qi3pekKdBaNYDgMf1xNq4JMTBjidva8tJ7XHq0k1SF9/gBS9xxLSr1pKfbsVlAHGwcxF",
-	"QJULdQFqiRmdnU36GG+NwHG2Hcj1JE0nO0BfiI/Qx4q3ADgOqg/SEUCrYZN6rh0o30Kw+vaBXg7DTLVC",
-	"UDgCZWqAIfA5C8YLbXL/RDlDOEERcrE3RoqPcRqBkIeH/xtY0Bn9X1KXUVLWUNIkfr3xxoxhq42zeaqd",
-	"aiMQCp89oROPX+Qup7PpZqxQCEswNEQuROlgNBXBA4Aql0djsr4iVQpHDH2A9Dq0AcXcqxJoX+rZt2AL",
-	"rexATafOWG0GW+JxnF0OM9ZZQzntZpIdK3inFt9jC31nwfSxXguDmS/b8XV8TO1zsKkRBQqtBqmNEQXe",
-	"IrefAJ2aq0bNlS+NgbLpl0o5xNijZjL2gKmkUB9bps7Iwb6oU7Y1MPlqbmABxjB5IGSlOZR5VSNwcYvo",
-	"jo1TAJ9fr7aKkdLXzj5x6I5VypYK6p7sPa5r+HkObhqhWEb3jDhFH70fINRCB0HYrAD66g4NKCbJizfn",
-	"ZKENYYQLj/naIXByeSsQwZz4XY6wopCiTJEJRYHSz/FL39w7oxN6A8bGWc5Op6dTvwxdgGKFoDP6OLzy",
-	"ShGzEIzE/1lGNdDGeJkJS0DxQguFxIK5AUswA+IjRBYm9HpOCrYEohfhSwMq+VEoDnenGebyp1MaMJjw",
-	"5ZzTGX0NeO6/Ux/SyGqA82g67SgRhDtMvJdaYfsnuGN5ESLxt5tOH6feIjxB+T8w3vw/xC2+qML1UmpV",
-	"fk0an8s3XQfXmq/i/3+BTHUOBDUZclUbVp420Pq1t+42R3pZRfi3y98vtkXXk/q0F6qGQfLBxo5SR6yr",
-	"9Ti04vh0OqgtcrCWLdum9FyhL15J/vBZYcgrY+Lm2av4gYpoL7f0AMGD/2xdnjOzqj7VGVfnU4hKME5u",
-	"zhJWiIQ5zBKplyKsudBxW26n3Btt8c+zF4Xwh7KLYBvrGSz+rPnqoGCO6CHNs9+63TvQOFjvzfzPRhC7",
-	"WD/m/j3hgExI6zl+Mj3rl7+HTxZMSOCNbGvbbPLA7mARtQGSGuCgUPhtbEKRLa3voH4OejVEpHY4nklv",
-	"PBzNTq65NAVrP2s5L6W2EAxECjuXUsvVPauIkvhhk7FUwf9KGjbm7rQ6/4HYyMrCSbkipbiMWTlI0Q2T",
-	"ghOhCocdat64aylsRhhRcEviSa0mKKIYYCjxolUKBcl9qXPWjT2xt201KLssB/p6OudhVzUsBwyC4/09",
-	"9d0o7LRe4wSJ1DgrtWmYNELa66Klp08OzKp2tZEfB4+UIhfYGshhwZxEOnvU3wQm9O5kqU/Kty4K3vX6",
-	"6islTq36tnSyH2zkmlQ8xuR50k+e0Pe02RgSpZEstFO8k0mvAYkbdD0mnw5NowdOn2+CqAth0euYZlTt",
-	"fqKC2Wia7GH0JPfVxclhTIXnr1DvbU+bS54vwP3eNrwATLMj27BnhZEUDHrVNqINb05oOxkIJ8AtMf/P",
-	"dcb2cXiUxNtWZvuKyxIpbJPBoCqv1pN9sqYi7AFVTS1wvy1t/cUkzcswtlQ0no0+D91CSuJd1QjdGQiK",
-	"Pwc9LE3tn5xG8XW2Vb2XDaq8+gvHQ1fe1hwc3giMMKUxAzM2wE4dFuLqwviBa6FzLT2+LHaEuVrq5wa6",
-	"AkfY2CCPF1Exxt+9hhp/WD+2kxOh4k1weZPYYSD8BuXPvTFyHf2mUyYJhxuQusihuhAMt59G0hnNEItZ",
-	"kkhvl2mLs2fPnz2n66v1PwEAAP//hFk8PSUfAAA=",
+	"H4sIAAAAAAAC/+xZa2/bNhf+KwTfF9gGOJHTG1B/67qsC5a1ReNuA7ogYMRjiy1FquRREiPwfx9IStbV",
+	"tuy0WTrsS6BIh4ePz/OcC6VbGus00woUWjq5pTZOIGX+kuuUCXXxIsfkHXzOwaK7mxmdgUEB3iZj1l5r",
+	"w901LjKgE2rRCDWnyxHNLRjFUuh5uBxRA59zYYDTyYfKclR5PB+Vi/TlR4jReSwg/ayl1NdrQRlgHMyF",
+	"8KhSoU5BzTGhk6NRF+O1ETjMtgW52qTuZAPoU/EJuljxGgCHQXVB2gNouWxU7bUB5TvwVg8f6LQfZqwV",
+	"gsIBKGMDDIFfMG880yZ1V5QzhAMUXoudNVJ8CtsIhNRf/N/AjE7o/6IqjaIih6I68cuVN2YMW6ycXcQ6",
+	"V00EQuGzJ3Tk8Is0T+lkvForFMIcDPWR81HaGU1JcA+g0uXemKzLSBXDHku/grx2LUBBe6WAtknPvgOb",
+	"aWV7cjrOjdWmtyTux9m0n7HWbyi2XW2y4Re8V7NvsYS+t2C6WC+FwcSl7fA83if3OdjYiAyFVr3UhogC",
+	"b5DbFUAr58pVF8qlRk/adFOlWGLsXjsZu8NWUqhPDdPcyN66qGO2NjDp4sLADIxhckfISnModFUhyEOL",
+	"aK8NWwC/uFysHUYKXxvrxK4dqxhbSqhb1Ltf1XD77Fw0fLIMrhlhiy56t0ComfYDYT0D6PENGlBMkhdv",
+	"T8hMG8IIFw7zZY7AyfRaIII5cF2OsCyTopDIiKJA6fb4qWvunNERvQJjwy5Hh+PDsfsZOgPFMkEn9LG/",
+	"5SZFTHwwIvdnHqaBJsZpIiwBxTMtFBIL5goswQSIixCZGV/rOcnYHIie+Sc1qOR7oTjcHCaYyh8Oqcdg",
+	"/JMTTif0FeCJe05dSAOrHs6j8bg1iSDcYOS8VBO2u4IblmY+En/l4/Hj2Fn4Kyj+B8br//u4hRtluF5K",
+	"rYqnUe1xcaft4FLzRfj/D5CxToGgJn2uKsPS0wpaN/eW7eJIp2WEf5n+drouuo7Up51Q1QyijzZUlCpi",
+	"7VmPQyOOT8e9s0UK1rJ505SeKHTJK8mZU4Uhx8aE5tnJ+J6MaP7cwgN4D+6xzdOUmUX5qFJcpScfFW8c",
+	"XR1FLBMRyzGJpJ4L/5szHdpyU3JvtcXfj15kwh3KTr1tyGew+KPmi52COaCG1M9+y2btQJPDcqvy74wg",
+	"VLFuzN19wgGZkNZx/GR81E1/B5/MmJDAa2pr2qx0YDewiNoAiQ1wUChcGxtRZHPrKqjbg573EalzHM6k",
+	"M3YlzbAU0Ff7D7fUSYEmfkpyLcZ3KPrnwdnx2dnJm9cH0ze/Hr+mbVJGtQC3xXzeT1hLznkcg7V3ithL",
+	"qS14AxHDxmhVE/GWQIWp+76C9NVSqpjl/5Fkqu3dKtjuAbGB+Fku5YIUI3LIrV4VXDEpOBEqy7HF/tv8",
+	"UgqbEEYUXJNw3qw0EFD0iCByo7cUCqLbYlpb1jp7p/nWVDEtFrqqcMLXaMTNC5VCqhPfcGWMCk+fczCL",
+	"ytVqiNp5pRSpwMZCDjOWS6STR91WNqI3B3N9UNzNw9he+b6HQvHFxVjNw2tq/Hc26IeU2giCfNIVpO8I",
+	"2qwMidJIZjpXvKXOV4Ak73U9RKO7SvOeJPmvI/9UWHRTY50pu518bzaYersb5dFt+ZpqN/b99T2IoOlp",
+	"9UrtgeppawuaAcbJni3IMc1IDAbd3D2gBa3O2BtZ9Wf4e5hBHmanOb+feX9rU2gO/uvKwbYiYIkUtq4K",
+	"f9Y4X462TaL3JYKvO4hWJ6uHdaj7YlPoS7+2GEId4V2q2/kfhZekA04jXgPhO+Q3r4Tm59RBkjhae2ws",
+	"SnfxWtu/+siLN5E7MxiAEaY0JmCGcpir3VgsP4Z8+xnd+qozPLk3MFlG865cluAIG8rj8Ek70PjfoH2n",
+	"92f7tlEiVPg4U7zcb7HqPwubq5KN1pCvYyYJhyuQOkuhfEfvP0gY6aKNmE2iSDq7RFucPHv+7Dldni//",
+	"DgAA//+XbGmRuCIAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

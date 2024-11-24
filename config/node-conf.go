@@ -3,7 +3,8 @@ package config
 import "strings"
 
 const (
-	DatabaseFolder = "/storage"
+	DatabaseFolder   = "/storage"
+	SessionTokenName = "X-SESSION-TOKEN"
 
 	apifyAddr  = "https://api.ipify.org?format=txt"
 	ipInfoAddr = "https://ipinfo.io/ip"

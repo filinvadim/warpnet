@@ -20,7 +20,7 @@ func NewTweetController(
 	return &TweetController{cli, config.InternalNodeAddress.String()}
 }
 
-func (c *TweetController) PostV1ApiTweets(ctx echo.Context) error {
+func (c *TweetController) PostV1ApiTweets(ctx echo.Context, params api_gen.PostV1ApiTweetsParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -58,7 +58,9 @@ func (c *TweetController) GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId 
 }
 
 // GetTweetsUserIdTweetId returns a specific tweet by userId and tweetId
-func (c *TweetController) GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId string, tweetId string) error {
+func (c *TweetController) GetV1ApiTweetsUserIdTweetId(
+	ctx echo.Context, userId string, tweetId string, params api_gen.GetV1ApiTweetsUserIdTweetIdParams,
+) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -72,7 +74,7 @@ func (c *TweetController) GetV1ApiTweetsUserIdTweetId(ctx echo.Context, userId s
 }
 
 // GetTweetsUserId returns all tweets by a specific user
-func (c *TweetController) GetV1ApiTweetsUserId(ctx echo.Context, userId string) error {
+func (c *TweetController) GetV1ApiTweetsUserId(ctx echo.Context, userId string, params api_gen.GetV1ApiTweetsUserIdParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}

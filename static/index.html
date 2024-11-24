@@ -112,24 +112,20 @@
                     sessionStorage.setItem('username', data.user.username);
                     currentUserId = data.user.user_id;
                     currentUsername = data.user.username;
+                } else alert('Login failed');
+                if (data.token) {
                     currentSessionToken = data.token;
                     showTimeline();
                 } else alert('Login failed');
             }).catch(console.error);
     }
 
-    function showTimeline() {
-        document.getElementById('login').classList.remove('active');
-        document.getElementById('timeline-container').classList.add('active');
-        document.getElementById('profile-container').classList.remove('active');
-        document.getElementById('navigation').classList.add('active');
-        loadTimeline();
-        loadRecommendedUsers();
-    }
-
     async function loadRecommendedUsers(cursor = '') {
         try {
-            const response = await fetch(`${apiUrl}/v1/api/users?limit=3&cursor=${cursor}`);
+            const response = await fetch(
+                `${apiUrl}/v1/api/users?limit=3&cursor=${cursor}`,
+                {headers: { "X-SESSION-TOKEN": currentSessionToken }}
+            );
             const resp = await response.json();
             const recommendedDiv = document.getElementById('recommended-users');
             recommendedDiv.innerHTML = '';
@@ -163,7 +159,10 @@
         currentUsername = sessionStorage.getItem('username');
         currentUserId = sessionStorage.getItem('userId');
         if (!currentUserId) return alert('User not logged in');
-        fetch(`${apiUrl}/v1/api/tweets/timeline/${currentUserId}`)
+        fetch(
+            `${apiUrl}/v1/api/tweets/timeline/${currentUserId}`,
+            {headers: { "X-SESSION-TOKEN": currentSessionToken }}
+        )
             .then(res => res.json())
             .then(data => {
                 const timelineDiv = document.getElementById('timeline');
@@ -177,7 +176,8 @@
 
     function followUser(userId) {
         fetch(`${apiUrl}/v1/api/users/follow`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', "X-SESSION-TOKEN": currentSessionToken },
             body: JSON.stringify({ readerId: currentUserId, writerId: userId })
         })
             .then(res => res.ok ? loadRecommendedUsers() : alert('Failed to follow user'))
@@ -188,7 +188,7 @@
         const tweetText = document.getElementById('tweet-text').value;
         if (tweetText === '') return alert('Tweet cannot be empty');
         fetch(`${apiUrl}/v1/api/tweets`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json',  "X-SESSION-TOKEN": currentSessionToken },
             body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
         }).then(res => res.ok ? (document.getElementById('tweet-text').value = '', loadTimeline()) : alert('Failed to post tweet')).catch(console.error);
     }
@@ -207,7 +207,10 @@
         const username = sessionStorage.getItem('username');
         document.getElementById('profile-username').innerText = '@' + username;
         document.getElementById('profile-id').innerText = 'User ID: ' + userId;
-        fetch(`${apiUrl}/v1/api/tweets/${userId}`)
+        fetch(`
+            ${apiUrl}/v1/api/tweets/${userId}`,
+            {headers: { "X-SESSION-TOKEN": currentSessionToken }}
+        )
             .then(response => response.json())
             .then(data => {
                 const profileTweetsDiv = document.getElementById('profile-tweets');
@@ -229,7 +232,7 @@
 
     window.addEventListener('beforeunload', () => {
         fetch(`${apiUrl}/v1/api/auth/logout`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json', "X-SESSION-TOKEN": currentSessionToken },
             body: JSON.stringify({ user_id: sessionStorage.getItem('userId') })
         }).catch(console.error);
     });

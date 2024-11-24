@@ -19,7 +19,7 @@ func NewUserController(cli *client.NodeClient) *UserController {
 	return &UserController{cli: cli, owNodeHost: config.InternalNodeAddress.String()}
 }
 
-func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {
+func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context, params api_gen.PostV1ApiUsersFollowParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -52,7 +52,7 @@ func (c *UserController) PostV1ApiUsersFollow(ctx echo.Context) error {
 }
 
 // PostUsersUnfollow allows a user to unfollow another user
-func (c *UserController) PostV1ApiUsersUnfollow(ctx echo.Context) error {
+func (c *UserController) PostV1ApiUsersUnfollow(ctx echo.Context, params api_gen.PostV1ApiUsersUnfollowParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -84,7 +84,7 @@ func (c *UserController) PostV1ApiUsersUnfollow(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusOK)
 }
 
-func (c *UserController) PostV1ApiUsers(ctx echo.Context) error {
+func (c *UserController) PostV1ApiUsers(ctx echo.Context, params api_gen.PostV1ApiUsersParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -113,7 +113,7 @@ func (c *UserController) PostV1ApiUsers(ctx echo.Context) error {
 }
 
 // GetUsersUserId retrieves a user by their userId
-func (c *UserController) GetV1ApiUsersUserId(ctx echo.Context, userId string) error {
+func (c *UserController) GetV1ApiUsersUserId(ctx echo.Context, userId string, params api_gen.GetV1ApiUsersUserIdParams) error {
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}

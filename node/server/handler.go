@@ -75,6 +75,7 @@ func NewNodeHandler(
 
 func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEventParamsEventType) (err error) {
 	fmt.Println("RECEIVED EVENT: ", eventType)
+
 	var receivedEvent domain_gen.Event
 	if err := ctx.Bind(&receivedEvent); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -83,10 +84,18 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 	if receivedEvent.Data == nil {
 		return nil
 	}
-	callerHost := ctx.Request().Host
-	var response any
+
+	var (
+		response   any
+		callerHost = ctx.Request().Host
+	)
 
 	switch eventType {
+	case node_gen.Login:
+		if response, err = d.handleLogin(ctx, receivedEvent.Data); err != nil {
+			fmt.Printf("handle login event failure: %v", err)
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
 	case node_gen.Ping:
 		if err := d.handlePing(ctx, receivedEvent.Data); err != nil {
 			fmt.Printf("handle ping event failure: %v", err)
@@ -127,11 +136,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 		response = tweetEvent.Tweet
 	case node_gen.Follow, node_gen.Unfollow:
 		// TODO
-	case node_gen.Login:
-		if response, err = d.handleLogin(ctx, receivedEvent.Data); err != nil {
-			fmt.Printf("handle login event failure: %v", err)
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
+
 	case node_gen.Logout:
 		if err := d.handleLogout(ctx, receivedEvent.Data); err != nil {
 			fmt.Printf("handle logout event failure: %v", err)
@@ -285,7 +290,7 @@ func (d *nodeEventHandler) handleLogin(
 	if err != nil {
 		return domain_gen.LoginResponse{}, err
 	}
-
+	
 	ownerId, err := d.authRepo.Owner()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return domain_gen.LoginResponse{}, err
@@ -295,6 +300,7 @@ func (d *nodeEventHandler) handleLogin(
 		return domain_gen.LoginResponse{}, err
 	}
 	if owner != nil && owner.Username == login.Username {
+
 		return domain_gen.LoginResponse{token, *owner}, nil
 	}
 	newOwnerId, err := d.authRepo.NewOwner()
