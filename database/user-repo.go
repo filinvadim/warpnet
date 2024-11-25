@@ -1,7 +1,9 @@
 package database
 
 import (
+	"errors"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"sort"
 	"time"
 
 	"github.com/filinvadim/dWighter/database/storage"
@@ -69,24 +71,56 @@ func (repo *UserRepo) Delete(userID string) error {
 	return repo.db.Delete(key)
 }
 
-func (repo *UserRepo) List() ([]domain_gen.User, error) {
-	key, err := storage.NewPrefixBuilder(UsersRepoName).Build()
+func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, string, error) {
+	if limit == nil {
+		limit = new(uint64)
+		*limit = 20
+	}
+	if *limit == 0 {
+		limit = new(uint64)
+		*limit = 20
+	}
+	prefix, err := storage.NewPrefixBuilder(UsersRepoName).Build()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	users := make([]domain_gen.User, 0, 20)
-	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
-		var user domain_gen.User
-		err := json.JSON.Unmarshal(value, &user)
+	var lastKey string
+	if cursor != nil && *cursor != "" {
+		prefix = *cursor
+	}
+
+	users := make([]domain_gen.User, 0, *limit)
+	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
+		if len(users) >= int(*limit) {
+			lastKey = key
+			return storage.ErrStopIteration
+		}
+		if !IsValidForPrefix(key, prefix) {
+			return nil
+		}
+
+		var u domain_gen.User
+		err := json.JSON.Unmarshal(value, &u)
 		if err != nil {
 			return err
 		}
-		users = append(users, user)
+		users = append(users, u)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return users, nil
+	if errors.Is(err, storage.ErrStopIteration) || err == nil {
+		if len(users) < int(*limit) {
+			lastKey = ""
+		}
+		return users, lastKey, nil
+	}
+
+	sort.SliceStable(users, func(i, j int) bool {
+		return users[i].CreatedAt.After(*users[j].CreatedAt)
+	})
+
+	return users, lastKey, nil
 }

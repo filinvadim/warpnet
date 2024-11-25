@@ -130,7 +130,7 @@ func (c *UserController) GetV1ApiUsers(ctx echo.Context, params api_gen.GetV1Api
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
 
-	users, err := c.cli.GetUsers(c.owNodeHost)
+	users, err := c.cli.GetUsers(c.owNodeHost, domain_gen.GetAllUsersEvent{Limit: params.Limit, Cursor: params.Cursor})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: err.Error()})
 	}

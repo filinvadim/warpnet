@@ -257,6 +257,7 @@ components:
           format: date-time
         data:
           anyOf:
+            - {}
             - $ref: '#/components/schemas/PingEvent'
             - $ref: '#/components/schemas/ErrorEvent'
             - $ref: '#/components/schemas/NewTweetEvent'
@@ -337,6 +338,19 @@ components:
     GetTimelineEvent:
       $ref: '#/components/schemas/GetAllTweetsEvent'
 
+    GetAllUsersEvent:
+      type: object
+      properties:
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+        is_following:
+          type: boolean
+        is_followed:
+          type: boolean
+
     GetAllTweetsEvent:
       type: object
       properties:
@@ -363,9 +377,6 @@ components:
           type: string
       required:
         - userId
-
-    GetAllUsersEvent:
-      type: object
 
     NewFollowEvent:
       type: object

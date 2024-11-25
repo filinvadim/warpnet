@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	middleware "github.com/oapi-codegen/echo-middleware"
-	"io/ioutil"
 )
 
 type NodeServicer interface {
@@ -30,7 +29,7 @@ func NewNodeServer(
 	e := echo.New()
 	e.HideBanner = true
 
-	e.Logger.SetOutput(ioutil.Discard)
+	//e.Logger.SetOutput(ioutil.Discard)
 	e.Use(echomiddleware.Gzip())
 	e.Use(middleware.OapiRequestValidator(swagger))
 

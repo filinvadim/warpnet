@@ -122,9 +122,12 @@ func (c *NodeClient) GetUser(host string, e domain_gen.GetUserEvent) (domain_gen
 	return user, err
 }
 
-func (c *NodeClient) GetUsers(host string) (domain_gen.UsersResponse, error) {
+func (c *NodeClient) GetUsers(host string, e domain_gen.GetAllUsersEvent) (domain_gen.UsersResponse, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()
+	if err := event.Data.FromGetAllUsersEvent(e); err != nil {
+		return domain_gen.UsersResponse{}, err
+	}
 	resp, err := c.sendEvent(host, node_gen.GetUsers, event)
 	if err != nil {
 		return domain_gen.UsersResponse{}, err

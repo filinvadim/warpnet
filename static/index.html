@@ -116,15 +116,15 @@
                 if (data.token) {
                     sessionStorage.setItem("X-SESSION-TOKEN", data.token);
                     currentSessionToken = data.token;
-                    showTimeline();
                 } else alert('Login failed');
+                showTimeline();
             }).catch(console.error);
     }
 
-    async function loadRecommendedUsers(cursor = '') {
+    async function loadRecommendedUsers() {
         try {
             const response = await fetch(
-                `${apiUrl}/v1/api/users?limit=3&cursor=${cursor}`,
+                `${apiUrl}/v1/api/users?limit=3`,
                 {headers: { "X-SESSION-TOKEN": sessionStorage.getItem('X-SESSION-TOKEN') }}
             );
             const resp = await response.json();
@@ -140,9 +140,8 @@
                         <button class="follow-button" onclick="followUser('${user.user_id}')">Follow</button>
                     </div>`;
             });
-            if (nextCursor) {
-                recommendedDiv.innerHTML += `<button onclick="loadRecommendedUsers('${nextCursor}')">Show More</button>`;
-            }
+
+            recommendedDiv.innerHTML += `<button onclick="loadRecommendedUsers()">Show More</button>`;
         } catch (error) {
             console.error('Error loading recommended users:', error);
         }
@@ -154,6 +153,7 @@
         document.getElementById('profile-container').classList.remove('active');
         document.getElementById('navigation').classList.add('active');
         loadTimeline();
+        loadRecommendedUsers();
     }
 
     function loadTimeline() {

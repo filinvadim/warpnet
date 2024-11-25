@@ -110,7 +110,7 @@ func TestUserRepo_List(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Получаем список пользователей
-	users, err := repo.List()
+	users, _, err := repo.List(nil, nil)
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
 

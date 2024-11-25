@@ -39,10 +39,12 @@ type ErrorEvent struct {
 
 // Event defines model for Event.
 type Event struct {
-	Data         *Event_Data `json:"data,omitempty"`
-	SessionToken *string     `json:"session_token,omitempty"`
-	Timestamp    time.Time   `json:"timestamp"`
+	Data      *Event_Data `json:"data,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
 }
+
+// EventData0 defines model for .
+type EventData0 = interface{}
 
 // Event_Data defines model for Event.Data.
 type Event_Data struct {
@@ -63,7 +65,12 @@ type GetAllTweetsEvent struct {
 }
 
 // GetAllUsersEvent defines model for GetAllUsersEvent.
-type GetAllUsersEvent = map[string]interface{}
+type GetAllUsersEvent struct {
+	Cursor      *string `json:"cursor,omitempty"`
+	IsFollowed  *bool   `json:"is_followed,omitempty"`
+	IsFollowing *bool   `json:"is_following,omitempty"`
+	Limit       *uint64 `json:"limit,omitempty"`
+}
 
 // GetTimelineEvent defines model for GetTimelineEvent.
 type GetTimelineEvent = GetAllTweetsEvent
@@ -210,6 +217,32 @@ type User struct {
 type UsersResponse struct {
 	Cursor string `json:"cursor"`
 	Users  []User `json:"users"`
+}
+
+// AsEventData0 returns the union data inside the Event_Data as a EventData0
+func (t Event_Data) AsEventData0() (EventData0, error) {
+	var body EventData0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromEventData0 overwrites any union data inside the Event_Data as the provided EventData0
+func (t *Event_Data) FromEventData0(v EventData0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeEventData0 performs a merge with any union data inside the Event_Data, using the provided EventData0
+func (t *Event_Data) MergeEventData0(v EventData0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
 }
 
 // AsPingEvent returns the union data inside the Event_Data as a PingEvent
@@ -563,26 +596,26 @@ func (t *Event_Data) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xXTW/jNhD9KwTbo7JxusUedAu624WBoA0CBz0sFgItjS3WFKklR9Eagf97QX3Lomza",
-	"aLE59JRY5Mx75My8Gb7SWGW5kiDR0PCVmjiFjFX/3heYPsG3Agzan7lWOWjkUC3mzJhS6cT+j/scaEgN",
-	"ai639BDQwoCWLAPH4iGgGr4VXENCwy/9zqD3+DVojdT6b4jRevyktdJTFrFKhiBcImxBW4MMjGFbDwaV",
-	"i37/LPinF5D4wxi4wROGzP5lcv/nhoZfXunPGjY0pD/d9lG9bUJ6+8jltnZ0CE7vHBz43NY/oFyVAOi9",
-	"+9mAv+vflRCq9PctNxcYfAa8F6Jib7wtVjwDwSX4G/jfzmdA/9up2dv9nuQf1JZL762qaEl/PQTUgDFc",
-	"yQjVDqSz5JFnYJBluV3dKJ0xpKFNULixSzQ4UwS9vSv/6zyYFSMNLAEd8UqNMi4fQG4xpeFdMCVaao5+",
-	"e48Y9iBDJy6208SaykahTS1oE4KCZxwdkhLQ7zdbddN8LbjED7+2YrtM/KR2eYrwIJd6Z6NN4+R/+4ca",
-	"1N6ELNq15Xz/ugA96JzN8OirekLjXzjoA9/BzPn8SsL6vqIgWrOgx3LS63XnR08RFZUnMLmSxnVls+pm",
-	"AezCKdG0QZ7KWuWycTBDqZNaV9UdNUGH9HWaeIrcWEAtSxfS2Xo5B1M5mHU/bs/XHqX1cu4wZ4rOO5xT",
-	"383IJwsh2FoADVEXEByLoQaGkEQMfTtiQFNVHz8BE2ueI1eShnSVAlk+EpYkGoxx2dW122EURV2Vk20m",
-	"YjHyF5hi/JUCpqAJjrAINyQutAaJYk8a287xWikBTDaeVSlhWMeDVcEMRgbq2pqerWv9pExBEky5GXIo",
-	"mSHWQ4/vd5mCIch478aUgKXSO9JsIqg6XC5JxoXgBmIlE3vf8J1luY3z3S+LAXrdrALH6G/volXUMbbN",
-	"PLL86OJb5NVJJibP1XeiNlVwpErAUnSwe/9h4UPvSKG60DXpN0yTYegGp6oSziVm/QtjOhuwOIUksvSr",
-	"3xwhM+dqsKq0vgSZ1mxvfydgMGqLZXKRDU+5UX413lrIpq7PMzp+wA3P5rwX9f+9uO7lCbqu8kaHl5Wb",
-	"X6wkNuE8Q++aNiD47oJkqMY/RzJUXqJYFXIM3epCxiXPioyGC5eE6To0/jTaWDqYtL6uJmNsq5cxXGH6",
-	"H2TSpZNpnWZtysxmmZkfTE88rC6M0sodo+PCrfE67y7Ox2PYW3+UPzcz35jkmmtMbTH6V+c1FT3q6I4o",
-	"1ldZz09dHKexPqqr1iqSNv1ffSaTxkSbq5C0uQBKcLkbj6VaONVOxWz2YrJ9pGEDWjNxIWXbdSLPwbiG",
-	"gCRa72eff42vk1pwaQNq3qwt1bm0vU4ZLIC/MLQt308Xat9TvtagHTDGU+xvHSTZKE0YSbilui4QErIq",
-	"OSLoG9uyCMtzwZuUCChytLMt/TjdTu4flzSgL6BNjXH3bvFuUc0tOUiWcxrS99WngOYMU0ND+2Q7/BMA",
-	"AP//vQaziPMYAAA=",
+	"H4sIAAAAAAAC/+xYTW/jNhD9KwTbo7JJusUedAu624WBoA0CBz0sFgItjS02FKklR9Eagf97QX3LomzK",
+	"aLE59BTb5Mx75My8GeaVxirLlQSJhoav1MQpZKz6eFdg+gjfCjBov+Za5aCRQ7WYM2NKpRP7Gfc50JAa",
+	"1Fzu6CGghQEtWQaOxUNANXwruIaEhl/6nUHv8WvQGqnN3xCj9fhJa6WnLGKVDEG4RNiBtgYZGMN2Hgwq",
+	"F/3+WfBPLyDxhzFwgycMmf3L5P7PLQ2/vB6CV/qzhi0N6U/XfWCvm6heP3C5q32d2zk487mtf0C5LgHQ",
+	"e/eTAX/XvyshVOnvW24XGHwGvBOiYm+8LdY8A8El+Bv4385nQP/bqdnb/Z7k79WOS++tqmhJfz0EFHkG",
+	"BlmW24TbKp0xpKHNQLiySzQ4k+W9vSvB6yjPqo0GloCOeCU3GZf3IHeY0vA2mIpPqTn67T1i2IMMnbjY",
+	"TtNmqguFNrViTQgKnnF0aEZAv1/t1FXza8Elfvi1VdNV4qelq1OEB5myhC83UV1TMCSxUUoAk6MN1sC5",
+	"Y9mRD+4TjOvu7d/4oOwnZNGurea75wL0oHM2w6MXlAmNf+Gg9/wZZs7nV6/W9wXV2poFPZaTXi95P3qG",
+	"qag8gsmVNK4rU88gZ6nYhVN6bYM81dzKZeNghlKn8j1yv37Ufx263An2KXJjdXfW93iIcOfTOZjKwaz7",
+	"8WRw6VFaL+cOc6bovMM59d0MnLIQgm0E0BB1AcGxGGpgCEnE0LddBzRV9fETMLHmOXIlaUjXKZDVA2FJ",
+	"osEYl11dux1GUdRV6WgjLEb+AlOMv1LAFDTBERbhhsSF1iBR7EljG7j7jyrlXHcSzGBkoK6t6dm6uYSU",
+	"KUiCKTdDDiUzxHro8f0uUzAEGe/dmBKwVPqZNJsIqg6XS5JxIbiBWMnE3jd8Z1lu43z7y80AvW5WgePh",
+	"Ye+iVdQxts08svro4lvk1UkmJk/V70Rtq+BIlYCl6GD3/sOND70jhepC16TfME2GoRucqko4l5j1j5vp",
+	"bMDiFJLI0q++c4TMnKvBqtL6EmRas739noDBqC2WyUU2POVW+dV4ayGbuj7P6Pj5ODyb817U//fiupdH",
+	"6LrKGx1e1m5+sZLYhPMMvUvagODPC5KhGv8cyVB5iWJVyDF0qwsZlzwrMhreuCRM16Hxp9HG0sGk9XUx",
+	"GWNbvYzhAtP/IJOWTqZ1mrUpM5tlZn4wPfGwWhiltTtGx4Vb43XeXZyPx7C3/h+Dp2bmG5PccI2pLUb/",
+	"6rykokcd3RHF4eu+i+M01kd11VpF0qb/q89k0phocxGSNgugBJfP47FUC6faqZjNXky2jzRsQWsmFlK2",
+	"XSfyHIxrCEiizX72+df4OqkFSxtQ82Ztqc6l7WXKYAH8haFt+X66UPue8rUG7YAxnmJ/6yDJVmnCSMIt",
+	"1U2BkJB1yRFBX9mWRVieC96kRECRo51t6cfpdnL3sKIBfQFtaozbdzfvbqq5JQfJck5D+r76KaA5w9TQ",
+	"0D7ZDv8EAAD//0Rs3qhxGQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -167,7 +167,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	case node_gen.GetUsers:
-		response, err = d.handleGetAllUsers(ctx)
+		response, err = d.handleGetAllUsers(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle get all users event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -290,7 +290,7 @@ func (d *nodeEventHandler) handleLogin(
 	if err != nil {
 		return domain_gen.LoginResponse{}, err
 	}
-	
+
 	ownerId, err := d.authRepo.Owner()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return domain_gen.LoginResponse{}, err
@@ -429,13 +429,17 @@ func (d *nodeEventHandler) handleGetUser(ctx echo.Context, data *domain_gen.Even
 	return *u, nil
 }
 
-func (d *nodeEventHandler) handleGetAllUsers(ctx echo.Context) (domain_gen.UsersResponse, error) {
+func (d *nodeEventHandler) handleGetAllUsers(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.UsersResponse, error) {
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.UsersResponse{}, ctx.Request().Context().Err()
 	}
-	users, err := d.userRepo.List()
+	event, err := data.AsGetAllUsersEvent()
 	if err != nil {
 		return domain_gen.UsersResponse{}, err
 	}
-	return domain_gen.UsersResponse{"", users}, nil
+	users, cur, err := d.userRepo.List(event.Limit, event.Cursor)
+	if err != nil {
+		return domain_gen.UsersResponse{}, err
+	}
+	return domain_gen.UsersResponse{cur, users}, nil
 }
