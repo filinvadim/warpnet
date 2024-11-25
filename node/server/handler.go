@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -418,10 +419,12 @@ func (d *nodeEventHandler) handleGetUser(ctx echo.Context, data *domain_gen.Even
 	if ctx.Request().Context().Err() != nil {
 		return domain_gen.User{}, ctx.Request().Context().Err()
 	}
+
 	event, err := data.AsGetUserEvent()
 	if err != nil {
 		return domain_gen.User{}, err
 	}
+
 	u, err := d.userRepo.Get(event.UserId)
 	if err != nil {
 		return domain_gen.User{}, err
@@ -437,9 +440,27 @@ func (d *nodeEventHandler) handleGetAllUsers(ctx echo.Context, data *domain_gen.
 	if err != nil {
 		return domain_gen.UsersResponse{}, err
 	}
+
+	ownerId, err := d.authRepo.Owner()
+	if err != nil {
+		return domain_gen.UsersResponse{}, err
+	}
+
 	users, cur, err := d.userRepo.List(event.Limit, event.Cursor)
 	if err != nil {
 		return domain_gen.UsersResponse{}, err
 	}
+
+	ownerIndex := 0
+	for i := range users {
+		if users[i].UserId == nil {
+			continue
+		}
+		if *users[i].UserId == ownerId {
+			ownerIndex = i
+			break
+		}
+	}
+	users = slices.Delete(users, ownerIndex, ownerIndex+1)
 	return domain_gen.UsersResponse{cur, users}, nil
 }

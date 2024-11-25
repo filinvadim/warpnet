@@ -18,12 +18,19 @@
             margin-bottom: 10px; border-radius: 5px; transition: background-color 0.2s;
         }
         #navigation a:hover { background-color: #1da1f2; }
-        #container {
-            width: 100%; max-width: 600px; margin: 20px auto;
-            background-color: #192734; padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px; margin-left: 220px;
+        #main-content {
+            display: flex; width: 100%; margin-left: 220px; padding: 20px;
         }
-        h1 { text-align: center; color: #fff; }
+        #container {
+            width: 60%; background-color: #192734; padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px;
+        }
+        #recommended {
+            width: 30%; margin-left: 20px; padding: 20px; background-color: #192734;
+            border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); display: none;
+        }
+        #recommended.active { display: block; }
+        h1, h3 { text-align: center; color: #fff; }
         #login.active, #timeline-container.active, #profile-container.active { display: block; }
         #login, #timeline-container, #profile-container { display: none; }
         #login input, #new-tweet textarea {
@@ -39,12 +46,6 @@
         .tweet:last-child { border-bottom: none; }
         .tweet-text { font-size: 16px; color: #fff; }
         .tweet-user, .tweet-time { color: #8899a6; font-size: 14px; }
-        #profile-header { display: flex; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #657786; }
-        #profile-header img { border-radius: 50%; width: 80px; height: 80px; margin-right: 20px; }
-        #profile-buttons { display: flex; justify-content: space-around; margin-top: 10px; }
-        #profile-buttons button { background-color: #1da1f2; color: #fff; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100px; }
-        #profile-buttons button:hover { background-color: #0d95e8; }
-        #recommended { margin-top: 20px; }
         .recommended-user { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .recommended-user img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
         .recommended-user-info { display: flex; align-items: center; }
@@ -60,40 +61,42 @@
     <a href="#" onclick="navigateProfile()">Profile</a>
     <a href="#">Settings</a>
 </div>
-<div id="container">
-    <div id="login" class="active">
-        <h1>Login</h1>
-        <div id="login-form">
-            <input id="username" type="text" placeholder="Enter your username">
-            <input id="password" type="password" placeholder="Enter your password (up to 32 bytes)">
-            <button onclick="login()">Login</button>
-        </div>
-    </div>
-    <div id="timeline-container">
-        <div id="new-tweet">
-            <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
-            <button onclick="postTweet()">Tweet</button>
-        </div>
-        <div id="timeline"></div>
-        <div id="recommended" class="active">
-            <h3>Who to follow</h3>
-            <div id="recommended-users"></div>
-        </div>
-    </div>
-    <div id="profile-container">
-        <div id="profile-header">
-            <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture">
-            <div>
-                <h2 id="profile-username">@username</h2>
-                <p id="profile-id"></p>
-                <p id="profile-description">This is a short bio about the user.</p>
+<div id="main-content">
+    <div id="container">
+        <div id="login" class="active">
+            <h1>Login</h1>
+            <div id="login-form">
+                <input id="username" type="text" placeholder="Enter your username">
+                <input id="password" type="password" placeholder="Enter your password (up to 32 bytes)">
+                <button onclick="login()">Login</button>
             </div>
         </div>
-        <div id="profile-buttons">
-            <button onclick="loadFollowers()">Followers</button>
-            <button onclick="loadFollowing()">Following</button>
+        <div id="timeline-container">
+            <div id="new-tweet">
+                <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
+                <button onclick="postTweet()">Tweet</button>
+            </div>
+            <div id="timeline"></div>
         </div>
-        <div id="profile-tweets"></div>
+        <div id="profile-container">
+            <div id="profile-header">
+                <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture">
+                <div>
+                    <h2 id="profile-username">@username</h2>
+                    <p id="profile-id"></p>
+                    <p id="profile-description">This is a short bio about the user.</p>
+                </div>
+            </div>
+            <div id="profile-buttons">
+                <button onclick="loadFollowers()">Followers</button>
+                <button onclick="loadFollowing()">Following</button>
+            </div>
+            <div id="profile-tweets"></div>
+        </div>
+    </div>
+    <div id="recommended">
+        <h3>Who to follow</h3>
+        <div id="recommended-users"></div>
     </div>
 </div>
 <script>
@@ -141,7 +144,9 @@
                     </div>`;
             });
 
-            recommendedDiv.innerHTML += `<button onclick="loadRecommendedUsers()">Show More</button>`;
+            const recommendedBlock = document.getElementById('recommended');
+            recommendedBlock.style.height = `${(resp.users.length * 60) + 40}px`;
+            recommendedBlock.classList.add('active');
         } catch (error) {
             console.error('Error loading recommended users:', error);
         }
