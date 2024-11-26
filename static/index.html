@@ -196,7 +196,7 @@
             <h1>Login</h1>
             <div id="login-form">
                 <input id="username" type="text" placeholder="Enter your username">
-                <input id="password" type="password" placeholder="Enter your password (up to 32 bytes)">
+                <input id="password" type="password" placeholder="Enter your password">
                 <button onclick="login()">Login</button>
             </div>
         </div>
@@ -292,7 +292,6 @@
     }
 
     function navigateSettings() {
-        document.getElementById('timeline-container').classList.remove('active');
         document.getElementById('profile-container').classList.remove('active');
         document.getElementById('settings-container').classList.add('active');
         document.getElementById('recommended').classList.remove('active');
@@ -405,7 +404,7 @@
 
     async function loadHostList() {
         try {
-            const response = await fetch(`${apiUrl}/v1/api/nodes/hosts`, { headers: addHeaders({}) });
+            const response = await fetch(`${apiUrl}/v1/api/nodes/settings?name=node_addresses`, { headers: addHeaders({}) });
             const data = await response.json();
 
             const hostList = document.getElementById('host-list');
@@ -423,10 +422,10 @@
         if (!newHosts) return alert('Please enter hosts');
 
         try {
-            const response = await fetch(`${apiUrl}/v1/api/nodes/hosts`, {
+            const response = await fetch(`${apiUrl}/v1/api/nodes/settings`, {
                 method: 'POST',
                 headers: addHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ hosts: newHosts.split(',') })
+                body: JSON.stringify({ name: 'node_addresses',value: newHosts.split(',') })
             });
 
             if (response.ok) {
