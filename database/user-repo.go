@@ -76,10 +76,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 		limit = new(uint64)
 		*limit = 20
 	}
-	if *limit == 0 {
-		limit = new(uint64)
-		*limit = 20
-	}
+
 	prefix, err := storage.NewPrefixBuilder(UsersRepoName).Build()
 	if err != nil {
 		return nil, "", err

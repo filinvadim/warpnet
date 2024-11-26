@@ -24,6 +24,19 @@ type PostV1ApiAuthLogoutParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
+// GetV1ApiNodeSettingsParams defines parameters for GetV1ApiNodeSettings.
+type GetV1ApiNodeSettingsParams struct {
+	Cursor        *string                      `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit         *uint64                      `form:"limit,omitempty" json:"limit,omitempty"`
+	Name          externalRef0.SettingNameEnum `form:"name" json:"name"`
+	XSESSIONTOKEN string                       `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiNodeSettingsParams defines parameters for PostV1ApiNodeSettings.
+type PostV1ApiNodeSettingsParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
 // PostV1ApiTweetsParams defines parameters for PostV1ApiTweets.
 type PostV1ApiTweetsParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
@@ -76,6 +89,9 @@ type GetV1ApiUsersUserIdParams struct {
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
 type PostV1ApiAuthLoginJSONRequestBody = externalRef0.AuthRequest
 
+// PostV1ApiNodeSettingsJSONRequestBody defines body for PostV1ApiNodeSettings for application/json ContentType.
+type PostV1ApiNodeSettingsJSONRequestBody = externalRef0.AddSettingRequest
+
 // PostV1ApiTweetsJSONRequestBody defines body for PostV1ApiTweets for application/json ContentType.
 type PostV1ApiTweetsJSONRequestBody = externalRef0.Tweet
 
@@ -99,6 +115,12 @@ type ServerInterface interface {
 	// Close service
 	// (POST /v1/api/auth/logout)
 	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
+	// Add setting
+	// (GET /v1/api/node/settings)
+	GetV1ApiNodeSettings(ctx echo.Context, params GetV1ApiNodeSettingsParams) error
+	// Add setting
+	// (POST /v1/api/node/settings)
+	PostV1ApiNodeSettings(ctx echo.Context, params PostV1ApiNodeSettingsParams) error
 	// Publish a new tweet
 	// (POST /v1/api/tweets)
 	PostV1ApiTweets(ctx echo.Context, params PostV1ApiTweetsParams) error
@@ -179,6 +201,88 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostV1ApiAuthLogout(ctx, params)
+	return err
+}
+
+// GetV1ApiNodeSettings converts echo context to params.
+func (w *ServerInterfaceWrapper) GetV1ApiNodeSettings(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiNodeSettingsParams
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Required query parameter "name" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "name", ctx.QueryParams(), &params.Name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetV1ApiNodeSettings(ctx, params)
+	return err
+}
+
+// PostV1ApiNodeSettings converts echo context to params.
+func (w *ServerInterfaceWrapper) PostV1ApiNodeSettings(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiNodeSettingsParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostV1ApiNodeSettings(ctx, params)
 	return err
 }
 
@@ -554,6 +658,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/", wrapper.GetIndex)
 	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
 	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
+	router.GET(baseURL+"/v1/api/node/settings", wrapper.GetV1ApiNodeSettings)
+	router.POST(baseURL+"/v1/api/node/settings", wrapper.PostV1ApiNodeSettings)
 	router.POST(baseURL+"/v1/api/tweets", wrapper.PostV1ApiTweets)
 	router.GET(baseURL+"/v1/api/tweets/timeline/:user_id", wrapper.GetV1ApiTweetsTimelineUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id", wrapper.GetV1ApiTweetsUserId)
@@ -569,32 +675,34 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"DgAA//+XbGmRuCIAAA==",
+	"H4sIAAAAAAAC/+xacW/bthL/KgTfA957gBM5bVqg/i+vy7pgWVo07jagMwxGPNtsKVIlT0mMwN99IClZ",
+	"siTbstNkTbd/AkU8Hk/3+93xjvQdjXWSagUKLR3cURvPIGH+keuECTU+4fwSEIWavocvGVh0Y6nRKRgU",
+	"4CVjAwyBj5kfm2iTuCfKGcIBigRoj+I8BTqgFo1QU7roUcUScNL/NjChA/qvqLQjyo2Icgvy5S9YAqcq",
+	"S9zsayYzP72md9GjBr5kwgCng49hkUJ6tLRCX32CGJ2e4hsznK39upRZe6MNb1muRzMLpviUzbYsJXul",
+	"xg0m/ail1DdrjTLAOJix8FYlQp2DmuKMDo5aXH1jBHaTrZlcLlJVssHoc/EZmrbiDQB2M9U5aQ9Di2m9",
+	"cq0NVr4HL/XtG1onvgtKmLBMuuhSmsOYcW7AWrC0R8GLfKwPjFqsz/UP290Qa4WgsIMX9gl8KT6HZQRC",
+	"YjumAE+sxVIbM4bNl8rGsc7UqgVC4ctj2nP2i8S5pb+cKxTCFAz1yHgUdramIFCLQYXKvW2yLuJVDHtM",
+	"fQD67prgArcLAm2gtqeefQ821cq25Iw4M1ab1pS7H2bDdsRq35Avu1xkwxd8UJOnmKI/WDBNW6+EwZkL",
+	"2+5xvE/sc7CxESkKrVqhDR4FvgJukwC1mCtmjfMc2QibZqjkU4zdayVjd1hKCvV5RTQzsjUv6pitdUwy",
+	"HxuYgDFM7miy3w0Cr0oLsrAF1eeGJYCPr+Zri51c18Y8seuOmJdFhalb2Ltf1nDr7Jw0fLB0zhlhiab1",
+	"boJQEx3270oE0NNbNKCYJCfvzshEG8IIF87mqwyBk+GNQARz4HY5wtJUipwiPYoCpVvjh6a4U+aKXjA2",
+	"rHJ02D/su8/QKSiWCjqgz/0rV4nizDsjcn+moRpYtXE4E5aA4qkWCokFcw2W4AyI8xCZGJ/rOUnZFIie",
+	"+JGKqeS/QnG4PZxhIv93SL0Nxo+ccTqgbwDP3Dh1Lg2oenOe9fu1SgThFiOnpexS3BPcsiT1nvgj6/ef",
+	"x07CP0H+PzBe/d/7Lbwo3PVaapWPRpXh/E1dwZXm8/D/byBjnQBBTdpUlYKFpqVpzdhb1JMjHRYe/mn4",
+	"y/k67zpQXzRcVRGIPtmQUUqP1Ws9Dit+fNFvrS0SsJZNV0XpmUIXvJJcOlYYcmpM2DwbEd8SEaufm2sA",
+	"r8EN2yxJmJkXQyXjSj55r3jh6PooYqmIWIazSOqp8N+c6rAtr1Lunbb469FJKlzTd+5lQzyDxf9rPt/J",
+	"mR1ySLW3XKzmDjQZLLYy/94WhCzW9Ll7TzggE9I6jI/7R83wd+aTCRMSeIVtqzJLHtgNKKI2QGIDHBQK",
+	"t431KLKpdRnUrUFHbUDqDLsj6YRdSjMsAfTZ/uMddVSgM18l0eLUgf5+cHl6eXn29uJg+Pbn0wtaB6VX",
+	"cXCdzKN2wGp0zuIYrL2Xx15LbcELiBg2esttnJENzaKtJPJGrvXeutAcLgvhh/dXL9f5JQMzL1Uud82d",
+	"Z0qRCFyZuGyKnzVzV4/eHkz1Qf42C3XaWt15JbL+6/Y5rtqZMsftlLlmUnAiVJphjSonnJMc/wpRckPo",
+	"aNHbFkGPzInRw2bcxoll97z7eJhU4rfsaLfAFLrmJw9Q3ov/JZthZe1aweUGiA2ITzIp5yRvcfeC/112",
+	"JYWdEUYU3JBwXlTSIFjRQoLItc5SKIju8m5rsTWhB1YM84luVz/jazji6v2SIeWJzfeSzh9ho//qZCz7",
+	"2TU12n9s4A8puBEIedwkpK/otFkKEqWRTHSmeI2dbwBJ1qq6C0d3peYjUfK7A/9cWHRdXxUpux18L9YZ",
+	"ersb5NFdccy8G/r++RFIsKppeST+jfJp6xY0AYxne25BDmlGYjDo+uYOW9DyjGwjqv4M7m/bOIwep1/f",
+	"uimsNu7r0sG2JGCJFLbKCn9W0KFheCwSPGwhWp6MfFuHMl+tCn3t5+ZFqAO8CXU9/qNwydGhG/EcCL9T",
+	"ePJMWP25RSdKHK3tF/PUnV9L+aPLLL9J2BnBYBhhSuMMTFcMM7UbisVl5tOP6Nqt7D07/4Bk4c37YlkY",
+	"R1hXHLtX2gHGfwrte51/77uNEqHC5Wp+OVdD1f+sw1wXaNSKfB0zSThcg9RpAsUdm79QNNJ5GzEdRJF0",
+	"cjNtcfDy1ctXdDFa/BkAAP//IT864bwnAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

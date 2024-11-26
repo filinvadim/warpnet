@@ -24,20 +24,22 @@ import (
 
 // Defines values for NewEventParamsEventType.
 const (
-	Error       NewEventParamsEventType = "error"
-	Follow      NewEventParamsEventType = "follow"
-	GetTimeline NewEventParamsEventType = "get_timeline"
-	GetTweet    NewEventParamsEventType = "get_tweet"
-	GetTweets   NewEventParamsEventType = "get_tweets"
-	GetUser     NewEventParamsEventType = "get_user"
-	GetUsers    NewEventParamsEventType = "get_users"
-	Login       NewEventParamsEventType = "login"
-	Logout      NewEventParamsEventType = "logout"
-	NewTweet    NewEventParamsEventType = "new_tweet"
-	NewUser     NewEventParamsEventType = "new_user"
-	Ping        NewEventParamsEventType = "ping"
-	Pong        NewEventParamsEventType = "pong"
-	Unfollow    NewEventParamsEventType = "unfollow"
+	Error            NewEventParamsEventType = "error"
+	Follow           NewEventParamsEventType = "follow"
+	GetSettingsHosts NewEventParamsEventType = "get_settings_hosts"
+	GetTimeline      NewEventParamsEventType = "get_timeline"
+	GetTweet         NewEventParamsEventType = "get_tweet"
+	GetTweets        NewEventParamsEventType = "get_tweets"
+	GetUser          NewEventParamsEventType = "get_user"
+	GetUsers         NewEventParamsEventType = "get_users"
+	Login            NewEventParamsEventType = "login"
+	Logout           NewEventParamsEventType = "logout"
+	NewSettingsHosts NewEventParamsEventType = "new_settings_hosts"
+	NewTweet         NewEventParamsEventType = "new_tweet"
+	NewUser          NewEventParamsEventType = "new_user"
+	Ping             NewEventParamsEventType = "ping"
+	Pong             NewEventParamsEventType = "pong"
+	Unfollow         NewEventParamsEventType = "unfollow"
 )
 
 // NewEventParamsEventType defines parameters for NewEvent.
@@ -362,29 +364,30 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/9RZX2/bNhD/KgS3R6VO2i5A9datXRcsaIsuxR4CQ2Cks82GIlWSsmoE/u7DkZIlWYws",
+	"ZSuwPkmh7s/vjvfXeaCpygslQVpD4wdq0g3kzL1mKmdcJm+1VvrtFqTFw0KrArTl4EhSlQE+7a4AGlMu",
+	"LaxB031EczCGrbsfjdVcrul+H1ENX0uuIaPxrRfR0i+jhl7dfYHUoqwGSBhDxizDJ5O7Dysa3z7QnzWs",
+	"aEx/WrSmLWq7FrWsj1yuvbx9NImh44WJHO+huqkA7FymzwZmK/pdCaGq2Zrkaj7fO7CvhXCWmbmMNzwH",
+	"wSXM5pvtx3dgZ/vRW4Zs8wy7Vmsu53KocrZBf4G1XK7NH8rMdP17qELMy31ELc/BWJYXmEIrpXNmaYw5",
+	"BWf4iUYn0rflH8lcH56f4GsJJpDBGlgGOuEZ/pFzeQ1ybTc0vhgoj2iluZ1GewS0VdIVMgJ6GOjD8ldq",
+	"o3SgxkVU8JzbQGmM6LeztTqrT0su7eVLpC8N6KvsdLms6U7i7oTxHNjcJL4mQBfLnVICmOwRIEOQYp7l",
+	"+1FDAlH7/S5hHEq/dv0wodApnQPMFr8FNc0GER2EjcNpi/IAzX9n9jW/h0esnVZkUMUTSkzDFrW6xlC2",
+	"bWOAtWDGVEo/fjWS5TDNVY4yaiWOIzq0pVb2gOxo3giU80Odn9Cb+r1hLAnDXWygfoPf8IVbyE3Qg/UB",
+	"05rtBk7z/MtRHCezaqLxTs4po/tj2r90dyNsosNP5OtUpUg6qqneI2QpBLsTQGOrS4iOa6wGZiFLmJ06",
+	"rETuNt2WACbVvLBcSRrTmw2Qq4+EZZkGY0J8PvsPOsrS53WgX7LU8i0Mdfy9AbsBTWxPF+GGpKXWIK3Y",
+	"kZo3CjdaVcnH2rBgxiYGQIZtO0xlpNqAJHbDTRdDxQxBCa3+ac4UzIJMd2GdEmyl9D2piYhVB71ckpwL",
+	"wQ2kSmbob/jG8gLv+eL5eUe774FRYJ9EXzQ1ua8b45BcvQnhLQtnyYDlszsnauUuR6oMEGIA3YvL8ynw",
+	"jirI4erq8OuGSffqOla5gBupOe2+Opw8WLqBLEEr+mVvymKAeTcoiBG6yyZN6gzcWqOWKzUr/xtGWSf7",
+	"ZHzHvxh0DR7x2Sc4lOL/9yRwE4aZKmnrGz+B8imFUfD7+fHiJqtAvDhhSapK2UfQJEzOJc/LnMbnodzW",
+	"/qJmo2kuOACoEflkTAb7o0zhCazfIbzmDn0+9poAGgm943HgB9nNP9ezRx/rHdd2g0E/PQuekjm9XhIo",
+	"j90FeuoM2nIlEgPrYUpPrFm0eZImbWaoElze9wciLYJVRaXsUcfku0TDCrRmYiZkrPXJxJHMq4Asuds9",
+	"uj7VskazbG69rxetBuowepGpaZr9eeQNN6nagt6R1x+vyEppwkjGUdddaSEjNxW3FvQZllnCikLw2ssR",
+	"tdzioIIijslRGI3oFrTxai6enT87d324AMkKTmP6wh3hemg37ioW24sFmrAAnDYWD+6RoCV7l3D1TIBp",
+	"5yDgxk7fQ72coCDNcrAuKG8fKEe9KBw94xxLW4m060Q/8PsKjxrABectLdDfES2Ue4DWStOIrsEmbgFp",
+	"X0397ntC5x0/SKgaenxtaHwq0IiW8vAqcC/3T1UeBNW//tR/mnoPTfyy6IUeHS6HQbOMmm3tV5Xtjnp8",
+	"514XX4xPodYdU/5F4X/V7ccmutUdmEJJ4+vk8/PzYQx++BMj42Xo05XcMsEzwmVRWk91MaR6XdoNWTEu",
+	"IEOaX0KS2kA3oLegib9PhGzKPGd6R2P6m6vJhBEJFakvzbI1BhT1Ni6dkV6Ej7O+mmuVMkEy2IJQRQ7S",
+	"1urworWgMd1YW8SLBVYrgbcVX1y+unxF98v9PwEAAP//CcCFChAbAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

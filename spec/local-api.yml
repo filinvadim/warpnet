@@ -319,3 +319,56 @@ paths:
         '400':
           description: Invalid input
 
+  /v1/api/node/settings:
+    post:
+      tags:
+        - Setting
+      summary: Add setting
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './domain.yml#/components/schemas/AddSettingRequest'
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Invalid input
+    get:
+      tags:
+        - Setting
+      summary: Add setting
+      parameters:
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            x-go-type: uint64
+            default: 20
+        - in: query
+          name: name
+          required: true
+          schema:
+            $ref: './domain.yml#/components/schemas/SettingNameEnum'
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Invalid input
+

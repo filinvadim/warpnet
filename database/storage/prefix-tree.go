@@ -162,8 +162,18 @@ func (pb *PrefixBuilder) AddHostAddress(host string) *PrefixBuilder {
 	if pb.err != nil {
 		return pb
 	}
-	
+
 	pb.key = fmt.Sprintf("%s:%s", pb.key, host)
+	return pb
+}
+
+func (pb *PrefixBuilder) AddSettingName(name string) *PrefixBuilder {
+	// Skip processing if there's already an error
+	if pb.err != nil {
+		return pb
+	}
+
+	pb.key = fmt.Sprintf("%s:%s", pb.key, name)
 	return pb
 }
 

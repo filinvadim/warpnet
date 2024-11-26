@@ -173,6 +173,17 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			fmt.Printf("handle get all users event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
+	case node_gen.NewSettingsHosts:
+		if err = d.handleNewSettingHosts(ctx, receivedEvent.Data); err != nil {
+			fmt.Printf("handle new settings hosts event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+	case node_gen.GetSettingsHosts:
+		response, err = d.handleGetSettingHosts(ctx, receivedEvent.Data)
+		if err != nil {
+			fmt.Printf("handle get settings hosts event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
 	case node_gen.Error:
 		if receivedEvent.Data == nil {
 			return nil
@@ -188,9 +199,10 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 		log.Fatal("UNKNOWN EVENT!!!", eventType)
 	}
 
-	bt, _ := json.JSON.Marshal(response)
-
-	fmt.Println("EVENT RESPONSE SUCCESS: ", eventType, string(bt))
+	{
+		bt, _ := json.JSON.Marshal(response)
+		fmt.Println("EVENT RESPONSE SUCCESS: ", eventType, string(bt))
+	}
 
 	return ctx.JSON(http.StatusOK, response)
 }
@@ -235,6 +247,51 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 		}
 	}
 	return nil
+}
+
+func (d *nodeEventHandler) handleNewSettingHosts(ctx echo.Context, data *domain_gen.Event_Data) error {
+	if ctx.Request().Context().Err() != nil {
+		return ctx.Request().Context().Err()
+	}
+	hostsEvent, err := data.AsNewSettingsHostsEvent()
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, h := range hostsEvent.Hosts {
+		_, err := d.nodeRepo.Create(&domain_gen.Node{
+			CreatedAt: &now,
+			Host:      h,
+			IsActive:  true,
+			IsOwned:   false,
+			LastSeen:  now,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *nodeEventHandler) handleGetSettingHosts(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.HostsResponse, error) {
+	if ctx.Request().Context().Err() != nil {
+		return domain_gen.HostsResponse{}, ctx.Request().Context().Err()
+	}
+	hostsEvent, err := data.AsGetSettingsHostsEvent()
+	if err != nil {
+		return domain_gen.HostsResponse{}, err
+	}
+
+	nodes, cursor, err := d.nodeRepo.List(hostsEvent.Limit, hostsEvent.Cursor)
+	if err != nil {
+		return domain_gen.HostsResponse{}, err
+	}
+
+	hosts := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		hosts = append(hosts, n.Host)
+	}
+	return domain_gen.HostsResponse{Cursor: cursor, Hosts: hosts}, nil
 }
 
 func (d *nodeEventHandler) handleNewUser(ctx echo.Context, data *domain_gen.Event_Data) (domain_gen.NewUserEvent, error) {
@@ -451,16 +508,18 @@ func (d *nodeEventHandler) handleGetAllUsers(ctx echo.Context, data *domain_gen.
 		return domain_gen.UsersResponse{}, err
 	}
 
-	ownerIndex := 0
+	var ownerIndex *int
 	for i := range users {
 		if users[i].UserId == nil {
 			continue
 		}
 		if *users[i].UserId == ownerId {
-			ownerIndex = i
+			ownerIndex = &i
 			break
 		}
 	}
-	users = slices.Delete(users, ownerIndex, ownerIndex+1)
+	if ownerIndex != nil {
+		users = slices.Delete(users, *ownerIndex, *ownerIndex+1)
+	}
 	return domain_gen.UsersResponse{cur, users}, nil
 }

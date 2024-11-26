@@ -85,10 +85,6 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 	if userID == "" {
 		return nil, "", errors.New("userID cannot be blank")
 	}
-	if limit == nil {
-		limit = new(uint64)
-		*limit = 20
-	}
 	if *limit == 0 {
 		limit = new(uint64)
 		*limit = 20

@@ -89,10 +89,7 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		limit = new(uint64)
 		*limit = 20
 	}
-	if *limit == 0 {
-		limit = new(uint64)
-		*limit = 20
-	}
+
 	prefix, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
 	if err != nil {
 		return nil, "", err

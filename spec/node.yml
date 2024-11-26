@@ -19,7 +19,23 @@ paths:
           required: true
           schema:
             type: string
-            enum: [ ping,pong,error,get_user,get_users,get_tweet,get_tweets,new_user,new_tweet,follow,unfollow,login,logout,get_timeline ]
+            enum:
+              - ping
+              - pong
+              - error
+              - get_user
+              - get_users
+              - get_tweet
+              - get_tweets
+              - new_user
+              - new_tweet
+              - follow
+              - unfollow
+              - login
+              - logout
+              - get_timeline
+              - get_settings_hosts
+              - new_settings_hosts
       operationId: newEvent
       requestBody:
         required: true

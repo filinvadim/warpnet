@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"sort"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/dWighter/database/storage"
@@ -191,14 +192,32 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	})
 }
 
-func (repo *NodeRepo) List() ([]domain_gen.Node, error) {
-	key, err := storage.NewPrefixBuilder(NodesRepoName).Build()
-	if err != nil {
-		return nil, err
+func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, string, error) {
+	if limit == nil {
+		limit = new(uint64)
+		*limit = 20
 	}
 
-	nodes := make([]domain_gen.Node, 0, 20)
-	err = repo.db.IterateKeysValues(key, func(key string, value []byte) error {
+	prefix, err := storage.NewPrefixBuilder(NodesRepoName).Build()
+	if err != nil {
+		return nil, "", err
+	}
+
+	var lastKey string
+	if cursor != nil && *cursor != "" {
+		prefix = *cursor
+	}
+
+	nodes := make([]domain_gen.Node, 0, *limit)
+	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
+		if len(nodes) >= int(*limit) {
+			lastKey = key
+			return storage.ErrStopIteration
+		}
+		if !IsValidForPrefix(key, prefix) {
+			return nil
+		}
+
 		var n domain_gen.Node
 		err := json.JSON.Unmarshal(value, &n)
 		if err != nil {
@@ -208,7 +227,18 @@ func (repo *NodeRepo) List() ([]domain_gen.Node, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return nodes, nil
+	if errors.Is(err, storage.ErrStopIteration) || err == nil {
+		if len(nodes) < int(*limit) {
+			lastKey = ""
+		}
+		return nodes, lastKey, nil
+	}
+
+	sort.SliceStable(nodes, func(i, j int) bool {
+		return nodes[i].CreatedAt.After(*nodes[j].CreatedAt)
+	})
+
+	return nodes, lastKey, nil
 }

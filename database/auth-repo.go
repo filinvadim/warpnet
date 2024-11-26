@@ -16,7 +16,8 @@ const (
 var ErrWrongPassword = errors.New("wrong password")
 
 type AuthRepo struct {
-	db *storage.DB
+	db      *storage.DB
+	ownerId string
 }
 
 func NewAuthRepo(db *storage.DB) *AuthRepo {
@@ -42,10 +43,14 @@ func (repo *AuthRepo) NewOwner() (userId string, err error) {
 		return "", err
 	}
 
+	repo.ownerId = id
 	return id, nil
 }
 
 func (repo *AuthRepo) Owner() (userId string, err error) {
+	if repo.ownerId != "" {
+		return repo.ownerId, nil
+	}
 	key, err := storage.NewPrefixBuilder(AuthRepoName).AddPrefix(OwnerSubName).Build()
 	if err != nil {
 		return "", err

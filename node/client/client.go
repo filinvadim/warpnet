@@ -152,6 +152,34 @@ func (c *NodeClient) BroadcastNewUser(host string, u domain_gen.NewUserEvent) (d
 	return user, err
 }
 
+func (c *NodeClient) SendNewHosts(host string, hosts domain_gen.NewSettingsHostsEvent) error {
+	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
+	event.Timestamp = time.Now()
+	if err := event.Data.FromNewSettingsHostsEvent(hosts); err != nil {
+		return err
+	}
+	_, err := c.sendEvent(host, node_gen.NewSettingsHosts, event)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (c *NodeClient) GetHosts(host string, hosts domain_gen.GetSettingsHostsEvent) (domain_gen.HostsResponse, error) {
+	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
+	event.Timestamp = time.Now()
+	if err := event.Data.FromGetSettingsHostsEvent(hosts); err != nil {
+		return domain_gen.HostsResponse{}, err
+	}
+	resp, err := c.sendEvent(host, node_gen.NewSettingsHosts, event)
+	if err != nil {
+		return domain_gen.HostsResponse{}, err
+	}
+	var hostsResp domain_gen.HostsResponse
+	err = json.JSON.Unmarshal(resp, &hostsResp)
+	return hostsResp, err
+}
+
 func (c *NodeClient) SendError(host string, e domain_gen.ErrorEvent) error {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()

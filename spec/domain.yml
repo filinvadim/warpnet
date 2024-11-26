@@ -227,6 +227,19 @@ components:
         - cursor
         - users
 
+    HostsResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        hosts:
+          type: array
+          items:
+            type: string
+      required:
+        - cursor
+        - hosts
+
     LoginResponse:
       type: object
       properties:
@@ -249,6 +262,25 @@ components:
         - username
         - password
 
+    SettingNameEnum:
+      type: string
+      enum: [node_addresses]
+      default: node_addresses
+
+    AddSettingRequest:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/SettingNameEnum'
+        value:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - name
+        - value
+
     Event:
       type: object
       properties:
@@ -257,7 +289,6 @@ components:
           format: date-time
         data:
           anyOf:
-            - {}
             - $ref: '#/components/schemas/PingEvent'
             - $ref: '#/components/schemas/ErrorEvent'
             - $ref: '#/components/schemas/NewTweetEvent'
@@ -271,6 +302,8 @@ components:
             - $ref: '#/components/schemas/GetAllUsersEvent'
             - $ref: '#/components/schemas/LoginEvent'
             - $ref: '#/components/schemas/LogoutEvent'
+            - $ref: '#/components/schemas/GetSettingsHostsEvent'
+            - $ref: '#/components/schemas/NewSettingsHostsEvent'
       required:
         - timestamp
 
@@ -350,6 +383,25 @@ components:
           type: boolean
         is_followed:
           type: boolean
+
+    GetSettingsHostsEvent:
+      type: object
+      properties:
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+
+    NewSettingsHostsEvent:
+      type: object
+      properties:
+        hosts:
+          type: array
+          items:
+            type: string
+      required:
+        - hosts
 
     GetAllTweetsEvent:
       type: object
