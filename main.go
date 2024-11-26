@@ -65,7 +65,7 @@ func main() {
 		handlers.NewUserController(cli),
 		handlers.NewStaticController(),
 		handlers.NewAuthController(cli),
-		handlers.NewSettingsController(),
+		handlers.NewSettingsController(cli),
 	})
 	go interfaceServer.Start()
 	defer interfaceServer.Shutdown(ctx)
