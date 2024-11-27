@@ -181,3 +181,8 @@ func (pb *PrefixBuilder) AddSettingName(name string) *PrefixBuilder {
 func (pb *PrefixBuilder) Build() (string, error) {
 	return pb.key, pb.err
 }
+
+func IsValidForPrefix(key string, prefix string) bool {
+	isValid := len(key) >= len(prefix) && key[:len(prefix)] == prefix
+	return isValid
+}

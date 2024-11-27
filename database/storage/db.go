@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/gommon/log"
-	"strconv"
+	"math/rand/v2"
 	"sync/atomic"
 	"time"
 )
@@ -17,6 +18,7 @@ import (
 var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrWrongPassword = errors.New("wrong password")
+	ErrNotRunning    = errors.New("DB is not running")
 )
 
 type DB struct {
@@ -73,12 +75,9 @@ func (db *DB) Run(username, password string) (token string, err error) {
 		return "", err
 	}
 
-	seq, err := db.NextSequence()
-	if err != nil {
-		return "", err
-	}
+	randChar := string(uint8(rand.Uint()))
 
-	feed := []byte(username + "@" + password + "@" + strconv.FormatUint(seq, 10) + "@" + time.Now().String())
+	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
 	sessionToken := base64.StdEncoding.EncodeToString(crypto.ConvertToSHA256(feed))
 	go db.runEventualGC()
 	return sessionToken, nil
@@ -107,7 +106,7 @@ type IterKeysFunc func(key string) error
 
 func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
 	if !db.isRunning.Load() {
-		return errors.New("db is not running")
+		return ErrNotRunning
 	}
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -126,11 +125,61 @@ func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
 	})
 }
 
-type IterKeysValuesFunc func(key string, val []byte) error
+type RawItem = []byte
 
-func (db *DB) IterateKeysValues(prefix string, handler IterKeysValuesFunc) error {
+func (db *DB) List(prefix string, limit *uint64, cursor *string) (_ []byte, cur string, _ error) {
 	if !db.isRunning.Load() {
-		return errors.New("db is not running")
+		return nil, "", ErrNotRunning
+	}
+	if limit == nil {
+		limit = new(uint64)
+		*limit = 20
+	}
+
+	var lastKey string
+	if cursor != nil && *cursor != "" {
+		prefix = *cursor
+	}
+
+	items := make([]RawItem, 0, *limit)
+	err := db.iterateKeysValues(prefix, func(key string, value []byte) error {
+		if len(items) >= int(*limit) {
+			lastKey = key
+			return ErrStopIteration
+		}
+		if !IsValidForPrefix(key, prefix) {
+			return nil
+		}
+		items = append(items, value)
+		return nil
+	})
+	if errors.Is(err, ErrStopIteration) || err == nil {
+		if len(items) < int(*limit) {
+			lastKey = ""
+		}
+		itemsList := listify(items)
+
+		return itemsList, lastKey, nil
+	}
+
+	itemsList := listify(items)
+
+	return itemsList, lastKey, nil
+}
+
+func listify(items [][]byte) []byte {
+	itemsList := bytes.Join(items, []byte(`,`))
+	itemsList = append(itemsList, 0)
+	copy(itemsList[1:], itemsList[0:])
+	itemsList[0] = byte('[')
+	return append(itemsList, ']')
+}
+
+type iterKeysValuesFunc func(key string, val []byte) error
+
+func (db *DB) iterateKeysValues(prefix string, handler iterKeysValuesFunc) error {
+	if !db.isRunning.Load() {
+		return ErrNotRunning
 	}
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -156,7 +205,7 @@ func (db *DB) IterateKeysValues(prefix string, handler IterKeysValuesFunc) error
 
 func (db *DB) Set(key string, value []byte) error {
 	if !db.isRunning.Load() {
-		return errors.New("db is not running")
+		return ErrNotRunning
 	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), value)
@@ -166,7 +215,7 @@ func (db *DB) Set(key string, value []byte) error {
 
 func (db *DB) Get(key string) ([]byte, error) {
 	if !db.isRunning.Load() {
-		return nil, errors.New("db is not running")
+		return nil, ErrNotRunning
 	}
 	var value []byte
 	err := db.badger.View(func(txn *badger.Txn) error {
@@ -187,7 +236,7 @@ func (db *DB) Get(key string) ([]byte, error) {
 
 func (db *DB) Update(key string, newValue []byte) error {
 	if !db.isRunning.Load() {
-		return errors.New("db is not running")
+		return ErrNotRunning
 	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), newValue)
@@ -208,7 +257,7 @@ func (db *DB) Txn(f func(tx *badger.Txn) error) error {
 
 func (db *DB) Delete(key string) error {
 	if !db.isRunning.Load() {
-		return errors.New("db is not running")
+		return ErrNotRunning
 	}
 	return db.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(key))
@@ -217,7 +266,7 @@ func (db *DB) Delete(key string) error {
 
 func (db *DB) NextSequence() (uint64, error) {
 	if !db.isRunning.Load() {
-		return 0, errors.New("db is not running")
+		return 0, ErrNotRunning
 	}
 	num, err := db.sequence.Next()
 	if err != nil {
@@ -236,7 +285,7 @@ func (db *DB) GC() {
 	}
 	for {
 		err := db.badger.RunValueLogGC(0.5)
-		if err == badger.ErrNoRewrite {
+		if errors.Is(err, badger.ErrNoRewrite) {
 			return
 		}
 	}

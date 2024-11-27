@@ -316,12 +316,12 @@ components:
           $ref: '#/components/schemas/User'
         dest_host:
           type: string
-        cached_nodes:
+        nodes:
           type: array
           items:
             $ref: '#/components/schemas/Node'
       required:
-        - cached_nodes
+        - nodes
 
     PongEvent:
       $ref: '#/components/schemas/PingEvent'

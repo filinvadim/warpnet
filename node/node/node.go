@@ -19,15 +19,8 @@ type NodeServer interface {
 	Stop() error
 }
 
-type NodeCacher interface {
-	AddNode(n domain_gen.Node)
-	GetNodes() []domain_gen.Node
-	RemoveNode(n *domain_gen.Node)
-}
-
 type NodeService struct {
 	ctx    context.Context
-	cache  NodeCacher
 	server NodeServer
 	client *client.NodeClient
 
@@ -53,14 +46,8 @@ func NewNodeService(
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	cache, err := newNodeCache(nodeRepo)
-	if err != nil {
-		return nil, fmt.Errorf("node cache: %w", err)
-	}
-
 	handler, err := server.NewNodeHandler(
 		ownIP,
-		cache,
 		nodeRepo,
 		authRepo,
 		userRepo,
@@ -79,7 +66,7 @@ func NewNodeService(
 	}
 
 	return &NodeService{
-		ctx, cache, srv, cli, nodeRepo,
+		ctx, srv, cli, nodeRepo,
 		authRepo, userRepo, make(chan struct{}),
 	}, nil
 }
@@ -100,7 +87,10 @@ func (ds *NodeService) Run() {
 		case <-ds.stopChan:
 			return
 		case <-ticker.C:
-			nodes := ds.cache.GetNodes()
+			nodes, _, err := ds.nodeRepo.List(nil, nil)
+			if err != nil {
+				log.Fatalln(err)
+			}
 			owner, err := ds.authRepo.Owner()
 			if err != nil {
 				log.Fatalln(err)
@@ -113,10 +103,10 @@ func (ds *NodeService) Run() {
 
 			for _, n := range nodes {
 				err = ds.client.Ping(n.Host, domain_gen.PingEvent{
-					CachedNodes: nodes,
-					DestHost:    &n.Host,
-					OwnerInfo:   ownUser,
-					OwnerNode:   ownNode,
+					Nodes:     nodes,
+					DestHost:  &n.Host,
+					OwnerInfo: ownUser,
+					OwnerNode: ownNode,
 				})
 				if err != nil {
 					log.Println(err)

@@ -24,16 +24,16 @@ type PostV1ApiAuthLogoutParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
-// GetV1ApiNodeSettingsParams defines parameters for GetV1ApiNodeSettings.
-type GetV1ApiNodeSettingsParams struct {
+// GetV1ApiNodesSettingsParams defines parameters for GetV1ApiNodesSettings.
+type GetV1ApiNodesSettingsParams struct {
 	Cursor        *string                      `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Limit         *uint64                      `form:"limit,omitempty" json:"limit,omitempty"`
 	Name          externalRef0.SettingNameEnum `form:"name" json:"name"`
 	XSESSIONTOKEN string                       `json:"X-SESSION-TOKEN"`
 }
 
-// PostV1ApiNodeSettingsParams defines parameters for PostV1ApiNodeSettings.
-type PostV1ApiNodeSettingsParams struct {
+// PostV1ApiNodesSettingsParams defines parameters for PostV1ApiNodesSettings.
+type PostV1ApiNodesSettingsParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
@@ -89,8 +89,8 @@ type GetV1ApiUsersUserIdParams struct {
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
 type PostV1ApiAuthLoginJSONRequestBody = externalRef0.AuthRequest
 
-// PostV1ApiNodeSettingsJSONRequestBody defines body for PostV1ApiNodeSettings for application/json ContentType.
-type PostV1ApiNodeSettingsJSONRequestBody = externalRef0.AddSettingRequest
+// PostV1ApiNodesSettingsJSONRequestBody defines body for PostV1ApiNodesSettings for application/json ContentType.
+type PostV1ApiNodesSettingsJSONRequestBody = externalRef0.AddSettingRequest
 
 // PostV1ApiTweetsJSONRequestBody defines body for PostV1ApiTweets for application/json ContentType.
 type PostV1ApiTweetsJSONRequestBody = externalRef0.Tweet
@@ -116,11 +116,11 @@ type ServerInterface interface {
 	// (POST /v1/api/auth/logout)
 	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
 	// Add setting
-	// (GET /v1/api/node/settings)
-	GetV1ApiNodeSettings(ctx echo.Context, params GetV1ApiNodeSettingsParams) error
+	// (GET /v1/api/nodes/settings)
+	GetV1ApiNodesSettings(ctx echo.Context, params GetV1ApiNodesSettingsParams) error
 	// Add setting
-	// (POST /v1/api/node/settings)
-	PostV1ApiNodeSettings(ctx echo.Context, params PostV1ApiNodeSettingsParams) error
+	// (POST /v1/api/nodes/settings)
+	PostV1ApiNodesSettings(ctx echo.Context, params PostV1ApiNodesSettingsParams) error
 	// Publish a new tweet
 	// (POST /v1/api/tweets)
 	PostV1ApiTweets(ctx echo.Context, params PostV1ApiTweetsParams) error
@@ -204,12 +204,12 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 	return err
 }
 
-// GetV1ApiNodeSettings converts echo context to params.
-func (w *ServerInterfaceWrapper) GetV1ApiNodeSettings(ctx echo.Context) error {
+// GetV1ApiNodesSettings converts echo context to params.
+func (w *ServerInterfaceWrapper) GetV1ApiNodesSettings(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetV1ApiNodeSettingsParams
+	var params GetV1ApiNodesSettingsParams
 	// ------------- Optional query parameter "cursor" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
@@ -251,16 +251,16 @@ func (w *ServerInterfaceWrapper) GetV1ApiNodeSettings(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiNodeSettings(ctx, params)
+	err = w.Handler.GetV1ApiNodesSettings(ctx, params)
 	return err
 }
 
-// PostV1ApiNodeSettings converts echo context to params.
-func (w *ServerInterfaceWrapper) PostV1ApiNodeSettings(ctx echo.Context) error {
+// PostV1ApiNodesSettings converts echo context to params.
+func (w *ServerInterfaceWrapper) PostV1ApiNodesSettings(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params PostV1ApiNodeSettingsParams
+	var params PostV1ApiNodesSettingsParams
 
 	headers := ctx.Request().Header
 	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
@@ -282,7 +282,7 @@ func (w *ServerInterfaceWrapper) PostV1ApiNodeSettings(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiNodeSettings(ctx, params)
+	err = w.Handler.PostV1ApiNodesSettings(ctx, params)
 	return err
 }
 
@@ -658,8 +658,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/", wrapper.GetIndex)
 	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
 	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
-	router.GET(baseURL+"/v1/api/node/settings", wrapper.GetV1ApiNodeSettings)
-	router.POST(baseURL+"/v1/api/node/settings", wrapper.PostV1ApiNodeSettings)
+	router.GET(baseURL+"/v1/api/nodes/settings", wrapper.GetV1ApiNodesSettings)
+	router.POST(baseURL+"/v1/api/nodes/settings", wrapper.PostV1ApiNodesSettings)
 	router.POST(baseURL+"/v1/api/tweets", wrapper.PostV1ApiTweets)
 	router.GET(baseURL+"/v1/api/tweets/timeline/:user_id", wrapper.GetV1ApiTweetsTimelineUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id", wrapper.GetV1ApiTweetsUserId)
@@ -693,16 +693,16 @@ var swaggerSpec = []string{
 	"r8EN2yxJmJkXQyXjSj55r3jh6PooYqmIWIazSOqp8N+c6rAtr1Lunbb469FJKlzTd+5lQzyDxf9rPt/J",
 	"mR1ySLW3XKzmDjQZLLYy/94WhCzW9Ll7TzggE9I6jI/7R83wd+aTCRMSeIVtqzJLHtgNKKI2QGIDHBQK",
 	"t431KLKpdRnUrUFHbUDqDLsj6YRdSjMsAfTZ/uMddVSgM18l0eLUgf5+cHl6eXn29uJg+Pbn0wtaB6VX",
-	"cXCdzKN2wGp0zuIYrL2Xx15LbcELiBg2esttnJENzaKtJPJGrvXeutAcLgvhh/dXL9f5JQMzL1Uud82d",
-	"Z0qRCFyZuGyKnzVzV4/eHkz1Qf42C3XaWt15JbL+6/Y5rtqZMsftlLlmUnAiVJphjSonnJMc/wpRckPo",
-	"aNHbFkGPzInRw2bcxoll97z7eJhU4rfsaLfAFLrmJw9Q3ov/JZthZe1aweUGiA2ITzIp5yRvcfeC/112",
-	"JYWdEUYU3JBwXlTSIFjRQoLItc5SKIju8m5rsTWhB1YM84luVz/jazji6v2SIeWJzfeSzh9ho//qZCz7",
-	"2TU12n9s4A8puBEIedwkpK/otFkKEqWRTHSmeI2dbwBJ1qq6C0d3peYjUfK7A/9cWHRdXxUpux18L9YZ",
-	"ersb5NFdccy8G/r++RFIsKppeST+jfJp6xY0AYxne25BDmlGYjDo+uYOW9DyjGwjqv4M7m/bOIwep1/f",
-	"uimsNu7r0sG2JGCJFLbKCn9W0KFheCwSPGwhWp6MfFuHMl+tCn3t5+ZFqAO8CXU9/qNwydGhG/EcCL9T",
-	"ePJMWP25RSdKHK3tF/PUnV9L+aPLLL9J2BnBYBhhSuMMTFcMM7UbisVl5tOP6Nqt7D07/4Bk4c37YlkY",
-	"R1hXHLtX2gHGfwrte51/77uNEqHC5Wp+OVdD1f+sw1wXaNSKfB0zSThcg9RpAsUdm79QNNJ5GzEdRJF0",
-	"cjNtcfDy1ctXdDFa/BkAAP//IT864bwnAAA=",
+	"cXCdzKN2wGp0zuIYrL2Xx15LbcELiBg2esttnDayoVu0lUzeSLbeXRdO/LKQfniP9XKdXzIw81Llct/c",
+	"eaYUicCVicu2+Fkze/Xo7cFUH+Rvs1CprdWd1yLrv26fA6udSXPcTpprJgUnQqUZ1shywjnJCVChSm4I",
+	"HS1622LosUkxetik2zi07J56Hw+USgiXTe0WnELj/OQBytvxv2Q/rKxdq7ncALEB8Ukm5ZzkXe5e8L/L",
+	"rqSwM8KIghsSjoxKGgQrWkgQue5ZCgXRXd5wLbam9MCKYT7RbexnfA1HXMlfMqQ8tPle8vkj7PVfnYxl",
+	"S7umTPuPDfwhBTcCIY+bhPRFnTZLQaI0konOFK+x8w0gyVpVd+HortR8JEp+d+CfC4uu8asiZbeD78U6",
+	"Q293gzy6K06ad0PfPz8CCVY1LU/Fv1E+bd2CJoDxbM8tyCHNSAwGXevcYQtaHpNtRNUfw/1tO4fR47Ts",
+	"WzeF1d59XTrYlgQskcJWWeGPCzp0DI9FgoctRMvDkW/rXOarVaGv/dy8CHWAN6Gux38U7jk6dCOeA+Gn",
+	"Ck+eCau/uOhEiaO1/WKeuvObKX96meWXCTsjGAwjTGmcgemKYaZ2Q7G4z3z6EV27mL1n5x+QLLx5XywL",
+	"4wjrimP3SjvA+E+hfa8j8H23USJUuF/N7+dqqPpfdpjrAo1aka9jJgmHa5A6TaC4ZvN3ikY6byOmgyiS",
+	"Tm6mLQ5evnr5ii5Giz8DAAD//32Rt4S/JwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

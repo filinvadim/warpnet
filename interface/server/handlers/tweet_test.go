@@ -62,7 +62,7 @@ func TestPostTweet(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostV1ApiTweets(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiTweets(ctx, api_gen.PostV1ApiTweetsParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var createdTweet domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdTweet)) {
@@ -97,7 +97,7 @@ func TestGetTweetsByUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.GetV1ApiTweetsUserId(ctx, userID)) {
+	if assert.NoError(t, controller.GetV1ApiTweetsUserId(ctx, userID, api_gen.GetV1ApiTweetsUserIdParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var tweets []domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tweets)) {
@@ -134,7 +134,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.GetV1ApiTweetsUserIdTweetId(ctx, userID, tweetID)) {
+	if assert.NoError(t, controller.GetV1ApiTweetsUserIdTweetId(ctx, userID, tweetID, api_gen.GetV1ApiTweetsUserIdTweetIdParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var fetchedTweet domain_gen.Tweet
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedTweet)) {

@@ -18,12 +18,6 @@ import (
 	"time"
 )
 
-type HandlerNodeCacher interface {
-	AddNode(n domain_gen.Node)
-	GetNodes() []domain_gen.Node
-	RemoveNode(n *domain_gen.Node)
-}
-
 type NodeRequester interface {
 	Ping(host string, ping domain_gen.PingEvent) error
 	Pong(host string, ping domain_gen.PongEvent) error
@@ -43,13 +37,11 @@ type nodeEventHandler struct {
 	timelineRepo *database.TimelineRepo
 	followRepo   *database.FollowRepo
 	cli          NodeRequester
-	cache        HandlerNodeCacher
 	interrupt    chan os.Signal
 }
 
 func NewNodeHandler(
 	ownIP string,
-	cache HandlerNodeCacher,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
 	userRepo *database.UserRepo,
@@ -69,7 +61,6 @@ func NewNodeHandler(
 		timelineRepo: timelineRepo,
 		followRepo:   followRepo,
 		cli:          cli,
-		cache:        cache,
 		interrupt:    interrupt,
 	}, nil
 }
@@ -86,10 +77,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 		return nil
 	}
 
-	var (
-		response   any
-		callerHost = ctx.Request().Host
-	)
+	var response any
 
 	switch eventType {
 	case node_gen.Login:
@@ -102,13 +90,24 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			fmt.Printf("handle ping event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-		owner, _ := d.authRepo.Owner()
-		u, _ := d.userRepo.Get(owner)
+		owner, err := d.authRepo.Owner()
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		u, err := d.userRepo.Get(owner)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		nodes, _, err := d.nodeRepo.List(nil, nil)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		dst := ctx.Request().RemoteAddr
 		response = domain_gen.PongEvent{
-			CachedNodes: d.cache.GetNodes(),
-			DestHost:    &callerHost,
-			OwnerInfo:   u,
-			OwnerNode:   d.nodeRepo.OwnNode(),
+			Nodes:     nodes,
+			DestHost:  &dst,
+			OwnerInfo: u,
+			OwnerNode: d.nodeRepo.OwnNode(),
 		}
 	case node_gen.NewUser:
 		userEvent, err := d.handleNewUser(ctx, receivedEvent.Data)
@@ -116,7 +115,11 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			fmt.Printf("handle new user event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-		for _, n := range d.cache.GetNodes() {
+		nodes, _, err := d.nodeRepo.List(nil, nil)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		for _, n := range nodes {
 			if _, err := d.cli.BroadcastNewUser(n.Host, userEvent); err != nil {
 				return err
 			}
@@ -128,7 +131,11 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType node_gen.NewEven
 			fmt.Printf("handle new tweet event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-		for _, n := range d.cache.GetNodes() {
+		nodes, _, err := d.nodeRepo.List(nil, nil)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		for _, n := range nodes {
 			fmt.Println("BROADCAST NEW TWEET: ", n.Host)
 			if _, err = d.cli.BroadcastNewTweet(n.Host, tweetEvent); err != nil {
 				return err
@@ -227,7 +234,6 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 	if pingEvent.OwnerNode == nil {
 		return nil
 	}
-	d.cache.AddNode(*pingEvent.OwnerNode)
 
 	_, err = d.userRepo.Create(*pingEvent.OwnerInfo)
 	if err != nil {
@@ -238,9 +244,7 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 		return err
 	}
 
-	for _, n := range pingEvent.CachedNodes {
-		d.cache.AddNode(n)
-
+	for _, n := range pingEvent.Nodes {
 		_, err = d.nodeRepo.Create(&n)
 		if err != nil {
 			return err

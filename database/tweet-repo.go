@@ -44,15 +44,20 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
 	}
 
+	key, err := storage.NewPrefixBuilder(TweetsRepoName).
+		AddUserId(userID).AddTweetId(*tweet.TweetId).
+		AddReverseTimestamp(*tweet.CreatedAt).
+		AddSequence(*tweet.Sequence).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("build create tweet key: %w", err)
+	}
+
 	data, err := json.JSON.Marshal(*tweet)
 	if err != nil {
 		return nil, fmt.Errorf("tweet marshal: %w", err)
 	}
-
-	key, err := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
-	if err != nil {
-		return nil, fmt.Errorf("build timeline key: %w", err)
-	}
+	
 	return tweet, repo.db.Set(key, data)
 }
 
@@ -95,42 +100,23 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		return nil, "", err
 	}
 
-	var lastKey string
 	if cursor != nil && *cursor != "" {
 		prefix = *cursor
 	}
 
-	tweets := make([]domain_gen.Tweet, 0, *limit)
-	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
-		if len(tweets) >= int(*limit) {
-			lastKey = key
-			return storage.ErrStopIteration
-		}
-		if !IsValidForPrefix(key, prefix) {
-			return nil
-		}
-
-		var tweet domain_gen.Tweet
-		err := json.JSON.Unmarshal(value, &tweet)
-		if err != nil {
-			return err
-		}
-		tweets = append(tweets, tweet)
-		return nil
-	})
+	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}
-	if errors.Is(err, storage.ErrStopIteration) || err == nil {
-		if len(tweets) < int(*limit) {
-			lastKey = ""
-		}
-		return tweets, lastKey, nil
+
+	tweets := make([]domain_gen.Tweet, 0, *limit)
+	if err = json.JSON.Unmarshal(items, &tweets); err != nil {
+		return nil, "", err
 	}
 
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
 	})
 
-	return tweets, lastKey, nil
+	return tweets, cur, nil
 }

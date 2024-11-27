@@ -20,7 +20,7 @@ func NewSettingsController(cli *client.NodeClient) *SettingsController {
 	return &SettingsController{cli: cli}
 }
 
-func (c *SettingsController) PostV1ApiNodeSettings(ctx echo.Context, params api_gen.PostV1ApiNodeSettingsParams) error {
+func (c *SettingsController) PostV1ApiNodesSettings(ctx echo.Context, params api_gen.PostV1ApiNodesSettingsParams) error {
 	var req domain_gen.AddSettingRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(http.StatusBadRequest, domain_gen.Error{Message: err.Error()})
@@ -56,7 +56,7 @@ func extractIPAddresses(addresses string) ([]string, error) {
 	return splitted, nil
 }
 
-func (c *SettingsController) GetV1ApiNodeSettings(ctx echo.Context, params api_gen.GetV1ApiNodeSettingsParams) (err error) {
+func (c *SettingsController) GetV1ApiNodesSettings(ctx echo.Context, params api_gen.GetV1ApiNodesSettingsParams) (err error) {
 	var resp any
 
 	switch params.Name {

@@ -89,40 +89,23 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 		limit = new(uint64)
 		*limit = 20
 	}
-	tweets := make([]domain_gen.Tweet, 0, *limit)
+
 	prefix, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, "", err
 	}
 
-	var lastKey string
 	if cursor != nil && *cursor != "" {
 		prefix = *cursor
 	}
 
-	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
-		if len(tweets) >= int(*limit) {
-			lastKey = key
-			return storage.ErrStopIteration
-		}
-		if !IsValidForPrefix(key, prefix) {
-			return nil
-		}
-
-		var t domain_gen.Tweet
-		if err = json.JSON.Unmarshal(value, &t); err != nil {
-			return err
-		}
-		tweets = append(tweets, t)
-		return nil
-	})
-	if errors.Is(err, storage.ErrStopIteration) || err == nil {
-		if len(tweets) < int(*limit) {
-			lastKey = ""
-		}
-		return tweets, lastKey, nil
-	}
+	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
+		return nil, "", err
+	}
+
+	tweets := make([]domain_gen.Tweet, 0, *limit)
+	if err = json.JSON.Unmarshal(items, &tweets); err != nil {
 		return nil, "", err
 	}
 
@@ -130,10 +113,5 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
 	})
 
-	return tweets, lastKey, nil
-}
-
-func IsValidForPrefix(key string, prefix string) bool {
-	isValid := len(key) >= len(prefix) && key[:len(prefix)] == prefix
-	return isValid
+	return tweets, cur, nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"github.com/filinvadim/dWighter/interface/api-gen"
 	"github.com/filinvadim/dWighter/interface/server/handlers"
 	"net/http"
 	"net/http/httptest"
@@ -63,7 +64,7 @@ func TestPostUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostV1ApiUsers(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsers(ctx, api.PostV1ApiUsersParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var createdUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdUser)) {
@@ -97,7 +98,7 @@ func TestGetUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, *user.UserId)) {
+	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, *user.UserId, api.GetV1ApiUsersUserIdParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var fetchedUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedUser)) {
@@ -145,7 +146,7 @@ func TestFollowUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostV1ApiUsersFollow(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsersFollow(ctx, api.PostV1ApiUsersFollowParams{})) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 
 		// Проверяем, что подписка существует
@@ -197,7 +198,7 @@ func TestUnfollowUser(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.PostV1ApiUsersUnfollow(ctx)) {
+	if assert.NoError(t, controller.PostV1ApiUsersUnfollow(ctx, api.PostV1ApiUsersUnfollowParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		// Проверяем, что подписка была удалена

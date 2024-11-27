@@ -39,15 +39,15 @@ func (repo *NodeRepo) Create(node *domain_gen.Node) (uuid.UUID, error) {
 	}
 
 	err := repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
+		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).AddReverseTimestamp(*node.CreatedAt).Build()
 		if err != nil {
 			return err
 		}
-		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
+		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).AddReverseTimestamp(*node.CreatedAt).Build()
 		if err != nil {
 			return err
 		}
-		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).Build()
+		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).AddReverseTimestamp(*node.CreatedAt).Build()
 		if err != nil {
 			return err
 		}
@@ -203,42 +203,24 @@ func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, st
 		return nil, "", err
 	}
 
-	var lastKey string
 	if cursor != nil && *cursor != "" {
 		prefix = *cursor
 	}
 
-	nodes := make([]domain_gen.Node, 0, *limit)
-	err = repo.db.IterateKeysValues(prefix, func(key string, value []byte) error {
-		if len(nodes) >= int(*limit) {
-			lastKey = key
-			return storage.ErrStopIteration
-		}
-		if !IsValidForPrefix(key, prefix) {
-			return nil
-		}
-
-		var n domain_gen.Node
-		err := json.JSON.Unmarshal(value, &n)
-		if err != nil {
-			return err
-		}
-		nodes = append(nodes, n)
-		return nil
-	})
+	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}
-	if errors.Is(err, storage.ErrStopIteration) || err == nil {
-		if len(nodes) < int(*limit) {
-			lastKey = ""
-		}
-		return nodes, lastKey, nil
+
+	nodes := make([]domain_gen.Node, 0, *limit)
+	err = json.JSON.Unmarshal(items, &nodes)
+	if err != nil {
+		return nil, "", err
 	}
 
 	sort.SliceStable(nodes, func(i, j int) bool {
 		return nodes[i].CreatedAt.After(*nodes[j].CreatedAt)
 	})
 
-	return nodes, lastKey, nil
+	return nodes, cur, nil
 }

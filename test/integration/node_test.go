@@ -12,6 +12,18 @@ import (
 	"time"
 )
 
+const (
+	mainNodeURL  = "http://localhost:16969/v1/node/event/"
+	testNodeHost = "node3"
+	testUserId   = "node-3-test-user-id"
+	testNodeId   = "node-3-test-node-id"
+	testTweetId  = "node-3-test-tweet-id"
+	testUsername = "TEST_NODE3!"
+
+	mainNodeUserId  = "e80c8856-462d-4eed-8052-4e49db8f73d1"
+	mainNodeTweetId = "38966e99-9b62-4dd1-834f-c59330dd30b5"
+)
+
 func TestNodeSimulator(t *testing.T) {
 	for _, td := range testDataMap {
 		testEvent := TestEvent{
@@ -32,7 +44,6 @@ func doRequest(eventType node_gen.NewEventParamsEventType, data TestEvent, t *te
 		t.Fatalf("Failed to marshal event: %v", err)
 	}
 
-	// Send the HTTP request
 	resp, err := http.Post(mainNodeURL+string(eventType), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		t.Fatalf("Failed to send POST request: %v", err)
@@ -43,18 +54,6 @@ func doRequest(eventType node_gen.NewEventParamsEventType, data TestEvent, t *te
 		t.Fatalf("Failed to send POST request: %v", resp.Status)
 	}
 }
-
-const (
-	mainNodeURL  = "http://localhost:16969/v1/node/event/"
-	testNodeHost = "node2"
-	testUserId   = "node-2-test-user-id"
-	testNodeId   = "node-2-test-node-id"
-	testTweetId  = "node-2-test-tweet-id"
-	testUsername = "TEST_NODE!"
-
-	mainNodeUserId  = "e80c8856-462d-4eed-8052-4e49db8f73d1"
-	mainNodeTweetId = "38966e99-9b62-4dd1-834f-c59330dd30b5"
-)
 
 func toStrPtr(s string) *string {
 	return &s
@@ -94,9 +93,9 @@ type testData struct {
 var testDataMap = []testData{
 	{node_gen.NewUser, domain.NewUserEvent{User: testUser}},
 	{node_gen.Ping, domain.PingEvent{
-		CachedNodes: []domain.Node{},
-		DestHost:    toStrPtr(config.InternalNodeAddress.String()),
-		OwnerInfo:   testUser,
+		Nodes:     []domain.Node{},
+		DestHost:  toStrPtr(config.InternalNodeAddress.String()),
+		OwnerInfo: testUser,
 		OwnerNode: &domain.Node{
 			CreatedAt: &now,
 			Host:      testNodeHost,
@@ -111,31 +110,22 @@ var testDataMap = []testData{
 	}},
 	{node_gen.NewTweet, domain.NewTweetEvent{
 		Tweet: &domain.Tweet{
-			Content:       "TEST TWEET",
-			CreatedAt:     &now,
-			Likes:         nil,
-			LikesCount:    toIntPtr(0),
-			Retweets:      nil,
-			RetweetsCount: nil,
-			Sequence:      toIntPtr(2),
-			TweetId:       toStrPtr(testTweetId),
-			UserId:        testUserId,
-			Username:      toStrPtr(testUsername),
+			Content:   "TEST TWEET",
+			CreatedAt: &now,
+			TweetId:   toStrPtr(testTweetId),
+			UserId:    testUserId,
+			Username:  toStrPtr(testUsername),
 		},
 	}},
 	{node_gen.GetTweet, domain.GetTweetEvent{
-		TweetId: mainNodeTweetId,
-		UserId:  mainNodeUserId,
+		TweetId: testTweetId,
+		UserId:  testUserId,
 	}},
 	{node_gen.GetTweets, domain.GetAllTweetsEvent{
-		Cursor: nil,
-		Limit:  nil,
-		UserId: mainNodeUserId,
+		UserId: testUserId,
 	}},
-	{node_gen.GetUser, domain.GetUserEvent{UserId: mainNodeUserId}},
+	{node_gen.GetUser, domain.GetUserEvent{UserId: testUserId}},
 	{node_gen.GetTimeline, domain.GetTimelineEvent{
-		Cursor: nil,
-		Limit:  nil,
-		UserId: mainNodeUserId,
+		UserId: testUserId,
 	}},
 }

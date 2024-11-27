@@ -319,7 +319,7 @@ paths:
         '400':
           description: Invalid input
 
-  /v1/api/node/settings:
+  /v1/api/nodes/settings:
     post:
       tags:
         - Setting
