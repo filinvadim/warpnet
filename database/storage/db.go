@@ -10,7 +10,10 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/gommon/log"
+	"math"
 	"math/rand/v2"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -20,6 +23,22 @@ var (
 	ErrWrongPassword = errors.New("wrong password")
 	ErrNotRunning    = errors.New("DB is not running")
 )
+
+type DatabaseKey string
+
+func (k DatabaseKey) SortableValueKey(seqNum uint64) []byte {
+	key := fmt.Sprintf("%s:%s", k, strconv.FormatInt(math.MaxInt64-int64(seqNum), 10))
+	return []byte(key)
+}
+
+func (k DatabaseKey) KeyIndex() []byte {
+	key := strings.ReplaceAll(string(k), ":", "_")
+	return []byte(key)
+}
+
+func (k DatabaseKey) String() string {
+	return string(k)
+}
 
 type DB struct {
 	badger   *badger.DB
@@ -69,7 +88,7 @@ func (db *DB) Run(username, password string) (token string, err error) {
 
 	db.isRunning.Store(true)
 	fmt.Println("DATABASE IS RUNNING!")
-	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE:unified"), 100)
+	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE"), 100)
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +122,7 @@ func (db *DB) runEventualGC() {
 
 type IterKeysFunc func(key string) error
 
-func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
+func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
@@ -126,7 +145,7 @@ func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
 
 type RawItem = []byte
 
-func (db *DB) List(prefix string, limit *uint64, cursor *string) ([]byte, string, error) {
+func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, string, error) {
 	if !db.isRunning.Load() {
 		return nil, "", ErrNotRunning
 	}
@@ -136,18 +155,20 @@ func (db *DB) List(prefix string, limit *uint64, cursor *string) ([]byte, string
 	}
 
 	var (
-		lastCursor  string
-		startCursor = prefix
+		lastCursor   string
+		startCursor  = prefix
+		prefixString = prefix.String()
 	)
 	if cursor != nil && *cursor != "" {
-		startCursor = *cursor
+		startCursor = DatabaseKey(*cursor)
 	}
 
 	items := make([]RawItem, 0, *limit)
 	err := db.iterateKeysValues(startCursor, func(key string, value []byte) error {
-		if !IsValidForPrefix(key, prefix) {
+		if !IsValidForPrefix(key, prefixString) {
 			return nil
 		}
+
 		if len(items) >= int(*limit) {
 			lastCursor = key
 			return ErrStopIteration
@@ -174,7 +195,7 @@ func listify(items [][]byte) []byte {
 
 type iterKeysValuesFunc func(key string, val []byte) error
 
-func (db *DB) iterateKeysValues(prefix string, handler iterKeysValuesFunc) error {
+func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
@@ -200,43 +221,87 @@ func (db *DB) iterateKeysValues(prefix string, handler iterKeysValuesFunc) error
 	})
 }
 
-func (db *DB) Set(key string, value []byte) error {
+func (db *DB) Set(key DatabaseKey, value []byte) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
+	seqNum, err := db.NextSequence()
+	if err != nil {
+		return err
+	}
+	sortableKey := key.SortableValueKey(seqNum)
+	index := key.KeyIndex()
 	return db.badger.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), value)
-		return txn.SetEntry(e)
+		se := badger.NewEntry(sortableKey, value)
+		if err := txn.SetEntry(se); err != nil {
+			return err
+		}
+		fe := badger.NewEntry(index, sortableKey)
+		return txn.SetEntry(fe)
 	})
 }
 
-func (db *DB) Get(key string) ([]byte, error) {
+func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 	if !db.isRunning.Load() {
 		return nil, ErrNotRunning
 	}
-	var value []byte
+
+	index := key.KeyIndex()
+
+	var result []byte
 	err := db.badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		item, err := txn.Get(index)
+		if err != nil {
+			return err
+		}
+
+		var sortableKey []byte
+		err = item.Value(func(val []byte) error {
+			sortableKey = append([]byte{}, val...)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		item, err = txn.Get(sortableKey)
 		if err != nil {
 			return err
 		}
 		return item.Value(func(val []byte) error {
-			value = append([]byte{}, val...)
+			result = append([]byte{}, val...)
 			return nil
 		})
 	})
 	if err != nil {
 		return nil, err
 	}
-	return value, nil
+	return result, nil
 }
 
-func (db *DB) Update(key string, newValue []byte) error {
+func (db *DB) Update(key DatabaseKey, newValue []byte) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
+
+	index := key.KeyIndex()
+
+	var sortableKey []byte
+	err := db.badger.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(index)
+		if err != nil {
+			return err
+		}
+
+		return item.Value(func(val []byte) error {
+			sortableKey = append([]byte{}, val...)
+			return nil
+		})
+	})
+	if err != nil {
+		return err
+	}
 	return db.badger.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), newValue)
+		e := badger.NewEntry(sortableKey, newValue)
 		return txn.SetEntry(e)
 	})
 }
@@ -252,11 +317,33 @@ func (db *DB) Txn(f func(tx *badger.Txn) error) error {
 	return txn.Commit()
 }
 
-func (db *DB) Delete(key string) error {
+func (db *DB) Delete(key DatabaseKey) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
+
+	index := key.KeyIndex()
+
+	var sortableKey []byte
+	err := db.badger.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(index)
+		if err != nil {
+			return err
+		}
+
+		return item.Value(func(val []byte) error {
+			sortableKey = append([]byte{}, val...)
+			return nil
+		})
+	})
+	if err != nil {
+		return err
+	}
+
 	return db.badger.Update(func(txn *badger.Txn) error {
+		if err := txn.Delete(sortableKey); err != nil {
+			return err
+		}
 		return txn.Delete([]byte(key))
 	})
 }

@@ -39,15 +39,15 @@ func (repo *NodeRepo) Create(node *domain_gen.Node) (uuid.UUID, error) {
 	}
 
 	err := repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).AddReverseTimestamp(*node.CreatedAt).Build()
+		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
 		if err != nil {
 			return err
 		}
-		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).AddReverseTimestamp(*node.CreatedAt).Build()
+		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
 		if err != nil {
 			return err
 		}
-		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).AddReverseTimestamp(*node.CreatedAt).Build()
+		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).Build()
 		if err != nil {
 			return err
 		}
@@ -204,7 +204,7 @@ func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, st
 	}
 
 	if cursor != nil && *cursor != "" {
-		prefix = *cursor
+		prefix = storage.DatabaseKey(*cursor)
 	}
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)

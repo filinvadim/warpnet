@@ -75,11 +75,11 @@ func (repo *FollowRepo) GetReaders(writerID string) ([]string, error) {
 	readers := make([]string, 0)
 	err = repo.db.IterateKeys(prefix, func(key string) error {
 		// FOLLOW:writer:c09f21be-22bf-4ab6-9450-7db8c822a526:reader:
-		prefixForReader, err := storage.NewPrefixBuilder(prefix).AddReaderId("").Build()
+		prefixForReader, err := storage.NewPrefixBuilder(prefix.String()).AddReaderId("").Build()
 		if err != nil {
 			return err
 		}
-		readerID := strings.TrimPrefix(string(key), prefixForReader)
+		readerID := strings.TrimPrefix(key, prefixForReader.String())
 		readers = append(readers, readerID)
 		return nil
 	})
@@ -98,13 +98,13 @@ func (repo *FollowRepo) GetWriters(readerID string) ([]string, error) {
 
 	writers := make([]string, 0)
 	err = repo.db.IterateKeys(prefix, func(key string) error {
-		prefixForWriter, err := storage.NewPrefixBuilder(prefix).AddWriterId("").Build()
+		prefixForWriter, err := storage.NewPrefixBuilder(prefix.String()).AddWriterId("").Build()
 		if err != nil {
 			return err
 		}
 
 		// FOLLOW:reader:c09f21be-22bf-4ab6-9450-7db8c822a526:writer:
-		writerID := strings.TrimPrefix(string(key), prefixForWriter)
+		writerID := strings.TrimPrefix(key, prefixForWriter.String())
 		writers = append(writers, writerID)
 		return nil
 	})

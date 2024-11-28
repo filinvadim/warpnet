@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"sort"
@@ -40,9 +41,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 		return nil, err
 	}
 
-	key, err := storage.NewPrefixBuilder(UsersRepoName).
-		AddUserId(*user.UserId).
-		Build()
+	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).Build()
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 	}
 
 	if cursor != nil && *cursor != "" {
-		prefix = *cursor
+		prefix = storage.DatabaseKey(*cursor)
 	}
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
@@ -106,7 +105,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 
 	users := make([]domain_gen.User, 0, *limit)
 	if err = json.JSON.Unmarshal(items, &users); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("%w %s", err, items)
 	}
 
 	sort.SliceStable(users, func(i, j int) bool {

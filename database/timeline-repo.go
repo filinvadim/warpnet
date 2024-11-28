@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"math"
 	"sort"
 	"time"
 
@@ -33,20 +32,8 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	if tweet.CreatedAt == nil {
 		return fmt.Errorf("tweet created at should not be nil")
 	}
-	if tweet.Sequence == nil {
-		tweet.Sequence = new(int64)
-		newSeqNum, err := repo.db.NextSequence()
-		if err != nil {
-			return fmt.Errorf("add timeline tweet sequence: %w", err)
-		}
-		*tweet.Sequence = math.MaxInt64 - int64(newSeqNum)
-	}
 
-	key, err := storage.NewPrefixBuilder(TimelineRepoName).
-		AddUserId(userID).
-		AddReverseTimestamp(*tweet.CreatedAt).
-		AddSequence(*tweet.Sequence).
-		Build()
+	key, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return fmt.Errorf("build timeline key: %w", err)
 	}
@@ -58,21 +45,14 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	return repo.db.Set(key, data)
 }
 
-func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.Time, seqNum int64) error {
+func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.Time) error {
 	if userID == "" {
 		return errors.New("userID cannot be blank")
 	}
 	if createdAt.IsZero() {
 		return fmt.Errorf("createdAt should not be zero")
 	}
-	if seqNum == 0 {
-		return fmt.Errorf("seqNum should not be zero")
-	}
-	key, err := storage.NewPrefixBuilder(TimelineRepoName).
-		AddUserId(userID).
-		AddReverseTimestamp(createdAt).
-		AddSequence(seqNum).
-		Build()
+	key, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return err
 	}
@@ -96,7 +76,7 @@ func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *stri
 	}
 
 	if cursor != nil && *cursor != "" {
-		prefix = *cursor
+		prefix = storage.DatabaseKey(*cursor)
 	}
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
