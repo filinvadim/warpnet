@@ -44,6 +44,11 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 		tweet.Sequence = func(i int64) *int64 { return &i }(int64(seq))
 	}
 
+	data, err := json.JSON.Marshal(*tweet)
+	if err != nil {
+		return nil, fmt.Errorf("tweet marshal: %w", err)
+	}
+
 	key, err := storage.NewPrefixBuilder(TweetsRepoName).
 		AddUserId(userID).AddTweetId(*tweet.TweetId).
 		AddReverseTimestamp(*tweet.CreatedAt).
@@ -53,11 +58,6 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 		return nil, fmt.Errorf("build create tweet key: %w", err)
 	}
 
-	data, err := json.JSON.Marshal(*tweet)
-	if err != nil {
-		return nil, fmt.Errorf("tweet marshal: %w", err)
-	}
-	
 	return tweet, repo.db.Set(key, data)
 }
 

@@ -28,7 +28,6 @@ type DB struct {
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
 
-	runF func(opt badger.Options) (*badger.DB, error)
 	opts badger.Options
 }
 
@@ -50,7 +49,7 @@ func New(
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil, runF: badger.Open, opts: opts,
+		sequence: nil, opts: opts,
 	}
 
 	return storage
@@ -63,7 +62,7 @@ func (db *DB) Run(username, password string) (token string, err error) {
 	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 
-	db.badger, err = db.runF(db.opts)
+	db.badger, err = badger.Open(db.opts)
 	if err != nil {
 		return "", err
 	}
@@ -127,44 +126,42 @@ func (db *DB) IterateKeys(prefix string, handler IterKeysFunc) error {
 
 type RawItem = []byte
 
-func (db *DB) List(prefix string, limit *uint64, cursor *string) (_ []byte, cur string, _ error) {
+func (db *DB) List(prefix string, limit *uint64, cursor *string) ([]byte, string, error) {
 	if !db.isRunning.Load() {
 		return nil, "", ErrNotRunning
 	}
 	if limit == nil {
-		limit = new(uint64)
-		*limit = 20
+		defaultLimit := uint64(20)
+		limit = &defaultLimit
 	}
 
-	var lastKey string
+	var (
+		lastCursor  string
+		startCursor = prefix
+	)
 	if cursor != nil && *cursor != "" {
-		prefix = *cursor
+		startCursor = *cursor
 	}
 
 	items := make([]RawItem, 0, *limit)
-	err := db.iterateKeysValues(prefix, func(key string, value []byte) error {
-		if len(items) >= int(*limit) {
-			lastKey = key
-			return ErrStopIteration
-		}
+	err := db.iterateKeysValues(startCursor, func(key string, value []byte) error {
 		if !IsValidForPrefix(key, prefix) {
 			return nil
+		}
+		if len(items) >= int(*limit) {
+			lastCursor = key
+			return ErrStopIteration
 		}
 		items = append(items, value)
 		return nil
 	})
-	if errors.Is(err, ErrStopIteration) || err == nil {
-		if len(items) < int(*limit) {
-			lastKey = ""
-		}
-		itemsList := listify(items)
-
-		return itemsList, lastKey, nil
+	if err != nil && !errors.Is(err, ErrStopIteration) {
+		return nil, "", err
 	}
-
-	itemsList := listify(items)
-
-	return itemsList, lastKey, nil
+	if len(items) < int(*limit) {
+		lastCursor = ""
+	}
+	return listify(items), lastCursor, nil
 }
 
 func listify(items [][]byte) []byte {

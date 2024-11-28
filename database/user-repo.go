@@ -1,6 +1,8 @@
 package database
 
 import (
+	"errors"
+	"github.com/dgraph-io/badger/v3"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"sort"
 	"time"
@@ -9,6 +11,8 @@ import (
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
 )
+
+var ErrUserNotFound = errors.New("user not found")
 
 const UsersRepoName = "USERS"
 
@@ -35,20 +39,30 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).AddReverseTimestamp(*user.CreatedAt).Build()
+
+	key, err := storage.NewPrefixBuilder(UsersRepoName).
+		AddUserId(*user.UserId).
+		Build()
 	if err != nil {
 		return nil, err
 	}
+
 	return &user, repo.db.Set(key, data)
 }
 
 // Get retrieves a user by their ID
 func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
+	if userID == "" {
+		return nil, ErrUserNotFound
+	}
 	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
 	if err != nil {
 		return nil, err
 	}
 	data, err := repo.db.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, ErrUserNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

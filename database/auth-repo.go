@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"github.com/dgraph-io/badger/v3"
 
 	"github.com/filinvadim/dWighter/database/storage"
 	"github.com/google/uuid"
@@ -13,7 +14,10 @@ const (
 	OwnerSubName = "OWNER"
 )
 
-var ErrWrongPassword = errors.New("wrong password")
+var (
+	ErrWrongPassword = errors.New("wrong password")
+	ErrOwnerNotFound = errors.New("owner not found")
+)
 
 type AuthRepo struct {
 	db      *storage.DB
@@ -56,6 +60,9 @@ func (repo *AuthRepo) Owner() (userId string, err error) {
 		return "", err
 	}
 	data, err := repo.db.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return "", ErrOwnerNotFound
+	}
 	if err != nil {
 		return "", err
 	}
