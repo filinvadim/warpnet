@@ -1,167 +1,140 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
-	"github.com/google/uuid"
+	"math"
 	"strings"
+)
+
+const (
+	SortableDelimiter = ":"
+)
+
+type (
+	Namespace                 string
+	NamespaceUserId           string
+	NamespaceUserIdSeqTweetId string
+	NamespaceNodeId           string
+	NamespaceNodeIdHost       string
+	DatabaseKey               string
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
 type PrefixBuilder struct {
-	key string
-	err error
+	namespace Namespace
 }
 
 // NewPrefixBuilder creates a new PrefixBuilder instance
-func NewPrefixBuilder(base string) *PrefixBuilder {
-	return &PrefixBuilder{key: base}
+func NewPrefixBuilder(ns string) Namespace {
+	return Namespace(ns)
 }
 
 // AddPrefix adds a prefix to the key if it does not already exist
-func (pb *PrefixBuilder) AddPrefix(prefix string) *PrefixBuilder {
-	// If there's already an error, skip further processing
-	if pb.err != nil {
-		return pb
-	}
-
-	if !strings.HasPrefix(pb.key, prefix) {
-		pb.key = fmt.Sprintf("%s:%s", pb.key, prefix)
-	}
-	return pb
+func (ns Namespace) AddCustomPrefix(prefix string) NamespaceUserId {
+	key := fmt.Sprintf("%s:%s", ns, prefix)
+	return NamespaceUserId(key)
 }
 
-// ValidateUserId ensures the user ID is valid (e.g., non-empty and alphanumeric)
-func validateUserId(userId string) error {
-	if len(userId) == 0 {
-		return errors.New("userId cannot be empty")
+func (ns Namespace) Build() DatabaseKey {
+	key := string(ns)
+	if !strings.Contains(key, SortableDelimiter) {
+		key = fmt.Sprintf("%s:", key)
 	}
-
-	return nil
+	return DatabaseKey(key)
 }
 
-// AddUserId adds a user ID segment to the key after validation
-func (pb *PrefixBuilder) AddUserId(userId string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	// Perform validation and store the error if validation fails
-	if err := validateUserId(userId); err != nil {
-		pb.err = err
-		return pb
-	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, userId)
-	return pb
+func (ns Namespace) AddUserId(userId string) NamespaceUserId {
+	key := fmt.Sprintf("%s:%s:{seq}", ns, userId)
+	return NamespaceUserId(key)
 }
 
-func (pb *PrefixBuilder) AddNodeId(nodeId string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
+func (nus NamespaceUserId) Build() DatabaseKey {
+	key := string(nus)
+	if !strings.Contains(key, SortableDelimiter) {
+		key = fmt.Sprintf("%s:", key)
 	}
-
-	if err := uuid.Validate(nodeId); err != nil {
-		pb.err = err
-		return pb
-	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, nodeId)
-	return pb
+	return DatabaseKey(key)
 }
 
-// AddUserId adds a user ID segment to the key after validation
-func (pb *PrefixBuilder) AddUsername(username string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	// Perform validation and store the error if validation fails
-	if username == "" {
-		pb.err = errors.New("username cannot be empty")
-		return pb
-	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, username)
-	return pb
+func (ns Namespace) AddNodeId(nodeId string) NamespaceNodeId {
+	key := fmt.Sprintf("%s:%s:{seq}", ns, nodeId)
+	return NamespaceNodeId(key)
 }
 
-// ValidateTweetId ensures the tweet ID is valid (e.g., non-empty and numeric)
-func validateTweetId(tweetId string) error {
-	if len(tweetId) == 0 {
-		return errors.New("tweetId cannot be empty")
+func (nni NamespaceNodeId) Build() DatabaseKey {
+	key := string(nni)
+	if !strings.Contains(key, SortableDelimiter) {
+		key = fmt.Sprintf("%s:", key)
 	}
+	return DatabaseKey(key)
+}
 
-	return nil
+// AddIPAddress adds an IP address segment to the key after validation
+func (ns Namespace) AddHostAddress(host string) NamespaceNodeIdHost {
+	key := fmt.Sprintf("%s:%s", ns, host)
+	return NamespaceNodeIdHost(key)
+}
+
+func (nnh NamespaceNodeIdHost) Build() DatabaseKey {
+	key := string(nnh)
+	if !strings.Contains(key, SortableDelimiter) {
+		key = fmt.Sprintf("%s:", key)
+	}
+	return DatabaseKey(key)
 }
 
 // AddTweetId adds a tweet ID segment to the key after validation
-func (pb *PrefixBuilder) AddTweetId(tweetId string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
+func (nsui NamespaceUserId) AddTweetId(tweetId string) NamespaceUserIdSeqTweetId {
+	if tweetId == "" {
+		return NamespaceUserIdSeqTweetId(nsui)
 	}
-
-	// Perform validation and store the error if validation fails
-	if err := validateTweetId(tweetId); err != nil {
-		pb.err = err
-		return pb
-	}
-	pb.key = fmt.Sprintf("%s:%s", pb.key, tweetId)
-	return pb
+	key := fmt.Sprintf("%s:%s", nsui, tweetId)
+	return NamespaceUserIdSeqTweetId(key)
 }
 
 // AddFollowedId adds a followee ID segment to the key (reuses user ID validation)
 func (pb *PrefixBuilder) AddWriterId(writerId string) *PrefixBuilder {
 	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	pb.key = fmt.Sprintf("%s:writer:%s", pb.key, writerId)
+	//if pb.err != nil {
+	//	return pb
+	//}
+	//
+	//pb.key = fmt.Sprintf("%s:writer:%s", pb.key, writerId)
 	return pb
 }
 
 func (pb *PrefixBuilder) AddReaderId(readerId string) *PrefixBuilder {
 	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	pb.key = fmt.Sprintf("%s:reader:%s", pb.key, readerId)
-	return pb
-}
-
-// AddIPAddress adds an IP address segment to the key after validation
-func (pb *PrefixBuilder) AddHostAddress(host string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	pb.key = fmt.Sprintf("%s:%s", pb.key, host)
-	return pb
-}
-
-func (pb *PrefixBuilder) AddSettingName(name string) *PrefixBuilder {
-	// Skip processing if there's already an error
-	if pb.err != nil {
-		return pb
-	}
-
-	pb.key = fmt.Sprintf("%s:%s", pb.key, name)
+	//if pb.err != nil {
+	//	return pb
+	//}
+	//
+	//pb.key = fmt.Sprintf("%s:reader:%s", pb.key, readerId)
 	return pb
 }
 
 // Build returns the final key string and any error that occurred during the chain
-func (pb *PrefixBuilder) Build() (DatabaseKey, error) {
-	if !strings.Contains(pb.key, ":") {
-		pb.key = fmt.Sprintf("%s:", pb.key)
+func (nust NamespaceUserIdSeqTweetId) Build() DatabaseKey {
+	key := string(nust)
+	if !strings.Contains(key, SortableDelimiter) {
+		key = fmt.Sprintf("%s:", key)
 	}
-	return DatabaseKey(pb.key), pb.err
+	return DatabaseKey(key)
 }
 
-func IsValidForPrefix(key string, prefix string) bool {
-	isValid := len(key) >= len(prefix) && key[:len(prefix)] == prefix
-	return isValid
+func (k DatabaseKey) SortableValueKey(seqNum uint64) []byte {
+	key := string(k)
+	reverseSeq := fmt.Sprintf("%019d", math.MaxInt64-int64(seqNum))
+	key = strings.ReplaceAll(key, "{seq}", reverseSeq)
+	return []byte(key)
+}
+
+func (k DatabaseKey) KeyIndex() []byte {
+	key := strings.ReplaceAll(string(k), ":", "_")
+	key = strings.ReplaceAll(key, "{seq}", "none")
+	return []byte(key)
+}
+
+func (k DatabaseKey) String() string {
+	return string(k)
 }

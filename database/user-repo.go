@@ -41,10 +41,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 		return nil, err
 	}
 
-	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).Build()
-	if err != nil {
-		return nil, err
-	}
+	key := storage.NewPrefixBuilder(UsersRepoName).AddUserId(*user.UserId).Build()
 
 	return &user, repo.db.Set(key, data)
 }
@@ -54,10 +51,7 @@ func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
 	if userID == "" {
 		return nil, ErrUserNotFound
 	}
-	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
-	if err != nil {
-		return nil, err
-	}
+	key := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
 	data, err := repo.db.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, ErrUserNotFound
@@ -76,10 +70,7 @@ func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
 
 // Delete removes a user by their ID
 func (repo *UserRepo) Delete(userID string) error {
-	key, err := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
-	if err != nil {
-		return err
-	}
+	key := storage.NewPrefixBuilder(UsersRepoName).AddUserId(userID).Build()
 	return repo.db.Delete(key)
 }
 
@@ -89,10 +80,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 		*limit = 20
 	}
 
-	prefix, err := storage.NewPrefixBuilder(UsersRepoName).Build()
-	if err != nil {
-		return nil, "", err
-	}
+	prefix := storage.NewPrefixBuilder(UsersRepoName).Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

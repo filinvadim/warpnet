@@ -33,10 +33,7 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 		return fmt.Errorf("tweet created at should not be nil")
 	}
 
-	key, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
-	if err != nil {
-		return fmt.Errorf("build timeline key: %w", err)
-	}
+	key := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 
 	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
@@ -52,28 +49,21 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID string, createdAt time.
 	if createdAt.IsZero() {
 		return fmt.Errorf("createdAt should not be zero")
 	}
-	key, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
-	if err != nil {
-		return err
-	}
-
+	key := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
 	return repo.db.Delete(key)
 }
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
-func (repo *TimelineRepo) GetTimeline(userID string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
-	if userID == "" {
-		return nil, "", errors.New("userID cannot be blank")
+func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+	if userId == "" {
+		return nil, "", errors.New("user ID cannot be blank")
 	}
 	if *limit == 0 {
 		limit = new(uint64)
 		*limit = 20
 	}
 
-	prefix, err := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userID).Build()
-	if err != nil {
-		return nil, "", err
-	}
+	prefix := storage.NewPrefixBuilder(TimelineRepoName).AddUserId(userId).Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

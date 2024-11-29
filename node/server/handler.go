@@ -231,13 +231,13 @@ func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domain_gen.Event_D
 	if strings.Contains(ctx.Request().Host, "localhost") {
 		return nil
 	}
+	if pingEvent.OwnerNode == nil {
+		return nil
+	}
 
 	destHost := ctx.Request().Host
 	if pingEvent.OwnerNode.Host == "" {
 		pingEvent.OwnerNode.Host = destHost
-	}
-	if pingEvent.OwnerNode == nil {
-		return nil
 	}
 
 	_, err = d.userRepo.Create(*pingEvent.OwnerInfo)
@@ -358,21 +358,28 @@ func (d *nodeEventHandler) handleLogin(
 		return domain_gen.LoginResponse{}, err
 	}
 
+	fmt.Println(token, "TOKEN")
 	ownerId, err := d.authRepo.Owner()
 	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
 		return domain_gen.LoginResponse{}, err
 	}
 	if ownerId == "" {
+		fmt.Println("OWNER ID is empty")
+
 		ownerId, err = d.authRepo.NewOwner()
 		if err != nil {
 			return domain_gen.LoginResponse{}, fmt.Errorf("new owner: %w", err)
 		}
 	}
 
+	fmt.Println(ownerId, "OWNER ID ????? ")
+
 	owner, err := d.userRepo.Get(ownerId)
+	fmt.Println(err, "USER GET EERRR")
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
 		return domain_gen.LoginResponse{}, err
 	}
+	fmt.Println(owner, "OWNER STRUCT")
 
 	if owner != nil {
 		if owner.Username != login.Username {
@@ -396,6 +403,7 @@ func (d *nodeEventHandler) handleLogin(
 	if err != nil {
 		return domain_gen.LoginResponse{}, fmt.Errorf("create user: %w", err)
 	}
+	fmt.Println("USER CREATED", ownerId)
 
 	_, err = d.nodeRepo.GetByUserId(ownerId)
 	if err == nil {

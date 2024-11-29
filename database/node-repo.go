@@ -39,18 +39,9 @@ func (repo *NodeRepo) Create(node *domain_gen.Node) (uuid.UUID, error) {
 	}
 
 	err := repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
-		if err != nil {
-			return err
-		}
-		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
-		if err != nil {
-			return err
-		}
-		idKey, err := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).Build()
-		if err != nil {
-			return err
-		}
+		ipKey := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
+		userKey := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
+		idKey := storage.NewPrefixBuilder(NodesRepoName).AddNodeId(node.Id.String()).Build()
 
 		data, err := json.JSON.Marshal(*node)
 		if err != nil {
@@ -81,28 +72,8 @@ func (repo *NodeRepo) OwnNode() *domain_gen.Node {
 	return repo.ownNode
 }
 
-func (repo *NodeRepo) Update(n *domain_gen.Node) error {
-	if n == nil {
-		return errors.New("node is nil")
-	}
-	if n.Host == "" {
-		return errors.New("node IP address is missing")
-	}
-
-	key, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(n.Host).Build()
-	if err != nil {
-		return err
-	}
-
-	bt, _ := json.JSON.Marshal(*n)
-	return repo.db.Update(key, bt)
-}
-
 func (repo *NodeRepo) GetByHost(host string) (*domain_gen.Node, error) {
-	key, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(host).Build()
-	if err != nil {
-		return nil, err
-	}
+	key := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(host).Build()
 	data, err := repo.db.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, ErrNodeNotFound
@@ -129,11 +100,8 @@ func (repo *NodeRepo) DeleteByHost(host string) error {
 	}
 
 	return repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
-		if err != nil {
-			return err
-		}
-		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
+		ipKey := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
+		userKey := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
 		if err != nil {
 			return err
 		}
@@ -146,10 +114,7 @@ func (repo *NodeRepo) DeleteByHost(host string) error {
 }
 
 func (repo *NodeRepo) GetByUserId(userId string) (*domain_gen.Node, error) {
-	key, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(userId).Build()
-	if err != nil {
-		return nil, err
-	}
+	key := storage.NewPrefixBuilder(NodesRepoName).AddUserId(userId).Build()
 	data, err := repo.db.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, ErrNodeNotFound
@@ -176,14 +141,8 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	}
 
 	return repo.db.Txn(func(tx *badger.Txn) error {
-		ipKey, err := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
-		if err != nil {
-			return err
-		}
-		userKey, err := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
-		if err != nil {
-			return err
-		}
+		ipKey := storage.NewPrefixBuilder(NodesRepoName).AddHostAddress(node.Host).Build()
+		userKey := storage.NewPrefixBuilder(NodesRepoName).AddUserId(node.OwnerId).Build()
 		err = repo.db.Delete(ipKey)
 		if err != nil {
 			return err
@@ -198,10 +157,7 @@ func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, st
 		*limit = 20
 	}
 
-	prefix, err := storage.NewPrefixBuilder(NodesRepoName).Build()
-	if err != nil {
-		return nil, "", err
-	}
+	prefix := storage.NewPrefixBuilder(NodesRepoName).Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

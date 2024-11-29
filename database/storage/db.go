@@ -10,9 +10,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
 	"github.com/labstack/gommon/log"
-	"math"
 	"math/rand/v2"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -23,22 +21,6 @@ var (
 	ErrWrongPassword = errors.New("wrong password")
 	ErrNotRunning    = errors.New("DB is not running")
 )
-
-type DatabaseKey string
-
-func (k DatabaseKey) SortableValueKey(seqNum uint64) []byte {
-	key := fmt.Sprintf("%s:%s", k, strconv.FormatInt(math.MaxInt64-int64(seqNum), 10))
-	return []byte(key)
-}
-
-func (k DatabaseKey) KeyIndex() []byte {
-	key := strings.ReplaceAll(string(k), ":", "_")
-	return []byte(key)
-}
-
-func (k DatabaseKey) String() string {
-	return string(k)
-}
 
 type DB struct {
 	badger   *badger.DB
@@ -155,9 +137,8 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 	}
 
 	var (
-		lastCursor   string
-		startCursor  = prefix
-		prefixString = prefix.String()
+		lastCursor  string
+		startCursor = prefix
 	)
 	if cursor != nil && *cursor != "" {
 		startCursor = DatabaseKey(*cursor)
@@ -165,11 +146,7 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 
 	items := make([]RawItem, 0, *limit)
 	err := db.iterateKeysValues(startCursor, func(key string, value []byte) error {
-		if !IsValidForPrefix(key, prefixString) {
-			return nil
-		}
-
-		if len(items) >= int(*limit) {
+		if len(items) > int(*limit) {
 			lastCursor = key
 			return ErrStopIteration
 		}
@@ -182,15 +159,10 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 	if len(items) < int(*limit) {
 		lastCursor = ""
 	}
+	if len(lastCursor) > len(prefix) {
+		lastCursor = removeUUID(lastCursor)
+	}
 	return listify(items), lastCursor, nil
-}
-
-func listify(items [][]byte) []byte {
-	itemsList := bytes.Join(items, []byte(`,`))
-	itemsList = append(itemsList, 0)
-	copy(itemsList[1:], itemsList[0:])
-	itemsList[0] = byte('[')
-	return append(itemsList, ']')
 }
 
 type iterKeysValuesFunc func(key string, val []byte) error
@@ -202,6 +174,7 @@ func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) 
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = true
+		opts.PrefetchSize = 20
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
@@ -209,16 +182,35 @@ func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) 
 		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 			item := it.Item()
 			key := string(item.Key())
-			err := item.Value(func(val []byte) error {
-				// Call the handler function to process the key-value pair
-				return handler(key, val)
-			})
+
+			val, err := item.ValueCopy(nil)
 			if err != nil {
+				return err
+			}
+			if err := handler(key, val); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+func removeUUID(input string) string {
+	lastColon := strings.LastIndex(input, ":")
+	if lastColon == -1 {
+		// Если двоеточия нет, возвращаем оригинальную строку
+		return input
+	}
+	// Возвращаем строку до последнего двоеточия
+	return input[:lastColon]
+}
+
+func listify(items [][]byte) []byte {
+	itemsList := bytes.Join(items, []byte(`,`))
+	itemsList = append(itemsList, 0)
+	copy(itemsList[1:], itemsList[0:])
+	itemsList[0] = byte('[')
+	return append(itemsList, ']')
 }
 
 func (db *DB) Set(key DatabaseKey, value []byte) error {
@@ -276,34 +268,6 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 		return nil, err
 	}
 	return result, nil
-}
-
-func (db *DB) Update(key DatabaseKey, newValue []byte) error {
-	if !db.isRunning.Load() {
-		return ErrNotRunning
-	}
-
-	index := key.KeyIndex()
-
-	var sortableKey []byte
-	err := db.badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(index)
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			sortableKey = append([]byte{}, val...)
-			return nil
-		})
-	})
-	if err != nil {
-		return err
-	}
-	return db.badger.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry(sortableKey, newValue)
-		return txn.SetEntry(e)
-	})
 }
 
 func (db *DB) Txn(f func(tx *badger.Txn) error) error {

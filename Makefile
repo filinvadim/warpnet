@@ -1,5 +1,6 @@
 oapi-codegen-install:
-	go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
 gen:
 	~/go/bin/oapi-codegen -generate types,spec,skip-prune -package domain ./spec/domain.yml > domain-gen/domain.gen.go
 	~/go/bin/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/dWighter/domain-gen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > interface/api-gen/api.gen.go
