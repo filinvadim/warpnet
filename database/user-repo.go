@@ -45,7 +45,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 	}
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddKind(KindUsers).
+		AddParent(KindUsers).
 		AddRange(storage.NoneKey).
 		AddId(*user.UserId).
 		Build()
@@ -55,7 +55,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 	}
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddKind(KindUsers).
+		AddParent(KindUsers).
 		AddReversedTimestamp(*user.CreatedAt).
 		AddId(*user.UserId).
 		Build()
@@ -69,7 +69,7 @@ func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
 		return nil, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddKind(KindUsers).
+		AddParent(KindUsers).
 		AddRange(storage.NoneKey).
 		AddId(userID).
 		Build()
@@ -100,7 +100,7 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddKind(KindUsers).
+		AddParent(KindUsers).
 		AddReversedTimestamp(*u.CreatedAt).
 		AddId(*u.UserId).
 		Build()
@@ -108,7 +108,7 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddKind(KindUsers).
+		AddParent(KindUsers).
 		AddRange(storage.NoneKey).
 		AddId(userID).
 		Build()
@@ -121,7 +121,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 		*limit = 20
 	}
 
-	prefix := storage.NewPrefixBuilder(UsersRepoName).AddKind(KindUsers).Build()
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddParent(KindUsers).Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

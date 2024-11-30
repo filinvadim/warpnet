@@ -34,7 +34,7 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	}
 
 	key := storage.NewPrefixBuilder(TimelineRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddReversedTimestamp(*tweet.CreatedAt).
 		AddId(*tweet.TweetId).
 		Build()
@@ -54,7 +54,7 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID, tweetID string, create
 		return fmt.Errorf("createdAt should not be zero")
 	}
 	key := storage.NewPrefixBuilder(TimelineRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddReversedTimestamp(createdAt).
 		AddId(tweetID).
 		Build()
@@ -72,7 +72,7 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 	}
 
 	prefix := storage.NewPrefixBuilder(TimelineRepoName).
-		AddKind(userId).
+		AddParent(userId).
 		Build()
 
 	if cursor != nil && *cursor != "" {

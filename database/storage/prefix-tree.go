@@ -12,10 +12,10 @@ const NoneKey = "none"
 type DatabaseKey string
 
 type (
-	Namespace  string
-	KindLayer  string
-	RangeLayer string
-	IdLayer    string
+	Namespace   string
+	ParentLayer string
+	RangeLayer  string
+	IdLayer     string
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -32,21 +32,21 @@ func (l Namespace) Build() DatabaseKey {
 	return DatabaseKey(l)
 }
 
-func (ns Namespace) AddKind(prefix string) KindLayer {
+func (ns Namespace) AddParent(prefix string) ParentLayer {
 	key := fmt.Sprintf("%s:%s", ns, prefix)
-	return KindLayer(key)
+	return ParentLayer(key)
 }
 
-func (l KindLayer) Build() DatabaseKey {
+func (l ParentLayer) Build() DatabaseKey {
 	return DatabaseKey(l)
 }
 
-func (l KindLayer) AddRange(prefix string) RangeLayer {
+func (l ParentLayer) AddRange(prefix string) RangeLayer {
 	key := fmt.Sprintf("%s:%s", l, prefix)
 	return RangeLayer(key)
 }
 
-func (l KindLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
+func (l ParentLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
 	key := string(l)
 	key = fmt.Sprintf("%s:%019d", key, math.MaxInt64-tm.Unix())
 	return RangeLayer(key)

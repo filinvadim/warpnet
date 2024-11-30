@@ -47,17 +47,17 @@ func (repo *NodeRepo) Create(node *domain_gen.Node) (*domain_gen.Node, error) {
 	}
 
 	IPKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(KindHost).
+		AddParent(KindHost).
 		AddReversedTimestamp(*node.CreatedAt).
 		AddId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.OwnerId).
 		Build()
 	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.Id.String()).
 		Build()
@@ -94,7 +94,7 @@ func (repo *NodeRepo) OwnNode() *domain_gen.Node {
 
 func (repo *NodeRepo) GetByHost(host string, createdAt time.Time) (*domain_gen.Node, error) {
 	IPKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(KindHost).
+		AddParent(KindHost).
 		AddReversedTimestamp(createdAt).
 		AddId(host).
 		Build()
@@ -124,17 +124,17 @@ func (repo *NodeRepo) DeleteByHost(host string, createdAt time.Time) error {
 	}
 
 	ipKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(KindHost).
+		AddParent(KindHost).
 		AddReversedTimestamp(*node.CreatedAt).
 		AddId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.OwnerId).
 		Build()
 	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.Id.String()).
 		Build()
@@ -157,7 +157,7 @@ func (repo *NodeRepo) DeleteByHost(host string, createdAt time.Time) error {
 
 func (repo *NodeRepo) GetByUserId(userId string) (*domain_gen.Node, error) {
 	key := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(userId).
 		Build()
@@ -186,17 +186,17 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 		return err
 	}
 	ipKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(KindHost).
+		AddParent(KindHost).
 		AddReversedTimestamp(*node.CreatedAt).
 		AddId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.OwnerId).
 		Build()
 	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddKind(storage.NoneKey).
+		AddParent(storage.NoneKey).
 		AddRange(storage.NoneKey).
 		AddId(node.Id.String()).
 		Build()
@@ -220,7 +220,7 @@ func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, st
 	}
 
 	// TODO pagination
-	prefix := storage.NewPrefixBuilder(NodesRepoName).AddKind(KindHost).Build()
+	prefix := storage.NewPrefixBuilder(NodesRepoName).AddParent(KindHost).Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

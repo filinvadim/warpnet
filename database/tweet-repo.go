@@ -43,7 +43,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 	}
 
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddRange(storage.NoneKey).
 		AddId(*tweet.TweetId).
 		Build()
@@ -53,7 +53,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 	}
 
 	sortableKey := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddReversedTimestamp(*tweet.CreatedAt).
 		AddId(*tweet.TweetId).
 		Build()
@@ -64,7 +64,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 // Get retrieves a tweet by its ID
 func (repo *TweetRepo) Get(userID, tweetID string) (*domain_gen.Tweet, error) {
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddRange(storage.NoneKey).
 		AddId(tweetID).
 		Build()
@@ -88,7 +88,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		return err
 	}
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddRange(storage.NoneKey).
 		AddId(tweetID).
 		Build()
@@ -96,7 +96,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		return err
 	}
 	sortableKey := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userID).
+		AddParent(userID).
 		AddReversedTimestamp(*t.CreatedAt).
 		AddId(tweetID).
 		Build()
@@ -113,7 +113,7 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 	}
 
 	prefix := storage.NewPrefixBuilder(TweetsRepoName).
-		AddKind(userId).
+		AddParent(userId).
 		Build()
 
 	if cursor != nil && *cursor != "" {
