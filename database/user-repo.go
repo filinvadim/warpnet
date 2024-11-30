@@ -46,7 +46,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddParent(KindUsers).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(*user.UserId).
 		Build()
 
@@ -70,7 +70,7 @@ func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddParent(KindUsers).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(userID).
 		Build()
 	data, err := repo.db.Get(fixedKey)
@@ -109,7 +109,7 @@ func (repo *UserRepo) Delete(userID string) error {
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddParent(KindUsers).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(userID).
 		Build()
 	return repo.db.Delete(fixedKey)

@@ -146,6 +146,9 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 
 	items := make([]RawItem, 0, *limit)
 	err := db.iterateKeysValues(startCursor, func(key string, value []byte) error {
+		if strings.Contains(key, FixedKey) {
+			return nil
+		}
 		if len(items) > int(*limit) {
 			lastCursor = key
 			return ErrStopIteration
@@ -159,9 +162,7 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 	if len(items) < int(*limit) {
 		lastCursor = ""
 	}
-	if len(lastCursor) > len(prefix) {
-		lastCursor = removeUUID(lastCursor)
-	}
+
 	return listify(items), DatabaseKey(lastCursor).Cursor(), nil
 }
 
@@ -195,16 +196,6 @@ func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) 
 	})
 }
 
-func removeUUID(input string) string {
-	lastColon := strings.LastIndex(input, ":")
-	if lastColon == -1 {
-		// Если двоеточия нет, возвращаем оригинальную строку
-		return input
-	}
-	// Возвращаем строку до последнего двоеточия
-	return input[:lastColon]
-}
-
 func listify(items [][]byte) []byte {
 	itemsList := bytes.Join(items, []byte(`,`))
 	itemsList = append(itemsList, 0)
@@ -236,22 +227,12 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 			return err
 		}
 
-		var sortableKey []byte
-		err = item.Value(func(val []byte) error {
-			sortableKey = append([]byte{}, val...)
-			return nil
-		})
+		val, err := item.ValueCopy(nil)
 		if err != nil {
 			return err
 		}
-		item, err = txn.Get(sortableKey)
-		if err != nil {
-			return err
-		}
-		return item.Value(func(val []byte) error {
-			result = append([]byte{}, val...)
-			return nil
-		})
+		result = append([]byte{}, val...)
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -275,24 +256,8 @@ func (db *DB) Delete(key DatabaseKey) error {
 		return ErrNotRunning
 	}
 
-	var sortableKey []byte
-	err := db.badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key.Bytes())
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			sortableKey = append([]byte{}, val...)
-			return nil
-		})
-	})
-	if err != nil {
-		return err
-	}
-
 	return db.badger.Update(func(txn *badger.Txn) error {
-		if err := txn.Delete(sortableKey); err != nil {
+		if err := txn.Delete(key.Bytes()); err != nil {
 			return err
 		}
 		return txn.Delete([]byte(key))

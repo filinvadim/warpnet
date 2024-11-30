@@ -11,7 +11,7 @@ import (
 const (
 	AuthRepoName = "AUTH"
 	PassSubName  = "PASS" // TODO pass restore functionality
-	OwnerSubName = "OWNER"
+	OwnerSubName = "owner"
 )
 
 var (
@@ -37,11 +37,11 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 }
 
 func (repo *AuthRepo) NewOwner() (userId string, err error) {
+	id := uuid.New().String()
 	fixedKey := storage.NewPrefixBuilder(AuthRepoName).
 		AddParent(OwnerSubName).
 		Build()
 
-	id := uuid.New().String()
 	if err := repo.db.Set(fixedKey, []byte(id)); err != nil {
 		return "", err
 	}

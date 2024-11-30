@@ -44,7 +44,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
 		AddParent(userID).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(*tweet.TweetId).
 		Build()
 
@@ -65,7 +65,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 func (repo *TweetRepo) Get(userID, tweetID string) (*domain_gen.Tweet, error) {
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
 		AddParent(userID).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(tweetID).
 		Build()
 	data, err := repo.db.Get(fixedKey)
@@ -89,7 +89,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	}
 	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
 		AddParent(userID).
-		AddRange(storage.NoneKey).
+		AddRange(storage.FixedRangeKey).
 		AddId(tweetID).
 		Build()
 	if err = repo.db.Delete(fixedKey); err != nil {

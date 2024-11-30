@@ -3,11 +3,15 @@ package storage
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const NoneKey = "none"
+const (
+	FixedKey      = "fixed"
+	FixedRangeKey = FixedKey
+)
 
 type (
 	Namespace   string
@@ -47,10 +51,19 @@ func (l ParentLayer) Build() DatabaseKey {
 	return build(string(l))
 }
 
-func (l ParentLayer) AddRange(mandatoryPrefix string) RangeLayer {
+type RangePrefix string
+
+func (l ParentLayer) AddRange(mandatoryPrefix RangePrefix) RangeLayer {
 	if mandatoryPrefix == "" {
 		panic("range prefix must not be empty")
 	}
+	if mandatoryPrefix != FixedRangeKey {
+		_, err := strconv.ParseInt(string(mandatoryPrefix), 10, 64)
+		if err != nil {
+			panic(fmt.Sprintf("invalid range prefix: %s", mandatoryPrefix))
+		}
+	}
+
 	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
 	return RangeLayer(key)
 }
@@ -77,9 +90,6 @@ func (l IdLayer) Build() DatabaseKey {
 }
 
 func build(s string) DatabaseKey {
-	if len(strings.Split(s, ":")) != 4 {
-		panic("database key must contain 4 parts")
-	}
 	return DatabaseKey(s)
 }
 
