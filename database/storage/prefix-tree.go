@@ -9,13 +9,13 @@ import (
 
 const NoneKey = "none"
 
-type DatabaseKey string
-
 type (
 	Namespace   string
 	ParentLayer string
 	RangeLayer  string
 	IdLayer     string
+
+	DatabaseKey string
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -24,25 +24,34 @@ type PrefixBuilder struct {
 }
 
 // NewPrefixBuilder creates a new PrefixBuilder instance
-func NewPrefixBuilder(ns string) Namespace {
-	return Namespace(ns)
+func NewPrefixBuilder(mandatoryNamespace string) Namespace {
+	if mandatoryNamespace == "" {
+		panic("namespace must not be empty")
+	}
+	return Namespace(mandatoryNamespace)
 }
 
-func (l Namespace) Build() DatabaseKey {
-	return DatabaseKey(l)
+func (ns Namespace) Build() DatabaseKey {
+	return build(string(ns))
 }
 
-func (ns Namespace) AddParent(prefix string) ParentLayer {
-	key := fmt.Sprintf("%s:%s", ns, prefix)
+func (ns Namespace) AddParent(mandatoryPrefix string) ParentLayer {
+	if mandatoryPrefix == "" {
+		panic("parent prefix must not be empty")
+	}
+	key := fmt.Sprintf("%s:%s", ns, mandatoryPrefix)
 	return ParentLayer(key)
 }
 
 func (l ParentLayer) Build() DatabaseKey {
-	return DatabaseKey(l)
+	return build(string(l))
 }
 
-func (l ParentLayer) AddRange(prefix string) RangeLayer {
-	key := fmt.Sprintf("%s:%s", l, prefix)
+func (l ParentLayer) AddRange(mandatoryPrefix string) RangeLayer {
+	if mandatoryPrefix == "" {
+		panic("range prefix must not be empty")
+	}
+	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
 	return RangeLayer(key)
 }
 
@@ -52,16 +61,26 @@ func (l ParentLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
 	return RangeLayer(key)
 }
 func (l RangeLayer) Build() DatabaseKey {
-	return DatabaseKey(l)
+	return build(string(l))
 }
 
-func (l RangeLayer) AddId(prefix string) IdLayer {
-	key := fmt.Sprintf("%s:%s", l, prefix)
+func (l RangeLayer) AddId(mandatoryPrefix string) IdLayer {
+	if mandatoryPrefix == "" {
+		panic("id prefix must not be empty")
+	}
+	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
 	return IdLayer(key)
 }
 
 func (l IdLayer) Build() DatabaseKey {
-	return DatabaseKey(l)
+	return build(string(l))
+}
+
+func build(s string) DatabaseKey {
+	if len(strings.Split(s, ":")) != 4 {
+		panic("database key must contain 4 parts")
+	}
+	return DatabaseKey(s)
 }
 
 func (k DatabaseKey) String() string {
