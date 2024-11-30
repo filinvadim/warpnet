@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
-const (
-	SortableDelimiter = ":"
-)
+const NoneKey = "none"
+
+type DatabaseKey string
 
 type (
-	Namespace                 string
-	NamespaceUserId           string
-	NamespaceUserIdSeqTweetId string
-	NamespaceNodeId           string
-	NamespaceNodeIdHost       string
-	DatabaseKey               string
+	Namespace  string
+	KindLayer  string
+	RangeLayer string
+	IdLayer    string
 )
 
 // PrefixBuilder is a struct that holds a key and any potential error
@@ -29,67 +28,57 @@ func NewPrefixBuilder(ns string) Namespace {
 	return Namespace(ns)
 }
 
-// AddPrefix adds a prefix to the key if it does not already exist
-func (ns Namespace) AddCustomPrefix(prefix string) NamespaceUserId {
+func (l Namespace) Build() DatabaseKey {
+	return DatabaseKey(l)
+}
+
+func (ns Namespace) AddKind(prefix string) KindLayer {
 	key := fmt.Sprintf("%s:%s", ns, prefix)
-	return NamespaceUserId(key)
+	return KindLayer(key)
 }
 
-func (ns Namespace) Build() DatabaseKey {
-	key := string(ns)
-	if !strings.Contains(key, SortableDelimiter) {
-		key = fmt.Sprintf("%s:", key)
+func (l KindLayer) Build() DatabaseKey {
+	return DatabaseKey(l)
+}
+
+func (l KindLayer) AddRange(prefix string) RangeLayer {
+	key := fmt.Sprintf("%s:%s", l, prefix)
+	return RangeLayer(key)
+}
+
+func (l KindLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
+	key := string(l)
+	key = fmt.Sprintf("%s:%019d", key, math.MaxInt64-tm.Unix())
+	return RangeLayer(key)
+}
+func (l RangeLayer) Build() DatabaseKey {
+	return DatabaseKey(l)
+}
+
+func (l RangeLayer) AddId(prefix string) IdLayer {
+	key := fmt.Sprintf("%s:%s", l, prefix)
+	return IdLayer(key)
+}
+
+func (l IdLayer) Build() DatabaseKey {
+	return DatabaseKey(l)
+}
+
+func (k DatabaseKey) String() string {
+	return string(k)
+}
+func (k DatabaseKey) Bytes() []byte {
+	return []byte(k)
+}
+func (k DatabaseKey) Cursor() string {
+	key := string(k)
+	lastColon := strings.LastIndex(key, ":")
+	if lastColon == -1 {
+		// Если двоеточия нет, возвращаем оригинальную строку
+		return key
 	}
-	return DatabaseKey(key)
-}
-
-func (ns Namespace) AddUserId(userId string) NamespaceUserId {
-	key := fmt.Sprintf("%s:%s:{seq}", ns, userId)
-	return NamespaceUserId(key)
-}
-
-func (nus NamespaceUserId) Build() DatabaseKey {
-	key := string(nus)
-	if !strings.Contains(key, SortableDelimiter) {
-		key = fmt.Sprintf("%s:", key)
-	}
-	return DatabaseKey(key)
-}
-
-func (ns Namespace) AddNodeId(nodeId string) NamespaceNodeId {
-	key := fmt.Sprintf("%s:%s:{seq}", ns, nodeId)
-	return NamespaceNodeId(key)
-}
-
-func (nni NamespaceNodeId) Build() DatabaseKey {
-	key := string(nni)
-	if !strings.Contains(key, SortableDelimiter) {
-		key = fmt.Sprintf("%s:", key)
-	}
-	return DatabaseKey(key)
-}
-
-// AddIPAddress adds an IP address segment to the key after validation
-func (ns Namespace) AddHostAddress(host string) NamespaceNodeIdHost {
-	key := fmt.Sprintf("%s:%s", ns, host)
-	return NamespaceNodeIdHost(key)
-}
-
-func (nnh NamespaceNodeIdHost) Build() DatabaseKey {
-	key := string(nnh)
-	if !strings.Contains(key, SortableDelimiter) {
-		key = fmt.Sprintf("%s:", key)
-	}
-	return DatabaseKey(key)
-}
-
-// AddTweetId adds a tweet ID segment to the key after validation
-func (nsui NamespaceUserId) AddTweetId(tweetId string) NamespaceUserIdSeqTweetId {
-	if tweetId == "" {
-		return NamespaceUserIdSeqTweetId(nsui)
-	}
-	key := fmt.Sprintf("%s:%s", nsui, tweetId)
-	return NamespaceUserIdSeqTweetId(key)
+	// Возвращаем строку до последнего двоеточия
+	return key[:lastColon]
 }
 
 // AddFollowedId adds a followee ID segment to the key (reuses user ID validation)
@@ -111,30 +100,4 @@ func (pb *PrefixBuilder) AddReaderId(readerId string) *PrefixBuilder {
 	//
 	//pb.key = fmt.Sprintf("%s:reader:%s", pb.key, readerId)
 	return pb
-}
-
-// Build returns the final key string and any error that occurred during the chain
-func (nust NamespaceUserIdSeqTweetId) Build() DatabaseKey {
-	key := string(nust)
-	if !strings.Contains(key, SortableDelimiter) {
-		key = fmt.Sprintf("%s:", key)
-	}
-	return DatabaseKey(key)
-}
-
-func (k DatabaseKey) SortableValueKey(seqNum uint64) []byte {
-	key := string(k)
-	reverseSeq := fmt.Sprintf("%019d", math.MaxInt64-int64(seqNum))
-	key = strings.ReplaceAll(key, "{seq}", reverseSeq)
-	return []byte(key)
-}
-
-func (k DatabaseKey) KeyIndex() []byte {
-	key := strings.ReplaceAll(string(k), ":", "_")
-	key = strings.ReplaceAll(key, "{seq}", "none")
-	return []byte(key)
-}
-
-func (k DatabaseKey) String() string {
-	return string(k)
 }

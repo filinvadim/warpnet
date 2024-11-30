@@ -42,15 +42,33 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 		return nil, fmt.Errorf("tweet marshal: %w", err)
 	}
 
-	key := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(*tweet.TweetId).Build()
+	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userID).
+		AddRange(storage.NoneKey).
+		AddId(*tweet.TweetId).
+		Build()
 
-	return tweet, repo.db.Set(key, data)
+	if err = repo.db.Set(fixedKey, data); err != nil {
+		return nil, err
+	}
+
+	sortableKey := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userID).
+		AddReversedTimestamp(*tweet.CreatedAt).
+		AddId(*tweet.TweetId).
+		Build()
+
+	return tweet, repo.db.Set(sortableKey, data)
 }
 
 // Get retrieves a tweet by its ID
 func (repo *TweetRepo) Get(userID, tweetID string) (*domain_gen.Tweet, error) {
-	key := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
-	data, err := repo.db.Get(key)
+	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userID).
+		AddRange(storage.NoneKey).
+		AddId(tweetID).
+		Build()
+	data, err := repo.db.Get(fixedKey)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +83,24 @@ func (repo *TweetRepo) Get(userID, tweetID string) (*domain_gen.Tweet, error) {
 
 // Delete removes a tweet by its ID
 func (repo *TweetRepo) Delete(userID, tweetID string) error {
-	key := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userID).AddTweetId(tweetID).Build()
-	return repo.db.Delete(key)
+	t, err := repo.Get(userID, tweetID)
+	if err != nil {
+		return err
+	}
+	fixedKey := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userID).
+		AddRange(storage.NoneKey).
+		AddId(tweetID).
+		Build()
+	if err = repo.db.Delete(fixedKey); err != nil {
+		return err
+	}
+	sortableKey := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userID).
+		AddReversedTimestamp(*t.CreatedAt).
+		AddId(tweetID).
+		Build()
+	return repo.db.Delete(sortableKey)
 }
 
 func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
@@ -78,7 +112,9 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		*limit = 20
 	}
 
-	prefix := storage.NewPrefixBuilder(TweetsRepoName).AddUserId(userId).Build()
+	prefix := storage.NewPrefixBuilder(TweetsRepoName).
+		AddKind(userId).
+		Build()
 
 	if cursor != nil && *cursor != "" {
 		prefix = storage.DatabaseKey(*cursor)

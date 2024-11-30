@@ -5,6 +5,7 @@ import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/filinvadim/dWighter/database"
 	"github.com/filinvadim/dWighter/database/storage"
@@ -37,9 +38,12 @@ func TestTweetRepo_Create(t *testing.T) {
 	}
 
 	id := uuid.New().String()
+	now := time.Now()
+
 	user := domain_gen.User{
-		Username: "User",
-		UserId:   &id,
+		Username:  "User",
+		UserId:    &id,
+		CreatedAt: &now,
 	}
 
 	_, err := repo.Create(*user.UserId, tweet)
@@ -47,7 +51,7 @@ func TestTweetRepo_Create(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был корректно создан
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -62,16 +66,19 @@ func TestTweetRepo_Get(t *testing.T) {
 	}
 	id := uuid.New().String()
 
+	now := time.Now()
+
 	user := domain_gen.User{
-		Username: "User",
-		UserId:   &id,
+		Username:  "User",
+		UserId:    &id,
+		CreatedAt: &now,
 	}
 
 	_, err := repo.Create(*user.UserId, tweet)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь может быть получен
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -94,11 +101,12 @@ func TestTweetRepo_Delete(t *testing.T) {
 	_, err := repo.Create(*user.UserId, tweet)
 	assert.NoError(t, err)
 
-	err = repo.Delete(*user.UserId, tweetID)
+	now := time.Now()
+	err = repo.Delete(*user.UserId, tweetID, now)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был удален
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedTweet)
 }

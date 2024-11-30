@@ -88,7 +88,7 @@ func TestAddAndDeleteTweetFromTimeline(t *testing.T) {
 	assert.Equal(t, *tweet.TweetId, *tweets[0].TweetId)
 
 	// Delete the tweet from the timeline
-	err = repo.DeleteTweetFromTimeline(userID, *tweets[0].CreatedAt)
+	err = repo.DeleteTweetFromTimeline(userID, *tweets[0].TweetId, *tweets[0].CreatedAt)
 	assert.NoError(t, err)
 
 	// Verify that the tweet was deleted

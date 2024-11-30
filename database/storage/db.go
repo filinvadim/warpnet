@@ -162,7 +162,7 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 	if len(lastCursor) > len(prefix) {
 		lastCursor = removeUUID(lastCursor)
 	}
-	return listify(items), lastCursor, nil
+	return listify(items), DatabaseKey(lastCursor).Cursor(), nil
 }
 
 type iterKeysValuesFunc func(key string, val []byte) error
@@ -217,19 +217,10 @@ func (db *DB) Set(key DatabaseKey, value []byte) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
-	seqNum, err := db.NextSequence()
-	if err != nil {
-		return err
-	}
-	sortableKey := key.SortableValueKey(seqNum)
-	index := key.KeyIndex()
+
 	return db.badger.Update(func(txn *badger.Txn) error {
-		se := badger.NewEntry(sortableKey, value)
-		if err := txn.SetEntry(se); err != nil {
-			return err
-		}
-		fe := badger.NewEntry(index, sortableKey)
-		return txn.SetEntry(fe)
+		e := badger.NewEntry(key.Bytes(), value)
+		return txn.SetEntry(e)
 	})
 }
 
@@ -238,11 +229,9 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 		return nil, ErrNotRunning
 	}
 
-	index := key.KeyIndex()
-
 	var result []byte
 	err := db.badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(index)
+		item, err := txn.Get(key.Bytes())
 		if err != nil {
 			return err
 		}
@@ -286,11 +275,9 @@ func (db *DB) Delete(key DatabaseKey) error {
 		return ErrNotRunning
 	}
 
-	index := key.KeyIndex()
-
 	var sortableKey []byte
 	err := db.badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(index)
+		item, err := txn.Get(key.Bytes())
 		if err != nil {
 			return err
 		}
