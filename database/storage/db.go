@@ -135,7 +135,12 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 		startCursor = DatabaseKey(*cursor)
 	}
 
-	items := make([]RawItem, 0, *limit)
+	if limit == nil {
+		defaultLimit := uint64(20)
+		limit = &defaultLimit
+	}
+
+	items := make([]RawItem, 0, 20)
 	cur, err := db.iterateKeysValues(
 		prefix, startCursor, limit,
 		func(key string, value []byte) error {
@@ -158,10 +163,6 @@ func (db *DB) iterateKeysValues(
 	}
 	if strings.Contains(prefix.String(), FixedKey) {
 		return "", errors.New("cannot iterate thru fixed keys")
-	}
-	if limit == nil {
-		defaultLimit := uint64(20)
-		limit = &defaultLimit
 	}
 
 	var lastKey DatabaseKey

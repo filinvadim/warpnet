@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
@@ -117,7 +118,8 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		return nil, "", err
 	}
 
-	tweets := make([]domain_gen.Tweet, 0, *limit)
+	itemsLen := len(bytes.Split(items, []byte(",")))
+	tweets := make([]domain_gen.Tweet, 0, itemsLen)
 	if err = json.JSON.Unmarshal(items, &tweets); err != nil {
 		return nil, "", err
 	}
