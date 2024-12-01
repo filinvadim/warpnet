@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	ErrStopIteration = errors.New("stop iteration")
 	ErrWrongPassword = errors.New("wrong password")
 	ErrNotRunning    = errors.New("DB is not running")
 )
@@ -108,6 +107,9 @@ func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
+	if strings.Contains(prefix.String(), FixedKey) {
+		return errors.New("cannot iterate thru fixed key")
+	}
 	return db.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		it := txn.NewIterator(opts)
@@ -128,61 +130,68 @@ func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 type RawItem = []byte
 
 func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, string, error) {
+	var startCursor DatabaseKey
+	if cursor != nil && *cursor != "" {
+		startCursor = DatabaseKey(*cursor)
+	}
+
+	items := make([]RawItem, 0, *limit)
+	cur, err := db.iterateKeysValues(
+		prefix, startCursor, limit,
+		func(key string, value []byte) error {
+			items = append(items, value)
+			return nil
+		})
+	return listify(items), cur, err
+}
+
+type iterKeysValuesFunc func(key string, val []byte) error
+
+func (db *DB) iterateKeysValues(
+	prefix DatabaseKey,
+	startCursor DatabaseKey,
+	limit *uint64,
+	handler iterKeysValuesFunc,
+) (cursor string, err error) {
 	if !db.isRunning.Load() {
-		return nil, "", ErrNotRunning
+		return "", ErrNotRunning
+	}
+	if strings.Contains(prefix.String(), FixedKey) {
+		return "", errors.New("cannot iterate thru fixed keys")
 	}
 	if limit == nil {
 		defaultLimit := uint64(20)
 		limit = &defaultLimit
 	}
 
-	var (
-		lastCursor  string
-		startCursor = prefix
-	)
-	if cursor != nil && *cursor != "" {
-		startCursor = DatabaseKey(*cursor)
-	}
+	var lastKey DatabaseKey
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = true
+	opts.PrefetchSize = 20
 
-	items := make([]RawItem, 0, *limit)
-	err := db.iterateKeysValues(startCursor, func(key string, value []byte) error {
-		if strings.Contains(key, FixedKey) {
-			return nil
-		}
-		if len(items) > int(*limit) {
-			lastCursor = key
-			return ErrStopIteration
-		}
-		items = append(items, value)
-		return nil
-	})
-	if err != nil && !errors.Is(err, ErrStopIteration) {
-		return nil, "", err
-	}
-	if len(items) < int(*limit) {
-		lastCursor = ""
-	}
-
-	return listify(items), DatabaseKey(lastCursor).Cursor(), nil
-}
-
-type iterKeysValuesFunc func(key string, val []byte) error
-
-func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) error {
-	if !db.isRunning.Load() {
-		return ErrNotRunning
-	}
-	return db.badger.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = true
-		opts.PrefetchSize = 20
+	err = db.badger.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		p := []byte(prefix)
+		p := prefix.Bytes()
+		if !startCursor.IsEmpty() {
+			p = startCursor.Bytes()
+		}
+		iterNum := 0
 		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+			p = prefix.Bytes() // starting point found
+
 			item := it.Item()
 			key := string(item.Key())
+			if strings.Contains(key, FixedKey) {
+				return nil
+			}
+
+			if iterNum > int(*limit) {
+				lastKey = DatabaseKey(key)
+				return nil
+			}
+			iterNum++
 
 			val, err := item.ValueCopy(nil)
 			if err != nil {
@@ -192,8 +201,16 @@ func (db *DB) iterateKeysValues(prefix DatabaseKey, handler iterKeysValuesFunc) 
 				return err
 			}
 		}
+		if iterNum < int(*limit) {
+			lastKey = ""
+		}
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
+
+	return lastKey.DropId(), nil
 }
 
 func listify(items [][]byte) []byte {

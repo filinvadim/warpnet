@@ -93,13 +93,16 @@ func build(s string) DatabaseKey {
 	return DatabaseKey(s)
 }
 
+func (k DatabaseKey) IsEmpty() bool {
+	return string(k) == ""
+}
 func (k DatabaseKey) String() string {
 	return string(k)
 }
 func (k DatabaseKey) Bytes() []byte {
 	return []byte(k)
 }
-func (k DatabaseKey) Cursor() string {
+func (k DatabaseKey) DropId() string {
 	key := string(k)
 	lastColon := strings.LastIndex(key, ":")
 	if lastColon == -1 {

@@ -312,14 +312,28 @@
         loadProfile();
     }
 
+    let usersCursor = null;
+    const usersLimit = 3;  // Лимит твитов за одну загрузку
+
     async function loadRecommendedUsers() {
         try {
-            const response = await fetch(`${apiUrl}/v1/api/users?limit=3`, { headers: addHeaders({}) });
+            let url =`${apiUrl}/v1/api/users?limit=${usersLimit}`
+            if (usersCursor) {
+                url += `&cursor=${usersCursor}`;
+            }
+            const response = await fetch(url, { headers: addHeaders({}) });
+
             const data = await response.json();
 
             const recommendedDiv = document.getElementById('recommended-users');
-            recommendedDiv.innerHTML = '';
+            if (!usersCursor) {
+                recommendedDiv.innerHTML = '';
+            }
+
             data.users.forEach(user => {
+                if (user?.user_id === currentUserId) {
+                    return;
+                }
                 recommendedDiv.innerHTML += `
                     <div class="recommended-user">
                         <div class="recommended-user-info">
@@ -331,6 +345,21 @@
             });
 
             document.getElementById('recommended').classList.add('active');
+
+            usersCursor = data.cursor || null;
+            const loadMoreButton = document.getElementById('load-more');
+            if (usersCursor) {
+                if (!loadMoreButton) {
+                    const button = document.createElement('button');
+                    button.id = 'load-more';
+                    button.textContent = 'Load More';
+                    button.style.marginTop = '10px';
+                    button.onclick = () => loadRecommendedUsers(); // Передаем функцию с правильным контекстом
+                    recommendedDiv.appendChild(button);
+                }
+            } else if (loadMoreButton) {
+                loadMoreButton.remove();
+            }
         } catch (error) {
             console.error('Error loading recommended users:', error);
         }
@@ -402,6 +431,57 @@
         }
     }
 
+    let tweetsCursor = null; // Переменная для хранения курсора
+    const tweetsLimit = 20;  // Лимит твитов за одну загрузку
+
+    async function loadProfile() {
+        try {
+            let url = `${apiUrl}/v1/api/tweets/${currentUserId}?limit=${tweetsLimit}`
+            if (tweetsCursor) {
+                url += `&cursor=${tweetsCursor}`;
+            }
+            const response = await fetch(url, { headers: addHeaders({}) });
+            const data = await response.json();
+
+            const profileUsername = sessionStorage.getItem('username');
+            const profileId = sessionStorage.getItem('userId');
+
+            document.getElementById('profile-username').innerText = '@' + profileUsername;
+            document.getElementById('profile-id').innerText = 'User ID: ' + profileId;
+
+            const profileTweetsDiv = document.getElementById('profile-tweets');
+
+            if (!tweetsCursor) {
+                profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
+            }
+            data.tweets.forEach(tweet => {
+                const tweetTime = new Date(tweet.created_at).toLocaleString();
+                profileTweetsDiv.innerHTML += `
+                    <div class="tweet">
+                        <div class="tweet-text">${tweet.content}</div>
+                        <div class="tweet-time">${tweetTime}</div>
+                    </div>`;
+            });
+
+            tweetsCursor = data.cursor || null;
+            // Если есть еще данные для загрузки, добавляем кнопку "Загрузить еще"
+            const loadMoreButton = document.getElementById('load-more');
+            if (tweetsCursor) {
+                if (!loadMoreButton) {
+                    const button = document.createElement('button');
+                    button.id = 'load-more';
+                    button.textContent = 'Load More';
+                    button.style.marginTop = '10px';
+                    button.onclick = () => loadProfile(); // Передаем функцию с правильным контекстом
+                    profileTweetsDiv.appendChild(button);
+                }
+            } else if (loadMoreButton) {
+                loadMoreButton.remove();
+            }
+        } catch (error) {
+            console.error('Error loading profile:', error);
+        }
+    }
 
     async function postTweet() {
         const tweetText = document.getElementById('tweet-text').value;
@@ -425,32 +505,6 @@
             }
         } catch (error) {
             console.error('Error posting tweet:', error);
-        }
-    }
-
-    async function loadProfile() {
-        try {
-            const response = await fetch(`${apiUrl}/v1/api/tweets/${currentUserId}`, { headers: addHeaders({}) });
-            const data = await response.json();
-
-            const profileUsername = sessionStorage.getItem('username');
-            const profileId = sessionStorage.getItem('userId');
-
-            document.getElementById('profile-username').innerText = '@' + profileUsername;
-            document.getElementById('profile-id').innerText = 'User ID: ' + profileId;
-
-            const profileTweetsDiv = document.getElementById('profile-tweets');
-            profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
-            data.tweets.forEach(tweet => {
-                const tweetTime = new Date(tweet.created_at).toLocaleString();
-                profileTweetsDiv.innerHTML += `
-                    <div class="tweet">
-                        <div class="tweet-text">${tweet.content}</div>
-                        <div class="tweet-time">${tweetTime}</div>
-                    </div>`;
-            });
-        } catch (error) {
-            console.error('Error loading profile:', error);
         }
     }
 

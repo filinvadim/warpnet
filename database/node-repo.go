@@ -214,17 +214,8 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 }
 
 func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, string, error) {
-	if limit == nil {
-		limit = new(uint64)
-		*limit = 20
-	}
-
 	// TODO pagination
 	prefix := storage.NewPrefixBuilder(NodesRepoName).AddParent(KindHost).Build()
-
-	if cursor != nil && *cursor != "" {
-		prefix = storage.DatabaseKey(*cursor)
-	}
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {

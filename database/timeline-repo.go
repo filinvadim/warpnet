@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"sort"
 	"time"
 
 	"github.com/filinvadim/dWighter/database/storage"
@@ -66,18 +65,8 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 	if userId == "" {
 		return nil, "", errors.New("user ID cannot be blank")
 	}
-	if *limit == 0 {
-		limit = new(uint64)
-		*limit = 20
-	}
 
-	prefix := storage.NewPrefixBuilder(TimelineRepoName).
-		AddParent(userId).
-		Build()
-
-	if cursor != nil && *cursor != "" {
-		prefix = storage.DatabaseKey(*cursor)
-	}
+	prefix := storage.NewPrefixBuilder(TimelineRepoName).AddParent(userId).Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
@@ -89,9 +78,9 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 		return nil, "", err
 	}
 
-	sort.SliceStable(tweets, func(i, j int) bool {
-		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
-	})
+	//sort.SliceStable(tweets, func(i, j int) bool {
+	//	return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
+	//})
 
 	return tweets, cur, nil
 }

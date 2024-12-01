@@ -107,18 +107,10 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 	if userId == "" {
 		return nil, "", errors.New("user ID cannot be blank")
 	}
-	if limit == nil {
-		limit = new(uint64)
-		*limit = 20
-	}
 
 	prefix := storage.NewPrefixBuilder(TweetsRepoName).
 		AddParent(userId).
 		Build()
-
-	if cursor != nil && *cursor != "" {
-		prefix = storage.DatabaseKey(*cursor)
-	}
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
