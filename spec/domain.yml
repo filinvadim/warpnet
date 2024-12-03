@@ -87,6 +87,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Retweet'
+        parent_id:
+          type: string
+        root_id:
+          type: string
       required:
         - user_id
         - content

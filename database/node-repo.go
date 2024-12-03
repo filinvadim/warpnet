@@ -1,9 +1,9 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"sort"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
@@ -222,15 +222,11 @@ func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, st
 		return nil, "", err
 	}
 
-	nodes := make([]domain_gen.Node, 0, *limit)
-	err = json.JSON.Unmarshal(items, &nodes)
+	nodes := make([]domain_gen.Node, 0, len(items))
+	err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &nodes)
 	if err != nil {
 		return nil, "", err
 	}
-
-	sort.SliceStable(nodes, func(i, j int) bool {
-		return nodes[i].CreatedAt.After(*nodes[j].CreatedAt)
-	})
 
 	return nodes, cur, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/crypto"
+	"github.com/filinvadim/dWighter/json"
 	"github.com/labstack/gommon/log"
 	"math/rand/v2"
 	"strings"
@@ -129,7 +130,7 @@ func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 
 type RawItem = []byte
 
-func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, string, error) {
+func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([][]byte, string, error) {
 	var startCursor DatabaseKey
 	if cursor != nil && *cursor != "" {
 		startCursor = DatabaseKey(*cursor)
@@ -147,7 +148,7 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]byte, s
 			items = append(items, value)
 			return nil
 		})
-	return listify(items), cur, err
+	return jsonifyList(items), cur, err
 }
 
 type iterKeysValuesFunc func(key string, val []byte) error
@@ -214,12 +215,15 @@ func (db *DB) iterateKeysValues(
 	return lastKey.DropId(), nil
 }
 
-func listify(items [][]byte) []byte {
-	itemsList := bytes.Join(items, []byte(`,`))
-	itemsList = append(itemsList, 0)
-	copy(itemsList[1:], itemsList[0:])
-	itemsList[0] = byte('[')
-	return append(itemsList, ']')
+func jsonifyList(items [][]byte) [][]byte {
+	items[0] = append(items[0], 0)
+	copy(items[0][1:], items[0][0:])
+	items[0][0] = byte('[')
+	items[len(items)-1] = append(items[len(items)-1], ']')
+	if !json.JSON.Valid(bytes.Join(items, []byte(","))) {
+		return [][]byte{[]byte("invalid JSON array")}
+	}
+	return items
 }
 
 func (db *DB) Set(key DatabaseKey, value []byte) error {

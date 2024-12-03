@@ -32,6 +32,7 @@ func (repo *TweetRepo) Create(userID string, tweet *domain_gen.Tweet) (*domain_g
 	if tweet.TweetId == nil {
 		id := uuid.New().String()
 		tweet.TweetId = &id
+		tweet.RootId = &id
 	}
 	if tweet.CreatedAt == nil {
 		now := time.Now()
@@ -118,15 +119,12 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		return nil, "", err
 	}
 
-	itemsLen := len(bytes.Split(items, []byte(",")))
-	tweets := make([]domain_gen.Tweet, 0, itemsLen)
-	if err = json.JSON.Unmarshal(items, &tweets); err != nil {
+	tweets := make([]domain_gen.Tweet, 0, len(items))
+	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &tweets); err != nil {
 		return nil, "", err
 	}
-
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
 	})
-
 	return tweets, cur, nil
 }

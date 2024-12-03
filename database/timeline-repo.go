@@ -1,9 +1,11 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	"sort"
 	"time"
 
 	"github.com/filinvadim/dWighter/database/storage"
@@ -47,10 +49,10 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 
 func (repo *TimelineRepo) DeleteTweetFromTimeline(userID, tweetID string, createdAt time.Time) error {
 	if userID == "" {
-		return errors.New("userID cannot be blank")
+		return errors.New("user ID cannot be blank")
 	}
 	if createdAt.IsZero() {
-		return fmt.Errorf("createdAt should not be zero")
+		return fmt.Errorf("created time should not be zero")
 	}
 	key := storage.NewPrefixBuilder(TimelineRepoName).
 		AddParent(userID).
@@ -73,14 +75,14 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 		return nil, "", err
 	}
 
-	tweets := make([]domain_gen.Tweet, 0, *limit)
-	if err = json.JSON.Unmarshal(items, &tweets); err != nil {
+	tweets := make([]domain_gen.Tweet, 0, len(items))
+	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &tweets); err != nil {
 		return nil, "", err
 	}
 
-	//sort.SliceStable(tweets, func(i, j int) bool {
-	//	return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
-	//})
+	sort.SliceStable(tweets, func(i, j int) bool {
+		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
+	})
 
 	return tweets, cur, nil
 }

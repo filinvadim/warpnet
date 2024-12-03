@@ -1,11 +1,11 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"sort"
 	"time"
 
 	"github.com/filinvadim/dWighter/database/storage"
@@ -123,14 +123,10 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 		return nil, "", err
 	}
 
-	users := make([]domain_gen.User, 0, *limit)
-	if err = json.JSON.Unmarshal(items, &users); err != nil {
+	users := make([]domain_gen.User, 0, len(items))
+	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &users); err != nil {
 		return nil, "", fmt.Errorf("%w %s", err, items)
 	}
-
-	sort.SliceStable(users, func(i, j int) bool {
-		return users[i].CreatedAt.After(*users[j].CreatedAt)
-	})
 
 	return users, cur, nil
 }

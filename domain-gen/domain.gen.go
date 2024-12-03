@@ -204,8 +204,10 @@ type Tweet struct {
 	CreatedAt     *time.Time `json:"created_at,omitempty"`
 	Likes         *[]Like    `json:"likes,omitempty"`
 	LikesCount    *int64     `json:"likes_count,omitempty"`
+	ParentId      *string    `json:"parent_id,omitempty"`
 	Retweets      *[]Retweet `json:"retweets,omitempty"`
 	RetweetsCount *int64     `json:"retweets_count,omitempty"`
+	RootId        *string    `json:"root_id,omitempty"`
 	TweetId       *string    `json:"tweet_id,omitempty"`
 	UserId        string     `json:"user_id"`
 	Username      *string    `json:"username,omitempty"`
@@ -666,11 +668,12 @@ var swaggerSpec = []string{
 	"oDIKUDa4TAQp45xpiKSITb7hC00zs8/Xv1x10MtWHjruoCYXtaT3sU3lBfOPLr55ZlcycHmyzwO5tpsj",
 	"ZAyGooPd+w9XPvQOBKHZuqr8umXS3brOqmzBuSSkveoO78ygcVnX9/CTi4yhr2pHbzHmAA6EriEo1tLv",
 	"cNceojrQpzEPv+VY2s5MyP8zUWbiEZrO8UYnpMNveXaP1jTn5hSZhS0rKQJ73KzJ8+GLFwfthXvhkRRY",
-	"VcaJdZ/TQzjbTiggO7w6CshGWUYyF33oWlRSJlhqEnHl0j9V7rk/jbpIHEzqWGeT+Q51NnU4Louw3ndX",
-	"DZbfGs664kxM9cKd6LF7TxXdxflwEHvrX3WeqqmvT3LFFCbmRPkfsXOOZa+nO3ax+wXGd7RvvZaVbnnM",
-	"JpWL0mchKT0BijOx7Q+mijslS0Z0NDHpbqlgDUpRPpGyVWjP0biEgHi52o3eQKtYR7Vganuqrs011bGy",
-	"PU8ZDIC/MNSTgJ8ulLGHfI1DPXf059jfGshgLVVAg5gZqqscIQ4WBUMEdWH6TkCzjLOqJEKCDM10Sz4O",
-	"zYObhzkJySsoXWJcv7t6d2XHmQwEzRiZkff2UUgyiokmM3Np2/8bAAD//w2QlNZUHAAA",
+	"VcaJdZ/TQzjbTiggO7w6CshGWUYyF33oWlRSJlhqEnHl0r+MmpZR7diAoSorwp9kXUIOnnWss6kqKUeJ",
+	"focKnTpWl+VbV4yresuvFGddjiZuw8K9CWM3piq6i/PhCPfWvwc9VfNin+SKKUzMWfQ/nOcc6N404NjF",
+	"7rcb30tB67WsFM9jqqlclD4LSekJUJyJbX+kVdwpdjKio4lJd0sFa1CK8omUrbZ7DtUlBMTL1W707jom",
+	"MF0tmNrYqgt3TXWsbM9TBgPgLwz1DOGnC2XsIV/jUE8s/Qn4twYyWEsV0CBmhuoqR4iDRcEQQV2YjhXQ",
+	"LOOsKomQIEMzF5OPQ/Pg5mFOQvIKSpcY1++u3l3ZQSgDQTNGZuS9fWS6GSaazMx1b/9vAAAA//8Hyfub",
+	"jhwAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
