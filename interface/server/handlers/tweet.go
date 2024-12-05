@@ -78,7 +78,11 @@ func (c *TweetController) GetV1ApiTweetsUserId(ctx echo.Context, userId string, 
 	if c == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
-	tweets, err := c.cli.SendGetAllTweets(c.owNodeHost, domain_gen.GetAllTweetsEvent{UserId: userId})
+	tweets, err := c.cli.SendGetAllTweets(c.owNodeHost, domain_gen.GetAllTweetsEvent{
+		UserId: userId,
+		Limit:  params.Limit,
+		Cursor: params.Cursor,
+	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}

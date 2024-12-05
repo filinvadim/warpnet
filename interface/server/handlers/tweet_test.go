@@ -89,7 +89,7 @@ func TestGetTweetsByUser(t *testing.T) {
 	}
 
 	// Добавляем твит в базу данных
-	tweetRepo.Create(userID, &tweet)
+	tweetRepo.Create(userID, tweet)
 
 	// Создаем HTTP запрос для получения всех твитов пользователя
 	req := httptest.NewRequest(http.MethodGet, "/users/"+userID+"/tweets", nil)
@@ -118,7 +118,7 @@ func TestGetSpecificTweet(t *testing.T) {
 	// Пример твита
 	userID := uuid.New().String()
 	tweetID := uuid.New().String()
-	tweet := &domain_gen.Tweet{
+	tweet := domain_gen.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
 		TweetId:   &tweetID,
@@ -155,12 +155,12 @@ func TestGetTimeline(t *testing.T) {
 
 	// Пример твитов
 	userID := uuid.New().String()
-	tweet1 := &domain_gen.Tweet{
+	tweet1 := domain_gen.Tweet{
 		Content:   "First tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now().Add(-time.Hour)),
 	}
-	tweet2 := &domain_gen.Tweet{
+	tweet2 := domain_gen.Tweet{
 		Content:   "Second tweet",
 		UserId:    userID,
 		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
@@ -172,9 +172,9 @@ func TestGetTimeline(t *testing.T) {
 	t2, err := tweetRepo.Create(userID, tweet2)
 	assert.NoError(t, err)
 
-	err = timelineRepo.AddTweetToTimeline(userID, *t1)
+	err = timelineRepo.AddTweetToTimeline(userID, t1)
 	assert.NoError(t, err)
-	err = timelineRepo.AddTweetToTimeline(userID, *t2)
+	err = timelineRepo.AddTweetToTimeline(userID, t2)
 	assert.NoError(t, err)
 
 	// Создаем HTTP запрос для получения таймлайна пользователя

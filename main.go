@@ -28,6 +28,7 @@ type API struct {
 	*handlers.StaticController
 	*handlers.AuthController
 	*handlers.SettingsController
+	*handlers.ReplyController
 }
 
 func main() {
@@ -66,6 +67,7 @@ func main() {
 		handlers.NewStaticController(),
 		handlers.NewAuthController(cli),
 		handlers.NewSettingsController(cli),
+		handlers.NewReplyController(cli),
 	})
 	go interfaceServer.Start()
 	defer interfaceServer.Shutdown(ctx)

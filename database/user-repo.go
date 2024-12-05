@@ -30,7 +30,7 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
+func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
 	if user.UserId == nil {
 		id := uuid.New().String()
 		user.UserId = &id
@@ -41,53 +41,54 @@ func (repo *UserRepo) Create(user domain_gen.User) (*domain_gen.User, error) {
 	}
 	data, err := json.JSON.Marshal(user)
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddParent(KindUsers).
+		AddRootID(KindUsers).
 		AddRange(storage.FixedRangeKey).
-		AddId(*user.UserId).
+		AddParentId(*user.UserId).
 		Build()
-
-	if err = repo.db.Set(fixedKey, data); err != nil {
-		return nil, err
-	}
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddParent(KindUsers).
+		AddRootID(KindUsers).
 		AddReversedTimestamp(*user.CreatedAt).
-		AddId(*user.UserId).
+		AddParentId(*user.UserId).
 		Build()
 
-	return &user, repo.db.Set(sortableKey, data)
+	err = repo.db.Txn(func(tx *badger.Txn) error {
+		if err = repo.db.Set(fixedKey, data); err != nil {
+			return err
+		}
+		return repo.db.Set(sortableKey, data)
+	})
+	return user, err
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userID string) (*domain_gen.User, error) {
+func (repo *UserRepo) Get(userID string) (user domain_gen.User, err error) {
 	if userID == "" {
-		return nil, ErrUserNotFound
+		return user, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddParent(KindUsers).
+		AddRootID(KindUsers).
 		AddRange(storage.FixedRangeKey).
-		AddId(userID).
+		AddParentId(userID).
 		Build()
 	data, err := repo.db.Get(fixedKey)
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return nil, ErrUserNotFound
+		return user, ErrUserNotFound
 	}
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
-	var user domain_gen.User
 	err = json.JSON.Unmarshal(data, &user)
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 // Delete removes a user by their ID
@@ -100,23 +101,26 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddParent(KindUsers).
+		AddRootID(KindUsers).
 		AddReversedTimestamp(*u.CreatedAt).
-		AddId(*u.UserId).
+		AddParentId(*u.UserId).
 		Build()
-	if err = repo.db.Delete(sortableKey); err != nil {
-		return err
-	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddParent(KindUsers).
+		AddRootID(KindUsers).
 		AddRange(storage.FixedRangeKey).
-		AddId(userID).
+		AddParentId(userID).
 		Build()
-	return repo.db.Delete(fixedKey)
+	err = repo.db.Txn(func(tx *badger.Txn) error {
+		if err = repo.db.Delete(fixedKey); err != nil {
+			return err
+		}
+		return repo.db.Delete(sortableKey)
+	})
+	return err
 }
 
 func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, string, error) {
-	prefix := storage.NewPrefixBuilder(UsersRepoName).AddParent(KindUsers).Build()
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(KindUsers).Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {

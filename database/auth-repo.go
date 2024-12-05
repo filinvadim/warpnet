@@ -39,7 +39,7 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 func (repo *AuthRepo) NewOwner() (userId string, err error) {
 	id := uuid.New().String()
 	fixedKey := storage.NewPrefixBuilder(AuthRepoName).
-		AddParent(OwnerSubName).
+		AddRootID(OwnerSubName).
 		Build()
 
 	if err := repo.db.Set(fixedKey, []byte(id)); err != nil {
@@ -55,7 +55,7 @@ func (repo *AuthRepo) Owner() (userId string, err error) {
 		return repo.ownerId, nil
 	}
 	fixedKey := storage.NewPrefixBuilder(AuthRepoName).
-		AddParent(OwnerSubName).
+		AddRootID(OwnerSubName).
 		Build()
 	data, err := repo.db.Get(fixedKey)
 	if errors.Is(err, badger.ErrKeyNotFound) {

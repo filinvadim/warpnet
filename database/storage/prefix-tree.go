@@ -39,7 +39,7 @@ func (ns Namespace) Build() DatabaseKey {
 	return build(string(ns))
 }
 
-func (ns Namespace) AddParent(mandatoryPrefix string) ParentLayer {
+func (ns Namespace) AddRootID(mandatoryPrefix string) ParentLayer {
 	if mandatoryPrefix == "" {
 		panic("parent prefix must not be empty")
 	}
@@ -77,7 +77,15 @@ func (l RangeLayer) Build() DatabaseKey {
 	return build(string(l))
 }
 
-func (l RangeLayer) AddId(mandatoryPrefix string) IdLayer {
+func (l RangeLayer) AddParentId(mandatoryPrefix string) IdLayer {
+	if mandatoryPrefix == "" {
+		panic("id prefix must not be empty")
+	}
+	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
+	return IdLayer(key)
+}
+
+func (l IdLayer) AddId(mandatoryPrefix string) IdLayer {
 	if mandatoryPrefix == "" {
 		panic("id prefix must not be empty")
 	}

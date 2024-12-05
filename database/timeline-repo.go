@@ -35,9 +35,9 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	}
 
 	key := storage.NewPrefixBuilder(TimelineRepoName).
-		AddParent(userID).
+		AddRootID(userID).
 		AddReversedTimestamp(*tweet.CreatedAt).
-		AddId(*tweet.TweetId).
+		AddParentId(*tweet.TweetId).
 		Build()
 
 	data, err := json.JSON.Marshal(tweet)
@@ -55,9 +55,9 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID, tweetID string, create
 		return fmt.Errorf("created time should not be zero")
 	}
 	key := storage.NewPrefixBuilder(TimelineRepoName).
-		AddParent(userID).
+		AddRootID(userID).
 		AddReversedTimestamp(createdAt).
-		AddId(tweetID).
+		AddParentId(tweetID).
 		Build()
 	return repo.db.Delete(key)
 }
@@ -68,7 +68,7 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 		return nil, "", errors.New("user ID cannot be blank")
 	}
 
-	prefix := storage.NewPrefixBuilder(TimelineRepoName).AddParent(userId).Build()
+	prefix := storage.NewPrefixBuilder(TimelineRepoName).AddRootID(userId).Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {

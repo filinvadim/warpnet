@@ -33,7 +33,7 @@ func TestTweetRepo_Create(t *testing.T) {
 
 	tweetID := uuid.New().String()
 
-	tweet := &domain_gen.Tweet{
+	tweet := domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 
@@ -51,7 +51,7 @@ func TestTweetRepo_Create(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был корректно создан
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -61,7 +61,7 @@ func TestTweetRepo_Get(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := &domain_gen.Tweet{
+	tweet := domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
@@ -78,7 +78,7 @@ func TestTweetRepo_Get(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь может быть получен
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.NoError(t, err)
 	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
 }
@@ -88,7 +88,7 @@ func TestTweetRepo_Delete(t *testing.T) {
 	repo := database.NewTweetRepo(db)
 
 	tweetID := uuid.New().String()
-	tweet := &domain_gen.Tweet{
+	tweet := domain_gen.Tweet{
 		TweetId: &tweetID,
 	}
 	id := uuid.New().String()
@@ -101,12 +101,11 @@ func TestTweetRepo_Delete(t *testing.T) {
 	_, err := repo.Create(*user.UserId, tweet)
 	assert.NoError(t, err)
 
-	now := time.Now()
-	err = repo.Delete(*user.UserId, tweetID, now)
+	err = repo.Delete(*user.UserId, tweetID)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был удален
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID, now)
+	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedTweet)
 }
@@ -117,10 +116,10 @@ func TestTweetRepo_List(t *testing.T) {
 
 	id1 := "1"
 	id2 := "2"
-	tweet1 := &domain_gen.Tweet{
+	tweet1 := domain_gen.Tweet{
 		TweetId: &id1,
 	}
-	tweet2 := &domain_gen.Tweet{
+	tweet2 := domain_gen.Tweet{
 		TweetId: &id2,
 	}
 	id := uuid.New().String()

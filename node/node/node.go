@@ -105,7 +105,7 @@ func (ds *NodeService) Run() {
 				err = ds.client.Ping(n.Host, domain_gen.PingEvent{
 					Nodes:     nodes,
 					DestHost:  &n.Host,
-					OwnerInfo: ownUser,
+					OwnerInfo: &ownUser,
 					OwnerNode: ownNode,
 				})
 				if err != nil {
