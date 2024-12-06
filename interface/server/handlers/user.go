@@ -97,11 +97,9 @@ func (c *UserController) PostV1ApiUsers(ctx echo.Context, params api_gen.PostV1A
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "user is nil"})
 	}
 
-	if user.UserId != nil {
-		_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: *user.UserId})
-		if err == nil {
-			return ctx.JSON(http.StatusForbidden, domain_gen.Error{Code: http.StatusForbidden, Message: "user already exists"})
-		}
+	_, err = c.cli.GetUser(c.owNodeHost, domain_gen.GetUserEvent{UserId: user.Id})
+	if err == nil {
+		return ctx.JSON(http.StatusForbidden, domain_gen.Error{Code: http.StatusForbidden, Message: "user already exists"})
 	}
 
 	userCreated, err := c.cli.BroadcastNewUser(c.owNodeHost, domain_gen.NewUserEvent{User: user})

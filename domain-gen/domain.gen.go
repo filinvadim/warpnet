@@ -81,6 +81,14 @@ type GetAllUsersEvent struct {
 	Limit       *uint64 `json:"limit,omitempty"`
 }
 
+// GetRepliesEvent defines model for GetRepliesEvent.
+type GetRepliesEvent struct {
+	Cursor        *string `json:"cursor,omitempty"`
+	Limit         *uint64 `json:"limit,omitempty"`
+	ParentReplyId string  `json:"parent_reply_id"`
+	RootId        string  `json:"root_id"`
+}
+
 // GetSettingsHostsEvent defines model for GetSettingsHostsEvent.
 type GetSettingsHostsEvent struct {
 	Cursor *string `json:"cursor,omitempty"`
@@ -133,6 +141,11 @@ type NewFollowEvent struct {
 	Request *FollowRequest `json:"request,omitempty"`
 }
 
+// NewReplyEvent defines model for NewReplyEvent.
+type NewReplyEvent struct {
+	Tweet *Tweet `json:"tweet,omitempty"`
+}
+
 // NewSettingsHostsEvent defines model for NewSettingsHostsEvent.
 type NewSettingsHostsEvent struct {
 	Hosts []string `json:"hosts"`
@@ -155,7 +168,7 @@ type NewUserEvent struct {
 
 // Node defines model for Node.
 type Node struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 
 	// Host The IP address
 	Host string             `json:"host"`
@@ -189,6 +202,18 @@ type PingEvent struct {
 // PongEvent defines model for PongEvent.
 type PongEvent = PingEvent
 
+// RepliesTreeResponse defines model for RepliesTreeResponse.
+type RepliesTreeResponse struct {
+	Cursor  string      `json:"cursor"`
+	Replies []ReplyNode `json:"replies"`
+}
+
+// ReplyNode defines model for ReplyNode.
+type ReplyNode struct {
+	Children []ReplyNode `json:"children"`
+	Reply    Tweet       `json:"reply"`
+}
+
 // Retweet defines model for Retweet.
 type Retweet struct {
 	TweetId string `json:"tweet_id"`
@@ -201,16 +226,16 @@ type SettingNameEnum string
 // Tweet defines model for Tweet.
 type Tweet struct {
 	Content       string     `json:"content"`
-	CreatedAt     *time.Time `json:"created_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	Id            string     `json:"id"`
 	Likes         *[]Like    `json:"likes,omitempty"`
 	LikesCount    *int64     `json:"likes_count,omitempty"`
-	ParentId      *string    `json:"parent_id,omitempty"`
+	ParentId      string     `json:"parent_id"`
 	Retweets      *[]Retweet `json:"retweets,omitempty"`
 	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	RootId        *string    `json:"root_id,omitempty"`
-	TweetId       *string    `json:"tweet_id,omitempty"`
+	RootId        string     `json:"root_id"`
 	UserId        string     `json:"user_id"`
-	Username      *string    `json:"username,omitempty"`
+	Username      string     `json:"username"`
 }
 
 // TweetsResponse defines model for TweetsResponse.
@@ -228,18 +253,18 @@ type UnfollowRequest struct {
 // User defines model for User.
 type User struct {
 	Birthdate    *time.Time         `json:"birthdate,omitempty"`
-	CreatedAt    *time.Time         `json:"created_at,omitempty"`
-	Description  *string            `json:"description,omitempty"`
-	Followed     *[]string          `json:"followed,omitempty"`
-	FollowedNum  *int64             `json:"followed_num,omitempty"`
-	Followers    *[]string          `json:"followers,omitempty"`
-	FollowersNum *int64             `json:"followers_num,omitempty"`
+	CreatedAt    time.Time          `json:"created_at"`
+	Description  string             `json:"description"`
+	Followed     []string           `json:"followed"`
+	FollowedNum  int64              `json:"followed_num"`
+	Followers    []string           `json:"followers"`
+	FollowersNum int64              `json:"followers_num"`
+	Id           string             `json:"id"`
 	Link         *string            `json:"link,omitempty"`
 	Location     *string            `json:"location,omitempty"`
 	MyReferrals  *[]string          `json:"my_referrals,omitempty"`
 	NodeId       openapi_types.UUID `json:"node_id"`
 	ReferredBy   *string            `json:"referred_by,omitempty"`
-	UserId       *string            `json:"user_id,omitempty"`
 	Username     string             `json:"username"`
 }
 
@@ -639,6 +664,58 @@ func (t *Event_Data) MergeNewSettingsHostsEvent(v NewSettingsHostsEvent) error {
 	return err
 }
 
+// AsGetRepliesEvent returns the union data inside the Event_Data as a GetRepliesEvent
+func (t Event_Data) AsGetRepliesEvent() (GetRepliesEvent, error) {
+	var body GetRepliesEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetRepliesEvent overwrites any union data inside the Event_Data as the provided GetRepliesEvent
+func (t *Event_Data) FromGetRepliesEvent(v GetRepliesEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetRepliesEvent performs a merge with any union data inside the Event_Data, using the provided GetRepliesEvent
+func (t *Event_Data) MergeGetRepliesEvent(v GetRepliesEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewReplyEvent returns the union data inside the Event_Data as a NewReplyEvent
+func (t Event_Data) AsNewReplyEvent() (NewReplyEvent, error) {
+	var body NewReplyEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewReplyEvent overwrites any union data inside the Event_Data as the provided NewReplyEvent
+func (t *Event_Data) FromNewReplyEvent(v NewReplyEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewReplyEvent performs a merge with any union data inside the Event_Data, using the provided NewReplyEvent
+func (t *Event_Data) MergeNewReplyEvent(v NewReplyEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t Event_Data) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -652,28 +729,30 @@ func (t *Event_Data) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xYTW/jNhD9KwLbo7JJusUefAu66dZAkAapgx6CwKClscWaIrXkKFpj4f9ekPq2KJty",
-	"d7E59GRDmpn3OBy+GeoriWSaSQECNZl9JTpKIKX2700c/wWITGwe4XMOGs3DTMkMFDKwJpECihAvqX23",
-	"lio1/0hMES6QpUBCgrsMyIxoVExsyD4kgqZgrH9WsCYz8tNlS+CyQr+scO9pCrciT43bK+W59TsIuA+J",
-	"gs85UxCT2XMZvbZ+aeDl6h+I0MS5yTEZXU9GtS6kih04Ick1qJr8cRKNZdhGdHG5VUoqR1Zl3AVhAmED",
-	"yjikoDXdeDCwIVr7UfDbVxD4wxi4wWOK1PxSsftzTWbPx0vlgYlNGWgfHrfsLPiU6T0UiwIAva2fNPiH",
-	"/l1yLgv/2GI9weET4A3nlr329liwFDgT4O/gn51PgP7ZKdkbe0/yd3LDhLepzP1JVxqk/5DaN5P3ULi8",
-	"XvYhMWqokaaZr1AeHKfW33WSyooalTUFNAa1ZFbXUibuQGwwIbNrhzwXiqGf7QHDFqQbxMV2WKJDAcqV",
-	"LqVxQJCzlKFDnELy5WIjL6qnORP44ddatuexn2jPjxHuVOUUvkwvy/MLXRIrKTlQ0TMwDk6LaUveu1fg",
-	"qMzvl/YRDn2defu73pG5AVk07+bjo8IE9LAJNsKjFdABjW+wUFsRj6AzKTRM2pXEeJo3DCHVTpPqAVWK",
-	"7oZDQhm6DuQid8e2MJJ8P0EzCz9Dzmq3sMVy0mv7z4+eJi2V8W1EuQUxSuXURG4qcNiUbMgqwAilpuW2",
-	"yO37g2HI0biajnaMXL/9OcXH3ZoHgP+1oMfruD9Sugv61DptgNH19efEc3NZRzmVzROS5F1Pw9jV3UPk",
-	"nNMVBzJDlUP4DW6eZnPsBQN0pFiGTAoyI4sEgvlDQONYgdYuv1I8Gow8L2XB0ehphOwVhhh/J4AJqAB7",
-	"WAHTQZQrBQL5Lqh8Q/eEIAsxNj9wqnGpoTzcw7U1k2NQJCACTJjuciioDkyEFt8vmZwiiGjnxhSAhVTb",
-	"oDIKUDa4TAQp45xpiKSITb7hC00zs8/Xv1x10MtWHjruoCYXtaT3sU3lBfOPLr55ZlcycHmyzwO5tpsj",
-	"ZAyGooPd+w9XPvQOBKHZuqr8umXS3brOqmzBuSSkveoO78ygcVnX9/CTi4yhr2pHbzHmAA6EriEo1tLv",
-	"cNceojrQpzEPv+VY2s5MyP8zUWbiEZrO8UYnpMNveXaP1jTn5hSZhS0rKQJ73KzJ8+GLFwfthXvhkRRY",
-	"VcaJdZ/TQzjbTiggO7w6CshGWUYyF33oWlRSJlhqEnHl0r+MmpZR7diAoSorwp9kXUIOnnWss6kqKUeJ",
-	"focKnTpWl+VbV4yresuvFGddjiZuw8K9CWM3piq6i/PhCPfWvwc9VfNin+SKKUzMWfQ/nOcc6N404NjF",
-	"7rcb30tB67WsFM9jqqlclD4LSekJUJyJbX+kVdwpdjKio4lJd0sFa1CK8omUrbZ7DtUlBMTL1W707jom",
-	"MF0tmNrYqgt3TXWsbM9TBgPgLwz1DOGnC2XsIV/jUE8s/Qn4twYyWEsV0CBmhuoqR4iDRcEQQV2YjhXQ",
-	"LOOsKomQIEMzF5OPQ/Pg5mFOQvIKSpcY1++u3l3ZQSgDQTNGZuS9fWS6GSaazMx1b/9vAAAA//8Hyfub",
-	"jhwAAA==",
+	"H4sIAAAAAAAC/+xYTW/jNhP+KwLf96hskm6xB9+CbpoaCNIgddBDEBi0NLbYSKSWHMVrLPzfC1LUN2VT",
+	"3g02h54SWPPxcDh85uMbiUSWCw4cFZl9IypKIKPm36s4/gsQGd88wJcCFOofcylykMjAiEQSKEK8pObb",
+	"WshM/0diinCGLAMSEtzlQGZEoWR8Q/Yh4TQDLf1/CWsyI/87bwCcW+/n1u8dzeCaF5lWe6VpYfR6Bvch",
+	"kfClYBJiMnsqrVfSz7V7sfoHItR2rgpMRs+TU6W2QsYOPyEpFMgK/GEQtWTYWHRhuZZSSEdURdx2wjjC",
+	"BqRWyEApuvFAYEw08qPOr1+B409D4HYeU6T6L+W7P9dk9nQ4Ve4Z35SG9uFhydaBj4newXaxBUBv6UcF",
+	"/qZ/F2kqtv62+XqCwg3gVZoa9MpbY8EySBkHfwX/6NwA+kenRK/lPcHfig3j3qKi8AdtOUj9IZRvJO9g",
+	"e4LWDeAD5CkDfy9afmeln/ch0VyrkGa5Lw33Hmuj73qnZb6OkqYEGoNcMsOaGeO3wDeYkNmlg/y3kqGf",
+	"bA9h46RtxIV2+ACG9FZIVRLvAGDKMoYO6gvJ17ONOLO/Fozjp1+rojCP/UrC/BDgVs5PwcvUsmQHaINY",
+	"CZEC5R0BreCUmHbkvfsEnQx+y4DnVALHpdQvwObRwKYUAt3f+lllBYdmRy7K8bzf7rAjoe6S9ftP7lat",
+	"GIBF/W0+3m9N8B7WxkZwNFVoAOMHHNRkxAOoXHAFk24l0Zr6C0PIlFPE/kClpLthp1Wargy5wN2yFxgJ",
+	"vh9v64OfwNqVWtj4csJrivjPbskNlPFrRPECfBTKsbFGZ+Cw9hqT1sAIpLpvaTw333sdpaM+14X7ELhu",
+	"lXeST7fzcOfTMTeGDUbN+/Dr976X8WfSbfvf4nzdXv7Uq6qsHLusI4znna5D23Y+5EWa0lUKZIaygPAH",
+	"bAf05ZghEFQkWY5McDIjiwSC+X1A41iCUi69kptqH0VRso6jXaIRslcY+vg7AUxABtjxFTAVRIXUzUG6",
+	"C6xu6O6zxJaPdWEpVbhUUHLH8Gx1/x1sE+ABJky1MWypCrSFxr9fMFOKwKOd2ycH3Ar5ElihAEXtl/Eg",
+	"Y2nKFESCxzre8JVmub7ny18uWt7LTiF07Al0LKqK0fWtMy+Yf3bhLXJzkoHKo/k9EGtzOVzEoCE60H38",
+	"dOEDr0cI9dXZ9GunSfvqWqcyCRe2M9zFJ81uYrjkAIXLKtmHOzIRQ5fiDg6E+jUOWK9Gy9fC76VXGty+",
+	"7uM++8s3A9sZCfFfJMpI2EFpIQFO6hZlqe8dElOw3XEZ6yMrF2PwdxX990AnLI1lSXHfC60EsfMvtt1d",
+	"gVYNG0Dug9Tl/J12xf0luHkra1qkmtp0gi1tfQDDgUbkqf/h2QF74T54JDjaF3rk3KcU9pFRPWUvE5LZ",
+	"zDGOZDFWlpEoeBdRVQAyxlmm43PhqlV29h9bJpSJMuXFlZnlTOrS1slQxzcb/tk4dWxq1zubIu2Yha0t",
+	"SmvKOlIay/3cSQw48ToW7ssYIz9r3YW533a/903oo+3xuyBXTGKin6r/2z3lvXc6OMcttreWvoNco7W0",
+	"hOjRiVoVqU7yJNUEV6Mcx1+604lMne26iOhovLLdUsIapKTpxJOYiuA5H5UuIF6udkcXLlOSts8O7ezo",
+	"fKjA9q66fx+t/Gnf8FHaMVv2k1hHY/QnnaqN9OOc0vYQr1aomtbuRPRb7TJYCxnQIGYa6qpAiIPFliGC",
+	"PNNVMaB5njKbVyFBhnpOIp+H4sHV/ZyE5BWkKn1cfrj4cGF64Rw4zRmZkY/mJ83+mCgy0+P//t8AAAD/",
+	"/7OcMSJCIAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

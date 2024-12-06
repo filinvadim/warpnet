@@ -211,7 +211,7 @@ paths:
         '400':
           description: Invalid input
 
-  /v1/api/tweets/replies/{root_tweet_id}/{tweet_id}:
+  /v1/api/tweets/replies/{root_tweet_id}/{reply_id}:
     get:
       tags:
         - Reply
@@ -222,7 +222,7 @@ paths:
           required: true
           schema:
             type: string
-        - name: tweet_id
+        - name: reply_id
           in: path
           required: true
           schema:
@@ -238,7 +238,7 @@ paths:
         '400':
           description: Invalid input
 
-  /v1/api/tweets/replies/{root_tweet_id}/{parent_tweet_id}:
+  /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id}:
     get:
       tags:
         - Reply
@@ -254,7 +254,7 @@ paths:
             type: integer
             x-go-type: uint64
             default: 20
-        - name: parent_tweet_id
+        - name: parent_reply_id
           in: path
           required: true
           schema:

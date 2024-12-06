@@ -29,6 +29,8 @@ paths:
               - get_tweets
               - new_user
               - new_tweet
+              - new_reply
+              - get_replies
               - follow
               - unfollow
               - login

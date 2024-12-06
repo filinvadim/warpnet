@@ -59,6 +59,38 @@ func (c *NodeClient) BroadcastNewTweet(host string, t domain_gen.NewTweetEvent) 
 	return tweet, err
 }
 
+func (c *NodeClient) BroadcastNewReply(host string, t domain_gen.NewReplyEvent) (domain_gen.Tweet, error) {
+	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
+	event.Timestamp = time.Now()
+	if err := event.Data.FromNewReplyEvent(t); err != nil {
+		return domain_gen.Tweet{}, err
+	}
+
+	resp, err := c.sendEvent(host, node_gen.NewReply, event)
+	if err != nil {
+		return domain_gen.Tweet{}, err
+	}
+	var tweet domain_gen.Tweet
+	err = json.JSON.Unmarshal(resp, &tweet)
+	return tweet, err
+}
+
+func (c *NodeClient) SendGetAllReplies(host string, t domain_gen.GetRepliesEvent) (domain_gen.TweetsResponse, error) {
+	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
+	event.Timestamp = time.Now()
+	if err := event.Data.FromGetRepliesEvent(t); err != nil {
+		return domain_gen.TweetsResponse{}, err
+	}
+
+	resp, err := c.sendEvent(host, node_gen.GetReplies, event)
+	if err != nil {
+		return domain_gen.TweetsResponse{}, err
+	}
+	var tweetResp domain_gen.TweetsResponse
+	err = json.JSON.Unmarshal(resp, &tweetResp)
+	return tweetResp, err
+}
+
 func (c *NodeClient) SendGetTweet(host string, t domain_gen.GetTweetEvent) (domain_gen.Tweet, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()

@@ -33,7 +33,7 @@ func TestUserRepo_Create(t *testing.T) {
 		Username: "Test User",
 	}
 	userID := uuid.New().String()
-	user.UserId = &userID
+	user.Id = userID
 
 	_, err := repo.Create(user)
 
@@ -43,7 +43,7 @@ func TestUserRepo_Create(t *testing.T) {
 	retrievedUser, err := repo.Get(userID)
 	assert.NoError(t, err)
 	assert.Equal(t, user.Username, retrievedUser.Username)
-	assert.Equal(t, user.UserId, retrievedUser.UserId)
+	assert.Equal(t, user.Id, retrievedUser.Id)
 }
 
 func TestUserRepo_Get(t *testing.T) {
@@ -53,7 +53,7 @@ func TestUserRepo_Get(t *testing.T) {
 	userID := uuid.New().String()
 	user := domain_gen.User{
 		Username: "Test User",
-		UserId:   &userID,
+		Id:       userID,
 	}
 
 	_, err := repo.Create(user)
@@ -63,7 +63,7 @@ func TestUserRepo_Get(t *testing.T) {
 	retrievedUser, err := repo.Get(userID)
 	assert.NoError(t, err)
 	assert.Equal(t, user.Username, retrievedUser.Username)
-	assert.Equal(t, user.UserId, retrievedUser.UserId)
+	assert.Equal(t, user.Id, retrievedUser.Id)
 }
 
 func TestUserRepo_Delete(t *testing.T) {
@@ -73,7 +73,7 @@ func TestUserRepo_Delete(t *testing.T) {
 	userID := uuid.New().String()
 	user := domain_gen.User{
 		Username: "Test User",
-		UserId:   &userID,
+		Id:       userID,
 	}
 
 	_, err := repo.Create(user)
@@ -96,12 +96,12 @@ func TestUserRepo_List(t *testing.T) {
 	userID := uuid.New().String()
 	user1 := domain_gen.User{
 		Username: "User1",
-		UserId:   &userID,
+		Id:       userID,
 	}
 	userID = uuid.New().String()
 	user2 := domain_gen.User{
 		Username: "User2",
-		UserId:   &userID,
+		Id:       userID,
 	}
 
 	_, err := repo.Create(user1)

@@ -35,6 +35,7 @@ type nodeEventHandler struct {
 	tweetRepo    *database.TweetRepo
 	timelineRepo *database.TimelineRepo
 	followRepo   *database.FollowRepo
+	replyRepo    *database.RepliesRepo
 	cli          NodeRequester
 	interrupt    chan os.Signal
 }
@@ -47,6 +48,7 @@ func NewNodeHandler(
 	tweetRepo *database.TweetRepo,
 	timelineRepo *database.TimelineRepo,
 	followRepo *database.FollowRepo,
+	replyRepo *database.RepliesRepo,
 	cli NodeRequester,
 	interrupt chan os.Signal,
 ) (*nodeEventHandler, error) {
@@ -59,6 +61,7 @@ func NewNodeHandler(
 		tweetRepo:    tweetRepo,
 		timelineRepo: timelineRepo,
 		followRepo:   followRepo,
+		replyRepo:    replyRepo,
 		cli:          cli,
 		interrupt:    interrupt,
 	}, nil
@@ -128,7 +131,7 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType nodeGen.NewEvent
 		}
 		response = userEvent.User
 	case nodeGen.NewTweet:
-		tweetEvent, err := d.handleNewTweet(ctx, receivedEvent.Data)
+		tweet, err := d.handleNewTweet(ctx, receivedEvent.Data)
 		if err != nil {
 			fmt.Printf("handle new tweet event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -141,11 +144,18 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType nodeGen.NewEvent
 			if n.IsOwned {
 				continue
 			}
-			if _, err = d.cli.BroadcastNewTweet(n.Host, tweetEvent); err != nil {
+			if _, err = d.cli.BroadcastNewTweet(n.Host, domainGen.NewTweetEvent{&tweet}); err != nil {
 				return err
 			}
 		}
-		response = tweetEvent.Tweet
+		response = tweet
+	case nodeGen.NewReply:
+		response, err = d.handleNewReply(ctx, receivedEvent.Data)
+		if err != nil {
+			fmt.Printf("handle new reply event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+	case nodeGen.GetReplies:
 	case nodeGen.Follow, nodeGen.Unfollow:
 		// TODO
 
@@ -268,7 +278,7 @@ func (d *nodeEventHandler) handleNewSettingHosts(ctx echo.Context, data *domainG
 	now := time.Now()
 	for _, h := range hostsEvent.Hosts {
 		_, err := d.nodeRepo.Create(domainGen.Node{
-			CreatedAt: &now,
+			CreatedAt: now,
 			Host:      h,
 			IsActive:  true,
 			IsOwned:   false,
@@ -317,28 +327,70 @@ func (d *nodeEventHandler) handleNewUser(ctx echo.Context, data *domainGen.Event
 	return userEvent, err
 }
 
-func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (domainGen.NewTweetEvent, error) {
+func (d *nodeEventHandler) handleNewReply(ctx echo.Context, data *domainGen.Event_Data) (reply domainGen.Tweet, err error) {
 	if ctx.Request().Context().Err() != nil {
-		return domainGen.NewTweetEvent{}, ctx.Request().Context().Err()
+		return reply, ctx.Request().Context().Err()
+	}
+	replyEvent, err := data.AsNewReplyEvent()
+	if err != nil {
+		return reply, err
+	}
+	if replyEvent.Tweet == nil {
+		return reply, nil
+	}
+	r, err := d.replyRepo.AddReply(*replyEvent.Tweet)
+	if err != nil {
+		return reply, err
+	}
+	return r, err
+}
+
+type RepliesResponse = domainGen.RepliesTreeResponse
+
+func (d *nodeEventHandler) handleGetReplies(ctx echo.Context, data *domainGen.Event_Data) (response RepliesResponse, err error) {
+	if ctx.Request().Context().Err() != nil {
+		return response, ctx.Request().Context().Err()
+	}
+	event, err := data.AsGetRepliesEvent()
+	if err != nil {
+		return response, err
+	}
+	replies, nextCursor, err := d.replyRepo.GetRepliesTree(
+		event.RootId, event.ParentReplyId, event.Limit, event.Cursor,
+	)
+	if err != nil {
+		return response, err
+	}
+
+	response = RepliesResponse{
+		Replies: replies,
+		Cursor:  nextCursor,
+	}
+	return response, nil
+}
+
+func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (t domainGen.Tweet, err error) {
+	if ctx.Request().Context().Err() != nil {
+		return t, ctx.Request().Context().Err()
 	}
 	tweetEvent, err := data.AsNewTweetEvent()
 	if err != nil {
-		return domainGen.NewTweetEvent{}, err
+		return t, err
 	}
 	if tweetEvent.Tweet == nil {
-		return domainGen.NewTweetEvent{}, nil
+		return t, nil
 	}
-	t, err := d.tweetRepo.Create(tweetEvent.Tweet.UserId, *tweetEvent.Tweet)
+	t, err = d.tweetRepo.Create(tweetEvent.Tweet.UserId, *tweetEvent.Tweet)
 	if err != nil {
-		return domainGen.NewTweetEvent{}, err
+		return t, err
 	}
 	owner, err := d.authRepo.Owner()
 	if err != nil || owner == "" {
-		return domainGen.NewTweetEvent{}, fmt.Errorf("failed to add tweet to owner timeline: %w", err)
+		return t, fmt.Errorf("failed to add tweet to owner timeline: %w", err)
 	}
 
 	err = d.timelineRepo.AddTweetToTimeline(owner, t)
-	return domainGen.NewTweetEvent{}, err
+	return t, err
 }
 
 func (d *nodeEventHandler) handleLogin(
@@ -380,13 +432,11 @@ func (d *nodeEventHandler) handleLogin(
 	}
 	fmt.Println(owner, "OWNER STRUCT")
 
-	if owner != (domainGen.User{}) {
-		if owner.Username != login.Username {
-			return domainGen.LoginResponse{}, fmt.Errorf("user %s doesn't exist", login.Username)
-		}
-		if owner.Username == login.Username {
-			return domainGen.LoginResponse{token, owner}, nil
-		}
+	if owner.Username != login.Username {
+		return domainGen.LoginResponse{}, fmt.Errorf("user %s doesn't exist", login.Username)
+	}
+	if owner.Username == login.Username {
+		return domainGen.LoginResponse{token, owner}, nil
 	}
 
 	var (
@@ -394,8 +444,8 @@ func (d *nodeEventHandler) handleLogin(
 		nodeId = uuid.New()
 	)
 	u, err := d.userRepo.Create(domainGen.User{
-		CreatedAt: &now,
-		UserId:    &ownerId,
+		CreatedAt: now,
+		Id:        ownerId,
 		Username:  login.Username,
 		NodeId:    nodeId,
 	})
@@ -415,7 +465,7 @@ func (d *nodeEventHandler) handleLogin(
 
 	_, err = d.nodeRepo.Create(domainGen.Node{
 		Id:        nodeId,
-		CreatedAt: &now,
+		CreatedAt: now,
 		Host:      d.ownIP + ":" + config.InternalNodeAddress.Port(),
 		IsActive:  true,
 		LastSeen:  now,

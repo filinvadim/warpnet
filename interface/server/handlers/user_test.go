@@ -50,7 +50,7 @@ func TestPostUser(t *testing.T) {
 
 	userId := uuid.New().String()
 	user := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "testuser",
 	}
 
@@ -69,7 +69,7 @@ func TestPostUser(t *testing.T) {
 		var createdUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &createdUser)) {
 			assert.Equal(t, user.Username, createdUser.Username)
-			assert.Equal(t, user.UserId, createdUser.UserId)
+			assert.Equal(t, user.Id, createdUser.Id)
 		}
 	}
 }
@@ -84,26 +84,26 @@ func TestGetUser(t *testing.T) {
 
 	userId := uuid.New().String()
 	user := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "testuser",
 	}
 
 	// Добавляем пользователя в базу данных
 	u, _ := userRepo.Create(user)
-	user.UserId = u.UserId
+	user.Id = u.Id
 
 	// Создаем HTTP запрос для получения пользователя по userId
-	req := httptest.NewRequest(http.MethodGet, "/users/"+*user.UserId, nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/"+user.Id, nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 
 	// Выполняем запрос
-	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, *user.UserId, api.GetV1ApiUsersUserIdParams{})) {
+	if assert.NoError(t, controller.GetV1ApiUsersUserId(ctx, user.Id, api.GetV1ApiUsersUserIdParams{})) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var fetchedUser domain_gen.User
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedUser)) {
 			assert.Equal(t, user.Username, fetchedUser.Username)
-			assert.Equal(t, user.UserId, fetchedUser.UserId)
+			assert.Equal(t, user.Id, fetchedUser.Id)
 		}
 	}
 }
@@ -118,24 +118,24 @@ func TestFollowUser(t *testing.T) {
 
 	userId := uuid.New().String()
 	reader := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
 	writer := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "writer",
 	}
 
 	// Добавляем пользователей в базу данных
 	r, _ := userRepo.Create(reader)
 	w, _ := userRepo.Create(writer)
-	reader.UserId = r.UserId
-	writer.UserId = w.UserId
+	reader.Id = r.Id
+	writer.Id = w.Id
 	// Пример запроса на подписку
 	followRequest := domain_gen.FollowRequest{
-		ReaderId: *reader.UserId,
-		WriterId: *writer.UserId,
+		ReaderId: reader.Id,
+		WriterId: writer.Id,
 	}
 
 	// Создаем HTTP запрос на подписку
@@ -166,28 +166,28 @@ func TestUnfollowUser(t *testing.T) {
 
 	userId := uuid.New().String()
 	reader := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "reader",
 	}
 	userId = uuid.New().String()
 	writer := domain_gen.User{
-		UserId:   &userId,
+		Id:       userId,
 		Username: "writer",
 	}
 
 	// Добавляем пользователей в базу данных
 	r, _ := userRepo.Create(reader)
 	w, _ := userRepo.Create(writer)
-	reader.UserId = r.UserId
-	writer.UserId = w.UserId
+	reader.Id = r.Id
+	writer.Id = w.Id
 
 	// Подписываем reader на writer
 	//_ = followRepo.Follow(*reader.UserId, *writer.UserId)
 
 	// Пример запроса на отписку
 	unfollowRequest := domain_gen.FollowRequest{
-		ReaderId: *reader.UserId,
-		WriterId: *writer.UserId,
+		ReaderId: reader.Id,
+		WriterId: writer.Id,
 	}
 
 	// Создаем HTTP запрос на отписку

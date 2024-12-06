@@ -31,13 +31,11 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 
 // Create adds a new user to the database
 func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
-	if user.UserId == nil {
-		id := uuid.New().String()
-		user.UserId = &id
+	if user.Id == "" {
+		user.Id = uuid.New().String()
 	}
-	if user.CreatedAt == nil {
-		now := time.Now()
-		user.CreatedAt = &now
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = time.Now()
 	}
 	data, err := json.JSON.Marshal(user)
 	if err != nil {
@@ -47,13 +45,13 @@ func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddRootID(KindUsers).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(*user.UserId).
+		AddParentId(user.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddRootID(KindUsers).
-		AddReversedTimestamp(*user.CreatedAt).
-		AddParentId(*user.UserId).
+		AddReversedTimestamp(user.CreatedAt).
+		AddParentId(user.Id).
 		Build()
 
 	err = repo.db.Txn(func(tx *badger.Txn) error {
@@ -102,8 +100,8 @@ func (repo *UserRepo) Delete(userID string) error {
 	}
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddRootID(KindUsers).
-		AddReversedTimestamp(*u.CreatedAt).
-		AddParentId(*u.UserId).
+		AddReversedTimestamp(u.CreatedAt).
+		AddParentId(u.Id).
 		Build()
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddRootID(KindUsers).

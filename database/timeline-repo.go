@@ -27,17 +27,17 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	if userID == "" {
 		return errors.New("userID cannot be blank")
 	}
-	if tweet.TweetId == nil {
+	if tweet.Id == "" {
 		return fmt.Errorf("tweet id should not be nil")
 	}
-	if tweet.CreatedAt == nil {
-		return fmt.Errorf("tweet created at should not be nil")
+	if tweet.CreatedAt.IsZero() {
+		return fmt.Errorf("tweet created at should not be zero")
 	}
 
 	key := storage.NewPrefixBuilder(TimelineRepoName).
 		AddRootID(userID).
-		AddReversedTimestamp(*tweet.CreatedAt).
-		AddParentId(*tweet.TweetId).
+		AddReversedTimestamp(tweet.CreatedAt).
+		AddParentId(tweet.Id).
 		Build()
 
 	data, err := json.JSON.Marshal(tweet)
@@ -81,7 +81,7 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 	}
 
 	sort.SliceStable(tweets, func(i, j int) bool {
-		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
+		return tweets[i].CreatedAt.After(tweets[j].CreatedAt)
 	})
 
 	return tweets, cur, nil

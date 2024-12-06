@@ -15,12 +15,12 @@ import (
 const (
 	mainNodeURL  = "http://localhost:16969/v1/node/event/"
 	testNodeHost = "node3"
-	testUserId   = "node-3-test-user-id"
+	testId       = "node-3-test-user-id"
 	testNodeId   = "node-3-test-node-id"
 	testTweetId  = "node-3-test-tweet-id"
 	testUsername = "TEST_NODE3!"
 
-	mainNodeUserId  = "e80c8856-462d-4eed-8052-4e49db8f73d1"
+	mainNodeId      = "e80c8856-462d-4eed-8052-4e49db8f73d1"
 	mainNodeTweetId = "38966e99-9b62-4dd1-834f-c59330dd30b5"
 )
 
@@ -69,20 +69,16 @@ type TestEvent struct {
 
 var now = time.Now()
 var testUser = &domain.User{
-	Birthdate:    &now,
-	CreatedAt:    &now,
-	Description:  toStrPtr("test node 2 description"),
-	Followed:     &[]string{},
-	FollowedNum:  toIntPtr(0),
-	Followers:    &[]string{},
-	FollowersNum: toIntPtr(0),
-	Link:         toStrPtr("None"),
-	Location:     nil,
-	MyReferrals:  nil,
-	NodeId:       types.UUID([]byte(testNodeId)),
-	ReferredBy:   nil,
-	UserId:       toStrPtr(testUserId),
-	Username:     testUsername,
+	Birthdate:   &now,
+	CreatedAt:   now,
+	Description: ("test node 2 description"),
+	Link:        toStrPtr("None"),
+	Location:    nil,
+	MyReferrals: nil,
+	NodeId:      types.UUID([]byte(testNodeId)),
+	ReferredBy:  nil,
+	Id:          (testId),
+	Username:    testUsername,
 }
 
 type testData struct {
@@ -97,35 +93,35 @@ var testDataMap = []testData{
 		DestHost:  toStrPtr(config.InternalNodeAddress.String()),
 		OwnerInfo: testUser,
 		OwnerNode: &domain.Node{
-			CreatedAt: &now,
+			CreatedAt: now,
 			Host:      testNodeHost,
 			Id:        types.UUID([]byte(testNodeId)),
 			IsActive:  true,
 			IsOwned:   true,
 			LastSeen:  now,
 			Latency:   toIntPtr(69),
-			OwnerId:   testUserId,
+			OwnerId:   testId,
 			Uptime:    toIntPtr(69),
 		},
 	}},
 	{node_gen.NewTweet, domain.NewTweetEvent{
 		Tweet: &domain.Tweet{
 			Content:   "TEST TWEET",
-			CreatedAt: &now,
-			TweetId:   toStrPtr(testTweetId),
-			UserId:    testUserId,
-			Username:  toStrPtr(testUsername),
+			CreatedAt: now,
+			Id:        (testTweetId),
+			UserId:    testId,
+			Username:  (testUsername),
 		},
 	}},
 	{node_gen.GetTweet, domain.GetTweetEvent{
 		TweetId: testTweetId,
-		UserId:  testUserId,
+		UserId:  testId,
 	}},
 	{node_gen.GetTweets, domain.GetAllTweetsEvent{
-		UserId: testUserId,
+		UserId: testId,
 	}},
-	{node_gen.GetUser, domain.GetUserEvent{UserId: testUserId}},
+	{node_gen.GetUser, domain.GetUserEvent{UserId: testId}},
 	{node_gen.GetTimeline, domain.GetTimelineEvent{
-		UserId: testUserId,
+		UserId: testId,
 	}},
 }

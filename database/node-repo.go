@@ -41,14 +41,13 @@ func (repo *NodeRepo) Create(node domain_gen.Node) (domain_gen.Node, error) {
 	if node.Id.String() == "" {
 		node.Id = uuid.New()
 	}
-	if node.CreatedAt == nil {
-		node.CreatedAt = &time.Time{}
-		*node.CreatedAt = time.Now()
+	if node.CreatedAt.IsZero() {
+		node.CreatedAt = time.Now()
 	}
 
 	IPKey := storage.NewPrefixBuilder(NodesRepoName).
 		AddRootID(KindHost).
-		AddReversedTimestamp(*node.CreatedAt).
+		AddReversedTimestamp(node.CreatedAt).
 		AddParentId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).
@@ -126,7 +125,7 @@ func (repo *NodeRepo) DeleteByHost(host string, createdAt time.Time) error {
 
 	ipKey := storage.NewPrefixBuilder(NodesRepoName).
 		AddRootID(KindHost).
-		AddReversedTimestamp(*node.CreatedAt).
+		AddReversedTimestamp(node.CreatedAt).
 		AddParentId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).
@@ -187,7 +186,7 @@ func (repo *NodeRepo) DeleteByUserId(userId string) error {
 	}
 	ipKey := storage.NewPrefixBuilder(NodesRepoName).
 		AddRootID(KindHost).
-		AddReversedTimestamp(*node.CreatedAt).
+		AddReversedTimestamp(node.CreatedAt).
 		AddParentId(node.Host).
 		Build()
 	userKey := storage.NewPrefixBuilder(NodesRepoName).

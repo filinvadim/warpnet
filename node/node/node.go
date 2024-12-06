@@ -45,6 +45,7 @@ func NewNodeService(
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
+	replyRepo := database.NewRepliesRepo(db)
 
 	handler, err := server.NewNodeHandler(
 		ownIP,
@@ -54,6 +55,7 @@ func NewNodeService(
 		tweetRepo,
 		timelineRepo,
 		followRepo,
+		replyRepo,
 		cli,
 		interrupt,
 	)

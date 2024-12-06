@@ -9,7 +9,7 @@ components:
     User:
       type: object
       properties:
-        user_id:
+        id:
           type: string
         node_id:
           type: string
@@ -51,8 +51,16 @@ components:
           type: string
           format: date-time
       required:
+        - id
+        - username
+        - description
         - username
         - node_id
+        - followed_num
+        - followers_num
+        - followed
+        - followers
+        - created_at
 
     Tweet:
       type: object
@@ -62,9 +70,8 @@ components:
           minLength: 1
         username:
           type: string
-        tweet_id:
+        id:
           type: string
-          minLength: 1
         content:
           type: string
           minLength: 1
@@ -93,7 +100,12 @@ components:
           type: string
       required:
         - user_id
+        - id
         - content
+        - parent_id
+        - root_id
+        - username
+        - created_at
 
     Like:
       type: object
@@ -189,6 +201,7 @@ components:
         - last_seen
         - owner_id
         - id
+        - created_at
 
     Error:
       type: object
@@ -200,6 +213,32 @@ components:
       required:
         - code
         - message
+
+    RepliesTreeResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReplyNode'
+      required:
+        - cursor
+        - replies
+
+    ReplyNode:
+      type: object
+      properties:
+        reply:
+          $ref: '#/components/schemas/Tweet'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReplyNode'
+      required:
+        - reply
+        - children
 
     TweetsResponse:
       type: object
@@ -304,6 +343,8 @@ components:
             - $ref: '#/components/schemas/LogoutEvent'
             - $ref: '#/components/schemas/GetSettingsHostsEvent'
             - $ref: '#/components/schemas/NewSettingsHostsEvent'
+            - $ref: '#/components/schemas/GetRepliesEvent'
+            - $ref: '#/components/schemas/NewReplyEvent'
       required:
         - timestamp
 
@@ -350,6 +391,28 @@ components:
       required:
         - code
         - message
+
+    NewReplyEvent:
+      type: object
+      properties:
+        tweet:
+          $ref: '#/components/schemas/Tweet'
+
+    GetRepliesEvent:
+      type: object
+      properties:
+        parent_reply_id:
+          type: string
+        root_id:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - root_id
+        - parent_reply_id
 
     NewTweetEvent:
       type: object

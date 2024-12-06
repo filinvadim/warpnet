@@ -32,26 +32,24 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 	if tweet == (domain_gen.Tweet{}) {
 		return tweet, errors.New("nil tweet")
 	}
-	id := uuid.New().String()
-	if tweet.TweetId == nil {
-		tweet.TweetId = &id
+	if tweet.Id == "" {
+		tweet.Id = uuid.New().String()
 	}
-	if tweet.CreatedAt == nil {
-		now := time.Now()
-		tweet.CreatedAt = &now
+	if tweet.CreatedAt.IsZero() {
+		tweet.CreatedAt = time.Now()
 	}
-	tweet.RootId = &id
+	tweet.RootId = tweet.Id
 
 	fixedKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(*tweet.TweetId).
+		AddParentId(tweet.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
-		AddReversedTimestamp(*tweet.CreatedAt).
-		AddParentId(*tweet.TweetId).
+		AddReversedTimestamp(tweet.CreatedAt).
+		AddParentId(tweet.Id).
 		Build()
 
 	data, err := json.JSON.Marshal(tweet)
@@ -102,7 +100,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		Build()
 	sortableKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
-		AddReversedTimestamp(*t.CreatedAt).
+		AddReversedTimestamp(t.CreatedAt).
 		AddParentId(tweetID).
 		Build()
 	err = repo.db.Txn(func(tx *badger.Txn) error {
@@ -133,7 +131,7 @@ func (repo *TweetRepo) List(rootID string, limit *uint64, cursor *string) ([]dom
 		return nil, "", err
 	}
 	sort.SliceStable(tweets, func(i, j int) bool {
-		return tweets[i].CreatedAt.After(*tweets[j].CreatedAt)
+		return tweets[i].CreatedAt.After(tweets[j].CreatedAt)
 	})
 	return tweets, cur, nil
 }

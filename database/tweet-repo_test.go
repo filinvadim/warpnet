@@ -34,7 +34,7 @@ func TestTweetRepo_Create(t *testing.T) {
 	tweetID := uuid.New().String()
 
 	tweet := domain_gen.Tweet{
-		TweetId: &tweetID,
+		Id: tweetID,
 	}
 
 	id := uuid.New().String()
@@ -42,18 +42,18 @@ func TestTweetRepo_Create(t *testing.T) {
 
 	user := domain_gen.User{
 		Username:  "User",
-		UserId:    &id,
-		CreatedAt: &now,
+		Id:        id,
+		CreatedAt: now,
 	}
 
-	_, err := repo.Create(*user.UserId, tweet)
+	_, err := repo.Create(user.Id, tweet)
 
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был корректно создан
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(user.Id, tweetID)
 	assert.NoError(t, err)
-	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
+	assert.Equal(t, tweet.Id, retrievedTweet.Id)
 }
 
 func TestTweetRepo_Get(t *testing.T) {
@@ -62,7 +62,7 @@ func TestTweetRepo_Get(t *testing.T) {
 
 	tweetID := uuid.New().String()
 	tweet := domain_gen.Tweet{
-		TweetId: &tweetID,
+		Id: tweetID,
 	}
 	id := uuid.New().String()
 
@@ -70,17 +70,17 @@ func TestTweetRepo_Get(t *testing.T) {
 
 	user := domain_gen.User{
 		Username:  "User",
-		UserId:    &id,
-		CreatedAt: &now,
+		Id:        id,
+		CreatedAt: now,
 	}
 
-	_, err := repo.Create(*user.UserId, tweet)
+	_, err := repo.Create(user.Id, tweet)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь может быть получен
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(user.Id, tweetID)
 	assert.NoError(t, err)
-	assert.Equal(t, tweet.TweetId, retrievedTweet.TweetId)
+	assert.Equal(t, tweet.Id, retrievedTweet.Id)
 }
 
 func TestTweetRepo_Delete(t *testing.T) {
@@ -89,23 +89,23 @@ func TestTweetRepo_Delete(t *testing.T) {
 
 	tweetID := uuid.New().String()
 	tweet := domain_gen.Tweet{
-		TweetId: &tweetID,
+		Id: tweetID,
 	}
 	id := uuid.New().String()
 
 	user := domain_gen.User{
 		Username: "User",
-		UserId:   &id,
+		Id:       id,
 	}
 
-	_, err := repo.Create(*user.UserId, tweet)
+	_, err := repo.Create(user.Id, tweet)
 	assert.NoError(t, err)
 
-	err = repo.Delete(*user.UserId, tweetID)
+	err = repo.Delete(user.Id, tweetID)
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был удален
-	retrievedTweet, err := repo.Get(*user.UserId, tweetID)
+	retrievedTweet, err := repo.Get(user.Id, tweetID)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedTweet)
 }
@@ -117,24 +117,24 @@ func TestTweetRepo_List(t *testing.T) {
 	id1 := "1"
 	id2 := "2"
 	tweet1 := domain_gen.Tweet{
-		TweetId: &id1,
+		Id: id1,
 	}
 	tweet2 := domain_gen.Tweet{
-		TweetId: &id2,
+		Id: id2,
 	}
 	id := uuid.New().String()
 
 	user := domain_gen.User{
 		Username: "User",
-		UserId:   &id,
+		Id:       id,
 	}
 
-	_, err := repo.Create(*user.UserId, tweet1)
+	_, err := repo.Create(user.Id, tweet1)
 	assert.NoError(t, err)
-	_, err = repo.Create(*user.UserId, tweet2)
+	_, err = repo.Create(user.Id, tweet2)
 	assert.NoError(t, err)
 
-	tweets, _, err := repo.List(*user.UserId, nil, nil)
+	tweets, _, err := repo.List(user.Id, nil, nil)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 2)
 

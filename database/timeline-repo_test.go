@@ -27,10 +27,10 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 
 func createTestTweet(id string, timestamp time.Time) domain_gen.Tweet {
 	return domain_gen.Tweet{
-		TweetId:   &id,
+		Id:        id,
 		Content:   "Test content",
 		UserId:    uuid.New().String(),
-		CreatedAt: &timestamp,
+		CreatedAt: timestamp,
 	}
 }
 
@@ -56,14 +56,14 @@ func TestAddAndGetTimelineWithCursorAndLimit(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 2)
 
-	assert.Equal(t, *tweet3.TweetId, *tweets[0].TweetId)
-	assert.Equal(t, *tweet2.TweetId, *tweets[1].TweetId)
+	assert.Equal(t, tweet3.Id, tweets[0].Id)
+	assert.Equal(t, tweet2.Id, tweets[1].Id)
 
 	// Use the cursor to retrieve the last tweet (tweet1)
 	tweets, newCursor, err := repo.GetTimeline(userID, &lim, &cursor)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 1)
-	assert.Equal(t, *tweet1.TweetId, *tweets[0].TweetId)
+	assert.Equal(t, tweet1.Id, tweets[0].Id)
 	assert.Equal(t, "", newCursor) // No more data
 }
 
@@ -85,10 +85,10 @@ func TestAddAndDeleteTweetFromTimeline(t *testing.T) {
 	tweets, _, err := repo.GetTimeline(userID, &lim, &cur)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 1)
-	assert.Equal(t, *tweet.TweetId, *tweets[0].TweetId)
+	assert.Equal(t, tweet.Id, tweets[0].Id)
 
 	// Delete the tweet from the timeline
-	err = repo.DeleteTweetFromTimeline(userID, *tweets[0].TweetId, *tweets[0].CreatedAt)
+	err = repo.DeleteTweetFromTimeline(userID, tweets[0].Id, tweets[0].CreatedAt)
 	assert.NoError(t, err)
 
 	// Verify that the tweet was deleted
@@ -134,9 +134,9 @@ func TestGetTimelineWithLargeLimit(t *testing.T) {
 	tweets, cursor, err := repo.GetTimeline(userID, &lim, &cur)
 	assert.NoError(t, err)
 	assert.Len(t, tweets, 3)
-	assert.Equal(t, *tweet3.TweetId, *tweets[0].TweetId)
-	assert.Equal(t, *tweet2.TweetId, *tweets[1].TweetId)
-	assert.Equal(t, *tweet1.TweetId, *tweets[2].TweetId)
+	assert.Equal(t, tweet3.Id, tweets[0].Id)
+	assert.Equal(t, tweet2.Id, tweets[1].Id)
+	assert.Equal(t, tweet1.Id, tweets[2].Id)
 	assert.Equal(t, "", cursor)
 }
 

@@ -85,7 +85,7 @@ func TestGetTweetsByUser(t *testing.T) {
 	tweet := domain_gen.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
-		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
+		CreatedAt: (time.Now()),
 	}
 
 	// Добавляем твит в базу данных
@@ -121,8 +121,8 @@ func TestGetSpecificTweet(t *testing.T) {
 	tweet := domain_gen.Tweet{
 		Content:   "Hello, world!",
 		UserId:    userID,
-		TweetId:   &tweetID,
-		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
+		Id:        tweetID,
+		CreatedAt: (time.Now()),
 	}
 
 	// Добавляем твит в базу данных
@@ -140,7 +140,7 @@ func TestGetSpecificTweet(t *testing.T) {
 		if assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &fetchedTweet)) {
 			assert.Equal(t, tweet.Content, fetchedTweet.Content)
 			assert.Equal(t, tweet.UserId, fetchedTweet.UserId)
-			assert.Equal(t, *tweet.TweetId, *fetchedTweet.TweetId)
+			assert.Equal(t, tweet.Id, fetchedTweet.Id)
 		}
 	}
 }
@@ -158,12 +158,12 @@ func TestGetTimeline(t *testing.T) {
 	tweet1 := domain_gen.Tweet{
 		Content:   "First tweet",
 		UserId:    userID,
-		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now().Add(-time.Hour)),
+		CreatedAt: (time.Now().Add(-time.Hour)),
 	}
 	tweet2 := domain_gen.Tweet{
 		Content:   "Second tweet",
 		UserId:    userID,
-		CreatedAt: func(t time.Time) *time.Time { return &t }(time.Now()),
+		CreatedAt: (time.Now()),
 	}
 
 	// Добавляем твиты в базу данных

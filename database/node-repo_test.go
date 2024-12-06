@@ -32,7 +32,7 @@ func TestNodeRepo_Create(t *testing.T) {
 	node := domain_gen.Node{
 		Host:      "192.168.1.1:16969",
 		OwnerId:   uuid.New().String(),
-		CreatedAt: &now,
+		CreatedAt: now,
 	}
 
 	// Create new node
@@ -65,7 +65,7 @@ func TestNodeRepo_GetByIP(t *testing.T) {
 	node := domain_gen.Node{
 		Host:      "10.0.0.1:16969",
 		OwnerId:   uuid.New().String(),
-		CreatedAt: &now,
+		CreatedAt: now,
 	}
 
 	// Create a new node
@@ -91,7 +91,7 @@ func TestNodeRepo_DeleteByIP(t *testing.T) {
 	node := domain_gen.Node{
 		Host:      "10.0.0.2:16969",
 		OwnerId:   uuid.New().String(),
-		CreatedAt: &now,
+		CreatedAt: now,
 	}
 
 	// Create a new node
@@ -119,7 +119,7 @@ func TestNodeRepo_DeleteByUserId(t *testing.T) {
 	node := domain_gen.Node{
 		Host:      "10.0.0.3:16969",
 		OwnerId:   uuid.New().String(),
-		CreatedAt: &now,
+		CreatedAt: now,
 	}
 
 	// Create a new node
