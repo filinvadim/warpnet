@@ -31,6 +31,12 @@
             </div>
             <div id="timeline"></div>
         </div>
+        <div id="reply-modal" class="modal">
+            <h3>Reply</h3>
+            <textarea id="reply-text" rows="4" placeholder="Write your reply..."></textarea>
+            <button id="submit-reply" onclick="postReply()">Reply</button>
+            <button id="close-reply" onclick="closeReplyModal()">Cancel</button>
+        </div>
         <div id="profile-container">
             <div id="profile-header">
                 <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture">

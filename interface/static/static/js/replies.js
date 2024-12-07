@@ -17,8 +17,8 @@ function closeReplyModal() {
 
 async function postReply() {
     const replyText = document.getElementById('reply-text').value;
-    if (!replyText || !replyParentId || !replyRootId) {
-        console.log('Reply cannot be empty or missing required IDs');
+    if (!replyText || !replyRootId) {
+        console.log('Reply cannot be empty or unattached to tweet');
         return;
     }
 

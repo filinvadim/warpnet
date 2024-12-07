@@ -40,6 +40,7 @@ async function loadTimeline() {
                     <div class="tweet-text">${tweet.content}</div>
                     <div class="tweet-user">@${tweet.username}</div>
                     <div class="tweet-time">${tweetTime}</div>
+                    <button class="reply-button" onclick="openReplyModal('${tweet.id}', '${tweet.root_id || tweet.id}')">Reply</button>
                 </div>`;
         });
 
