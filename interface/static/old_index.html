@@ -365,7 +365,7 @@
         }
     }
 
-    let timelineCursor = null; // Переменная для хранения текущего курсора
+    let timelineCursor = null; // Переменная для хранения курсора
     const timelineLimit = 20;  // Лимит твитов за одну загрузку
 
     async function loadTimeline() {
@@ -393,10 +393,9 @@
                 timelineDiv.innerHTML = '';
             }
 
-            // Проверяем, есть ли твиты в ответе
+            // Проверяем наличие твитов
             if (!data.tweets || data.tweets.length === 0) {
                 console.warn('No tweets found');
-                removeLoadMoreButton();
                 return;
             }
 
@@ -411,15 +410,14 @@
                 </div>`;
             });
 
-            // Обновляем курсор для следующей загрузки
             timelineCursor = data.cursor || null;
 
             // Если есть еще данные для загрузки, добавляем кнопку "Загрузить еще"
-            const loadMoreButton = document.getElementById('load-more-timeline');
+            const loadMoreButton = document.getElementById('load-more');
             if (timelineCursor) {
                 if (!loadMoreButton) {
                     const button = document.createElement('button');
-                    button.id = 'load-more-timeline';
+                    button.id = 'load-more';
                     button.textContent = 'Load More';
                     button.style.marginTop = '10px';
                     button.onclick = () => loadTimeline(); // Передаем функцию с правильным контекстом
@@ -452,7 +450,10 @@
             document.getElementById('profile-id').innerText = 'User ID: ' + profileId;
 
             const profileTweetsDiv = document.getElementById('profile-tweets');
-            profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
+
+            if (!tweetsCursor) {
+                profileTweetsDiv.innerHTML = '<h3>Your Tweets</h3>';
+            }
             data.tweets.forEach(tweet => {
                 const tweetTime = new Date(tweet.created_at).toLocaleString();
                 profileTweetsDiv.innerHTML += `
@@ -461,15 +462,14 @@
                         <div class="tweet-time">${tweetTime}</div>
                     </div>`;
             });
-            // Обновляем курсор для следующей загрузки
-            tweetsCursor = data.cursor || null;
 
+            tweetsCursor = data.cursor || null;
             // Если есть еще данные для загрузки, добавляем кнопку "Загрузить еще"
-            const loadMoreButton = document.getElementById('load-more-profile');
+            const loadMoreButton = document.getElementById('load-more');
             if (tweetsCursor) {
                 if (!loadMoreButton) {
                     const button = document.createElement('button');
-                    button.id = 'load-more-profile';
+                    button.id = 'load-more';
                     button.textContent = 'Load More';
                     button.style.marginTop = '10px';
                     button.onclick = () => loadProfile(); // Передаем функцию с правильным контекстом

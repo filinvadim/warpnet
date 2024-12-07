@@ -6,8 +6,11 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -126,11 +129,2584 @@ type PostV1ApiUsersFollowJSONRequestBody = externalRef0.FollowRequest
 // PostV1ApiUsersUnfollowJSONRequestBody defines body for PostV1ApiUsersUnfollow for application/json ContentType.
 type PostV1ApiUsersUnfollowJSONRequestBody = externalRef0.UnfollowRequest
 
+// RequestEditorFn  is the function signature for the RequestEditor callback function
+type RequestEditorFn func(ctx context.Context, req *http.Request) error
+
+// Doer performs HTTP requests.
+//
+// The standard http.Client implements this interface.
+type HttpRequestDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Client which conforms to the OpenAPI3 specification for this service.
+type Client struct {
+	// The endpoint of the server conforming to this interface, with scheme,
+	// https://api.deepmap.com for example. This can contain a path relative
+	// to the server, such as https://api.deepmap.com/dev-test, and all the
+	// paths in the swagger spec will be appended to the server.
+	Server string
+
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+}
+
+// ClientOption allows setting custom parameters during construction
+type ClientOption func(*Client) error
+
+// Creates a new Client, with reasonable defaults
+func NewClient(server string, opts ...ClientOption) (*Client, error) {
+	// create a client with sane default values
+	client := Client{
+		Server: server,
+	}
+	// mutate client and add all optional params
+	for _, o := range opts {
+		if err := o(&client); err != nil {
+			return nil, err
+		}
+	}
+	// ensure the server URL always has a trailing slash
+	if !strings.HasSuffix(client.Server, "/") {
+		client.Server += "/"
+	}
+	// create httpClient, if not already present
+	if client.Client == nil {
+		client.Client = &http.Client{}
+	}
+	return &client, nil
+}
+
+// WithHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithHTTPClient(doer HttpRequestDoer) ClientOption {
+	return func(c *Client) error {
+		c.Client = doer
+		return nil
+	}
+}
+
+// WithRequestEditorFn allows setting up a callback function, which will be
+// called right before sending the request. This can be used to mutate the request.
+func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
+	return func(c *Client) error {
+		c.RequestEditors = append(c.RequestEditors, fn)
+		return nil
+	}
+}
+
+// The interface specification for the client above.
+type ClientInterface interface {
+	// GetIndex request
+	GetIndex(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStaticFile request
+	GetStaticFile(ctx context.Context, file string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiAuthLoginWithBody request with any body
+	PostV1ApiAuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiAuthLogin(ctx context.Context, body PostV1ApiAuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiAuthLogout request
+	PostV1ApiAuthLogout(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiNodesSettings request
+	GetV1ApiNodesSettings(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiNodesSettingsWithBody request with any body
+	PostV1ApiNodesSettingsWithBody(ctx context.Context, params *PostV1ApiNodesSettingsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiNodesSettings(ctx context.Context, params *PostV1ApiNodesSettingsParams, body PostV1ApiNodesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiTweetsWithBody request with any body
+	PostV1ApiTweetsWithBody(ctx context.Context, params *PostV1ApiTweetsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiTweets(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiTweetsRepliesWithBody request with any body
+	PostV1ApiTweetsRepliesWithBody(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiTweetsReplies(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiTweetsRepliesRootTweetIdParentReplyId request
+	GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiTweetsRepliesRootTweetIdReplyId request
+	GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiTweetsTimelineUserId request
+	GetV1ApiTweetsTimelineUserId(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiTweetsUserId request
+	GetV1ApiTweetsUserId(ctx context.Context, userId string, params *GetV1ApiTweetsUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiTweetsUserIdTweetId request
+	GetV1ApiTweetsUserIdTweetId(ctx context.Context, userId string, tweetId string, params *GetV1ApiTweetsUserIdTweetIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiUsers request
+	GetV1ApiUsers(ctx context.Context, params *GetV1ApiUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiUsersWithBody request with any body
+	PostV1ApiUsersWithBody(ctx context.Context, params *PostV1ApiUsersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiUsers(ctx context.Context, params *PostV1ApiUsersParams, body PostV1ApiUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiUsersFollowWithBody request with any body
+	PostV1ApiUsersFollowWithBody(ctx context.Context, params *PostV1ApiUsersFollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiUsersFollow(ctx context.Context, params *PostV1ApiUsersFollowParams, body PostV1ApiUsersFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiUsersUnfollowWithBody request with any body
+	PostV1ApiUsersUnfollowWithBody(ctx context.Context, params *PostV1ApiUsersUnfollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiUsersUnfollow(ctx context.Context, params *PostV1ApiUsersUnfollowParams, body PostV1ApiUsersUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiUsersUserId request
+	GetV1ApiUsersUserId(ctx context.Context, userId string, params *GetV1ApiUsersUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetIndex(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetIndexRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStaticFile(ctx context.Context, file string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStaticFileRequest(c.Server, file)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiAuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiAuthLoginRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiAuthLogin(ctx context.Context, body PostV1ApiAuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiAuthLoginRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiAuthLogout(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiAuthLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiNodesSettings(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiNodesSettingsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiNodesSettingsWithBody(ctx context.Context, params *PostV1ApiNodesSettingsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiNodesSettingsRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiNodesSettings(ctx context.Context, params *PostV1ApiNodesSettingsParams, body PostV1ApiNodesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiNodesSettingsRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiTweetsWithBody(ctx context.Context, params *PostV1ApiTweetsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiTweetsRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiTweets(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiTweetsRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiTweetsRepliesWithBody(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiTweetsRepliesRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiTweetsReplies(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiTweetsRepliesRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest(c.Server, rootTweetId, parentReplyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest(c.Server, rootTweetId, replyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiTweetsTimelineUserId(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiTweetsTimelineUserIdRequest(c.Server, userId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiTweetsUserId(ctx context.Context, userId string, params *GetV1ApiTweetsUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiTweetsUserIdRequest(c.Server, userId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiTweetsUserIdTweetId(ctx context.Context, userId string, tweetId string, params *GetV1ApiTweetsUserIdTweetIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiTweetsUserIdTweetIdRequest(c.Server, userId, tweetId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiUsers(ctx context.Context, params *GetV1ApiUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiUsersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsersWithBody(ctx context.Context, params *PostV1ApiUsersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsers(ctx context.Context, params *PostV1ApiUsersParams, body PostV1ApiUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsersFollowWithBody(ctx context.Context, params *PostV1ApiUsersFollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersFollowRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsersFollow(ctx context.Context, params *PostV1ApiUsersFollowParams, body PostV1ApiUsersFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersFollowRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsersUnfollowWithBody(ctx context.Context, params *PostV1ApiUsersUnfollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersUnfollowRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiUsersUnfollow(ctx context.Context, params *PostV1ApiUsersUnfollowParams, body PostV1ApiUsersUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiUsersUnfollowRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiUsersUserId(ctx context.Context, userId string, params *GetV1ApiUsersUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiUsersUserIdRequest(c.Server, userId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGetIndexRequest generates requests for GetIndex
+func NewGetIndexRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStaticFileRequest generates requests for GetStaticFile
+func NewGetStaticFileRequest(server string, file string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "file", runtime.ParamLocationPath, file)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/static/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiAuthLoginRequest calls the generic PostV1ApiAuthLogin builder with application/json body
+func NewPostV1ApiAuthLoginRequest(server string, body PostV1ApiAuthLoginJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiAuthLoginRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostV1ApiAuthLoginRequestWithBody generates requests for PostV1ApiAuthLogin with any type of body
+func NewPostV1ApiAuthLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostV1ApiAuthLogoutRequest generates requests for PostV1ApiAuthLogout
+func NewPostV1ApiAuthLogoutRequest(server string, params *PostV1ApiAuthLogoutParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiNodesSettingsRequest generates requests for GetV1ApiNodesSettings
+func NewGetV1ApiNodesSettingsRequest(server string, params *GetV1ApiNodesSettingsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/nodes/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiNodesSettingsRequest calls the generic PostV1ApiNodesSettings builder with application/json body
+func NewPostV1ApiNodesSettingsRequest(server string, params *PostV1ApiNodesSettingsParams, body PostV1ApiNodesSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiNodesSettingsRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiNodesSettingsRequestWithBody generates requests for PostV1ApiNodesSettings with any type of body
+func NewPostV1ApiNodesSettingsRequestWithBody(server string, params *PostV1ApiNodesSettingsParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/nodes/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiTweetsRequest calls the generic PostV1ApiTweets builder with application/json body
+func NewPostV1ApiTweetsRequest(server string, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiTweetsRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiTweetsRequestWithBody generates requests for PostV1ApiTweets with any type of body
+func NewPostV1ApiTweetsRequestWithBody(server string, params *PostV1ApiTweetsParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiTweetsRepliesRequest calls the generic PostV1ApiTweetsReplies builder with application/json body
+func NewPostV1ApiTweetsRepliesRequest(server string, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiTweetsRepliesRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiTweetsRepliesRequestWithBody generates requests for PostV1ApiTweetsReplies with any type of body
+func NewPostV1ApiTweetsRepliesRequestWithBody(server string, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/replies")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest generates requests for GetV1ApiTweetsRepliesRootTweetIdParentReplyId
+func NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest(server string, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "root_tweet_id", runtime.ParamLocationPath, rootTweetId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "parent_reply_id", runtime.ParamLocationPath, parentReplyId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/replies/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest generates requests for GetV1ApiTweetsRepliesRootTweetIdReplyId
+func NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest(server string, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "root_tweet_id", runtime.ParamLocationPath, rootTweetId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "reply_id", runtime.ParamLocationPath, replyId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/replies/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiTweetsTimelineUserIdRequest generates requests for GetV1ApiTweetsTimelineUserId
+func NewGetV1ApiTweetsTimelineUserIdRequest(server string, userId string, params *GetV1ApiTweetsTimelineUserIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/timeline/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiTweetsUserIdRequest generates requests for GetV1ApiTweetsUserId
+func NewGetV1ApiTweetsUserIdRequest(server string, userId string, params *GetV1ApiTweetsUserIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiTweetsUserIdTweetIdRequest generates requests for GetV1ApiTweetsUserIdTweetId
+func NewGetV1ApiTweetsUserIdTweetIdRequest(server string, userId string, tweetId string, params *GetV1ApiTweetsUserIdTweetIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "tweet_id", runtime.ParamLocationPath, tweetId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiUsersRequest generates requests for GetV1ApiUsers
+func NewGetV1ApiUsersRequest(server string, params *GetV1ApiUsersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiUsersRequest calls the generic PostV1ApiUsers builder with application/json body
+func NewPostV1ApiUsersRequest(server string, params *PostV1ApiUsersParams, body PostV1ApiUsersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiUsersRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiUsersRequestWithBody generates requests for PostV1ApiUsers with any type of body
+func NewPostV1ApiUsersRequestWithBody(server string, params *PostV1ApiUsersParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiUsersFollowRequest calls the generic PostV1ApiUsersFollow builder with application/json body
+func NewPostV1ApiUsersFollowRequest(server string, params *PostV1ApiUsersFollowParams, body PostV1ApiUsersFollowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiUsersFollowRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiUsersFollowRequestWithBody generates requests for PostV1ApiUsersFollow with any type of body
+func NewPostV1ApiUsersFollowRequestWithBody(server string, params *PostV1ApiUsersFollowParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/users/follow")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiUsersUnfollowRequest calls the generic PostV1ApiUsersUnfollow builder with application/json body
+func NewPostV1ApiUsersUnfollowRequest(server string, params *PostV1ApiUsersUnfollowParams, body PostV1ApiUsersUnfollowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiUsersUnfollowRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiUsersUnfollowRequestWithBody generates requests for PostV1ApiUsersUnfollow with any type of body
+func NewPostV1ApiUsersUnfollowRequestWithBody(server string, params *PostV1ApiUsersUnfollowParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/users/unfollow")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiUsersUserIdRequest generates requests for GetV1ApiUsersUserId
+func NewGetV1ApiUsersUserIdRequest(server string, userId string, params *GetV1ApiUsersUserIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "user_id", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+	for _, r := range c.RequestEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	for _, r := range additionalEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ClientWithResponses builds on ClientInterface to offer response payloads
+type ClientWithResponses struct {
+	ClientInterface
+}
+
+// NewClientWithResponses creates a new ClientWithResponses, which wraps
+// Client with return type handling
+func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithResponses, error) {
+	client, err := NewClient(server, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &ClientWithResponses{client}, nil
+}
+
+// WithBaseURL overrides the baseURL.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) error {
+		newBaseURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+		c.Server = newBaseURL.String()
+		return nil
+	}
+}
+
+// ClientWithResponsesInterface is the interface specification for the client with responses above.
+type ClientWithResponsesInterface interface {
+	// GetIndexWithResponse request
+	GetIndexWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetIndexResponse, error)
+
+	// GetStaticFileWithResponse request
+	GetStaticFileWithResponse(ctx context.Context, file string, reqEditors ...RequestEditorFn) (*GetStaticFileResponse, error)
+
+	// PostV1ApiAuthLoginWithBodyWithResponse request with any body
+	PostV1ApiAuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLoginResponse, error)
+
+	PostV1ApiAuthLoginWithResponse(ctx context.Context, body PostV1ApiAuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLoginResponse, error)
+
+	// PostV1ApiAuthLogoutWithResponse request
+	PostV1ApiAuthLogoutWithResponse(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLogoutResponse, error)
+
+	// GetV1ApiNodesSettingsWithResponse request
+	GetV1ApiNodesSettingsWithResponse(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*GetV1ApiNodesSettingsResponse, error)
+
+	// PostV1ApiNodesSettingsWithBodyWithResponse request with any body
+	PostV1ApiNodesSettingsWithBodyWithResponse(ctx context.Context, params *PostV1ApiNodesSettingsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiNodesSettingsResponse, error)
+
+	PostV1ApiNodesSettingsWithResponse(ctx context.Context, params *PostV1ApiNodesSettingsParams, body PostV1ApiNodesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiNodesSettingsResponse, error)
+
+	// PostV1ApiTweetsWithBodyWithResponse request with any body
+	PostV1ApiTweetsWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsResponse, error)
+
+	PostV1ApiTweetsWithResponse(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsResponse, error)
+
+	// PostV1ApiTweetsRepliesWithBodyWithResponse request with any body
+	PostV1ApiTweetsRepliesWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error)
+
+	PostV1ApiTweetsRepliesWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error)
+
+	// GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse request
+	GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error)
+
+	// GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse request
+	GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error)
+
+	// GetV1ApiTweetsTimelineUserIdWithResponse request
+	GetV1ApiTweetsTimelineUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsTimelineUserIdResponse, error)
+
+	// GetV1ApiTweetsUserIdWithResponse request
+	GetV1ApiTweetsUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsUserIdResponse, error)
+
+	// GetV1ApiTweetsUserIdTweetIdWithResponse request
+	GetV1ApiTweetsUserIdTweetIdWithResponse(ctx context.Context, userId string, tweetId string, params *GetV1ApiTweetsUserIdTweetIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsUserIdTweetIdResponse, error)
+
+	// GetV1ApiUsersWithResponse request
+	GetV1ApiUsersWithResponse(ctx context.Context, params *GetV1ApiUsersParams, reqEditors ...RequestEditorFn) (*GetV1ApiUsersResponse, error)
+
+	// PostV1ApiUsersWithBodyWithResponse request with any body
+	PostV1ApiUsersWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersResponse, error)
+
+	PostV1ApiUsersWithResponse(ctx context.Context, params *PostV1ApiUsersParams, body PostV1ApiUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersResponse, error)
+
+	// PostV1ApiUsersFollowWithBodyWithResponse request with any body
+	PostV1ApiUsersFollowWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersFollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersFollowResponse, error)
+
+	PostV1ApiUsersFollowWithResponse(ctx context.Context, params *PostV1ApiUsersFollowParams, body PostV1ApiUsersFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersFollowResponse, error)
+
+	// PostV1ApiUsersUnfollowWithBodyWithResponse request with any body
+	PostV1ApiUsersUnfollowWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersUnfollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersUnfollowResponse, error)
+
+	PostV1ApiUsersUnfollowWithResponse(ctx context.Context, params *PostV1ApiUsersUnfollowParams, body PostV1ApiUsersUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersUnfollowResponse, error)
+
+	// GetV1ApiUsersUserIdWithResponse request
+	GetV1ApiUsersUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiUsersUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiUsersUserIdResponse, error)
+}
+
+type GetIndexResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetIndexResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetIndexResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStaticFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStaticFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStaticFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiAuthLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.User
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiAuthLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiAuthLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiAuthLogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiAuthLogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiAuthLogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiNodesSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiNodesSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiNodesSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiNodesSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiNodesSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiNodesSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiTweetsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.Tweet
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiTweetsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiTweetsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiTweetsRepliesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.Tweet
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiTweetsRepliesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiTweetsRepliesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiTweetsTimelineUserIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.TweetsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiTweetsTimelineUserIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiTweetsTimelineUserIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiTweetsUserIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.TweetsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiTweetsUserIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiTweetsUserIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiTweetsUserIdTweetIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiTweetsUserIdTweetIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiTweetsUserIdTweetIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.UsersResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.User
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiUsersFollowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiUsersFollowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiUsersFollowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiUsersUnfollowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiUsersUnfollowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiUsersUnfollowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiUsersUserIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.User
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiUsersUserIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiUsersUserIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// GetIndexWithResponse request returning *GetIndexResponse
+func (c *ClientWithResponses) GetIndexWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetIndexResponse, error) {
+	rsp, err := c.GetIndex(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetIndexResponse(rsp)
+}
+
+// GetStaticFileWithResponse request returning *GetStaticFileResponse
+func (c *ClientWithResponses) GetStaticFileWithResponse(ctx context.Context, file string, reqEditors ...RequestEditorFn) (*GetStaticFileResponse, error) {
+	rsp, err := c.GetStaticFile(ctx, file, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStaticFileResponse(rsp)
+}
+
+// PostV1ApiAuthLoginWithBodyWithResponse request with arbitrary body returning *PostV1ApiAuthLoginResponse
+func (c *ClientWithResponses) PostV1ApiAuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLoginResponse, error) {
+	rsp, err := c.PostV1ApiAuthLoginWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiAuthLoginResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiAuthLoginWithResponse(ctx context.Context, body PostV1ApiAuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLoginResponse, error) {
+	rsp, err := c.PostV1ApiAuthLogin(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiAuthLoginResponse(rsp)
+}
+
+// PostV1ApiAuthLogoutWithResponse request returning *PostV1ApiAuthLogoutResponse
+func (c *ClientWithResponses) PostV1ApiAuthLogoutWithResponse(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLogoutResponse, error) {
+	rsp, err := c.PostV1ApiAuthLogout(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiAuthLogoutResponse(rsp)
+}
+
+// GetV1ApiNodesSettingsWithResponse request returning *GetV1ApiNodesSettingsResponse
+func (c *ClientWithResponses) GetV1ApiNodesSettingsWithResponse(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*GetV1ApiNodesSettingsResponse, error) {
+	rsp, err := c.GetV1ApiNodesSettings(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiNodesSettingsResponse(rsp)
+}
+
+// PostV1ApiNodesSettingsWithBodyWithResponse request with arbitrary body returning *PostV1ApiNodesSettingsResponse
+func (c *ClientWithResponses) PostV1ApiNodesSettingsWithBodyWithResponse(ctx context.Context, params *PostV1ApiNodesSettingsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiNodesSettingsResponse, error) {
+	rsp, err := c.PostV1ApiNodesSettingsWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiNodesSettingsResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiNodesSettingsWithResponse(ctx context.Context, params *PostV1ApiNodesSettingsParams, body PostV1ApiNodesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiNodesSettingsResponse, error) {
+	rsp, err := c.PostV1ApiNodesSettings(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiNodesSettingsResponse(rsp)
+}
+
+// PostV1ApiTweetsWithBodyWithResponse request with arbitrary body returning *PostV1ApiTweetsResponse
+func (c *ClientWithResponses) PostV1ApiTweetsWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsResponse, error) {
+	rsp, err := c.PostV1ApiTweetsWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiTweetsResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiTweetsWithResponse(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsResponse, error) {
+	rsp, err := c.PostV1ApiTweets(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiTweetsResponse(rsp)
+}
+
+// PostV1ApiTweetsRepliesWithBodyWithResponse request with arbitrary body returning *PostV1ApiTweetsRepliesResponse
+func (c *ClientWithResponses) PostV1ApiTweetsRepliesWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error) {
+	rsp, err := c.PostV1ApiTweetsRepliesWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiTweetsRepliesResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiTweetsRepliesWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error) {
+	rsp, err := c.PostV1ApiTweetsReplies(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiTweetsRepliesResponse(rsp)
+}
+
+// GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse request returning *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse
+func (c *ClientWithResponses) GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error) {
+	rsp, err := c.GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx, rootTweetId, parentReplyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse(rsp)
+}
+
+// GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse request returning *GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse
+func (c *ClientWithResponses) GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error) {
+	rsp, err := c.GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx, rootTweetId, replyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse(rsp)
+}
+
+// GetV1ApiTweetsTimelineUserIdWithResponse request returning *GetV1ApiTweetsTimelineUserIdResponse
+func (c *ClientWithResponses) GetV1ApiTweetsTimelineUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsTimelineUserIdResponse, error) {
+	rsp, err := c.GetV1ApiTweetsTimelineUserId(ctx, userId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiTweetsTimelineUserIdResponse(rsp)
+}
+
+// GetV1ApiTweetsUserIdWithResponse request returning *GetV1ApiTweetsUserIdResponse
+func (c *ClientWithResponses) GetV1ApiTweetsUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsUserIdResponse, error) {
+	rsp, err := c.GetV1ApiTweetsUserId(ctx, userId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiTweetsUserIdResponse(rsp)
+}
+
+// GetV1ApiTweetsUserIdTweetIdWithResponse request returning *GetV1ApiTweetsUserIdTweetIdResponse
+func (c *ClientWithResponses) GetV1ApiTweetsUserIdTweetIdWithResponse(ctx context.Context, userId string, tweetId string, params *GetV1ApiTweetsUserIdTweetIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsUserIdTweetIdResponse, error) {
+	rsp, err := c.GetV1ApiTweetsUserIdTweetId(ctx, userId, tweetId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiTweetsUserIdTweetIdResponse(rsp)
+}
+
+// GetV1ApiUsersWithResponse request returning *GetV1ApiUsersResponse
+func (c *ClientWithResponses) GetV1ApiUsersWithResponse(ctx context.Context, params *GetV1ApiUsersParams, reqEditors ...RequestEditorFn) (*GetV1ApiUsersResponse, error) {
+	rsp, err := c.GetV1ApiUsers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiUsersResponse(rsp)
+}
+
+// PostV1ApiUsersWithBodyWithResponse request with arbitrary body returning *PostV1ApiUsersResponse
+func (c *ClientWithResponses) PostV1ApiUsersWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersResponse, error) {
+	rsp, err := c.PostV1ApiUsersWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiUsersWithResponse(ctx context.Context, params *PostV1ApiUsersParams, body PostV1ApiUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersResponse, error) {
+	rsp, err := c.PostV1ApiUsers(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersResponse(rsp)
+}
+
+// PostV1ApiUsersFollowWithBodyWithResponse request with arbitrary body returning *PostV1ApiUsersFollowResponse
+func (c *ClientWithResponses) PostV1ApiUsersFollowWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersFollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersFollowResponse, error) {
+	rsp, err := c.PostV1ApiUsersFollowWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersFollowResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiUsersFollowWithResponse(ctx context.Context, params *PostV1ApiUsersFollowParams, body PostV1ApiUsersFollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersFollowResponse, error) {
+	rsp, err := c.PostV1ApiUsersFollow(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersFollowResponse(rsp)
+}
+
+// PostV1ApiUsersUnfollowWithBodyWithResponse request with arbitrary body returning *PostV1ApiUsersUnfollowResponse
+func (c *ClientWithResponses) PostV1ApiUsersUnfollowWithBodyWithResponse(ctx context.Context, params *PostV1ApiUsersUnfollowParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiUsersUnfollowResponse, error) {
+	rsp, err := c.PostV1ApiUsersUnfollowWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersUnfollowResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiUsersUnfollowWithResponse(ctx context.Context, params *PostV1ApiUsersUnfollowParams, body PostV1ApiUsersUnfollowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiUsersUnfollowResponse, error) {
+	rsp, err := c.PostV1ApiUsersUnfollow(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiUsersUnfollowResponse(rsp)
+}
+
+// GetV1ApiUsersUserIdWithResponse request returning *GetV1ApiUsersUserIdResponse
+func (c *ClientWithResponses) GetV1ApiUsersUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiUsersUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiUsersUserIdResponse, error) {
+	rsp, err := c.GetV1ApiUsersUserId(ctx, userId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiUsersUserIdResponse(rsp)
+}
+
+// ParseGetIndexResponse parses an HTTP response from a GetIndexWithResponse call
+func ParseGetIndexResponse(rsp *http.Response) (*GetIndexResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetIndexResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetStaticFileResponse parses an HTTP response from a GetStaticFileWithResponse call
+func ParseGetStaticFileResponse(rsp *http.Response) (*GetStaticFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStaticFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiAuthLoginResponse parses an HTTP response from a PostV1ApiAuthLoginWithResponse call
+func ParsePostV1ApiAuthLoginResponse(rsp *http.Response) (*PostV1ApiAuthLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiAuthLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiAuthLogoutResponse parses an HTTP response from a PostV1ApiAuthLogoutWithResponse call
+func ParsePostV1ApiAuthLogoutResponse(rsp *http.Response) (*PostV1ApiAuthLogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiAuthLogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiNodesSettingsResponse parses an HTTP response from a GetV1ApiNodesSettingsWithResponse call
+func ParseGetV1ApiNodesSettingsResponse(rsp *http.Response) (*GetV1ApiNodesSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiNodesSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiNodesSettingsResponse parses an HTTP response from a PostV1ApiNodesSettingsWithResponse call
+func ParsePostV1ApiNodesSettingsResponse(rsp *http.Response) (*PostV1ApiNodesSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiNodesSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiTweetsResponse parses an HTTP response from a PostV1ApiTweetsWithResponse call
+func ParsePostV1ApiTweetsResponse(rsp *http.Response) (*PostV1ApiTweetsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiTweetsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.Tweet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiTweetsRepliesResponse parses an HTTP response from a PostV1ApiTweetsRepliesWithResponse call
+func ParsePostV1ApiTweetsRepliesResponse(rsp *http.Response) (*PostV1ApiTweetsRepliesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiTweetsRepliesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.Tweet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse parses an HTTP response from a GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse call
+func ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse(rsp *http.Response) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse parses an HTTP response from a GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse call
+func ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse(rsp *http.Response) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiTweetsTimelineUserIdResponse parses an HTTP response from a GetV1ApiTweetsTimelineUserIdWithResponse call
+func ParseGetV1ApiTweetsTimelineUserIdResponse(rsp *http.Response) (*GetV1ApiTweetsTimelineUserIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiTweetsTimelineUserIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.TweetsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiTweetsUserIdResponse parses an HTTP response from a GetV1ApiTweetsUserIdWithResponse call
+func ParseGetV1ApiTweetsUserIdResponse(rsp *http.Response) (*GetV1ApiTweetsUserIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiTweetsUserIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.TweetsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiTweetsUserIdTweetIdResponse parses an HTTP response from a GetV1ApiTweetsUserIdTweetIdWithResponse call
+func ParseGetV1ApiTweetsUserIdTweetIdResponse(rsp *http.Response) (*GetV1ApiTweetsUserIdTweetIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiTweetsUserIdTweetIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiUsersResponse parses an HTTP response from a GetV1ApiUsersWithResponse call
+func ParseGetV1ApiUsersResponse(rsp *http.Response) (*GetV1ApiUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.UsersResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiUsersResponse parses an HTTP response from a PostV1ApiUsersWithResponse call
+func ParsePostV1ApiUsersResponse(rsp *http.Response) (*PostV1ApiUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiUsersFollowResponse parses an HTTP response from a PostV1ApiUsersFollowWithResponse call
+func ParsePostV1ApiUsersFollowResponse(rsp *http.Response) (*PostV1ApiUsersFollowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiUsersFollowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiUsersUnfollowResponse parses an HTTP response from a PostV1ApiUsersUnfollowWithResponse call
+func ParsePostV1ApiUsersUnfollowResponse(rsp *http.Response) (*PostV1ApiUsersUnfollowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiUsersUnfollowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiUsersUserIdResponse parses an HTTP response from a GetV1ApiUsersUserIdWithResponse call
+func ParseGetV1ApiUsersUserIdResponse(rsp *http.Response) (*GetV1ApiUsersUserIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiUsersUserIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Serve the main index.html page
+	// Serve static files
 	// (GET /)
 	GetIndex(ctx echo.Context) error
+	// Serve static files
+	// (GET /static/{file*})
+	GetStaticFile(ctx echo.Context, file string) error
 	// Store credentials
 	// (POST /v1/api/auth/login)
 	PostV1ApiAuthLogin(ctx echo.Context) error
@@ -192,6 +2768,22 @@ func (w *ServerInterfaceWrapper) GetIndex(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetIndex(ctx)
+	return err
+}
+
+// GetStaticFile converts echo context to params.
+func (w *ServerInterfaceWrapper) GetStaticFile(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "file" -------------
+	var file string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file", ctx.Param("file"), &file, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter file: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetStaticFile(ctx, file)
 	return err
 }
 
@@ -836,6 +3428,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/", wrapper.GetIndex)
+	router.GET(baseURL+"/static/:file", wrapper.GetStaticFile)
 	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
 	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
 	router.GET(baseURL+"/v1/api/nodes/settings", wrapper.GetV1ApiNodesSettings)
@@ -858,37 +3451,36 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"rtmnELIvAAA=",
+	"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",
+	"AA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

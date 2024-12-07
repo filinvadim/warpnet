@@ -13,7 +13,8 @@ const (
 	LogFormat = `
 	{"time":"${time_datetime_only}",` +
 		`"method":"${method}","host":"${host}","uri":"${uri}",` +
-		`"status":${status},"error":"${error}}"` + "\n"
+		`"status":${status},"error":"${error}}` + "\n"
+	StaticDirPath = "interface/static/"
 )
 
 var IPProviders = []string{

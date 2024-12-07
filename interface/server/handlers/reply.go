@@ -4,7 +4,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
-	"github.com/filinvadim/dWighter/node/client"
+	client "github.com/filinvadim/dWighter/node-client"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -34,7 +34,7 @@ func (rc *ReplyController) PostV1ApiTweetsReplies(ctx echo.Context, params api_g
 		domain_gen.NewReplyEvent{Tweet: &t},
 	)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusOK, tweet)
 }
@@ -52,7 +52,7 @@ func (rc *ReplyController) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx ech
 			ParentReplyId: parentTweetId,
 		})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusOK, repliesTree)
 }

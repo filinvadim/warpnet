@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/filinvadim/dWighter/config"
 	"github.com/filinvadim/dWighter/interface/server"
 	"github.com/filinvadim/dWighter/interface/server/handlers"
-	"github.com/filinvadim/dWighter/node/client"
+	client "github.com/filinvadim/dWighter/node-client"
 	"github.com/filinvadim/dWighter/node/node"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -55,7 +59,7 @@ func main() {
 		log.Fatal("node client loading: ", err)
 	}
 
-	ip, err := cli.GetOwnIPAddress()
+	ip, err := GetOwnIPAddress()
 	if err != nil {
 		log.Println("failed to get own node ip address")
 	}
@@ -72,7 +76,7 @@ func main() {
 	go interfaceServer.Start()
 	defer interfaceServer.Shutdown(ctx)
 
-	n, err := node.NewNodeService(ctx, ip, cli, db, interruptChan)
+	n, err := node.NewNodeService(ctx, ip, db, interruptChan)
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}
@@ -113,4 +117,22 @@ func getAppPath() string {
 	}
 
 	return dbPath
+}
+
+func GetOwnIPAddress() (string, error) {
+	for _, addr := range config.IPProviders {
+		resp, err := http.Get(addr)
+		if err != nil {
+			continue
+		}
+
+		bt, err := io.ReadAll(resp.Body)
+		if err != nil {
+			resp.Body.Close()
+			continue
+		}
+		resp.Body.Close()
+		return string(bt), nil
+	}
+	return "", errors.New("no IP address found")
 }

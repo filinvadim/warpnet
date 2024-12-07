@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"github.com/filinvadim/dWighter/config"
-	node_gen "github.com/filinvadim/dWighter/node/node-gen"
+	node_gen "github.com/filinvadim/dWighter/node-gen"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	middleware "github.com/oapi-codegen/echo-middleware"

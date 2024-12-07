@@ -10,30 +10,32 @@ servers:
 paths:
   /:
     get:
-      summary: Serve the main index.html page
-      description: This endpoint serves the main frontend page of the application (index.html).
+      summary: Serve static files
       operationId: GetIndex
       responses:
         '200':
-          description: The main HTML page of the application
+          description: OK
+
+  /static/{file*}:
+    get:
+      summary: Serve static files
+      description: Returns any static file from the /static/ directory
+      parameters:
+        - in: path
+          name: file
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Static file served successfully
           content:
-            text/html:
+            application/octet-stream:
               schema:
                 type: string
-                example: "<html><head><title>Twitter Clone</title></head><body>Welcome to Twitter Clone</body></html>"
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                    example: 500
-                  message:
-                    type: string
-                    example: Internal Server Error
+                format: binary
+        '404':
+          description: File not found
 
   /v1/api/auth/login:
     post:

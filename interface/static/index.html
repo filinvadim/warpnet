@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Clone</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+<body>
+<div id="navigation">
+    <a href="#" onclick="navigateHome()">Home</a>
+    <a href="#">Notifications</a>
+    <a href="#">Messages</a>
+    <a href="#" onclick="navigateProfile()">Profile</a>
+    <a href="#" onclick="navigateSettings()">Settings</a>
+</div>
+<div id="main-content">
+    <div id="container">
+        <div id="login" class="active">
+            <h1>Login</h1>
+            <div id="login-form">
+                <input id="username" type="text" placeholder="Enter your username">
+                <input id="password" type="password" placeholder="Enter your password">
+                <button onclick="login()">Login</button>
+            </div>
+        </div>
+        <div id="timeline-container">
+            <div id="new-tweet">
+                <textarea id="tweet-text" rows="3" placeholder="What's happening?"></textarea>
+                <button onclick="postTweet()">Tweet</button>
+            </div>
+            <div id="timeline"></div>
+        </div>
+        <div id="profile-container">
+            <div id="profile-header">
+                <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture">
+                <div>
+                    <h2 id="profile-username">@username</h2>
+                    <p id="profile-id"></p>
+                    <p id="profile-description">This is a short bio about the user.</p>
+                </div>
+            </div>
+            <div id="profile-buttons">
+                <button onclick="loadFollowers()">Followers</button>
+                <button onclick="loadFollowing()">Following</button>
+            </div>
+            <div id="profile-tweets"></div>
+        </div>
+    </div>
+    <div id="recommended">
+        <h3>Who to follow</h3>
+        <div id="recommended-users"></div>
+    </div>
+    <div id="settings-container">
+        <h3>Settings</h3>
+        <div>
+            <h4>Change Username</h4>
+            <input id="new-username" type="text" placeholder="Enter new username">
+            <button onclick="changeUsername()">Change</button>
+        </div>
+        <div>
+            <h4>Node Hosts</h4>
+            <ul id="host-list"></ul>
+            <input id="new-hosts" type="text" placeholder="Add new hosts, separated by commas">
+            <button onclick="addHosts()">Add Hosts</button>
+        </div>
+    </div>
+</div>
+
+<script src="static/js/api.js"></script>
+<script src="static/js/main.js"></script>
+<script src="static/js/timeline.js"></script>
+<script src="static/js/profile.js"></script>
+<script src="static/js/replies.js"></script>
+<script src="static/js/recommended.js"></script>
+<script src="static/js/settings.js"></script>
+<script src="static/js/auth.js"></script>
+
+</body>
+</html>

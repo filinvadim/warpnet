@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/dWighter/database/storage"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	"github.com/filinvadim/dWighter/node/client"
+	client "github.com/filinvadim/dWighter/node-client"
 	"github.com/filinvadim/dWighter/node/server"
 	"log"
 	"os"
@@ -34,7 +34,6 @@ type NodeService struct {
 func NewNodeService(
 	ctx context.Context,
 	ownIP string,
-	cli *client.NodeClient,
 	db *storage.DB,
 	interrupt chan os.Signal,
 ) (*NodeService, error) {
@@ -47,6 +46,10 @@ func NewNodeService(
 	userRepo := database.NewUserRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
 
+	cli, err := client.NewNodeClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 	handler, err := server.NewNodeHandler(
 		ownIP,
 		nodeRepo,

@@ -216,6 +216,9 @@ func (db *DB) iterateKeysValues(
 }
 
 func jsonifyList(items [][]byte) [][]byte {
+	if len(items) == 0 {
+		return items
+	}
 	items[0] = append(items[0], 0)
 	copy(items[0][1:], items[0][0:])
 	items[0][0] = byte('[')

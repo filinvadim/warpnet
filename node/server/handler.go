@@ -7,7 +7,7 @@ import (
 	"github.com/filinvadim/dWighter/database"
 	domainGen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/json"
-	nodeGen "github.com/filinvadim/dWighter/node/node-gen"
+	nodeGen "github.com/filinvadim/dWighter/node-gen"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"log"
@@ -228,6 +228,92 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType nodeGen.NewEvent
 	return ctx.JSON(http.StatusOK, response)
 }
 
+func (d *nodeEventHandler) handleLogin(
+	ctx echo.Context, data *domainGen.Event_Data,
+) (domainGen.LoginResponse, error) {
+	if ctx.Request().Context().Err() != nil {
+		return domainGen.LoginResponse{}, ctx.Request().Context().Err()
+	}
+	login, err := data.AsLoginEvent()
+	if err != nil {
+		return domainGen.LoginResponse{}, err
+	}
+
+	token, err := d.authRepo.Authenticate(login.Username, login.Password)
+	if err != nil {
+		return domainGen.LoginResponse{}, err
+	}
+
+	fmt.Println(token, "TOKEN")
+	ownerId, err := d.authRepo.Owner()
+	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
+		return domainGen.LoginResponse{}, err
+	}
+	if ownerId == "" {
+		fmt.Println("OWNER ID is empty")
+
+		ownerId, err = d.authRepo.NewOwner()
+		if err != nil {
+			return domainGen.LoginResponse{}, fmt.Errorf("new owner: %w", err)
+		}
+	}
+
+	fmt.Println(ownerId, "OWNER ID ????? ")
+
+	owner, err := d.userRepo.Get(ownerId)
+	fmt.Println(err, "USER GET EERRR")
+	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
+		return domainGen.LoginResponse{}, err
+	}
+	fmt.Println(owner, "OWNER STRUCT")
+
+	if owner.Username != login.Username {
+		return domainGen.LoginResponse{}, fmt.Errorf("user %s doesn't exist", login.Username)
+	}
+	if owner.Username == login.Username {
+		return domainGen.LoginResponse{token, owner}, nil
+	}
+
+	var (
+		now    = time.Now()
+		nodeId = uuid.New()
+	)
+	u, err := d.userRepo.Create(domainGen.User{
+		CreatedAt: now,
+		Id:        ownerId,
+		Username:  login.Username,
+		NodeId:    nodeId,
+	})
+	if err != nil {
+		return domainGen.LoginResponse{}, fmt.Errorf("create user: %w", err)
+	}
+	fmt.Println("USER CREATED", ownerId)
+
+	_, err = d.nodeRepo.GetByUserId(ownerId)
+	if err == nil {
+		return domainGen.LoginResponse{token, u}, nil
+	}
+	if !errors.Is(err, database.ErrNodeNotFound) {
+		fmt.Println("failed to get node:", err)
+		return domainGen.LoginResponse{}, fmt.Errorf("get node: %w", err)
+	}
+
+	_, err = d.nodeRepo.Create(domainGen.Node{
+		Id:        nodeId,
+		CreatedAt: now,
+		Host:      d.ownIP + ":" + config.InternalNodeAddress.Port(),
+		IsActive:  true,
+		LastSeen:  now,
+		OwnerId:   ownerId,
+		Uptime:    func(i int64) *int64 { return &i }(0),
+		IsOwned:   true,
+	})
+	if err != nil {
+		return domainGen.LoginResponse{}, fmt.Errorf("create owner's node: %w", err)
+	}
+	return domainGen.LoginResponse{token, u}, nil
+}
+
 func (d *nodeEventHandler) handlePing(ctx echo.Context, data *domainGen.Event_Data) error {
 	if ctx.Request().Context().Err() != nil {
 		return ctx.Request().Context().Err()
@@ -391,92 +477,6 @@ func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domainGen.Even
 
 	err = d.timelineRepo.AddTweetToTimeline(owner, t)
 	return t, err
-}
-
-func (d *nodeEventHandler) handleLogin(
-	ctx echo.Context, data *domainGen.Event_Data,
-) (domainGen.LoginResponse, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domainGen.LoginResponse{}, ctx.Request().Context().Err()
-	}
-	login, err := data.AsLoginEvent()
-	if err != nil {
-		return domainGen.LoginResponse{}, err
-	}
-
-	token, err := d.authRepo.Authenticate(login.Username, login.Password)
-	if err != nil {
-		return domainGen.LoginResponse{}, err
-	}
-
-	fmt.Println(token, "TOKEN")
-	ownerId, err := d.authRepo.Owner()
-	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
-		return domainGen.LoginResponse{}, err
-	}
-	if ownerId == "" {
-		fmt.Println("OWNER ID is empty")
-
-		ownerId, err = d.authRepo.NewOwner()
-		if err != nil {
-			return domainGen.LoginResponse{}, fmt.Errorf("new owner: %w", err)
-		}
-	}
-
-	fmt.Println(ownerId, "OWNER ID ????? ")
-
-	owner, err := d.userRepo.Get(ownerId)
-	fmt.Println(err, "USER GET EERRR")
-	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
-		return domainGen.LoginResponse{}, err
-	}
-	fmt.Println(owner, "OWNER STRUCT")
-
-	if owner.Username != login.Username {
-		return domainGen.LoginResponse{}, fmt.Errorf("user %s doesn't exist", login.Username)
-	}
-	if owner.Username == login.Username {
-		return domainGen.LoginResponse{token, owner}, nil
-	}
-
-	var (
-		now    = time.Now()
-		nodeId = uuid.New()
-	)
-	u, err := d.userRepo.Create(domainGen.User{
-		CreatedAt: now,
-		Id:        ownerId,
-		Username:  login.Username,
-		NodeId:    nodeId,
-	})
-	if err != nil {
-		return domainGen.LoginResponse{}, fmt.Errorf("create user: %w", err)
-	}
-	fmt.Println("USER CREATED", ownerId)
-
-	_, err = d.nodeRepo.GetByUserId(ownerId)
-	if err == nil {
-		return domainGen.LoginResponse{token, u}, nil
-	}
-	if !errors.Is(err, database.ErrNodeNotFound) {
-		fmt.Println("failed to get node:", err)
-		return domainGen.LoginResponse{}, fmt.Errorf("get node: %w", err)
-	}
-
-	_, err = d.nodeRepo.Create(domainGen.Node{
-		Id:        nodeId,
-		CreatedAt: now,
-		Host:      d.ownIP + ":" + config.InternalNodeAddress.Port(),
-		IsActive:  true,
-		LastSeen:  now,
-		OwnerId:   ownerId,
-		Uptime:    func(i int64) *int64 { return &i }(0),
-		IsOwned:   true,
-	})
-	if err != nil {
-		return domainGen.LoginResponse{}, fmt.Errorf("create owner's node: %w", err)
-	}
-	return domainGen.LoginResponse{token, u}, nil
 }
 
 func (d *nodeEventHandler) handleLogout(ctx echo.Context, _ *domainGen.Event_Data) error {

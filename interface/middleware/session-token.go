@@ -33,6 +33,10 @@ func (m *SessionTokenMiddleware) VerifySessionToken(next echo.HandlerFunc) echo.
 		if c.Request().URL.Path == "/" {
 			return next(c)
 		}
+		if strings.Contains(c.Request().URL.Path, "/static") {
+			return next(c)
+		}
+
 		if !strings.Contains(c.Request().URL.Path, "/login") {
 			sessionToken := c.Request().Header.Get("X-SESSION-TOKEN")
 			if sessionToken == "" {

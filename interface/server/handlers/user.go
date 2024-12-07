@@ -4,7 +4,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
-	client "github.com/filinvadim/dWighter/node/client"
+	client "github.com/filinvadim/dWighter/node-client"
 	"net/http"
 
 	"github.com/labstack/echo/v4"

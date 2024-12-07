@@ -6,11 +6,12 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
 	ownMiddleware "github.com/filinvadim/dWighter/interface/middleware"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	middleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/pkg/browser"
 )
 
@@ -38,16 +39,24 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 	swagger.Servers = nil
 
 	e := echo.New()
+
 	e.HideBanner = true
 
 	dlc := echomiddleware.DefaultLoggerConfig
 	dlc.Format = config.LogFormat
 	dlc.Output = e.Logger.Output()
 
+	pwd, _ := os.Getwd()
+	fmt.Println("CURRENT DIRECTORY: ", pwd)
+
 	e.Use(echomiddleware.LoggerWithConfig(dlc))
-	e.Use(echomiddleware.CORS())
+	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
+		AllowOrigins:  []string{"*"}, // TODO
+		AllowHeaders:  []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "X-SESSION-TOKEN"},
+		ExposeHeaders: []string{"X-SESSION-TOKEN"}, // ВАЖНО: Разрешить фронтенду видеть заголовок
+		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+	}))
 	e.Use(echomiddleware.Gzip())
-	e.Use(middleware.OapiRequestValidator(swagger))
 	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
 	return &interfaceServer{e}, nil

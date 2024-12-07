@@ -86,6 +86,9 @@ func (repo *UserRepo) Get(userID string) (user domain_gen.User, err error) {
 		return user, err
 	}
 
+	if user.Id == "" {
+		user.Id = userID
+	}
 	return user, nil
 }
 
