@@ -141,7 +141,7 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([][]byte,
 		limit = &defaultLimit
 	}
 
-	items := make([]RawItem, 0, 20)
+	items := make([]RawItem, 0, *limit) //
 	cur, err := db.iterateKeysValues(
 		prefix, startCursor, limit,
 		func(key string, value []byte) error {
@@ -185,6 +185,7 @@ func (db *DB) iterateKeysValues(
 
 			item := it.Item()
 			key := string(item.Key())
+
 			if strings.Contains(key, FixedKey) {
 				return nil
 			}
@@ -217,7 +218,7 @@ func (db *DB) iterateKeysValues(
 
 func jsonifyList(items [][]byte) [][]byte {
 	if len(items) == 0 {
-		return items
+		return [][]byte{[]byte("[]")}
 	}
 	items[0] = append(items[0], 0)
 	copy(items[0][1:], items[0][0:])

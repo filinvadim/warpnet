@@ -6,6 +6,7 @@ import (
 	"github.com/filinvadim/dWighter/config"
 	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
 	ownMiddleware "github.com/filinvadim/dWighter/interface/middleware"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -44,7 +45,8 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 	dlc := echomiddleware.DefaultLoggerConfig
 	dlc.Format = config.LogFormat
-	dlc.Output = e.Logger.Output()
+	//dlc.Output = e.Logger.Output()
+	dlc.Output = io.Discard
 
 	pwd, _ := os.Getwd()
 	fmt.Println("CURRENT DIRECTORY: ", pwd)

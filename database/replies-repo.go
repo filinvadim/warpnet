@@ -8,6 +8,7 @@ import (
 	domain_gen "github.com/filinvadim/dWighter/domain-gen"
 	"github.com/filinvadim/dWighter/json"
 	"github.com/google/uuid"
+	"sort"
 	"time"
 )
 
@@ -52,7 +53,7 @@ func (repo *RepliesRepo) AddReply(reply domain_gen.Tweet) (domain_gen.Tweet, err
 
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(reply.RootId).
-		AddRange(storage.FixedRangeKey).
+		AddRange(storage.NoneRangeKey).
 		AddParentId(reply.ParentId).
 		AddId(reply.Id).
 		Build()
@@ -63,7 +64,7 @@ func (repo *RepliesRepo) AddReply(reply domain_gen.Tweet) (domain_gen.Tweet, err
 func (repo *RepliesRepo) GetReply(rootID, parentID, tweetID string) (tweet domain_gen.Tweet, err error) {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
-		AddRange(storage.FixedRangeKey).
+		AddRange(storage.NoneRangeKey).
 		AddParentId(parentID).
 		AddId(tweetID).
 		Build()
@@ -86,7 +87,7 @@ func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, 
 
 	prefix := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
-		AddRange(storage.FixedRangeKey).
+		AddRange(storage.NoneRangeKey).
 		AddParentId(parentID).
 		Build()
 
@@ -150,5 +151,9 @@ func buildRepliesTree(replies []domain_gen.Tweet) []domain_gen.ReplyNode {
 		nodeMap[reply.ParentId] = parentNode
 	}
 
+	sort.SliceStable(roots, func(i, j int) bool {
+		return roots[i].Reply.CreatedAt.After(roots[j].Reply.CreatedAt)
+	})
+	
 	return roots
 }

@@ -19,7 +19,7 @@ func NewReplyController(
 	return &ReplyController{cli}
 }
 
-func (rc *ReplyController) PostV1ApiTweetsReplies(ctx echo.Context, params api_gen.PostV1ApiTweetsRepliesParams) error {
+func (rc *ReplyController) AddReply(ctx echo.Context, params api_gen.AddReplyParams) error {
 	if rc == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -39,7 +39,7 @@ func (rc *ReplyController) PostV1ApiTweetsReplies(ctx echo.Context, params api_g
 	return ctx.JSON(http.StatusOK, tweet)
 }
 
-func (rc *ReplyController) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx echo.Context, rootTweetId string, parentTweetId string, params api_gen.GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams) error {
+func (rc *ReplyController) GetAllReplies(ctx echo.Context, rootTweetId string, parentTweetId string, params api_gen.GetAllRepliesParams) error {
 	if rc == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -55,8 +55,4 @@ func (rc *ReplyController) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx ech
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusOK, repliesTree)
-}
-
-func (rc *ReplyController) GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx echo.Context, rootTweetId string, tweetId string, params api_gen.GetV1ApiTweetsRepliesRootTweetIdReplyIdParams) error {
-	return ctx.NoContent(http.StatusNotImplemented)
 }

@@ -45,21 +45,16 @@ type PostV1ApiTweetsParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
-// PostV1ApiTweetsRepliesParams defines parameters for PostV1ApiTweetsReplies.
-type PostV1ApiTweetsRepliesParams struct {
+// AddReplyParams defines parameters for AddReply.
+type AddReplyParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
-// GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams defines parameters for GetV1ApiTweetsRepliesRootTweetIdParentReplyId.
-type GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams struct {
+// GetAllRepliesParams defines parameters for GetAllReplies.
+type GetAllRepliesParams struct {
 	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Limit         *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
-}
-
-// GetV1ApiTweetsRepliesRootTweetIdReplyIdParams defines parameters for GetV1ApiTweetsRepliesRootTweetIdReplyId.
-type GetV1ApiTweetsRepliesRootTweetIdReplyIdParams struct {
-	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
 // GetV1ApiTweetsTimelineUserIdParams defines parameters for GetV1ApiTweetsTimelineUserId.
@@ -117,8 +112,8 @@ type PostV1ApiNodesSettingsJSONRequestBody = externalRef0.AddSettingRequest
 // PostV1ApiTweetsJSONRequestBody defines body for PostV1ApiTweets for application/json ContentType.
 type PostV1ApiTweetsJSONRequestBody = externalRef0.Tweet
 
-// PostV1ApiTweetsRepliesJSONRequestBody defines body for PostV1ApiTweetsReplies for application/json ContentType.
-type PostV1ApiTweetsRepliesJSONRequestBody = externalRef0.Tweet
+// AddReplyJSONRequestBody defines body for AddReply for application/json ContentType.
+type AddReplyJSONRequestBody = externalRef0.Tweet
 
 // PostV1ApiUsersJSONRequestBody defines body for PostV1ApiUsers for application/json ContentType.
 type PostV1ApiUsersJSONRequestBody = externalRef0.User
@@ -229,16 +224,13 @@ type ClientInterface interface {
 
 	PostV1ApiTweets(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostV1ApiTweetsRepliesWithBody request with any body
-	PostV1ApiTweetsRepliesWithBody(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// AddReplyWithBody request with any body
+	AddReplyWithBody(ctx context.Context, params *AddReplyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostV1ApiTweetsReplies(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddReply(ctx context.Context, params *AddReplyParams, body AddReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetV1ApiTweetsRepliesRootTweetIdParentReplyId request
-	GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetV1ApiTweetsRepliesRootTweetIdReplyId request
-	GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetAllReplies request
+	GetAllReplies(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetV1ApiTweetsTimelineUserId request
 	GetV1ApiTweetsTimelineUserId(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -391,8 +383,8 @@ func (c *Client) PostV1ApiTweets(ctx context.Context, params *PostV1ApiTweetsPar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostV1ApiTweetsRepliesWithBody(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1ApiTweetsRepliesRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) AddReplyWithBody(ctx context.Context, params *AddReplyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddReplyRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -403,8 +395,8 @@ func (c *Client) PostV1ApiTweetsRepliesWithBody(ctx context.Context, params *Pos
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostV1ApiTweetsReplies(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1ApiTweetsRepliesRequest(c.Server, params, body)
+func (c *Client) AddReply(ctx context.Context, params *AddReplyParams, body AddReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddReplyRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -415,20 +407,8 @@ func (c *Client) PostV1ApiTweetsReplies(ctx context.Context, params *PostV1ApiTw
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest(c.Server, rootTweetId, parentReplyId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest(c.Server, rootTweetId, replyId, params)
+func (c *Client) GetAllReplies(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAllRepliesRequest(c.Server, rootTweetId, parentReplyId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -908,19 +888,19 @@ func NewPostV1ApiTweetsRequestWithBody(server string, params *PostV1ApiTweetsPar
 	return req, nil
 }
 
-// NewPostV1ApiTweetsRepliesRequest calls the generic PostV1ApiTweetsReplies builder with application/json body
-func NewPostV1ApiTweetsRepliesRequest(server string, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody) (*http.Request, error) {
+// NewAddReplyRequest calls the generic AddReply builder with application/json body
+func NewAddReplyRequest(server string, params *AddReplyParams, body AddReplyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostV1ApiTweetsRepliesRequestWithBody(server, params, "application/json", bodyReader)
+	return NewAddReplyRequestWithBody(server, params, "application/json", bodyReader)
 }
 
-// NewPostV1ApiTweetsRepliesRequestWithBody generates requests for PostV1ApiTweetsReplies with any type of body
-func NewPostV1ApiTweetsRepliesRequestWithBody(server string, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewAddReplyRequestWithBody generates requests for AddReply with any type of body
+func NewAddReplyRequestWithBody(server string, params *AddReplyParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -961,8 +941,8 @@ func NewPostV1ApiTweetsRepliesRequestWithBody(server string, params *PostV1ApiTw
 	return req, nil
 }
 
-// NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest generates requests for GetV1ApiTweetsRepliesRootTweetIdParentReplyId
-func NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest(server string, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams) (*http.Request, error) {
+// NewGetAllRepliesRequest generates requests for GetAllReplies
+func NewGetAllRepliesRequest(server string, rootTweetId string, parentReplyId string, params *GetAllRepliesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1030,60 +1010,6 @@ func NewGetV1ApiTweetsRepliesRootTweetIdParentReplyIdRequest(server string, root
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-SESSION-TOKEN", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest generates requests for GetV1ApiTweetsRepliesRootTweetIdReplyId
-func NewGetV1ApiTweetsRepliesRootTweetIdReplyIdRequest(server string, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "root_tweet_id", runtime.ParamLocationPath, rootTweetId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "reply_id", runtime.ParamLocationPath, replyId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/api/tweets/replies/%s/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1685,16 +1611,13 @@ type ClientWithResponsesInterface interface {
 
 	PostV1ApiTweetsWithResponse(ctx context.Context, params *PostV1ApiTweetsParams, body PostV1ApiTweetsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsResponse, error)
 
-	// PostV1ApiTweetsRepliesWithBodyWithResponse request with any body
-	PostV1ApiTweetsRepliesWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error)
+	// AddReplyWithBodyWithResponse request with any body
+	AddReplyWithBodyWithResponse(ctx context.Context, params *AddReplyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddReplyResponse, error)
 
-	PostV1ApiTweetsRepliesWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error)
+	AddReplyWithResponse(ctx context.Context, params *AddReplyParams, body AddReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddReplyResponse, error)
 
-	// GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse request
-	GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error)
-
-	// GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse request
-	GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error)
+	// GetAllRepliesWithResponse request
+	GetAllRepliesWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*GetAllRepliesResponse, error)
 
 	// GetV1ApiTweetsTimelineUserIdWithResponse request
 	GetV1ApiTweetsTimelineUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsTimelineUserIdResponse, error)
@@ -1876,14 +1799,14 @@ func (r PostV1ApiTweetsResponse) StatusCode() int {
 	return 0
 }
 
-type PostV1ApiTweetsRepliesResponse struct {
+type AddReplyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *externalRef0.Tweet
 }
 
 // Status returns HTTPResponse.Status
-func (r PostV1ApiTweetsRepliesResponse) Status() string {
+func (r AddReplyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1891,20 +1814,20 @@ func (r PostV1ApiTweetsRepliesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostV1ApiTweetsRepliesResponse) StatusCode() int {
+func (r AddReplyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse struct {
+type GetAllRepliesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse) Status() string {
+func (r GetAllRepliesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1912,28 +1835,7 @@ func (r GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse) StatusCode() int {
+func (r GetAllRepliesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2200,39 +2102,30 @@ func (c *ClientWithResponses) PostV1ApiTweetsWithResponse(ctx context.Context, p
 	return ParsePostV1ApiTweetsResponse(rsp)
 }
 
-// PostV1ApiTweetsRepliesWithBodyWithResponse request with arbitrary body returning *PostV1ApiTweetsRepliesResponse
-func (c *ClientWithResponses) PostV1ApiTweetsRepliesWithBodyWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error) {
-	rsp, err := c.PostV1ApiTweetsRepliesWithBody(ctx, params, contentType, body, reqEditors...)
+// AddReplyWithBodyWithResponse request with arbitrary body returning *AddReplyResponse
+func (c *ClientWithResponses) AddReplyWithBodyWithResponse(ctx context.Context, params *AddReplyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddReplyResponse, error) {
+	rsp, err := c.AddReplyWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostV1ApiTweetsRepliesResponse(rsp)
+	return ParseAddReplyResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostV1ApiTweetsRepliesWithResponse(ctx context.Context, params *PostV1ApiTweetsRepliesParams, body PostV1ApiTweetsRepliesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiTweetsRepliesResponse, error) {
-	rsp, err := c.PostV1ApiTweetsReplies(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) AddReplyWithResponse(ctx context.Context, params *AddReplyParams, body AddReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddReplyResponse, error) {
+	rsp, err := c.AddReply(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostV1ApiTweetsRepliesResponse(rsp)
+	return ParseAddReplyResponse(rsp)
 }
 
-// GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse request returning *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse
-func (c *ClientWithResponses) GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error) {
-	rsp, err := c.GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx, rootTweetId, parentReplyId, params, reqEditors...)
+// GetAllRepliesWithResponse request returning *GetAllRepliesResponse
+func (c *ClientWithResponses) GetAllRepliesWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*GetAllRepliesResponse, error) {
+	rsp, err := c.GetAllReplies(ctx, rootTweetId, parentReplyId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse(rsp)
-}
-
-// GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse request returning *GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse
-func (c *ClientWithResponses) GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse(ctx context.Context, rootTweetId string, replyId string, params *GetV1ApiTweetsRepliesRootTweetIdReplyIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error) {
-	rsp, err := c.GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx, rootTweetId, replyId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse(rsp)
+	return ParseGetAllRepliesResponse(rsp)
 }
 
 // GetV1ApiTweetsTimelineUserIdWithResponse request returning *GetV1ApiTweetsTimelineUserIdResponse
@@ -2463,15 +2356,15 @@ func ParsePostV1ApiTweetsResponse(rsp *http.Response) (*PostV1ApiTweetsResponse,
 	return response, nil
 }
 
-// ParsePostV1ApiTweetsRepliesResponse parses an HTTP response from a PostV1ApiTweetsRepliesWithResponse call
-func ParsePostV1ApiTweetsRepliesResponse(rsp *http.Response) (*PostV1ApiTweetsRepliesResponse, error) {
+// ParseAddReplyResponse parses an HTTP response from a AddReplyWithResponse call
+func ParseAddReplyResponse(rsp *http.Response) (*AddReplyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostV1ApiTweetsRepliesResponse{
+	response := &AddReplyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2489,31 +2382,15 @@ func ParsePostV1ApiTweetsRepliesResponse(rsp *http.Response) (*PostV1ApiTweetsRe
 	return response, nil
 }
 
-// ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse parses an HTTP response from a GetV1ApiTweetsRepliesRootTweetIdParentReplyIdWithResponse call
-func ParseGetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse(rsp *http.Response) (*GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse, error) {
+// ParseGetAllRepliesResponse parses an HTTP response from a GetAllRepliesWithResponse call
+func ParseGetAllRepliesResponse(rsp *http.Response) (*GetAllRepliesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetV1ApiTweetsRepliesRootTweetIdParentReplyIdResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse parses an HTTP response from a GetV1ApiTweetsRepliesRootTweetIdReplyIdWithResponse call
-func ParseGetV1ApiTweetsRepliesRootTweetIdReplyIdResponse(rsp *http.Response) (*GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetV1ApiTweetsRepliesRootTweetIdReplyIdResponse{
+	response := &GetAllRepliesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2724,13 +2601,10 @@ type ServerInterface interface {
 	PostV1ApiTweets(ctx echo.Context, params PostV1ApiTweetsParams) error
 	// Publish a new reply to tweet
 	// (POST /v1/api/tweets/replies)
-	PostV1ApiTweetsReplies(ctx echo.Context, params PostV1ApiTweetsRepliesParams) error
+	AddReply(ctx echo.Context, params AddReplyParams) error
 	// Get all tweet's replies
 	// (GET /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id})
-	GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx echo.Context, rootTweetId string, parentReplyId string, params GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams) error
-	// Get a certain reply
-	// (GET /v1/api/tweets/replies/{root_tweet_id}/{reply_id})
-	GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx echo.Context, rootTweetId string, replyId string, params GetV1ApiTweetsRepliesRootTweetIdReplyIdParams) error
+	GetAllReplies(ctx echo.Context, rootTweetId string, parentReplyId string, params GetAllRepliesParams) error
 	// Get user's tweet timeline
 	// (GET /v1/api/tweets/timeline/{user_id})
 	GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId string, params GetV1ApiTweetsTimelineUserIdParams) error
@@ -2940,12 +2814,12 @@ func (w *ServerInterfaceWrapper) PostV1ApiTweets(ctx echo.Context) error {
 	return err
 }
 
-// PostV1ApiTweetsReplies converts echo context to params.
-func (w *ServerInterfaceWrapper) PostV1ApiTweetsReplies(ctx echo.Context) error {
+// AddReply converts echo context to params.
+func (w *ServerInterfaceWrapper) AddReply(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params PostV1ApiTweetsRepliesParams
+	var params AddReplyParams
 
 	headers := ctx.Request().Header
 	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
@@ -2967,12 +2841,12 @@ func (w *ServerInterfaceWrapper) PostV1ApiTweetsReplies(ctx echo.Context) error 
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiTweetsReplies(ctx, params)
+	err = w.Handler.AddReply(ctx, params)
 	return err
 }
 
-// GetV1ApiTweetsRepliesRootTweetIdParentReplyId converts echo context to params.
-func (w *ServerInterfaceWrapper) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx echo.Context) error {
+// GetAllReplies converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAllReplies(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "root_tweet_id" -------------
 	var rootTweetId string
@@ -2991,7 +2865,7 @@ func (w *ServerInterfaceWrapper) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(c
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetV1ApiTweetsRepliesRootTweetIdParentReplyIdParams
+	var params GetAllRepliesParams
 	// ------------- Optional query parameter "cursor" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
@@ -3026,53 +2900,7 @@ func (w *ServerInterfaceWrapper) GetV1ApiTweetsRepliesRootTweetIdParentReplyId(c
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiTweetsRepliesRootTweetIdParentReplyId(ctx, rootTweetId, parentReplyId, params)
-	return err
-}
-
-// GetV1ApiTweetsRepliesRootTweetIdReplyId converts echo context to params.
-func (w *ServerInterfaceWrapper) GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "root_tweet_id" -------------
-	var rootTweetId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "root_tweet_id", ctx.Param("root_tweet_id"), &rootTweetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter root_tweet_id: %s", err))
-	}
-
-	// ------------- Path parameter "reply_id" -------------
-	var replyId string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "reply_id", ctx.Param("reply_id"), &replyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reply_id: %s", err))
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetV1ApiTweetsRepliesRootTweetIdReplyIdParams
-
-	headers := ctx.Request().Header
-	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
-		var XSESSIONTOKEN string
-		n := len(valueList)
-		if n != 1 {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
-		}
-
-		params.XSESSIONTOKEN = XSESSIONTOKEN
-	} else {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetV1ApiTweetsRepliesRootTweetIdReplyId(ctx, rootTweetId, replyId, params)
+	err = w.Handler.GetAllReplies(ctx, rootTweetId, parentReplyId, params)
 	return err
 }
 
@@ -3434,9 +3262,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/v1/api/nodes/settings", wrapper.GetV1ApiNodesSettings)
 	router.POST(baseURL+"/v1/api/nodes/settings", wrapper.PostV1ApiNodesSettings)
 	router.POST(baseURL+"/v1/api/tweets", wrapper.PostV1ApiTweets)
-	router.POST(baseURL+"/v1/api/tweets/replies", wrapper.PostV1ApiTweetsReplies)
-	router.GET(baseURL+"/v1/api/tweets/replies/:root_tweet_id/:parent_reply_id", wrapper.GetV1ApiTweetsRepliesRootTweetIdParentReplyId)
-	router.GET(baseURL+"/v1/api/tweets/replies/:root_tweet_id/:reply_id", wrapper.GetV1ApiTweetsRepliesRootTweetIdReplyId)
+	router.POST(baseURL+"/v1/api/tweets/replies", wrapper.AddReply)
+	router.GET(baseURL+"/v1/api/tweets/replies/:root_tweet_id/:parent_reply_id", wrapper.GetAllReplies)
 	router.GET(baseURL+"/v1/api/tweets/timeline/:user_id", wrapper.GetV1ApiTweetsTimelineUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id", wrapper.GetV1ApiTweetsUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id/:tweet_id", wrapper.GetV1ApiTweetsUserIdTweetId)
@@ -3451,36 +3278,35 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"AA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

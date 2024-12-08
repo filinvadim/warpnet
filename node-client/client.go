@@ -97,20 +97,20 @@ func (c *NodeClient) BroadcastNewReply(host string, t domain_gen.NewReplyEvent) 
 	return tweet, err
 }
 
-func (c *NodeClient) SendGetAllReplies(host string, t domain_gen.GetRepliesEvent) (domain_gen.TweetsResponse, error) {
+func (c *NodeClient) SendGetAllReplies(host string, t domain_gen.GetRepliesEvent) (domain_gen.RepliesTreeResponse, error) {
 	event := domain_gen.Event{Data: &domain_gen.Event_Data{}}
 	event.Timestamp = time.Now()
 	if err := event.Data.FromGetRepliesEvent(t); err != nil {
-		return domain_gen.TweetsResponse{}, err
+		return domain_gen.RepliesTreeResponse{}, err
 	}
 
 	resp, err := c.sendEvent(host, GetReplies, event)
 	if err != nil {
-		return domain_gen.TweetsResponse{}, err
+		return domain_gen.RepliesTreeResponse{}, err
 	}
-	var tweetResp domain_gen.TweetsResponse
-	err = json.JSON.Unmarshal(resp, &tweetResp)
-	return tweetResp, err
+	var repliesResp domain_gen.RepliesTreeResponse
+	err = json.JSON.Unmarshal(resp, &repliesResp)
+	return repliesResp, err
 }
 
 func (c *NodeClient) SendGetTweet(host string, t domain_gen.GetTweetEvent) (domain_gen.Tweet, error) {

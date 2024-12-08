@@ -10,7 +10,8 @@ import (
 
 const (
 	FixedKey      = "fixed"
-	FixedRangeKey = FixedKey
+	FixedRangeKey = "fixed"
+	NoneRangeKey  = "none"
 )
 
 type (
@@ -57,7 +58,7 @@ func (l ParentLayer) AddRange(mandatoryPrefix RangePrefix) RangeLayer {
 	if mandatoryPrefix == "" {
 		panic("range prefix must not be empty")
 	}
-	if mandatoryPrefix != FixedRangeKey {
+	if mandatoryPrefix != FixedRangeKey && mandatoryPrefix != NoneRangeKey {
 		_, err := strconv.ParseInt(string(mandatoryPrefix), 10, 64)
 		if err != nil {
 			panic(fmt.Sprintf("invalid range prefix: %s", mandatoryPrefix))

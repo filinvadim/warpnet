@@ -156,6 +156,11 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType nodeGen.NewEvent
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	case nodeGen.GetReplies:
+		response, err = d.handleGetReplies(ctx, receivedEvent.Data)
+		if err != nil {
+			fmt.Printf("handle get replies event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
 	case nodeGen.Follow, nodeGen.Unfollow:
 		// TODO
 

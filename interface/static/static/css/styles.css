@@ -168,6 +168,27 @@ h1, h3 {
     font-size: 14px;
 }
 
+.reply {
+    border-bottom: 1px solid #657786;
+    padding: 12px 0;
+    margin-left: 50px;
+}
+
+.reply:last-child {
+    border-bottom: none;
+}
+
+.reply-text {
+    font-size: 14px;
+    color: #fff;
+}
+
+.reply-user,
+.reply-time {
+    color: #8899a6;
+    font-size: 12px;
+}
+
 /* ===============================
    Reply Modal 
 ================================== */

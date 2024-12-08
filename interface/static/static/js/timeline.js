@@ -36,12 +36,12 @@ async function loadTimeline() {
         data.tweets.forEach(tweet => {
             const tweetTime = new Date(tweet.created_at).toLocaleString();
             timelineDiv.innerHTML += `
-                <div class="tweet">
+                <div class="tweet" onclick="getTweet('${tweet.user_id}', '${tweet.id}')">
                     <div class="tweet-text">${tweet.content}</div>
                     <div class="tweet-user">@${tweet.username}</div>
                     <div class="tweet-time">${tweetTime}</div>
-                    <button class="reply-button" onclick="openReplyModal('${tweet.id}', '${tweet.root_id || tweet.id}')">Reply</button>
-                </div>`;
+                    <button class="reply-button" onclick="event.stopPropagation(); openReplyModal('${tweet.id}', '${tweet.root_id || tweet.id}')">Reply</button>             
+               </div>`;
         });
 
         timelineCursor = data.cursor || null;
@@ -62,30 +62,5 @@ async function loadTimeline() {
         }
     } catch (error) {
         console.error('Error loading timeline:', error);
-    }
-}
-
-async function postTweet() {
-    const tweetText = document.getElementById('tweet-text').value;
-    if (!tweetText) {
-        console.log('Tweet cannot be empty');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${apiUrl}/v1/api/tweets`, {
-            method: 'POST',
-            headers: addHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ content: tweetText, user_id: currentUserId, username: currentUsername })
-        });
-
-        if (response.ok) {
-            document.getElementById('tweet-text').value = '';
-            await loadTimeline();
-        } else {
-            console.log('Failed to post tweet');
-        }
-    } catch (error) {
-        console.error('Error posting tweet:', error);
     }
 }

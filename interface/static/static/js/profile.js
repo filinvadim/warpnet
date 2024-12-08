@@ -24,7 +24,7 @@ async function loadProfile() {
         data.tweets.forEach(tweet => {
             const tweetTime = new Date(tweet.created_at).toLocaleString();
             profileTweetsDiv.innerHTML += `
-                    <div class="tweet">
+                    <div class="tweet" onclick="getTweet(${tweet.user_id}, ${tweet.id})">
                         <div class="tweet-text">${tweet.content}</div>
                         <div class="tweet-time">${tweetTime}</div>
                     </div>`;

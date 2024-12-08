@@ -41,3 +41,6 @@ async function postReply() {
         console.log('Failed to post reply');
     }
 }
+
+async function getReplies(rootId, parentId) {
+}
