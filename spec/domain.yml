@@ -345,6 +345,7 @@ components:
             - $ref: '#/components/schemas/NewSettingsHostsEvent'
             - $ref: '#/components/schemas/GetRepliesEvent'
             - $ref: '#/components/schemas/NewReplyEvent'
+            - $ref: '#/components/schemas/GetReplyEvent'
       required:
         - timestamp
 
@@ -413,6 +414,20 @@ components:
       required:
         - root_id
         - parent_reply_id
+
+    GetReplyEvent:
+      type: object
+      properties:
+        parent_reply_id:
+          type: string
+        root_id:
+          type: string
+        reply_id:
+          type: string
+      required:
+        - root_id
+        - parent_reply_id
+        - reply_id
 
     NewTweetEvent:
       type: object

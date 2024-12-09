@@ -39,7 +39,7 @@ func (rc *ReplyController) AddReply(ctx echo.Context, params api_gen.AddReplyPar
 	return ctx.JSON(http.StatusOK, tweet)
 }
 
-func (rc *ReplyController) GetAllReplies(ctx echo.Context, rootTweetId string, parentTweetId string, params api_gen.GetAllRepliesParams) error {
+func (rc *ReplyController) GetAllReplies(ctx echo.Context, rootReplyId string, parentReplyId string, params api_gen.GetAllRepliesParams) error {
 	if rc == nil {
 		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
 	}
@@ -48,11 +48,30 @@ func (rc *ReplyController) GetAllReplies(ctx echo.Context, rootTweetId string, p
 		domain_gen.GetRepliesEvent{
 			Cursor:        params.Cursor,
 			Limit:         params.Limit,
-			RootId:        rootTweetId,
-			ParentReplyId: parentTweetId,
+			RootId:        rootReplyId,
+			ParentReplyId: parentReplyId,
 		})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusOK, repliesTree)
+}
+
+func (rc *ReplyController) GetSingleReply(
+	ctx echo.Context, rootReplyId, parentReplyId, replyId string, _ api_gen.GetSingleReplyParams,
+) error {
+	if rc == nil {
+		return ctx.JSON(http.StatusInternalServerError, domain_gen.Error{Code: http.StatusInternalServerError, Message: "not init"})
+	}
+	reply, err := rc.cli.SendGetReply(
+		config.InternalNodeAddress.String(),
+		domain_gen.GetReplyEvent{
+			RootId:        rootReplyId,
+			ParentReplyId: parentReplyId,
+			ReplyId:       replyId,
+		})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	return ctx.JSON(http.StatusOK, reply)
 }

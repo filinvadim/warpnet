@@ -26,6 +26,7 @@ async function postReply() {
         method: 'POST',
         headers: addHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
+            id: uuidv4(),
             content: replyText,
             parent_id: replyParentId,
             root_id: replyRootId,
@@ -42,5 +43,45 @@ async function postReply() {
     }
 }
 
+async function getReply(rootId, parentId, replyId) {
+    try {
+        const replyResp = await fetch(`${apiUrl}/v1/api/tweets/replies/${rootId}/${parentId}/${replyId}`, {
+            method: 'GET',
+            headers: addHeaders({ 'Content-Type': 'application/json' }),
+        });
+
+        if (!replyResp.ok) {
+            console.log('Failed to get reply');
+            return;
+        }
+        let reply = await replyResp.json();
+        console.log('Got reply', reply);
+        return reply;
+    } catch (error) {
+        console.error('Error getting reply:', error);
+    }
+}
+
+
+
+// Получить реплаи для твита (возвращает массив реплаев)
 async function getReplies(rootId, parentId) {
+    try {
+        const repliesResp = await fetch(`${apiUrl}/v1/api/tweets/replies/${rootId}/${parentId}?limit=20`, {
+            method: 'GET',
+            headers: addHeaders({ 'Content-Type': 'application/json' }),
+        });
+
+        if (!repliesResp.ok) {
+            console.log('Failed to get replies');
+            return [];
+        }
+
+        const repliesData = await repliesResp.json();
+        console.log('Replies data:', repliesData);
+        return repliesData.replies || [];
+    } catch (error) {
+        console.error('Error getting replies:', error);
+        return [];
+    }
 }

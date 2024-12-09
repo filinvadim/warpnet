@@ -155,6 +155,12 @@ func (d *nodeEventHandler) NewEvent(ctx echo.Context, eventType nodeGen.NewEvent
 			fmt.Printf("handle new reply event failure: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
+	case nodeGen.GetReply:
+		response, err = d.handleGetSingleReply(ctx, receivedEvent.Data)
+		if err != nil {
+			fmt.Printf("handle get single reply event failure: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
 	case nodeGen.GetReplies:
 		response, err = d.handleGetReplies(ctx, receivedEvent.Data)
 		if err != nil {
@@ -458,6 +464,20 @@ func (d *nodeEventHandler) handleGetReplies(ctx echo.Context, data *domainGen.Ev
 		Cursor:  nextCursor,
 	}
 	return response, nil
+}
+func (d *nodeEventHandler) handleGetSingleReply(ctx echo.Context, data *domainGen.Event_Data) (domainGen.Tweet, error) {
+	if ctx.Request().Context().Err() != nil {
+		return domainGen.Tweet{}, ctx.Request().Context().Err()
+	}
+	event, err := data.AsGetReplyEvent()
+	if err != nil {
+		return domainGen.Tweet{}, err
+	}
+	tweet, err := d.replyRepo.GetReply(event.RootId, event.ParentReplyId, event.ReplyId)
+	if err != nil {
+		return domainGen.Tweet{}, err
+	}
+	return tweet, nil
 }
 
 func (d *nodeEventHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (t domainGen.Tweet, err error) {

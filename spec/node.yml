@@ -30,6 +30,7 @@ paths:
               - new_user
               - new_tweet
               - new_reply
+              - get_reply
               - get_replies
               - follow
               - unfollow

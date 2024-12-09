@@ -61,12 +61,12 @@ func (repo *RepliesRepo) AddReply(reply domain_gen.Tweet) (domain_gen.Tweet, err
 	return reply, repo.db.Set(treeKey, metaData)
 }
 
-func (repo *RepliesRepo) GetReply(rootID, parentID, tweetID string) (tweet domain_gen.Tweet, err error) {
+func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domain_gen.Tweet, err error) {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
 		AddParentId(parentID).
-		AddId(tweetID).
+		AddId(replyID).
 		Build()
 	data, err := repo.db.Get(treeKey)
 	if err != nil {
@@ -154,6 +154,6 @@ func buildRepliesTree(replies []domain_gen.Tweet) []domain_gen.ReplyNode {
 	sort.SliceStable(roots, func(i, j int) bool {
 		return roots[i].Reply.CreatedAt.After(roots[j].Reply.CreatedAt)
 	})
-	
+
 	return roots
 }

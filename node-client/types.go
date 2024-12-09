@@ -10,6 +10,7 @@ const (
 	NewTweet         = node_gen.NewTweet
 	NewReply         = node_gen.NewReply
 	GetReplies       = node_gen.GetReplies
+	GetReply         = node_gen.GetReply
 	GetTweet         = node_gen.GetTweet
 	GetTimeline      = node_gen.GetTimeline
 	GetTweets        = node_gen.GetTweets

@@ -214,6 +214,39 @@ paths:
         '400':
           description: Invalid input
 
+  /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id}/{reply_id}:
+    get:
+      tags:
+        - Reply
+      summary: Get single reply
+      operationId: GetSingleReply
+      parameters:
+        - name: reply_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: parent_reply_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: root_tweet_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-SESSION-TOKEN
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reply successfully fetched
+        '400':
+          description: Invalid input
+
   /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id}:
     get:
       tags:
@@ -248,7 +281,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Reply successfully fetched
+          description: Replies successfully fetched
         '400':
           description: Invalid input
 

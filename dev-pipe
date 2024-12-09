@@ -1,4 +1,4 @@
-add spec
+add spec [endpoint, event, enum]
 add repo
 add node handler
 add interface controller

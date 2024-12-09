@@ -57,6 +57,11 @@ type GetAllRepliesParams struct {
 	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
 }
 
+// GetSingleReplyParams defines parameters for GetSingleReply.
+type GetSingleReplyParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
 // GetV1ApiTweetsTimelineUserIdParams defines parameters for GetV1ApiTweetsTimelineUserId.
 type GetV1ApiTweetsTimelineUserIdParams struct {
 	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
@@ -231,6 +236,9 @@ type ClientInterface interface {
 
 	// GetAllReplies request
 	GetAllReplies(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSingleReply request
+	GetSingleReply(ctx context.Context, rootTweetId string, parentReplyId string, replyId string, params *GetSingleReplyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetV1ApiTweetsTimelineUserId request
 	GetV1ApiTweetsTimelineUserId(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -409,6 +417,18 @@ func (c *Client) AddReply(ctx context.Context, params *AddReplyParams, body AddR
 
 func (c *Client) GetAllReplies(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAllRepliesRequest(c.Server, rootTweetId, parentReplyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSingleReply(ctx context.Context, rootTweetId string, parentReplyId string, replyId string, params *GetSingleReplyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSingleReplyRequest(c.Server, rootTweetId, parentReplyId, replyId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1033,6 +1053,67 @@ func NewGetAllRepliesRequest(server string, rootTweetId string, parentReplyId st
 	return req, nil
 }
 
+// NewGetSingleReplyRequest generates requests for GetSingleReply
+func NewGetSingleReplyRequest(server string, rootTweetId string, parentReplyId string, replyId string, params *GetSingleReplyParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "root_tweet_id", runtime.ParamLocationPath, rootTweetId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "parent_reply_id", runtime.ParamLocationPath, parentReplyId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "reply_id", runtime.ParamLocationPath, replyId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/tweets/replies/%s/%s/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewGetV1ApiTweetsTimelineUserIdRequest generates requests for GetV1ApiTweetsTimelineUserId
 func NewGetV1ApiTweetsTimelineUserIdRequest(server string, userId string, params *GetV1ApiTweetsTimelineUserIdParams) (*http.Request, error) {
 	var err error
@@ -1619,6 +1700,9 @@ type ClientWithResponsesInterface interface {
 	// GetAllRepliesWithResponse request
 	GetAllRepliesWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, params *GetAllRepliesParams, reqEditors ...RequestEditorFn) (*GetAllRepliesResponse, error)
 
+	// GetSingleReplyWithResponse request
+	GetSingleReplyWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, replyId string, params *GetSingleReplyParams, reqEditors ...RequestEditorFn) (*GetSingleReplyResponse, error)
+
 	// GetV1ApiTweetsTimelineUserIdWithResponse request
 	GetV1ApiTweetsTimelineUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsTimelineUserIdResponse, error)
 
@@ -1836,6 +1920,27 @@ func (r GetAllRepliesResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetAllRepliesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetSingleReplyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSingleReplyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSingleReplyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2128,6 +2233,15 @@ func (c *ClientWithResponses) GetAllRepliesWithResponse(ctx context.Context, roo
 	return ParseGetAllRepliesResponse(rsp)
 }
 
+// GetSingleReplyWithResponse request returning *GetSingleReplyResponse
+func (c *ClientWithResponses) GetSingleReplyWithResponse(ctx context.Context, rootTweetId string, parentReplyId string, replyId string, params *GetSingleReplyParams, reqEditors ...RequestEditorFn) (*GetSingleReplyResponse, error) {
+	rsp, err := c.GetSingleReply(ctx, rootTweetId, parentReplyId, replyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSingleReplyResponse(rsp)
+}
+
 // GetV1ApiTweetsTimelineUserIdWithResponse request returning *GetV1ApiTweetsTimelineUserIdResponse
 func (c *ClientWithResponses) GetV1ApiTweetsTimelineUserIdWithResponse(ctx context.Context, userId string, params *GetV1ApiTweetsTimelineUserIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiTweetsTimelineUserIdResponse, error) {
 	rsp, err := c.GetV1ApiTweetsTimelineUserId(ctx, userId, params, reqEditors...)
@@ -2398,6 +2512,22 @@ func ParseGetAllRepliesResponse(rsp *http.Response) (*GetAllRepliesResponse, err
 	return response, nil
 }
 
+// ParseGetSingleReplyResponse parses an HTTP response from a GetSingleReplyWithResponse call
+func ParseGetSingleReplyResponse(rsp *http.Response) (*GetSingleReplyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSingleReplyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseGetV1ApiTweetsTimelineUserIdResponse parses an HTTP response from a GetV1ApiTweetsTimelineUserIdWithResponse call
 func ParseGetV1ApiTweetsTimelineUserIdResponse(rsp *http.Response) (*GetV1ApiTweetsTimelineUserIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2605,6 +2735,9 @@ type ServerInterface interface {
 	// Get all tweet's replies
 	// (GET /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id})
 	GetAllReplies(ctx echo.Context, rootTweetId string, parentReplyId string, params GetAllRepliesParams) error
+	// Get single reply
+	// (GET /v1/api/tweets/replies/{root_tweet_id}/{parent_reply_id}/{reply_id})
+	GetSingleReply(ctx echo.Context, rootTweetId string, parentReplyId string, replyId string, params GetSingleReplyParams) error
 	// Get user's tweet timeline
 	// (GET /v1/api/tweets/timeline/{user_id})
 	GetV1ApiTweetsTimelineUserId(ctx echo.Context, userId string, params GetV1ApiTweetsTimelineUserIdParams) error
@@ -2901,6 +3034,60 @@ func (w *ServerInterfaceWrapper) GetAllReplies(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetAllReplies(ctx, rootTweetId, parentReplyId, params)
+	return err
+}
+
+// GetSingleReply converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSingleReply(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "root_tweet_id" -------------
+	var rootTweetId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "root_tweet_id", ctx.Param("root_tweet_id"), &rootTweetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter root_tweet_id: %s", err))
+	}
+
+	// ------------- Path parameter "parent_reply_id" -------------
+	var parentReplyId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "parent_reply_id", ctx.Param("parent_reply_id"), &parentReplyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter parent_reply_id: %s", err))
+	}
+
+	// ------------- Path parameter "reply_id" -------------
+	var replyId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reply_id", ctx.Param("reply_id"), &replyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reply_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetSingleReplyParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSingleReply(ctx, rootTweetId, parentReplyId, replyId, params)
 	return err
 }
 
@@ -3264,6 +3451,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/v1/api/tweets", wrapper.PostV1ApiTweets)
 	router.POST(baseURL+"/v1/api/tweets/replies", wrapper.AddReply)
 	router.GET(baseURL+"/v1/api/tweets/replies/:root_tweet_id/:parent_reply_id", wrapper.GetAllReplies)
+	router.GET(baseURL+"/v1/api/tweets/replies/:root_tweet_id/:parent_reply_id/:reply_id", wrapper.GetSingleReply)
 	router.GET(baseURL+"/v1/api/tweets/timeline/:user_id", wrapper.GetV1ApiTweetsTimelineUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id", wrapper.GetV1ApiTweetsUserId)
 	router.GET(baseURL+"/v1/api/tweets/:user_id/:tweet_id", wrapper.GetV1ApiTweetsUserIdTweetId)
@@ -3278,35 +3466,36 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"AP//bKeu1DUvAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
