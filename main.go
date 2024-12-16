@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/dWighter/config"
-	"github.com/filinvadim/dWighter/interface/server"
-	"github.com/filinvadim/dWighter/interface/server/handlers"
-	client "github.com/filinvadim/dWighter/node-client"
-	"github.com/filinvadim/dWighter/node/node"
+	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/interface/server"
+	"github.com/filinvadim/warpnet/interface/server/handlers"
+	client "github.com/filinvadim/warpnet/node-client"
+	"github.com/filinvadim/warpnet/node/node"
 	"io"
 	"log"
 	"net/http"
@@ -18,7 +18,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/warpnet/database/storage"
 	_ "go.uber.org/automaxprocs"
 )
 

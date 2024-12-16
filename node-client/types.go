@@ -2,7 +2,7 @@ package node_client
 
 import (
 	"context"
-	node_gen "github.com/filinvadim/dWighter/node-gen"
+	node_gen "github.com/filinvadim/warpnet/node-gen"
 )
 
 const (

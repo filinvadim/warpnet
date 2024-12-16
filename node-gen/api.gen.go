@@ -16,7 +16,7 @@ import (
 	"path"
 	"strings"
 
-	externalRef0 "github.com/filinvadim/dWighter/domain-gen"
+	externalRef0 "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"

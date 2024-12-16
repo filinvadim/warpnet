@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/dgraph-io/badger/v3"
 
-	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/google/uuid"
 )
 

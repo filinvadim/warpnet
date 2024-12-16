@@ -5,8 +5,8 @@ package database_test
 //	"os"
 //	"testing"
 //
-//	"github.com/filinvadim/dWighter/database"
-//	"github.com/filinvadim/dWighter/database/storage"
+//	"github.com/filinvadim/warpnet/database"
+//	"github.com/filinvadim/warpnet/database/storage"
 //	"github.com/google/uuid"
 //	"github.com/stretchr/testify/assert"
 //)

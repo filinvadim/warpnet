@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
-	domain_gen "github.com/filinvadim/dWighter/domain-gen"
+	domain_gen "github.com/filinvadim/warpnet/domain-gen"
 	"sort"
 	"time"
 
-	"github.com/filinvadim/dWighter/database/storage"
-	"github.com/filinvadim/dWighter/json"
+	"github.com/filinvadim/warpnet/database/storage"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/google/uuid"
 )
 

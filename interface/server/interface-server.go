@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/dWighter/config"
-	api_gen "github.com/filinvadim/dWighter/interface/api-gen"
-	ownMiddleware "github.com/filinvadim/dWighter/interface/middleware"
+	"github.com/filinvadim/warpnet/config"
+	api_gen "github.com/filinvadim/warpnet/interface/api-gen"
+	ownMiddleware "github.com/filinvadim/warpnet/interface/middleware"
 	"io"
 	"net/http"
 	"os"

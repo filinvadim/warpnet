@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/filinvadim/dWighter/database/storage"
+	"github.com/filinvadim/warpnet/database/storage"
 )
 
 const FollowRepoName = "FOLLOW"

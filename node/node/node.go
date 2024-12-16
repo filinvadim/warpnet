@@ -3,15 +3,15 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/dWighter/database/storage"
-	domain_gen "github.com/filinvadim/dWighter/domain-gen"
-	client "github.com/filinvadim/dWighter/node-client"
-	"github.com/filinvadim/dWighter/node/server"
+	"github.com/filinvadim/warpnet/database/storage"
+	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	client "github.com/filinvadim/warpnet/node-client"
+	"github.com/filinvadim/warpnet/node/server"
 	"log"
 	"os"
 	"time"
 
-	"github.com/filinvadim/dWighter/database"
+	"github.com/filinvadim/warpnet/database"
 )
 
 type NodeServer interface {

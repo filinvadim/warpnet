@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/filinvadim/dWighter/config"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/labstack/echo/v4"
 )
 

@@ -3,9 +3,9 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filinvadim/dWighter/config"
-	"github.com/filinvadim/dWighter/domain-gen"
-	node_gen "github.com/filinvadim/dWighter/node/node-gen"
+	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/domain-gen"
+	node_gen "github.com/filinvadim/warpnet/node/node-gen"
 	"github.com/oapi-codegen/runtime/types"
 	"net/http"
 	"testing"
