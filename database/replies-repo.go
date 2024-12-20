@@ -1,7 +1,6 @@
 package database
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
@@ -97,8 +96,13 @@ func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, 
 	}
 
 	replies := make([]domain_gen.Tweet, 0, len(items))
-	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &replies); err != nil {
-		return nil, "", err
+	for _, item := range items {
+		var t domain_gen.Tweet
+		err = json.JSON.Unmarshal(item.Value, &t)
+		if err != nil {
+			return nil, "", err
+		}
+		replies = append(replies, t)
 	}
 	items = nil
 

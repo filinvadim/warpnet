@@ -1,231 +1,775 @@
 package database
 
 import (
-	"bytes"
+	"context"
 	"errors"
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	"github.com/filinvadim/warpnet/database/storage"
+	"github.com/jbenet/goprocess"
+	"log"
+	"runtime"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
+	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
 )
 
-var ErrNodeNotFound = errors.New("node not found")
-
 const (
-	NodesRepoName = "NODES"
-	KindHost      = "hosts"
+	NodesNamespace = "NODES"
 )
 
 type NodeRepo struct {
-	db      *storage.DB
-	ownNode *domain_gen.Node
+	db *storage.DB
+
+	stopChan chan struct{}
 }
+
+// Implements the datastore.Batch interface, enabling batching support for
+// the badger Datastore.
+type batch struct {
+	ds         *NodeRepo
+	writeBatch *badger.WriteBatch
+}
+
+// Implements the datastore.Txn interface, enabling transaction support for
+// the badger Datastore.
+type txn struct {
+	ds  *NodeRepo
+	txn *badger.Txn
+
+	// Whether this transaction has been implicitly created as a result of a direct Datastore
+	// method invocation.
+	implicit bool
+}
+
+var _ ds.Datastore = (*NodeRepo)(nil)
+var _ ds.PersistentDatastore = (*NodeRepo)(nil)
+var _ ds.TxnDatastore = (*NodeRepo)(nil)
+var _ ds.Txn = (*txn)(nil)
+var _ ds.TTLDatastore = (*NodeRepo)(nil)
+var _ ds.GCDatastore = (*NodeRepo)(nil)
+var _ ds.Batching = (*NodeRepo)(nil)
 
 func NewNodeRepo(db *storage.DB) *NodeRepo {
-	return &NodeRepo{db: db}
+	nr := &NodeRepo{
+		db:       db,
+		stopChan: make(chan struct{}),
+	}
+
+	return nr
 }
 
-func (repo *NodeRepo) Create(node domain_gen.Node) (domain_gen.Node, error) {
-	if node == (domain_gen.Node{}) {
-		return node, errors.New("nil node")
-	}
-	if node.OwnerId == "" {
-		return node, errors.New("owner id is required")
-	}
-	if node.Host == "" {
-		return node, errors.New("node host address is missing")
-	}
-	if node.Id.String() == "" {
-		node.Id = uuid.New()
-	}
-	if node.CreatedAt.IsZero() {
-		node.CreatedAt = time.Now()
+// NewTransaction starts a new transaction. The resulting transaction object
+// can be mutated without incurring changes to the underlying Datastore until
+// the transaction is Committed.
+func (d *NodeRepo) NewTransaction(ctx context.Context, readOnly bool) (ds.Txn, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
-	IPKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(KindHost).
-		AddReversedTimestamp(node.CreatedAt).
-		AddParentId(node.Host).
-		Build()
-	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.OwnerId).
-		Build()
-	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.Id.String()).
-		Build()
-
-	data, err := json.JSON.Marshal(node)
-	if err != nil {
-		return node, err
-	}
-
-	err = repo.db.Txn(func(tx *badger.Txn) error {
-		err = repo.db.Set(IPKey, data)
-		if err != nil {
-			return err
-		}
-		err = repo.db.Set(idKey, data)
-		if err != nil {
-			return err
-		}
-		return repo.db.Set(userKey, data)
-	})
-	if err != nil {
-		return node, err
-	}
-	if node.IsOwned {
-		repo.ownNode = &node
-	}
-	data = nil
-	return node, nil
+	return &txn{d, d.db.InnerDB().NewTransaction(!readOnly), false}, nil
 }
 
-func (repo *NodeRepo) OwnNode() *domain_gen.Node {
-	return repo.ownNode
+// newImplicitTransaction creates a transaction marked as 'implicit'.
+// Implicit transactions are created by Datastore methods performing single operations.
+func (d *NodeRepo) newImplicitTransaction(readOnly bool) *txn {
+	return &txn{d, d.db.InnerDB().NewTransaction(!readOnly), true}
 }
 
-func (repo *NodeRepo) GetByHost(host string, createdAt time.Time) (node domain_gen.Node, err error) {
-	IPKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(KindHost).
-		AddReversedTimestamp(createdAt).
-		AddParentId(host).
-		Build()
-	data, err := repo.db.Get(IPKey)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return node, ErrNodeNotFound
-	}
-	if err != nil {
-		return node, err
+func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
-	err = json.JSON.Unmarshal(data, &node)
-	if err != nil {
-		return node, err
-	}
-	data = nil
+	txn := d.newImplicitTransaction(false)
+	defer txn.discard()
 
-	return node, nil
+	if err := txn.put(key, value); err != nil {
+		return err
+	}
+
+	return txn.commit()
 }
 
-func (repo *NodeRepo) DeleteByHost(host string, createdAt time.Time) error {
-	node, err := repo.GetByHost(host, createdAt)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return ErrNodeNotFound
+func (d *NodeRepo) Sync(ctx context.Context, prefix ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
+
+	return d.db.Sync()
+}
+
+func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl time.Duration) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	txn := d.newImplicitTransaction(false)
+	defer txn.discard()
+
+	if err := txn.putWithTTL(key, value, ttl); err != nil {
+		return err
+	}
+
+	return txn.commit()
+}
+
+func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(false)
+	defer txn.discard()
+
+	if err := txn.setTTL(key, ttl); err != nil {
+		return err
+	}
+
+	return txn.commit()
+}
+
+func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, err error) {
+	if ctx.Err() != nil {
+		return t, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return t, storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(false)
+	defer txn.discard()
+
+	return txn.getExpiration(key)
+}
+
+func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(true)
+	defer txn.discard()
+
+	return txn.get(key)
+}
+
+func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return false, storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(true)
+	defer txn.discard()
+
+	return txn.has(key)
+}
+
+func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
+	if ctx.Err() != nil {
+		return -1, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return -1, storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(true)
+	defer txn.discard()
+
+	return txn.getSize(key)
+}
+
+func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(false)
+	defer txn.discard()
+
+	err := txn.delete(key)
 	if err != nil {
 		return err
 	}
 
-	ipKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(KindHost).
-		AddReversedTimestamp(node.CreatedAt).
-		AddParentId(node.Host).
-		Build()
-	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.OwnerId).
-		Build()
-	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.Id.String()).
-		Build()
+	return txn.commit()
+}
 
-	return repo.db.Txn(func(tx *badger.Txn) error {
-		if err != nil {
-			return err
-		}
-		err = repo.db.Delete(ipKey)
-		if err != nil {
-			return err
-		}
-		err = repo.db.Delete(idKey)
-		if err != nil {
-			return err
-		}
-		return repo.db.Delete(userKey)
+func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	txn := d.newImplicitTransaction(true)
+	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
+	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
+	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
+	return txn.query(q)
+}
+
+// DiskUsage implements the PersistentDatastore interface.
+// It returns the sum of lsm and value log files sizes in bytes.
+func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
+	if ctx.Err() != nil {
+		return -1, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return -1, storage.ErrNotRunning
+	}
+	lsm, vlog := d.db.InnerDB().Size()
+	return uint64(lsm + vlog), nil
+}
+
+func (d *NodeRepo) Close() (err error) {
+	return nil
+}
+
+// Batch creates a new Batch object. This provides a way to do many writes, when
+// there may be too many to fit into a single transaction.
+func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	b := &batch{d, d.db.InnerDB().NewWriteBatch()}
+	// Ensure that incomplete transaction resources are cleaned up in case
+	// batch is abandoned.
+	runtime.SetFinalizer(b, func(b *batch) {
+		b.cancel()
+		log.Println("batch not committed or canceled")
 	})
+
+	return b, nil
 }
 
-func (repo *NodeRepo) GetByUserId(userId string) (node domain_gen.Node, err error) {
-	key := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
-		Build()
-	data, err := repo.db.Get(key)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return node, ErrNodeNotFound
-	}
-	if err != nil {
-		return node, err
+func (d *NodeRepo) CollectGarbage(ctx context.Context) (err error) {
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
-	err = json.JSON.Unmarshal(data, &node)
-	if err != nil {
-		return node, err
+	if d.db.IsClosed() {
+		return storage.ErrNotRunning
 	}
-	return node, nil
+	// The idea is to keep calling DB.RunValueLogGC() till Badger no longer has any log files
+	// to GC(which would be indicated by an error, please refer to Badger GC docs).
+	for err == nil {
+		err = d.gcOnce()
+	}
+
+	if errors.Is(err, badger.ErrNoRewrite) {
+		err = nil
+	}
+
+	return err
 }
 
-func (repo *NodeRepo) DeleteByUserId(userId string) error {
-	node, err := repo.GetByUserId(userId)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return ErrNodeNotFound
+func (d *NodeRepo) gcOnce() error {
+	return d.db.InnerDB().RunValueLogGC(0.5)
+}
+
+var _ ds.Batch = (*batch)(nil)
+
+func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
+
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return b.put(key, value)
+}
+
+func (b *batch) put(key ds.Key, value []byte) error {
+	return b.writeBatch.Set(key.Bytes(), value)
+}
+
+func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
+	return b.writeBatch.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+}
+
+func (b *batch) Delete(ctx context.Context, key ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return b.delete(key)
+}
+
+func (b *batch) delete(key ds.Key) error {
+	return b.writeBatch.Delete(key.Bytes())
+}
+
+func (b *batch) Commit(_ context.Context) error {
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return b.commit()
+}
+
+func (b *batch) commit() error {
+	err := b.writeBatch.Flush()
+	if err != nil {
+		// Discard incomplete transaction held by b.writeBatch
+		b.cancel()
+		return err
+	}
+	runtime.SetFinalizer(b, nil)
+	return nil
+}
+
+func (b *batch) Cancel() error {
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	b.cancel()
+	return nil
+}
+
+func (b *batch) cancel() {
+	b.writeBatch.Cancel()
+	runtime.SetFinalizer(b, nil)
+}
+
+var _ ds.Datastore = (*txn)(nil)
+var _ ds.TTLDatastore = (*txn)(nil)
+
+func (t *txn) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return t.put(key, value)
+}
+
+func (t *txn) put(key ds.Key, value []byte) error {
+	return t.txn.Set(key.Bytes(), value)
+}
+
+func (t *txn) Sync(ctx context.Context, _ ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return nil
+}
+
+func (t *txn) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl time.Duration) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+	return t.putWithTTL(key, value, ttl)
+}
+
+func (t *txn) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
+	return t.txn.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+}
+
+func (t *txn) GetExpiration(ctx context.Context, key ds.Key) (tm time.Time, err error) {
+	if ctx.Err() != nil {
+		return tm, ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return tm, storage.ErrNotRunning
+	}
+
+	return t.getExpiration(key)
+}
+
+func (t *txn) getExpiration(key ds.Key) (time.Time, error) {
+	item, err := t.txn.Get(key.Bytes())
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return time.Time{}, ds.ErrNotFound
+	} else if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(int64(item.ExpiresAt()), 0), nil
+}
+
+func (t *txn) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return t.setTTL(key, ttl)
+}
+
+func (t *txn) setTTL(key ds.Key, ttl time.Duration) error {
+	item, err := t.txn.Get(key.Bytes())
 	if err != nil {
 		return err
 	}
-	ipKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(KindHost).
-		AddReversedTimestamp(node.CreatedAt).
-		AddParentId(node.Host).
-		Build()
-	userKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.OwnerId).
-		Build()
-	idKey := storage.NewPrefixBuilder(NodesRepoName).
-		AddRootID(storage.FixedKey).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(node.Id.String()).
-		Build()
-	return repo.db.Txn(func(tx *badger.Txn) error {
-		err = repo.db.Delete(idKey)
-		if err != nil {
-			return err
-		}
-		err = repo.db.Delete(ipKey)
-		if err != nil {
-			return err
-		}
-		return repo.db.Delete(userKey)
+	return item.Value(func(data []byte) error {
+		return t.putWithTTL(key, data, ttl)
 	})
+
 }
 
-func (repo *NodeRepo) List(limit *uint64, cursor *string) ([]domain_gen.Node, string, error) {
-	// TODO pagination
-	prefix := storage.NewPrefixBuilder(NodesRepoName).AddRootID(KindHost).Build()
-
-	items, cur, err := repo.db.List(prefix, limit, cursor)
-	if err != nil {
-		return nil, "", err
+func (t *txn) Get(ctx context.Context, key ds.Key) ([]byte, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return nil, storage.ErrNotRunning
 	}
 
-	nodes := make([]domain_gen.Node, 0, len(items))
-	err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &nodes)
+	return t.get(key)
+}
+
+func (t *txn) get(key ds.Key) ([]byte, error) {
+	item, err := t.txn.Get(key.Bytes())
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		err = ds.ErrNotFound
+	}
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	return nodes, cur, nil
+	return item.ValueCopy(nil)
+}
+
+func (t *txn) Has(ctx context.Context, key ds.Key) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return false, storage.ErrNotRunning
+	}
+
+	return t.has(key)
+}
+
+func (t *txn) has(key ds.Key) (bool, error) {
+	_, err := t.txn.Get(key.Bytes())
+	switch {
+	case errors.Is(err, badger.ErrKeyNotFound):
+		return false, nil
+	case err == nil:
+		return true, nil
+	default:
+		return false, err
+	}
+}
+
+func (t *txn) GetSize(ctx context.Context, key ds.Key) (int, error) {
+	if ctx.Err() != nil {
+		return -1, ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return -1, storage.ErrNotRunning
+	}
+
+	return t.getSize(key)
+}
+
+func (t *txn) getSize(key ds.Key) (int, error) {
+	item, err := t.txn.Get(key.Bytes())
+	switch {
+	case err == nil:
+		return int(item.ValueSize()), nil
+	case errors.Is(err, badger.ErrKeyNotFound):
+		return -1, ds.ErrNotFound
+	default:
+		return -1, err
+	}
+}
+
+func (t *txn) Delete(ctx context.Context, key ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return t.delete(key)
+}
+
+func (t *txn) delete(key ds.Key) error {
+	return t.txn.Delete(key.Bytes())
+}
+
+func (t *txn) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if t.ds.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	return t.query(q)
+}
+
+func (t *txn) query(q dsq.Query) (dsq.Results, error) {
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchValues = !q.KeysOnly
+
+	prefix := ds.NewKey(q.Prefix).String()
+	if prefix != "/" {
+		opt.Prefix = []byte(prefix + "/")
+	}
+
+	// Handle ordering
+	if len(q.Orders) > 0 {
+		switch q.Orders[0].(type) {
+		case dsq.OrderByKey, *dsq.OrderByKey:
+		// We order by key by default.
+		case dsq.OrderByKeyDescending, *dsq.OrderByKeyDescending:
+			// Reverse order by key
+			opt.Reverse = true
+		default:
+			// Ok, we have a weird order we can't handle. Let's
+			// perform the _base_ query (prefix, filter, etc.), then
+			// handle sort/offset/limit later.
+
+			// Skip the stuff we can't apply.
+			baseQuery := q
+			baseQuery.Limit = 0
+			baseQuery.Offset = 0
+			baseQuery.Orders = nil
+
+			// perform the base query.
+			res, err := t.query(baseQuery)
+			if err != nil {
+				return nil, err
+			}
+
+			// fix the query
+			res = dsq.ResultsReplaceQuery(res, q)
+
+			// Remove the parts we've already applied.
+			naiveQuery := q
+			naiveQuery.Prefix = ""
+			naiveQuery.Filters = nil
+
+			// Apply the rest of the query
+			return dsq.NaiveQueryApply(naiveQuery, res), nil
+		}
+	}
+
+	it := t.txn.NewIterator(opt)
+	qrb := dsq.NewResultBuilder(q)
+	qrb.Process.Go(func(worker goprocess.Process) {
+		closedEarly := false
+		defer func() {
+			if closedEarly {
+				select {
+				case qrb.Output <- dsq.Result{
+					Error: storage.ErrNotRunning,
+				}:
+				case <-qrb.Process.Closing():
+				}
+			}
+
+		}()
+		if t.ds.db.IsClosed() {
+			closedEarly = true
+			return
+		}
+
+		// this iterator is part of an implicit transaction, so when
+		// we're done we must discard the transaction. It's safe to
+		// discard the txn it because it contains the iterator only.
+		if t.implicit {
+			defer t.discard()
+		}
+
+		defer it.Close()
+
+		// All iterators must be started by rewinding.
+		it.Rewind()
+
+		// skip to the offset
+		for skipped := 0; skipped < q.Offset && it.Valid(); it.Next() {
+			// On the happy path, we have no filters and we can go
+			// on our way.
+			if len(q.Filters) == 0 {
+				skipped++
+				continue
+			}
+
+			// On the sad path, we need to apply filters before
+			// counting the item as "skipped" as the offset comes
+			// _after_ the filter.
+			item := it.Item()
+
+			matches := true
+			check := func(value []byte) error {
+				e := dsq.Entry{
+					Key:   string(item.Key()),
+					Value: value,
+					Size:  int(item.ValueSize()), // this function is basically free
+				}
+
+				// Only calculate expirations if we need them.
+				if q.ReturnExpirations {
+					e.Expiration = expires(item)
+				}
+				matches = filter(q.Filters, e)
+				return nil
+			}
+
+			// Maybe check with the value, only if we need it.
+			var err error
+			if q.KeysOnly {
+				err = check(nil)
+			} else {
+				err = item.Value(check)
+			}
+
+			if err != nil {
+				select {
+				case qrb.Output <- dsq.Result{Error: err}:
+				case <-t.ds.stopChan: // datastore closing.
+					closedEarly = true
+					return
+				case <-worker.Closing(): // client told us to close early
+					return
+				}
+			}
+			if !matches {
+				skipped++
+			}
+		}
+
+		for sent := 0; (q.Limit <= 0 || sent < q.Limit) && it.Valid(); it.Next() {
+			item := it.Item()
+			e := dsq.Entry{Key: string(item.Key())}
+
+			// Maybe get the value
+			var result dsq.Result
+			if !q.KeysOnly {
+				b, err := item.ValueCopy(nil)
+				if err != nil {
+					result = dsq.Result{Error: err}
+				} else {
+					e.Value = b
+					e.Size = len(b)
+					result = dsq.Result{Entry: e}
+				}
+			} else {
+				e.Size = int(item.ValueSize())
+				result = dsq.Result{Entry: e}
+			}
+
+			if q.ReturnExpirations {
+				result.Expiration = expires(item)
+			}
+
+			// Finally, filter it (unless we're dealing with an error).
+			if result.Error == nil && filter(q.Filters, e) {
+				continue
+			}
+
+			select {
+			case qrb.Output <- result:
+				sent++
+			case <-t.ds.stopChan: // datastore closing.
+				closedEarly = true
+				return
+			case <-worker.Closing(): // client told us to close early
+				return
+			}
+		}
+	})
+
+	go qrb.Process.CloseAfterChildren() //nolint
+
+	return qrb.Results(), nil
+}
+
+func (t *txn) Commit(_ context.Context) error {
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return t.commit()
+}
+
+func (t *txn) commit() error {
+	return t.txn.Commit()
+}
+
+// Alias to commit
+func (t *txn) Close() error {
+	if t.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+	return t.close()
+}
+
+func (t *txn) close() error {
+	return t.txn.Commit()
+}
+
+func (t *txn) Discard(_ context.Context) {
+	if t.ds.db.IsClosed() {
+		return
+	}
+
+	t.discard()
+}
+
+func (t *txn) discard() {
+	t.txn.Discard()
+}
+
+// filter returns _true_ if we should filter (skip) the entry
+func filter(filters []dsq.Filter, entry dsq.Entry) bool {
+	for _, f := range filters {
+		if !f.Filter(entry) {
+			return true
+		}
+	}
+	return false
+}
+
+func expires(item *badger.Item) time.Time {
+	return time.Unix(int64(item.ExpiresAt()), 0)
 }

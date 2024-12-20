@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/domain-gen"
-	node_gen "github.com/filinvadim/warpnet/node/node-gen"
+	node_gen "github.com/filinvadim/warpnet/node-gen"
 	"github.com/oapi-codegen/runtime/types"
 	"net/http"
 	"testing"

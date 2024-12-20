@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -9,7 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/crypto"
-	"github.com/filinvadim/warpnet/json"
+
 	"github.com/labstack/gommon/log"
 	"math/rand/v2"
 	"strings"
@@ -102,6 +101,10 @@ func (db *DB) runEventualGC() {
 	}
 }
 
+func (db *DB) IsClosed() bool {
+	return !db.isRunning.Load()
+}
+
 type IterKeysFunc func(key string) error
 
 func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
@@ -128,9 +131,12 @@ func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 	})
 }
 
-type RawItem = []byte
+type ListItem struct {
+	Key   string
+	Value []byte
+}
 
-func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([][]byte, string, error) {
+func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]ListItem, string, error) {
 	var startCursor DatabaseKey
 	if cursor != nil && *cursor != "" {
 		startCursor = DatabaseKey(*cursor)
@@ -141,14 +147,17 @@ func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([][]byte,
 		limit = &defaultLimit
 	}
 
-	items := make([]RawItem, 0, *limit) //
+	items := make([]ListItem, 0, *limit) //
 	cur, err := db.iterateKeysValues(
 		prefix, startCursor, limit,
 		func(key string, value []byte) error {
-			items = append(items, value)
+			items = append(items, ListItem{
+				Key:   key,
+				Value: value,
+			})
 			return nil
 		})
-	return jsonifyList(items), cur, err
+	return items, cur, err
 }
 
 type iterKeysValuesFunc func(key string, val []byte) error
@@ -216,18 +225,8 @@ func (db *DB) iterateKeysValues(
 	return lastKey.DropId(), nil
 }
 
-func jsonifyList(items [][]byte) [][]byte {
-	if len(items) == 0 {
-		return [][]byte{[]byte("[]")}
-	}
-	items[0] = append(items[0], 0)
-	copy(items[0][1:], items[0][0:])
-	items[0][0] = byte('[')
-	items[len(items)-1] = append(items[len(items)-1], ']')
-	if !json.JSON.Valid(bytes.Join(items, []byte(","))) {
-		return [][]byte{[]byte("invalid JSON array")}
-	}
-	return items
+func (db *DB) InnerDB() *badger.DB {
+	return db.badger
 }
 
 func (db *DB) Set(key DatabaseKey, value []byte) error {
@@ -239,6 +238,21 @@ func (db *DB) Set(key DatabaseKey, value []byte) error {
 		e := badger.NewEntry(key.Bytes(), value)
 		return txn.SetEntry(e)
 	})
+}
+
+func (db *DB) SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error {
+	if !db.isRunning.Load() {
+		return ErrNotRunning
+	}
+	return db.badger.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry(key.Bytes(), value)
+		e.WithTTL(ttl)
+		return txn.SetEntry(e)
+	})
+}
+
+func (db *DB) Sync() error {
+	return db.badger.Sync()
 }
 
 func (db *DB) Get(key DatabaseKey) ([]byte, error) {

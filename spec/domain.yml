@@ -107,6 +107,54 @@ components:
         - username
         - created_at
 
+    ChatMessage:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+        username:
+          type: string
+        id:
+          type: string
+        chat_id:
+          type: string
+        content:
+          type: string
+          minLength: 1
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - chat_id
+        - id
+        - content
+        - username
+        - created_at
+
+    Chat:
+      type: object
+      properties:
+        id:
+          type: string
+        from_user_id:
+          type: string
+        to_user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - from_user_id
+        - to_user_id
+        - created_at
+        - updated_at
+
     Like:
       type: object
       properties:
@@ -132,6 +180,33 @@ components:
       required:
         - user_id
         - tweet_id
+
+    AddSettingRequest:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/SettingNameEnum'
+        value:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - name
+        - value
+
+    CreateChatRequest:
+      type: object
+      properties:
+        from_user_id:
+          type: string
+          minLength: 1
+        to_user_id:
+          type: string
+          minLength: 1
+      required:
+        - from_user_id
+        - to_user_id
 
     FollowRequest:
       type: object
@@ -217,6 +292,8 @@ components:
     RepliesTreeResponse:
       type: object
       properties:
+        user_id:
+          type: string
         cursor:
           type: string
         replies:
@@ -243,6 +320,8 @@ components:
     TweetsResponse:
       type: object
       properties:
+        user_id:
+          type: string
         cursor:
           type: string
         tweets:
@@ -252,6 +331,36 @@ components:
       required:
         - cursor
         - tweets
+
+    ChatsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        chats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chat'
+      required:
+        - cursor
+        - chats
+
+    MessagesResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+      required:
+        - cursor
+        - messages
 
     UsersResponse:
       type: object
@@ -269,6 +378,8 @@ components:
     HostsResponse:
       type: object
       properties:
+        user_id:
+          type: string
         cursor:
           type: string
         hosts:
@@ -305,20 +416,6 @@ components:
       type: string
       enum: [node_addresses]
       default: node_addresses
-
-    AddSettingRequest:
-      type: object
-      properties:
-        name:
-          $ref: '#/components/schemas/SettingNameEnum'
-        value:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - name
-        - value
 
     Event:
       type: object

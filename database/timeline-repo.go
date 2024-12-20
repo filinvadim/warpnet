@@ -1,7 +1,6 @@
 package database
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	domain_gen "github.com/filinvadim/warpnet/domain-gen"
@@ -76,10 +75,14 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 	}
 
 	tweets := make([]domain_gen.Tweet, 0, len(items))
-	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &tweets); err != nil {
-		return nil, "", err
+	for _, item := range items {
+		var t domain_gen.Tweet
+		err = json.JSON.Unmarshal(item.Value, &t)
+		if err != nil {
+			return nil, "", err
+		}
+		tweets = append(tweets, t)
 	}
-
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(tweets[j].CreatedAt)
 	})

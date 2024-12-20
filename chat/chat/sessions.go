@@ -1,8 +1,7 @@
 package chat
 
 import (
-	"crypto/rand"
-	"encoding/base64"
+	"github.com/google/uuid"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -20,20 +19,9 @@ type Session struct {
 // NewSession returns a new websocket session.
 func NewSession(conn *websocket.Conn) *Session {
 	return &Session{
-		// MD5 of timestamp + randomString(32) should give the right random string.
-		id:   randomString(32),
+		id:   uuid.New().String(),
 		conn: conn,
-		// ts:   time.Now(),
 	}
-}
-
-func randomString(n int) string {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return ""
-	}
-	return base64.StdEncoding.EncodeToString(b)
 }
 
 // Conn returns the current session websocket connection.
@@ -49,25 +37,25 @@ func (s *Session) SessionID() string {
 // Sessions manages the session for the current socket.
 type Sessions struct {
 	mu       sync.RWMutex
-	sessions map[string]*Session
+	sessions map[string]Session
 }
 
 // NewSessions returns a new session manager.
 func NewSessions() *Sessions {
 	return &Sessions{
-		sessions: make(map[string]*Session),
+		sessions: make(map[string]Session),
 	}
 }
 
 // Put inserts a new session.
-func (s *Sessions) Put(sess *Session) {
+func (s *Sessions) Put(sess Session) {
 	s.mu.Lock()
 	s.sessions[sess.id] = sess
 	s.mu.Unlock()
 }
 
 // Get returns a session by the given session id.
-func (s *Sessions) Get(id string) *Session {
+func (s *Sessions) Get(id string) Session {
 	s.mu.RLock()
 	sess, _ := s.sessions[id]
 	s.mu.RUnlock()

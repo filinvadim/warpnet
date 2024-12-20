@@ -36,13 +36,20 @@ func NewPrefixBuilder(mandatoryNamespace string) Namespace {
 	return Namespace(mandatoryNamespace)
 }
 
+func (ns Namespace) AddSubPrefix(p string) Namespace {
+	if p == "" {
+		panic("sub prefix must not be empty")
+	}
+	return Namespace(fmt.Sprintf("%s:%s", ns, p))
+}
+
 func (ns Namespace) Build() DatabaseKey {
 	return build(string(ns))
 }
 
 func (ns Namespace) AddRootID(mandatoryPrefix string) ParentLayer {
 	if mandatoryPrefix == "" {
-		panic("parent prefix must not be empty")
+		panic("root prefix must not be empty")
 	}
 	key := fmt.Sprintf("%s:%s", ns, mandatoryPrefix)
 	return ParentLayer(key)

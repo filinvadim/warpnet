@@ -1,7 +1,6 @@
 package database
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
@@ -127,8 +126,13 @@ func (repo *TweetRepo) List(rootID string, limit *uint64, cursor *string) ([]dom
 	}
 
 	tweets := make([]domain_gen.Tweet, 0, len(items))
-	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &tweets); err != nil {
-		return nil, "", err
+	for _, item := range items {
+		var t domain_gen.Tweet
+		err = json.JSON.Unmarshal(item.Value, &t)
+		if err != nil {
+			return nil, "", err
+		}
+		tweets = append(tweets, t)
 	}
 	sort.SliceStable(tweets, func(i, j int) bool {
 		return tweets[i].CreatedAt.After(tweets[j].CreatedAt)

@@ -37,6 +37,38 @@ type AuthRequest struct {
 	Username string `json:"username"`
 }
 
+// Chat defines model for Chat.
+type Chat struct {
+	CreatedAt  time.Time `json:"created_at"`
+	FromUserId string    `json:"from_user_id"`
+	Id         string    `json:"id"`
+	ToUserId   string    `json:"to_user_id"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// ChatMessage defines model for ChatMessage.
+type ChatMessage struct {
+	ChatId    string    `json:"chat_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        string    `json:"id"`
+	UserId    string    `json:"user_id"`
+	Username  string    `json:"username"`
+}
+
+// ChatsResponse defines model for ChatsResponse.
+type ChatsResponse struct {
+	Chats  []Chat  `json:"chats"`
+	Cursor string  `json:"cursor"`
+	UserId *string `json:"user_id,omitempty"`
+}
+
+// CreateChatRequest defines model for CreateChatRequest.
+type CreateChatRequest struct {
+	FromUserId string `json:"from_user_id"`
+	ToUserId   string `json:"to_user_id"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Code    int    `json:"code"`
@@ -120,6 +152,7 @@ type GetUserEvent struct {
 type HostsResponse struct {
 	Cursor string   `json:"cursor"`
 	Hosts  []string `json:"hosts"`
+	UserId *string  `json:"user_id,omitempty"`
 }
 
 // Like defines model for Like.
@@ -142,6 +175,13 @@ type LoginResponse struct {
 
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent = map[string]interface{}
+
+// MessagesResponse defines model for MessagesResponse.
+type MessagesResponse struct {
+	Cursor   string        `json:"cursor"`
+	Messages []ChatMessage `json:"messages"`
+	UserId   *string       `json:"user_id,omitempty"`
+}
 
 // NewFollowEvent defines model for NewFollowEvent.
 type NewFollowEvent struct {
@@ -213,6 +253,7 @@ type PongEvent = PingEvent
 type RepliesTreeResponse struct {
 	Cursor  string      `json:"cursor"`
 	Replies []ReplyNode `json:"replies"`
+	UserId  *string     `json:"user_id,omitempty"`
 }
 
 // ReplyNode defines model for ReplyNode.
@@ -249,6 +290,7 @@ type Tweet struct {
 type TweetsResponse struct {
 	Cursor string  `json:"cursor"`
 	Tweets []Tweet `json:"tweets"`
+	UserId *string `json:"user_id,omitempty"`
 }
 
 // UnfollowRequest defines model for UnfollowRequest.
@@ -762,30 +804,32 @@ func (t *Event_Data) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xZTY/bNhP+KwLf96hNNk2Rg2+LJk0NBGmQetHDYmHQ0thiVyIVcrSOEfi/F6Sob9Km",
-	"nCyyh56ysObjIWfmmRnmG0lEUQoOHBVZfCMqyaCg5s+bNP0LEBnffYYvFSjUP5ZSlCCRgRFJJFCEdE3N",
-	"t62Qhf6LpBThClkBJCZ4KIEsiELJ+I4cY8JpAVr6/xK2ZEH+97ID8NJ6f2n9fqQFvONVodUeaV4ZvZHB",
-	"Y0wkfKmYhJQs7mrrjfR9615s/oEEtZ2bCjPveUqq1F7I1OEnJpUC2YA/DaKVjDuLLizvpBTScasi7Tth",
-	"HGEHUisUoBTdBSAwJjp5r/N3j8DxpyFwO08pUv0v5Yc/t2RxdzpVPjG+qw0d49OSvQOfE/0I+9UeAIOl",
-	"bxWEm/5d5LnYh9vm2xkK7wFv8tygV8EaK1ZAzjiEK4TfznvA8Nup0Wv5QPAfxI7xYFFRhYO2HKT+ECr0",
-	"Jj/C/gKt94CfocwZhHvR8odZ1hvp+2NMNDMrpEUZStqj0u70XVVdZ7eXYiXQFOSaGY4tGP8AfIcZWbxy",
-	"tIq9ZBgmO0LYOekbcaGdlsuUDCupapqeAMxZwdBBlDH5erUTV/bXinF882vTQpZpWANZngLcq5A5eJla",
-	"11wCfRAbIXKgfCCgFZwS8458dJ9gkO9PeeEllcBxLXUF2Dya2JRCoPvbOKus4NTsvf+YB88hg5A9Meye",
-	"B88JHHT2dOHyJMuwOT3/8uz1xglY1N+W/vlyhve4NebB0XXdCYwfcFCTEZ9BlYIrmBWVTGvqLwyhUE4R",
-	"+wOVkh6mk2VtujHkAveBPYDn8sM6jz74BX2nUYs7X0543dDys1cQA8UfRhQPwL1Qzq1xOgOn04MxaQ14",
-	"ILVzWue5+z6aoB0TRjt6nAI3nFOc5DOctNz5dM6NYQOv+RB+/d568ZfJcM15ivMNd5dLQ9VYOResM4wX",
-	"nK5T23Yf5lWe000OZIGygvgHvIbo4JilF1QiWYlMcLIgqwyi5aeIpqkEpVx6NTe1PqqqZh3HwEcTZI8w",
-	"9fF3BpiBjHDgK2IqSiqp54T8EFnd2D0pij33zZE5VbhWUHPH9GztBhHtM+ARZkz1MeypirSFzn/YZeYU",
-	"gScHt08OuBfyIbJCEYrWL+NRwfKcKUgET/V9w1dalDrOr3657nmvJ4XY8S6i76LpGEPfOvOi5VsX3qo0",
-	"J5mo3JrfI7E1weEiBQ3Rge71m+sQeCNCaENn06+fJv3Q9U5lEi7uZ7iLT7q3mOmjDihcN8k+fRMUKQwp",
-	"7uQCrKtxwnotWr4VYZXeaHBb3ed9jh8bDWznTYj/bqK+CbvqrSTARdOirPWDr8Q0bPe9+ObIxoUP/qGh",
-	"/xHojOWprCnue6HZTSy82Q5fO7Rq3AFyH6Rt5890Kh4/+pta2dIq19SmE2xt+wMYDjQid+MP9w7YK/fB",
-	"E8HRVuiZc1/S2D1be84eZiSz2WMcyWKsrBNR8SGipgEUjLNC38+1q1fZZwDvo4OJ0pyKqzPLmdS1rYuh",
-	"+h85wrNx7trU73c2Rfp3FvceVHpb1pnWWL8wXsSAM8OxcgfDR37WugvzeOx+7m+5t3bGH4LcMImZLtXw",
-	"2r2k3gcTnCOK/XfX0EWu01pbQgyYRK2KVBd5kmqGKy/H8YfhdiJz57guEuq9r+KwlrAFKWk+8ySmIwTu",
-	"R7ULSNebw9kHlzlJO2aHfnYMPjRgR6Eex6OXP/0In6Ud8/8EF7GOxhhOOs0YGcY5te0pXq3QDK3Djei3",
-	"1mW0FTKiUco01E2FkEarPUMEeaW7YkTLMmc2r2KCDPWeRN5OxaObT0sSk0eQqvbx6sX1i2szC5fAacnI",
-	"grw2P2n2x0yRhV7/j/8GAAD//xmMc10yIQAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

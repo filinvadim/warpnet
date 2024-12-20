@@ -27,6 +27,55 @@ type PostV1ApiAuthLogoutParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
+// ListChatsParams defines parameters for ListChats.
+type ListChatsParams struct {
+	UserId        string  `form:"user_id" json:"user_id"`
+	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit         *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiChatParams defines parameters for PostV1ApiChat.
+type PostV1ApiChatParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiChatWsParams defines parameters for GetV1ApiChatWs.
+type GetV1ApiChatWsParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiChatChatIdParams defines parameters for GetV1ApiChatChatId.
+type GetV1ApiChatChatIdParams struct {
+	UserId        string `form:"user_id" json:"user_id"`
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// ListMessagesParams defines parameters for ListMessages.
+type ListMessagesParams struct {
+	UserId        string  `form:"user_id" json:"user_id"`
+	Cursor        *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit         *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	XSESSIONTOKEN string  `json:"X-SESSION-TOKEN"`
+}
+
+// PostV1ApiChatChatIdMessageParams defines parameters for PostV1ApiChatChatIdMessage.
+type PostV1ApiChatChatIdMessageParams struct {
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// DeleteV1ApiChatChatIdMessageMessageIdParams defines parameters for DeleteV1ApiChatChatIdMessageMessageId.
+type DeleteV1ApiChatChatIdMessageMessageIdParams struct {
+	UserId        string `form:"user_id" json:"user_id"`
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
+// GetV1ApiChatChatIdMessageMessageIdParams defines parameters for GetV1ApiChatChatIdMessageMessageId.
+type GetV1ApiChatChatIdMessageMessageIdParams struct {
+	UserId        string `form:"user_id" json:"user_id"`
+	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+}
+
 // GetV1ApiNodesSettingsParams defines parameters for GetV1ApiNodesSettings.
 type GetV1ApiNodesSettingsParams struct {
 	Cursor        *string                      `form:"cursor,omitempty" json:"cursor,omitempty"`
@@ -110,6 +159,12 @@ type GetV1ApiUsersUserIdParams struct {
 
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
 type PostV1ApiAuthLoginJSONRequestBody = externalRef0.AuthRequest
+
+// PostV1ApiChatJSONRequestBody defines body for PostV1ApiChat for application/json ContentType.
+type PostV1ApiChatJSONRequestBody = externalRef0.CreateChatRequest
+
+// PostV1ApiChatChatIdMessageJSONRequestBody defines body for PostV1ApiChatChatIdMessage for application/json ContentType.
+type PostV1ApiChatChatIdMessageJSONRequestBody = externalRef0.CreateChatRequest
 
 // PostV1ApiNodesSettingsJSONRequestBody defines body for PostV1ApiNodesSettings for application/json ContentType.
 type PostV1ApiNodesSettingsJSONRequestBody = externalRef0.AddSettingRequest
@@ -216,6 +271,34 @@ type ClientInterface interface {
 	// PostV1ApiAuthLogout request
 	PostV1ApiAuthLogout(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListChats request
+	ListChats(ctx context.Context, params *ListChatsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiChatWithBody request with any body
+	PostV1ApiChatWithBody(ctx context.Context, params *PostV1ApiChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiChat(ctx context.Context, params *PostV1ApiChatParams, body PostV1ApiChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiChatWs request
+	GetV1ApiChatWs(ctx context.Context, params *GetV1ApiChatWsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiChatChatId request
+	GetV1ApiChatChatId(ctx context.Context, chatId string, params *GetV1ApiChatChatIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMessages request
+	ListMessages(ctx context.Context, chatId string, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostV1ApiChatChatIdMessageWithBody request with any body
+	PostV1ApiChatChatIdMessageWithBody(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostV1ApiChatChatIdMessage(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, body PostV1ApiChatChatIdMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteV1ApiChatChatIdMessageMessageId request
+	DeleteV1ApiChatChatIdMessageMessageId(ctx context.Context, chatId string, messageId string, params *DeleteV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetV1ApiChatChatIdMessageMessageId request
+	GetV1ApiChatChatIdMessageMessageId(ctx context.Context, chatId string, messageId string, params *GetV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetV1ApiNodesSettings request
 	GetV1ApiNodesSettings(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -321,6 +404,126 @@ func (c *Client) PostV1ApiAuthLogin(ctx context.Context, body PostV1ApiAuthLogin
 
 func (c *Client) PostV1ApiAuthLogout(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostV1ApiAuthLogoutRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListChats(ctx context.Context, params *ListChatsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListChatsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiChatWithBody(ctx context.Context, params *PostV1ApiChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiChatRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiChat(ctx context.Context, params *PostV1ApiChatParams, body PostV1ApiChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiChatRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiChatWs(ctx context.Context, params *GetV1ApiChatWsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiChatWsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiChatChatId(ctx context.Context, chatId string, params *GetV1ApiChatChatIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiChatChatIdRequest(c.Server, chatId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMessages(ctx context.Context, chatId string, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMessagesRequest(c.Server, chatId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiChatChatIdMessageWithBody(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiChatChatIdMessageRequestWithBody(c.Server, chatId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostV1ApiChatChatIdMessage(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, body PostV1ApiChatChatIdMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1ApiChatChatIdMessageRequest(c.Server, chatId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteV1ApiChatChatIdMessageMessageId(ctx context.Context, chatId string, messageId string, params *DeleteV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteV1ApiChatChatIdMessageMessageIdRequest(c.Server, chatId, messageId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetV1ApiChatChatIdMessageMessageId(ctx context.Context, chatId string, messageId string, params *GetV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1ApiChatChatIdMessageMessageIdRequest(c.Server, chatId, messageId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -692,6 +895,555 @@ func NewPostV1ApiAuthLogoutRequest(server string, params *PostV1ApiAuthLogoutPar
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewListChatsRequest generates requests for ListChats
+func NewListChatsRequest(server string, params *ListChatsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiChatRequest calls the generic PostV1ApiChat builder with application/json body
+func NewPostV1ApiChatRequest(server string, params *PostV1ApiChatParams, body PostV1ApiChatJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiChatRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiChatRequestWithBody generates requests for PostV1ApiChat with any type of body
+func NewPostV1ApiChatRequestWithBody(server string, params *PostV1ApiChatParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiChatWsRequest generates requests for GetV1ApiChatWs
+func NewGetV1ApiChatWsRequest(server string, params *GetV1ApiChatWsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/ws")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiChatChatIdRequest generates requests for GetV1ApiChatChatId
+func NewGetV1ApiChatChatIdRequest(server string, chatId string, params *GetV1ApiChatChatIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "chat_id", runtime.ParamLocationPath, chatId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewListMessagesRequest generates requests for ListMessages
+func NewListMessagesRequest(server string, chatId string, params *ListMessagesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "chat_id", runtime.ParamLocationPath, chatId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/%s/message", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor", runtime.ParamLocationQuery, *params.Cursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPostV1ApiChatChatIdMessageRequest calls the generic PostV1ApiChatChatIdMessage builder with application/json body
+func NewPostV1ApiChatChatIdMessageRequest(server string, chatId string, params *PostV1ApiChatChatIdMessageParams, body PostV1ApiChatChatIdMessageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostV1ApiChatChatIdMessageRequestWithBody(server, chatId, params, "application/json", bodyReader)
+}
+
+// NewPostV1ApiChatChatIdMessageRequestWithBody generates requests for PostV1ApiChatChatIdMessage with any type of body
+func NewPostV1ApiChatChatIdMessageRequestWithBody(server string, chatId string, params *PostV1ApiChatChatIdMessageParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "chat_id", runtime.ParamLocationPath, chatId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/%s/message", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewDeleteV1ApiChatChatIdMessageMessageIdRequest generates requests for DeleteV1ApiChatChatIdMessageMessageId
+func NewDeleteV1ApiChatChatIdMessageMessageIdRequest(server string, chatId string, messageId string, params *DeleteV1ApiChatChatIdMessageMessageIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "chat_id", runtime.ParamLocationPath, chatId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "message_id", runtime.ParamLocationPath, messageId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/%s/message/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-SESSION-TOKEN", runtime.ParamLocationHeader, params.XSESSIONTOKEN)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-SESSION-TOKEN", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetV1ApiChatChatIdMessageMessageIdRequest generates requests for GetV1ApiChatChatIdMessageMessageId
+func NewGetV1ApiChatChatIdMessageMessageIdRequest(server string, chatId string, messageId string, params *GetV1ApiChatChatIdMessageMessageIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "chat_id", runtime.ParamLocationPath, chatId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "message_id", runtime.ParamLocationPath, messageId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/api/chat/%s/message/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1679,6 +2431,34 @@ type ClientWithResponsesInterface interface {
 	// PostV1ApiAuthLogoutWithResponse request
 	PostV1ApiAuthLogoutWithResponse(ctx context.Context, params *PostV1ApiAuthLogoutParams, reqEditors ...RequestEditorFn) (*PostV1ApiAuthLogoutResponse, error)
 
+	// ListChatsWithResponse request
+	ListChatsWithResponse(ctx context.Context, params *ListChatsParams, reqEditors ...RequestEditorFn) (*ListChatsResponse, error)
+
+	// PostV1ApiChatWithBodyWithResponse request with any body
+	PostV1ApiChatWithBodyWithResponse(ctx context.Context, params *PostV1ApiChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiChatResponse, error)
+
+	PostV1ApiChatWithResponse(ctx context.Context, params *PostV1ApiChatParams, body PostV1ApiChatJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiChatResponse, error)
+
+	// GetV1ApiChatWsWithResponse request
+	GetV1ApiChatWsWithResponse(ctx context.Context, params *GetV1ApiChatWsParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatWsResponse, error)
+
+	// GetV1ApiChatChatIdWithResponse request
+	GetV1ApiChatChatIdWithResponse(ctx context.Context, chatId string, params *GetV1ApiChatChatIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatChatIdResponse, error)
+
+	// ListMessagesWithResponse request
+	ListMessagesWithResponse(ctx context.Context, chatId string, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
+
+	// PostV1ApiChatChatIdMessageWithBodyWithResponse request with any body
+	PostV1ApiChatChatIdMessageWithBodyWithResponse(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiChatChatIdMessageResponse, error)
+
+	PostV1ApiChatChatIdMessageWithResponse(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, body PostV1ApiChatChatIdMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiChatChatIdMessageResponse, error)
+
+	// DeleteV1ApiChatChatIdMessageMessageIdWithResponse request
+	DeleteV1ApiChatChatIdMessageMessageIdWithResponse(ctx context.Context, chatId string, messageId string, params *DeleteV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*DeleteV1ApiChatChatIdMessageMessageIdResponse, error)
+
+	// GetV1ApiChatChatIdMessageMessageIdWithResponse request
+	GetV1ApiChatChatIdMessageMessageIdWithResponse(ctx context.Context, chatId string, messageId string, params *GetV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatChatIdMessageMessageIdResponse, error)
+
 	// GetV1ApiNodesSettingsWithResponse request
 	GetV1ApiNodesSettingsWithResponse(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*GetV1ApiNodesSettingsResponse, error)
 
@@ -1813,6 +2593,178 @@ func (r PostV1ApiAuthLogoutResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostV1ApiAuthLogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListChatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.ChatsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListChatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListChatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiChatResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiChatResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiChatResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiChatWsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiChatWsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiChatWsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiChatChatIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.Chat
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiChatChatIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiChatChatIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListMessagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.MessagesResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMessagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMessagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostV1ApiChatChatIdMessageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostV1ApiChatChatIdMessageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostV1ApiChatChatIdMessageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteV1ApiChatChatIdMessageMessageIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteV1ApiChatChatIdMessageMessageIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteV1ApiChatChatIdMessageMessageIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetV1ApiChatChatIdMessageMessageIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *externalRef0.ChatMessage
+}
+
+// Status returns HTTPResponse.Status
+func (r GetV1ApiChatChatIdMessageMessageIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetV1ApiChatChatIdMessageMessageIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2164,6 +3116,94 @@ func (c *ClientWithResponses) PostV1ApiAuthLogoutWithResponse(ctx context.Contex
 	return ParsePostV1ApiAuthLogoutResponse(rsp)
 }
 
+// ListChatsWithResponse request returning *ListChatsResponse
+func (c *ClientWithResponses) ListChatsWithResponse(ctx context.Context, params *ListChatsParams, reqEditors ...RequestEditorFn) (*ListChatsResponse, error) {
+	rsp, err := c.ListChats(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListChatsResponse(rsp)
+}
+
+// PostV1ApiChatWithBodyWithResponse request with arbitrary body returning *PostV1ApiChatResponse
+func (c *ClientWithResponses) PostV1ApiChatWithBodyWithResponse(ctx context.Context, params *PostV1ApiChatParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiChatResponse, error) {
+	rsp, err := c.PostV1ApiChatWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiChatResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiChatWithResponse(ctx context.Context, params *PostV1ApiChatParams, body PostV1ApiChatJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiChatResponse, error) {
+	rsp, err := c.PostV1ApiChat(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiChatResponse(rsp)
+}
+
+// GetV1ApiChatWsWithResponse request returning *GetV1ApiChatWsResponse
+func (c *ClientWithResponses) GetV1ApiChatWsWithResponse(ctx context.Context, params *GetV1ApiChatWsParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatWsResponse, error) {
+	rsp, err := c.GetV1ApiChatWs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiChatWsResponse(rsp)
+}
+
+// GetV1ApiChatChatIdWithResponse request returning *GetV1ApiChatChatIdResponse
+func (c *ClientWithResponses) GetV1ApiChatChatIdWithResponse(ctx context.Context, chatId string, params *GetV1ApiChatChatIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatChatIdResponse, error) {
+	rsp, err := c.GetV1ApiChatChatId(ctx, chatId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiChatChatIdResponse(rsp)
+}
+
+// ListMessagesWithResponse request returning *ListMessagesResponse
+func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, chatId string, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
+	rsp, err := c.ListMessages(ctx, chatId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMessagesResponse(rsp)
+}
+
+// PostV1ApiChatChatIdMessageWithBodyWithResponse request with arbitrary body returning *PostV1ApiChatChatIdMessageResponse
+func (c *ClientWithResponses) PostV1ApiChatChatIdMessageWithBodyWithResponse(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1ApiChatChatIdMessageResponse, error) {
+	rsp, err := c.PostV1ApiChatChatIdMessageWithBody(ctx, chatId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiChatChatIdMessageResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostV1ApiChatChatIdMessageWithResponse(ctx context.Context, chatId string, params *PostV1ApiChatChatIdMessageParams, body PostV1ApiChatChatIdMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1ApiChatChatIdMessageResponse, error) {
+	rsp, err := c.PostV1ApiChatChatIdMessage(ctx, chatId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostV1ApiChatChatIdMessageResponse(rsp)
+}
+
+// DeleteV1ApiChatChatIdMessageMessageIdWithResponse request returning *DeleteV1ApiChatChatIdMessageMessageIdResponse
+func (c *ClientWithResponses) DeleteV1ApiChatChatIdMessageMessageIdWithResponse(ctx context.Context, chatId string, messageId string, params *DeleteV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*DeleteV1ApiChatChatIdMessageMessageIdResponse, error) {
+	rsp, err := c.DeleteV1ApiChatChatIdMessageMessageId(ctx, chatId, messageId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteV1ApiChatChatIdMessageMessageIdResponse(rsp)
+}
+
+// GetV1ApiChatChatIdMessageMessageIdWithResponse request returning *GetV1ApiChatChatIdMessageMessageIdResponse
+func (c *ClientWithResponses) GetV1ApiChatChatIdMessageMessageIdWithResponse(ctx context.Context, chatId string, messageId string, params *GetV1ApiChatChatIdMessageMessageIdParams, reqEditors ...RequestEditorFn) (*GetV1ApiChatChatIdMessageMessageIdResponse, error) {
+	rsp, err := c.GetV1ApiChatChatIdMessageMessageId(ctx, chatId, messageId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetV1ApiChatChatIdMessageMessageIdResponse(rsp)
+}
+
 // GetV1ApiNodesSettingsWithResponse request returning *GetV1ApiNodesSettingsResponse
 func (c *ClientWithResponses) GetV1ApiNodesSettingsWithResponse(ctx context.Context, params *GetV1ApiNodesSettingsParams, reqEditors ...RequestEditorFn) (*GetV1ApiNodesSettingsResponse, error) {
 	rsp, err := c.GetV1ApiNodesSettings(ctx, params, reqEditors...)
@@ -2407,6 +3447,174 @@ func ParsePostV1ApiAuthLogoutResponse(rsp *http.Response) (*PostV1ApiAuthLogoutR
 	response := &PostV1ApiAuthLogoutResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseListChatsResponse parses an HTTP response from a ListChatsWithResponse call
+func ParseListChatsResponse(rsp *http.Response) (*ListChatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListChatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.ChatsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiChatResponse parses an HTTP response from a PostV1ApiChatWithResponse call
+func ParsePostV1ApiChatResponse(rsp *http.Response) (*PostV1ApiChatResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiChatResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiChatWsResponse parses an HTTP response from a GetV1ApiChatWsWithResponse call
+func ParseGetV1ApiChatWsResponse(rsp *http.Response) (*GetV1ApiChatWsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiChatWsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiChatChatIdResponse parses an HTTP response from a GetV1ApiChatChatIdWithResponse call
+func ParseGetV1ApiChatChatIdResponse(rsp *http.Response) (*GetV1ApiChatChatIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiChatChatIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.Chat
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMessagesResponse parses an HTTP response from a ListMessagesWithResponse call
+func ParseListMessagesResponse(rsp *http.Response) (*ListMessagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMessagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.MessagesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostV1ApiChatChatIdMessageResponse parses an HTTP response from a PostV1ApiChatChatIdMessageWithResponse call
+func ParsePostV1ApiChatChatIdMessageResponse(rsp *http.Response) (*PostV1ApiChatChatIdMessageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostV1ApiChatChatIdMessageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseDeleteV1ApiChatChatIdMessageMessageIdResponse parses an HTTP response from a DeleteV1ApiChatChatIdMessageMessageIdWithResponse call
+func ParseDeleteV1ApiChatChatIdMessageMessageIdResponse(rsp *http.Response) (*DeleteV1ApiChatChatIdMessageMessageIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteV1ApiChatChatIdMessageMessageIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetV1ApiChatChatIdMessageMessageIdResponse parses an HTTP response from a GetV1ApiChatChatIdMessageMessageIdWithResponse call
+func ParseGetV1ApiChatChatIdMessageMessageIdResponse(rsp *http.Response) (*GetV1ApiChatChatIdMessageMessageIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetV1ApiChatChatIdMessageMessageIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.ChatMessage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	}
 
 	return response, nil
@@ -2720,6 +3928,30 @@ type ServerInterface interface {
 	// Close service
 	// (POST /v1/api/auth/logout)
 	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
+	// Get user chats
+	// (GET /v1/api/chat)
+	ListChats(ctx echo.Context, params ListChatsParams) error
+	// Create chat
+	// (POST /v1/api/chat)
+	PostV1ApiChat(ctx echo.Context, params PostV1ApiChatParams) error
+	// Chat Websocket connection
+	// (GET /v1/api/chat/ws)
+	GetV1ApiChatWs(ctx echo.Context, params GetV1ApiChatWsParams) error
+	// Get user's specific chat
+	// (GET /v1/api/chat/{chat_id})
+	GetV1ApiChatChatId(ctx echo.Context, chatId string, params GetV1ApiChatChatIdParams) error
+	// Get user messages
+	// (GET /v1/api/chat/{chat_id}/message)
+	ListMessages(ctx echo.Context, chatId string, params ListMessagesParams) error
+	// Create message
+	// (POST /v1/api/chat/{chat_id}/message)
+	PostV1ApiChatChatIdMessage(ctx echo.Context, chatId string, params PostV1ApiChatChatIdMessageParams) error
+	// Delete user message
+	// (DELETE /v1/api/chat/{chat_id}/message/{message_id})
+	DeleteV1ApiChatChatIdMessageMessageId(ctx echo.Context, chatId string, messageId string, params DeleteV1ApiChatChatIdMessageMessageIdParams) error
+	// Get user message
+	// (GET /v1/api/chat/{chat_id}/message/{message_id})
+	GetV1ApiChatChatIdMessageMessageId(ctx echo.Context, chatId string, messageId string, params GetV1ApiChatChatIdMessageMessageIdParams) error
 	// Add setting
 	// (GET /v1/api/nodes/settings)
 	GetV1ApiNodesSettings(ctx echo.Context, params GetV1ApiNodesSettingsParams) error
@@ -2831,6 +4063,363 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostV1ApiAuthLogout(ctx, params)
+	return err
+}
+
+// ListChats converts echo context to params.
+func (w *ServerInterfaceWrapper) ListChats(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListChatsParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListChats(ctx, params)
+	return err
+}
+
+// PostV1ApiChat converts echo context to params.
+func (w *ServerInterfaceWrapper) PostV1ApiChat(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiChatParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostV1ApiChat(ctx, params)
+	return err
+}
+
+// GetV1ApiChatWs converts echo context to params.
+func (w *ServerInterfaceWrapper) GetV1ApiChatWs(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiChatWsParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetV1ApiChatWs(ctx, params)
+	return err
+}
+
+// GetV1ApiChatChatId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetV1ApiChatChatId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "chat_id" -------------
+	var chatId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chat_id", ctx.Param("chat_id"), &chatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter chat_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiChatChatIdParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetV1ApiChatChatId(ctx, chatId, params)
+	return err
+}
+
+// ListMessages converts echo context to params.
+func (w *ServerInterfaceWrapper) ListMessages(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "chat_id" -------------
+	var chatId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chat_id", ctx.Param("chat_id"), &chatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter chat_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMessagesParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListMessages(ctx, chatId, params)
+	return err
+}
+
+// PostV1ApiChatChatIdMessage converts echo context to params.
+func (w *ServerInterfaceWrapper) PostV1ApiChatChatIdMessage(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "chat_id" -------------
+	var chatId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chat_id", ctx.Param("chat_id"), &chatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter chat_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostV1ApiChatChatIdMessageParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostV1ApiChatChatIdMessage(ctx, chatId, params)
+	return err
+}
+
+// DeleteV1ApiChatChatIdMessageMessageId converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteV1ApiChatChatIdMessageMessageId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "chat_id" -------------
+	var chatId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chat_id", ctx.Param("chat_id"), &chatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter chat_id: %s", err))
+	}
+
+	// ------------- Path parameter "message_id" -------------
+	var messageId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "message_id", ctx.Param("message_id"), &messageId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter message_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteV1ApiChatChatIdMessageMessageIdParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteV1ApiChatChatIdMessageMessageId(ctx, chatId, messageId, params)
+	return err
+}
+
+// GetV1ApiChatChatIdMessageMessageId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetV1ApiChatChatIdMessageMessageId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "chat_id" -------------
+	var chatId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chat_id", ctx.Param("chat_id"), &chatId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter chat_id: %s", err))
+	}
+
+	// ------------- Path parameter "message_id" -------------
+	var messageId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "message_id", ctx.Param("message_id"), &messageId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter message_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ApiChatChatIdMessageMessageIdParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
+		var XSESSIONTOKEN string
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
+		}
+
+		params.XSESSIONTOKEN = XSESSIONTOKEN
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetV1ApiChatChatIdMessageMessageId(ctx, chatId, messageId, params)
 	return err
 }
 
@@ -3446,6 +5035,14 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/static/:file", wrapper.GetStaticFile)
 	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
 	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
+	router.GET(baseURL+"/v1/api/chat", wrapper.ListChats)
+	router.POST(baseURL+"/v1/api/chat", wrapper.PostV1ApiChat)
+	router.GET(baseURL+"/v1/api/chat/ws", wrapper.GetV1ApiChatWs)
+	router.GET(baseURL+"/v1/api/chat/:chat_id", wrapper.GetV1ApiChatChatId)
+	router.GET(baseURL+"/v1/api/chat/:chat_id/message", wrapper.ListMessages)
+	router.POST(baseURL+"/v1/api/chat/:chat_id/message", wrapper.PostV1ApiChatChatIdMessage)
+	router.DELETE(baseURL+"/v1/api/chat/:chat_id/message/:message_id", wrapper.DeleteV1ApiChatChatIdMessageMessageId)
+	router.GET(baseURL+"/v1/api/chat/:chat_id/message/:message_id", wrapper.GetV1ApiChatChatIdMessageMessageId)
 	router.GET(baseURL+"/v1/api/nodes/settings", wrapper.GetV1ApiNodesSettings)
 	router.POST(baseURL+"/v1/api/nodes/settings", wrapper.PostV1ApiNodesSettings)
 	router.POST(baseURL+"/v1/api/tweets", wrapper.PostV1ApiTweets)
@@ -3466,36 +5063,43 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"AP//bKeu1DUvAAA=",
+	"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",
+	"AAD//wwzOg/XRAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

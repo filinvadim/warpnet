@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/interface/server"
@@ -16,8 +17,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 
+	"embed"
 	"github.com/filinvadim/warpnet/database/storage"
 	_ "go.uber.org/automaxprocs"
 )
@@ -26,6 +29,9 @@ var (
 	version string
 )
 
+//go:embed interface/static
+var staticFolder embed.FS
+
 type API struct {
 	*handlers.TweetController
 	*handlers.UserController
@@ -33,9 +39,19 @@ type API struct {
 	*handlers.AuthController
 	*handlers.SettingsController
 	*handlers.ReplyController
+	*handlers.ChatController
 }
 
 func main() {
+	hosts := flag.String("hosts", "", "comma-separated list of hostnames")
+	flag.Parse()
+
+	var predefinedHosts []string
+	if hosts != nil && *hosts != "" {
+		predefinedHosts = strings.Split(strings.TrimSpace(*hosts), ",")
+	}
+	fmt.Println("PREDEFINED HOSTS ", predefinedHosts, len(predefinedHosts))
+
 	var interruptChan = make(chan os.Signal, 1)
 
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -68,15 +84,16 @@ func main() {
 	interfaceServer.RegisterHandlers(&API{
 		handlers.NewTweetController(cli),
 		handlers.NewUserController(cli),
-		handlers.NewStaticController(),
+		handlers.NewStaticController(staticFolder),
 		handlers.NewAuthController(cli),
 		handlers.NewSettingsController(cli),
 		handlers.NewReplyController(cli),
+		handlers.NewChatController(cli),
 	})
 	go interfaceServer.Start()
 	defer interfaceServer.Shutdown(ctx)
 
-	n, err := node.NewNodeService(ctx, ip, db, interruptChan)
+	n, err := node.NewNodeService(ctx, ip, predefinedHosts, db, interruptChan)
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}

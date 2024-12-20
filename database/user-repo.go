@@ -1,9 +1,7 @@
 package database
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	domain_gen "github.com/filinvadim/warpnet/domain-gen"
 	"time"
@@ -129,8 +127,13 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 	}
 
 	users := make([]domain_gen.User, 0, len(items))
-	if err = json.JSON.Unmarshal(bytes.Join(items, []byte(",")), &users); err != nil {
-		return nil, "", fmt.Errorf("%w %s", err, items)
+	for _, item := range items {
+		var u domain_gen.User
+		err = json.JSON.Unmarshal(item.Value, &u)
+		if err != nil {
+			return nil, "", err
+		}
+		users = append(users, u)
 	}
 
 	return users, cur, nil
