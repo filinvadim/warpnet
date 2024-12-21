@@ -36,7 +36,7 @@ type NodeService struct {
 	authRepo *database.AuthRepo
 	userRepo *database.UserRepo
 
-	stopChan chan struct{}
+	node host.Host
 }
 
 func NewNodeService(
@@ -79,9 +79,11 @@ func NewNodeService(
 		return nil, fmt.Errorf("node server: %w", err)
 	}
 
+	node := NewP2PNode(ctx, nodeRepo)
+
 	return &NodeService{
 		ctx, srv, cli, nodeRepo,
-		authRepo, userRepo, make(chan struct{}),
+		authRepo, userRepo, node,
 	}, nil
 }
 
@@ -91,16 +93,17 @@ func (ds *NodeService) Run() {
 	}
 }
 
-func (ds *NodeService) Stop() {
+func (ds *NodeService) Stop() error {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(r)
 		}
 	}()
-	close(ds.stopChan)
-	if err := ds.server.Stop(); err != nil {
-		log.Println(err)
+	if err := ds.node.Close(); err != nil {
+		return err
 	}
+	_ = ds.nodeRepo.Close()
+	return ds.server.Stop()
 }
 
 func NewP2PNode(ctx context.Context, nodeRepo *database.NodeRepo) host.Host {

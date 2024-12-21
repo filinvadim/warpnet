@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/jbenet/goprocess"
 	"log"
@@ -18,6 +19,8 @@ const (
 	NodesNamespace = "NODES"
 )
 
+var _ ds.Batching = (*NodeRepo)(nil)
+
 type NodeRepo struct {
 	db *storage.DB
 
@@ -31,24 +34,8 @@ type batch struct {
 	writeBatch *badger.WriteBatch
 }
 
-// Implements the datastore.Txn interface, enabling transaction support for
-// the badger Datastore.
-type txn struct {
-	ds  *NodeRepo
-	txn *badger.Txn
-
-	// Whether this transaction has been implicitly created as a result of a direct Datastore
-	// method invocation.
-	implicit bool
-}
-
-var _ ds.Datastore = (*NodeRepo)(nil)
-var _ ds.PersistentDatastore = (*NodeRepo)(nil)
-var _ ds.TxnDatastore = (*NodeRepo)(nil)
-var _ ds.Txn = (*txn)(nil)
-var _ ds.TTLDatastore = (*NodeRepo)(nil)
-var _ ds.GCDatastore = (*NodeRepo)(nil)
-var _ ds.Batching = (*NodeRepo)(nil)
+//	implicit bool - Whether this transaction has been implicitly created as a result of a direct Datastore
+//	method invocation.
 
 func NewNodeRepo(db *storage.DB) *NodeRepo {
 	nr := &NodeRepo{
@@ -59,39 +46,17 @@ func NewNodeRepo(db *storage.DB) *NodeRepo {
 	return nr
 }
 
-// NewTransaction starts a new transaction. The resulting transaction object
-// can be mutated without incurring changes to the underlying Datastore until
-// the transaction is Committed.
-func (d *NodeRepo) NewTransaction(ctx context.Context, readOnly bool) (ds.Txn, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	return &txn{d, d.db.InnerDB().NewTransaction(!readOnly), false}, nil
-}
-
-// newImplicitTransaction creates a transaction marked as 'implicit'.
-// Implicit transactions are created by Datastore methods performing single operations.
-func (d *NodeRepo) newImplicitTransaction(readOnly bool) *txn {
-	return &txn{d, d.db.InnerDB().NewTransaction(!readOnly), true}
-}
-
 func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 
-	txn := d.newImplicitTransaction(false)
-	defer txn.discard()
-
-	if err := txn.put(key, value); err != nil {
-		return err
-	}
-
-	return txn.commit()
+	return d.db.Txn(func(tx *badger.Txn) error {
+		return tx.Set(key.Bytes(), value)
+	})
 }
 
-func (d *NodeRepo) Sync(ctx context.Context, prefix ds.Key) error {
+func (d *NodeRepo) Sync(ctx context.Context, _ ds.Key) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -103,15 +68,9 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-
-	txn := d.newImplicitTransaction(false)
-	defer txn.discard()
-
-	if err := txn.putWithTTL(key, value, ttl); err != nil {
-		return err
-	}
-
-	return txn.commit()
+	return d.db.Txn(func(tx *badger.Txn) error {
+		return tx.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+	})
 }
 
 func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
@@ -123,14 +82,11 @@ func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) er
 		return storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(false)
-	defer txn.discard()
-
-	if err := txn.setTTL(key, ttl); err != nil {
+	item, err := d.Get(ctx, key)
+	if err != nil {
 		return err
 	}
-
-	return txn.commit()
+	return d.PutWithTTL(ctx, key, item, ttl)
 }
 
 func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, err error) {
@@ -142,10 +98,18 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 		return t, storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(false)
-	defer txn.discard()
-
-	return txn.getExpiration(key)
+	expiration := time.Time{}
+	err = d.db.Txn(func(tx *badger.Txn) error {
+		item, err := tx.Get(key.Bytes())
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return ds.ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		expiration = time.Unix(int64(item.ExpiresAt()), 0)
+		return nil
+	})
+	return expiration, err
 }
 
 func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
@@ -157,13 +121,23 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 		return nil, storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(true)
-	defer txn.discard()
+	value = []byte{}
+	err = d.db.Txn(func(tx *badger.Txn) error {
+		item, err := tx.Get(key.Bytes())
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			err = ds.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
 
-	return txn.get(key)
+		value, err = item.ValueCopy(nil)
+		return err
+	})
+	return value, err
 }
 
-func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (bool, error) {
+func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
 	}
@@ -172,25 +146,47 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (bool, error) {
 		return false, storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(true)
-	defer txn.discard()
-
-	return txn.has(key)
+	err = d.db.Txn(func(tx *badger.Txn) error {
+		_, err := tx.Get(key.Bytes())
+		switch {
+		case errors.Is(err, badger.ErrKeyNotFound):
+			return nil
+		case err == nil:
+			return nil
+		default:
+			return fmt.Errorf("has: %w", err)
+		}
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
+func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
+	size := -1
+
 	if ctx.Err() != nil {
-		return -1, ctx.Err()
+		return size, ctx.Err()
 	}
 
 	if d.db.IsClosed() {
-		return -1, storage.ErrNotRunning
+		return size, storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(true)
-	defer txn.discard()
-
-	return txn.getSize(key)
+	err = d.db.Txn(func(tx *badger.Txn) error {
+		item, err := tx.Get(key.Bytes())
+		switch {
+		case err == nil:
+			size = int(item.ValueSize())
+			return nil
+		case errors.Is(err, badger.ErrKeyNotFound):
+			return ds.ErrNotFound
+		default:
+			return fmt.Errorf("size: %w", err)
+		}
+	})
+	return size, err
 }
 
 func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
@@ -201,19 +197,12 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 	if d.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
-
-	txn := d.newImplicitTransaction(false)
-	defer txn.discard()
-
-	err := txn.delete(key)
-	if err != nil {
-		return err
-	}
-
-	return txn.commit()
+	return d.db.Txn(func(tx *badger.Txn) error {
+		return tx.Delete(key.Bytes())
+	})
 }
 
-func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
+func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -222,11 +211,15 @@ func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) 
 		return nil, storage.ErrNotRunning
 	}
 
-	txn := d.newImplicitTransaction(true)
 	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
 	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
 	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
-	return txn.query(q)
+	err = d.db.Txn(func(tx *badger.Txn) error {
+		res, err = d.query(tx, q, true)
+		return err
+	})
+
+	return res, err
 }
 
 // DiskUsage implements the PersistentDatastore interface.
@@ -243,310 +236,7 @@ func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
 	return uint64(lsm + vlog), nil
 }
 
-func (d *NodeRepo) Close() (err error) {
-	return nil
-}
-
-// Batch creates a new Batch object. This provides a way to do many writes, when
-// there may be too many to fit into a single transaction.
-func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	if d.db.IsClosed() {
-		return nil, storage.ErrNotRunning
-	}
-
-	b := &batch{d, d.db.InnerDB().NewWriteBatch()}
-	// Ensure that incomplete transaction resources are cleaned up in case
-	// batch is abandoned.
-	runtime.SetFinalizer(b, func(b *batch) {
-		b.cancel()
-		log.Println("batch not committed or canceled")
-	})
-
-	return b, nil
-}
-
-func (d *NodeRepo) CollectGarbage(ctx context.Context) (err error) {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	if d.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-	// The idea is to keep calling DB.RunValueLogGC() till Badger no longer has any log files
-	// to GC(which would be indicated by an error, please refer to Badger GC docs).
-	for err == nil {
-		err = d.gcOnce()
-	}
-
-	if errors.Is(err, badger.ErrNoRewrite) {
-		err = nil
-	}
-
-	return err
-}
-
-func (d *NodeRepo) gcOnce() error {
-	return d.db.InnerDB().RunValueLogGC(0.5)
-}
-
-var _ ds.Batch = (*batch)(nil)
-
-func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	if b.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return b.put(key, value)
-}
-
-func (b *batch) put(key ds.Key, value []byte) error {
-	return b.writeBatch.Set(key.Bytes(), value)
-}
-
-func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
-	return b.writeBatch.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
-}
-
-func (b *batch) Delete(ctx context.Context, key ds.Key) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	if b.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return b.delete(key)
-}
-
-func (b *batch) delete(key ds.Key) error {
-	return b.writeBatch.Delete(key.Bytes())
-}
-
-func (b *batch) Commit(_ context.Context) error {
-	if b.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return b.commit()
-}
-
-func (b *batch) commit() error {
-	err := b.writeBatch.Flush()
-	if err != nil {
-		// Discard incomplete transaction held by b.writeBatch
-		b.cancel()
-		return err
-	}
-	runtime.SetFinalizer(b, nil)
-	return nil
-}
-
-func (b *batch) Cancel() error {
-	if b.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	b.cancel()
-	return nil
-}
-
-func (b *batch) cancel() {
-	b.writeBatch.Cancel()
-	runtime.SetFinalizer(b, nil)
-}
-
-var _ ds.Datastore = (*txn)(nil)
-var _ ds.TTLDatastore = (*txn)(nil)
-
-func (t *txn) Put(ctx context.Context, key ds.Key, value []byte) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return t.put(key, value)
-}
-
-func (t *txn) put(key ds.Key, value []byte) error {
-	return t.txn.Set(key.Bytes(), value)
-}
-
-func (t *txn) Sync(ctx context.Context, _ ds.Key) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return nil
-}
-
-func (t *txn) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl time.Duration) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-	return t.putWithTTL(key, value, ttl)
-}
-
-func (t *txn) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
-	return t.txn.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
-}
-
-func (t *txn) GetExpiration(ctx context.Context, key ds.Key) (tm time.Time, err error) {
-	if ctx.Err() != nil {
-		return tm, ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return tm, storage.ErrNotRunning
-	}
-
-	return t.getExpiration(key)
-}
-
-func (t *txn) getExpiration(key ds.Key) (time.Time, error) {
-	item, err := t.txn.Get(key.Bytes())
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return time.Time{}, ds.ErrNotFound
-	} else if err != nil {
-		return time.Time{}, err
-	}
-	return time.Unix(int64(item.ExpiresAt()), 0), nil
-}
-
-func (t *txn) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return t.setTTL(key, ttl)
-}
-
-func (t *txn) setTTL(key ds.Key, ttl time.Duration) error {
-	item, err := t.txn.Get(key.Bytes())
-	if err != nil {
-		return err
-	}
-	return item.Value(func(data []byte) error {
-		return t.putWithTTL(key, data, ttl)
-	})
-
-}
-
-func (t *txn) Get(ctx context.Context, key ds.Key) ([]byte, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return nil, storage.ErrNotRunning
-	}
-
-	return t.get(key)
-}
-
-func (t *txn) get(key ds.Key) ([]byte, error) {
-	item, err := t.txn.Get(key.Bytes())
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		err = ds.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return item.ValueCopy(nil)
-}
-
-func (t *txn) Has(ctx context.Context, key ds.Key) (bool, error) {
-	if ctx.Err() != nil {
-		return false, ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return false, storage.ErrNotRunning
-	}
-
-	return t.has(key)
-}
-
-func (t *txn) has(key ds.Key) (bool, error) {
-	_, err := t.txn.Get(key.Bytes())
-	switch {
-	case errors.Is(err, badger.ErrKeyNotFound):
-		return false, nil
-	case err == nil:
-		return true, nil
-	default:
-		return false, err
-	}
-}
-
-func (t *txn) GetSize(ctx context.Context, key ds.Key) (int, error) {
-	if ctx.Err() != nil {
-		return -1, ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return -1, storage.ErrNotRunning
-	}
-
-	return t.getSize(key)
-}
-
-func (t *txn) getSize(key ds.Key) (int, error) {
-	item, err := t.txn.Get(key.Bytes())
-	switch {
-	case err == nil:
-		return int(item.ValueSize()), nil
-	case errors.Is(err, badger.ErrKeyNotFound):
-		return -1, ds.ErrNotFound
-	default:
-		return -1, err
-	}
-}
-
-func (t *txn) Delete(ctx context.Context, key ds.Key) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return t.delete(key)
-}
-
-func (t *txn) delete(key ds.Key) error {
-	return t.txn.Delete(key.Bytes())
-}
-
-func (t *txn) Query(ctx context.Context, q dsq.Query) (dsq.Results, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	if t.ds.db.IsClosed() {
-		return nil, storage.ErrNotRunning
-	}
-
-	return t.query(q)
-}
-
-func (t *txn) query(q dsq.Query) (dsq.Results, error) {
+func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 
@@ -575,7 +265,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			baseQuery.Orders = nil
 
 			// perform the base query.
-			res, err := t.query(baseQuery)
+			res, err := d.query(tx, baseQuery, implicit)
 			if err != nil {
 				return nil, err
 			}
@@ -593,7 +283,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 		}
 	}
 
-	it := t.txn.NewIterator(opt)
+	it := tx.NewIterator(opt)
 	qrb := dsq.NewResultBuilder(q)
 	qrb.Process.Go(func(worker goprocess.Process) {
 		closedEarly := false
@@ -608,7 +298,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			}
 
 		}()
-		if t.ds.db.IsClosed() {
+		if d.db.IsClosed() {
 			closedEarly = true
 			return
 		}
@@ -616,8 +306,8 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 		// this iterator is part of an implicit transaction, so when
 		// we're done we must discard the transaction. It's safe to
 		// discard the txn it because it contains the iterator only.
-		if t.implicit {
-			defer t.discard()
+		if implicit {
+			defer tx.Discard()
 		}
 
 		defer it.Close()
@@ -666,7 +356,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			if err != nil {
 				select {
 				case qrb.Output <- dsq.Result{Error: err}:
-				case <-t.ds.stopChan: // datastore closing.
+				case <-d.stopChan: // datastore closing.
 					closedEarly = true
 					return
 				case <-worker.Closing(): // client told us to close early
@@ -710,7 +400,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			select {
 			case qrb.Output <- result:
 				sent++
-			case <-t.ds.stopChan: // datastore closing.
+			case <-d.stopChan: // datastore closing.
 				closedEarly = true
 				return
 			case <-worker.Closing(): // client told us to close early
@@ -722,42 +412,6 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	go qrb.Process.CloseAfterChildren() //nolint
 
 	return qrb.Results(), nil
-}
-
-func (t *txn) Commit(_ context.Context) error {
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-
-	return t.commit()
-}
-
-func (t *txn) commit() error {
-	return t.txn.Commit()
-}
-
-// Alias to commit
-func (t *txn) Close() error {
-	if t.ds.db.IsClosed() {
-		return storage.ErrNotRunning
-	}
-	return t.close()
-}
-
-func (t *txn) close() error {
-	return t.txn.Commit()
-}
-
-func (t *txn) Discard(_ context.Context) {
-	if t.ds.db.IsClosed() {
-		return
-	}
-
-	t.discard()
-}
-
-func (t *txn) discard() {
-	t.txn.Discard()
 }
 
 // filter returns _true_ if we should filter (skip) the entry
@@ -772,4 +426,97 @@ func filter(filters []dsq.Filter, entry dsq.Entry) bool {
 
 func expires(item *badger.Item) time.Time {
 	return time.Unix(int64(item.ExpiresAt()), 0)
+}
+
+func (d *NodeRepo) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("close recovered: %v", r)
+		}
+	}()
+	close(d.stopChan)
+	return nil
+}
+
+// Batch creates a new Batch object. This provides a way to do many writes, when
+// there may be too many to fit into a single transaction.
+func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	b := &batch{d, d.db.InnerDB().NewWriteBatch()}
+	// Ensure that incomplete transaction resources are cleaned up in case
+	// batch is abandoned.
+	runtime.SetFinalizer(b, func(b *batch) {
+		log.Printf(
+			"batch not committed or canceled: %v",
+			b.Cancel(),
+		)
+	})
+
+	return b, nil
+}
+
+var _ ds.Batch = (*batch)(nil)
+
+func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return b.put(key, value)
+}
+
+func (b *batch) put(key ds.Key, value []byte) error {
+	return b.writeBatch.Set(key.Bytes(), value)
+}
+
+func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
+	return b.writeBatch.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+}
+
+func (b *batch) Delete(ctx context.Context, key ds.Key) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	return b.writeBatch.Delete(key.Bytes())
+}
+
+func (b *batch) Commit(_ context.Context) error {
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	err := b.writeBatch.Flush()
+	if err != nil {
+		// Discard incomplete transaction held by b.writeBatch
+		b.Cancel()
+		return err
+	}
+	runtime.SetFinalizer(b, nil)
+	return nil
+}
+
+func (b *batch) Cancel() error {
+	if b.ds.db.IsClosed() {
+		return storage.ErrNotRunning
+	}
+
+	b.writeBatch.Cancel()
+	runtime.SetFinalizer(b, nil)
+	return nil
 }
