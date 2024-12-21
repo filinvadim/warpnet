@@ -51,7 +51,7 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 		return ctx.Err()
 	}
 
-	return d.db.Txn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *badger.Txn) error {
 		return tx.Set(key.Bytes(), value)
 	})
 }
@@ -68,7 +68,7 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	return d.db.Txn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *badger.Txn) error {
 		return tx.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
 	})
 }
@@ -99,7 +99,7 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 	}
 
 	expiration := time.Time{}
-	err = d.db.Txn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *badger.Txn) error {
 		item, err := tx.Get(key.Bytes())
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return ds.ErrNotFound
@@ -122,7 +122,7 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 	}
 
 	value = []byte{}
-	err = d.db.Txn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *badger.Txn) error {
 		item, err := tx.Get(key.Bytes())
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			err = ds.ErrNotFound
@@ -146,7 +146,7 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 		return false, storage.ErrNotRunning
 	}
 
-	err = d.db.Txn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *badger.Txn) error {
 		_, err := tx.Get(key.Bytes())
 		switch {
 		case errors.Is(err, badger.ErrKeyNotFound):
@@ -174,7 +174,7 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 		return size, storage.ErrNotRunning
 	}
 
-	err = d.db.Txn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *badger.Txn) error {
 		item, err := tx.Get(key.Bytes())
 		switch {
 		case err == nil:
@@ -197,29 +197,9 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 	if d.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
-	return d.db.Txn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *badger.Txn) error {
 		return tx.Delete(key.Bytes())
 	})
-}
-
-func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	if d.db.IsClosed() {
-		return nil, storage.ErrNotRunning
-	}
-
-	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
-	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
-	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
-	err = d.db.Txn(func(tx *badger.Txn) error {
-		res, err = d.query(tx, q, true)
-		return err
-	})
-
-	return res, err
 }
 
 // DiskUsage implements the PersistentDatastore interface.
@@ -234,6 +214,22 @@ func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
 	}
 	lsm, vlog := d.db.InnerDB().Size()
 	return uint64(lsm + vlog), nil
+}
+
+func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if d.db.IsClosed() {
+		return nil, storage.ErrNotRunning
+	}
+
+	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
+	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
+	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
+	tx := d.db.InnerDB().NewTransaction(true)
+	return d.query(tx, q, true)
 }
 
 func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Results, error) {
@@ -291,7 +287,7 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 			if closedEarly {
 				select {
 				case qrb.Output <- dsq.Result{
-					Error: storage.ErrNotRunning,
+					Error: errors.New("node repo closed"),
 				}:
 				case <-qrb.Process.Closing():
 				}
@@ -356,7 +352,7 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 			if err != nil {
 				select {
 				case qrb.Output <- dsq.Result{Error: err}:
-				case <-d.stopChan: // datastore closing.
+				case <-d.stopChan:
 					closedEarly = true
 					return
 				case <-worker.Closing(): // client told us to close early
@@ -400,7 +396,7 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 			select {
 			case qrb.Output <- result:
 				sent++
-			case <-d.stopChan: // datastore closing.
+			case <-d.stopChan:
 				closedEarly = true
 				return
 			case <-worker.Closing(): // client told us to close early
@@ -409,7 +405,9 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 		}
 	})
 
-	go qrb.Process.CloseAfterChildren() //nolint
+	go func() {
+		_ = qrb.Process.CloseAfterChildren()
+	}()
 
 	return qrb.Results(), nil
 }

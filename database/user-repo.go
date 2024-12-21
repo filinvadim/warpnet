@@ -52,7 +52,7 @@ func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
 		AddParentId(user.Id).
 		Build()
 
-	err = repo.db.Txn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
 		if err = repo.db.Set(fixedKey, data); err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (repo *UserRepo) Delete(userID string) error {
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
-	err = repo.db.Txn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}

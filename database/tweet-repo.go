@@ -56,7 +56,7 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 		return tweet, fmt.Errorf("tweet marshal: %w", err)
 	}
 
-	err = repo.db.Txn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
 		if err = repo.db.Set(fixedKey, data); err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		AddReversedTimestamp(t.CreatedAt).
 		AddParentId(tweetID).
 		Build()
-	err = repo.db.Txn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}

@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const discardRatio = 0.5
+
 var (
 	ErrWrongPassword = errors.New("wrong password")
 	ErrNotRunning    = errors.New("DB is not running")
@@ -84,12 +86,12 @@ func (db *DB) Run(username, password string) (token string, err error) {
 
 func (db *DB) runEventualGC() {
 	fmt.Println("badger GC started")
-	db.badger.RunValueLogGC(0.5)
+	db.badger.RunValueLogGC(discardRatio)
 	for {
 		select {
 		case <-time.After(time.Hour * 24):
 			for {
-				err := db.badger.RunValueLogGC(0.5)
+				err := db.badger.RunValueLogGC(discardRatio)
 				if errors.Is(err, badger.ErrNoRewrite) {
 					break
 				}
@@ -280,8 +282,16 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 	return result, nil
 }
 
-func (db *DB) Txn(f func(tx *badger.Txn) error) error {
-	txn := db.badger.NewTransaction(true)
+func (db *DB) WriteTxn(f func(tx *badger.Txn) error) error {
+	return db.txn(true, f)
+}
+
+func (db *DB) ReadTxn(f func(tx *badger.Txn) error) error {
+	return db.txn(false, f)
+}
+
+func (db *DB) txn(isWrite bool, f func(tx *badger.Txn) error) error {
+	txn := db.badger.NewTransaction(isWrite)
 	defer txn.Discard()
 
 	if err := f(txn); err != nil {
@@ -324,7 +334,7 @@ func (db *DB) GC() {
 		return
 	}
 	for {
-		err := db.badger.RunValueLogGC(0.5)
+		err := db.badger.RunValueLogGC(discardRatio)
 		if errors.Is(err, badger.ErrNoRewrite) {
 			return
 		}
@@ -334,7 +344,7 @@ func (db *DB) GC() {
 func (db *DB) Close() {
 	close(db.stopChan)
 	if db.sequence != nil {
-		db.sequence.Release()
+		_ = db.sequence.Release()
 	}
 	if db.badger == nil {
 		return
