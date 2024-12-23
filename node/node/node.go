@@ -67,18 +67,25 @@ func NewNode(
 	followRepo *database.FollowRepo,
 	replyRepo *database.RepliesRepo,
 ) (*Node, error) {
-	_ = logging.SetLogLevel("*", "debug")
+	_ = logging.SetLogLevel("*", "info")
 	privKey := authRepo.PrivateKey()
 
 	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
 	if err != nil {
 		return nil, err
 	}
-	manager, err := connmgr.NewConnManager(100, 400, connmgr.WithGracePeriod(time.Minute*2))
+	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
+
+	manager, err := connmgr.NewConnManager(
+		100,
+		limiter.GetConnLimits().GetConnTotalLimit(),
+		connmgr.WithGracePeriod(time.Minute*2),
+	)
 	if err != nil {
 		return nil, err
 	}
-	rm, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()))
+
+	rm, err := rcmgr.NewResourceManager(limiter)
 	if err != nil {
 		return nil, err
 	}
