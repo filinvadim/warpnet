@@ -2,13 +2,13 @@ package storage
 
 import (
 	"errors"
-	"fmt"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/node-crypto"
 
-	"github.com/labstack/gommon/log"
+	"log"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -72,12 +72,12 @@ func (db *DB) Run(username, password string) (err error) {
 	}
 
 	go db.runEventualGC()
-	fmt.Println("DATABASE IS RUNNING!")
+	log.Println("DATABASE IS RUNNING!")
 	return nil
 }
 
 func (db *DB) runEventualGC() {
-	fmt.Println("badger GC started")
+	log.Println("badger GC started")
 	db.badger.RunValueLogGC(discardRatio)
 	for {
 		select {
@@ -350,6 +350,6 @@ func (db *DB) Close() {
 	}
 	db.isRunning.Store(false)
 	if err := db.badger.Close(); err != nil {
-		log.Error(err)
+		log.Println("badger close: ", err)
 	}
 }

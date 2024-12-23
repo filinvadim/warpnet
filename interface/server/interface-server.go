@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
+	"io"
 	"net/http"
 )
 
@@ -44,8 +45,8 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 	dlc := echomiddleware.DefaultLoggerConfig
 	dlc.Format = config.LogFormat
-	dlc.Output = e.Logger.Output()
-	//dlc.Output = io.Discard
+	//dlc.Output = e.Logger.Output()
+	dlc.Output = io.Discard
 
 	e.Use(echomiddleware.LoggerWithConfig(dlc))
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
@@ -67,7 +68,7 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 func (p *interfaceServer) Start() {
 	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
-		p.e.Logger.Fatalf("interface server start: %v", err)
+		p.e.Logger.Printf("interface server start: %v", err)
 	}
 }
 

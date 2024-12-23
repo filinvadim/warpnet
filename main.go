@@ -81,9 +81,9 @@ func main() {
 			handlers.NewAuthController(authRepo, userRepo, interruptChan, authReadyChan),
 		})
 		go interfaceServer.Start()
+	} else {
+		manualCredsInput(interfaceServer, db)
 	}
-
-	manualCredsInput(interfaceServer, db)
 
 	select {
 	case <-interruptChan:
@@ -102,7 +102,6 @@ func main() {
 		followRepo,
 		replyRepo,
 	)
-	fmt.Println(n, err, "???????????")
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}

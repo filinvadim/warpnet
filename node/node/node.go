@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -28,6 +27,10 @@ import (
 )
 
 const NetworkName = "warpnet"
+
+var publicRelays = []string{
+	"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJ8S8B118DVjMrAzihsXFvGCGZeYThHH9y9MWanoPuNi1",
+}
 
 type Node struct {
 	ID           string
@@ -63,29 +66,31 @@ func NewNode(
 	followRepo *database.FollowRepo,
 	replyRepo *database.RepliesRepo,
 ) (*Node, error) {
-	fmt.Println("New Node")
 	privKey := authRepo.PrivateKey()
 
 	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
 	if err != nil {
-		fmt.Println("tut")
 		return nil, err
 	}
-	fmt.Println("store")
 	manager, err := connmgr.NewConnManager(100, 400, connmgr.WithGracePeriod(time.Minute*2))
 	if err != nil {
-		fmt.Println("tut2")
 		return nil, err
 	}
-	fmt.Println("manager")
 	rm, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()))
 	if err != nil {
-		fmt.Println("tut3")
 		return nil, err
 	}
-	fmt.Println("rm")
+
+	var relays []peer.AddrInfo
+	for _, addr := range publicRelays {
+		ai, err := peer.AddrInfoFromString(addr)
+		if err != nil {
+			return nil, err
+		}
+		relays = append(relays, *ai)
+	}
+
 	providersCache := NewProviderCache(ctx, nodeRepo)
-	fmt.Println("providersCache")
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(
 			"/ip4/0.0.0.0/tcp/4001",
@@ -100,15 +105,15 @@ func NewNode(
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
-		libp2p.NATPortMap(),
 		libp2p.ForceReachabilityPrivate(),
 		libp2p.PrivateNetwork([]byte(NetworkName)),
 		libp2p.UserAgent(NetworkName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.EnableNATService(),
-		libp2p.EnableAutoRelay(),
+		libp2p.NATPortMap(),
 		libp2p.EnableRelay(),
+		libp2p.EnableAutoRelayWithStaticRelays(relays),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
@@ -117,18 +122,13 @@ func NewNode(
 		}),
 	)
 	if err != nil {
-		fmt.Println("tut4")
 		return nil, err
 	}
-	fmt.Println("node")
 	mdnsService := mdns.NewMdnsService(node, NetworkName, &discoveryNotifee{node})
-	fmt.Println("mdnsService")
 	relay, err := relayv2.New(node)
 	if err != nil {
-		fmt.Println("tut5")
 		return nil, err
 	}
-	fmt.Println("relay")
 
 	n := &Node{
 		node.ID().String(),
@@ -143,7 +143,6 @@ func NewNode(
 		mdnsService,
 		relay,
 	}
-
 	return n, nil
 }
 
@@ -193,7 +192,7 @@ func setupPrivateDHT(
 
 func monitorDHT(idht *dht.IpfsDHT) {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(50 * time.Second)
 		peers := idht.RoutingTable().ListPeers()
 		log.Printf("DHT routing table contains %d peers", len(peers))
 	}
