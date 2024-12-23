@@ -45,7 +45,10 @@ func main() {
 	}
 	fmt.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
 
-	var interruptChan = make(chan os.Signal, 1)
+	var (
+		interruptChan = make(chan os.Signal, 1)
+		authReadyChan = make(chan struct{}, 1)
+	)
 
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
@@ -70,29 +73,26 @@ func main() {
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run owner handler: %v", err)
 	}
+	defer interfaceServer.Shutdown(ctx)
+
 	if interfaceServer != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		interfaceServer.RegisterHandlers(&API{
 			handlers.NewStaticController(staticFolder),
-			handlers.NewAuthController(authRepo, userRepo, interruptChan),
+			handlers.NewAuthController(authRepo, userRepo, interruptChan, authReadyChan),
 		})
 		go interfaceServer.Start()
-		defer interfaceServer.Shutdown(ctx)
 	}
 
-	if interfaceServer == nil {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter username: ")
-		username, _ := reader.ReadString('\n')
-		fmt.Print("Enter password: ")
-		pass, _ := reader.ReadString('\n')
+	manualCredsInput(interfaceServer, db)
 
-		if err = db.Run(username, pass); err != nil {
-			log.Fatalf("failed to run db: %v", err)
-		}
+	select {
+	case <-interruptChan:
+		return
+	case <-authReadyChan:
+		log.Println("auth is ready")
 	}
 
 	n, err := node.NewNode(
-		authRepo.ReadyChan(),
 		ctx,
 		nodeRepo,
 		authRepo,
@@ -102,9 +102,12 @@ func main() {
 		followRepo,
 		replyRepo,
 	)
+	fmt.Println(n, err, "???????????")
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}
+	log.Println("NODE STARTED WITH ID", n.GetID())
+
 	defer func() {
 		if err := n.Stop(); err != nil {
 			log.Fatalf("failed to stop node: %v", err)
@@ -153,4 +156,21 @@ func getAppPath() string {
 	}
 
 	return dbPath
+}
+
+func manualCredsInput(
+	interfaceServer server.PublicServerStarter,
+	db *storage.DB,
+) {
+	if interfaceServer == nil {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter username: ")
+		username, _ := reader.ReadString('\n')
+		fmt.Print("Enter password: ")
+		pass, _ := reader.ReadString('\n')
+
+		if err := db.Run(username, pass); err != nil {
+			log.Fatalf("failed to run db: %v", err)
+		}
+	}
 }

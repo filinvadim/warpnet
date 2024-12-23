@@ -4,8 +4,10 @@ import (
 	"crypto"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
 	node_crypto "github.com/filinvadim/warpnet/node-crypto"
+	"github.com/labstack/gommon/log"
 	"math/rand/v2"
 	"time"
 )
@@ -22,23 +24,19 @@ var (
 )
 
 type AuthRepo struct {
-	db             *storage.DB
-	ownerId        string
-	sessionToken   string
-	privateKeyChan chan crypto.PrivateKey
+	db           *storage.DB
+	ownerId      string
+	sessionToken string
+	privateKey   crypto.PrivateKey
 }
 
 func NewAuthRepo(db *storage.DB) *AuthRepo {
-	return &AuthRepo{db: db, privateKeyChan: make(chan crypto.PrivateKey, 1)}
+	return &AuthRepo{db: db, privateKey: nil}
 }
 
 func (repo *AuthRepo) Authenticate(username, password string) (token string, err error) {
 	if repo.db == nil {
 		return "", storage.ErrNotRunning
-	}
-	err = repo.db.Run(username, password)
-	if err != nil {
-		return "", ErrWrongPassword
 	}
 
 	randChar := string(uint8(rand.Uint()))
@@ -52,9 +50,15 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 	)
 	privateKey, err := node_crypto.GenerateKeyFromSeed([]byte(seed))
 	if err != nil {
+		return "", fmt.Errorf("generate key from seed: %w", err)
+	}
+
+	err = repo.db.Run(username, password)
+	if err != nil {
+		log.Error("run db:", err)
 		return "", err
 	}
-	repo.privateKeyChan <- privateKey
+	repo.privateKey = privateKey
 	return token, nil
 }
 
@@ -62,6 +66,6 @@ func (repo *AuthRepo) SessionToken() string {
 	return repo.sessionToken
 }
 
-func (repo *AuthRepo) ReadyChan() <-chan crypto.PrivateKey {
-	return repo.privateKeyChan
+func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
+	return repo.privateKey
 }

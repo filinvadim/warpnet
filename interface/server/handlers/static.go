@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 )
 
 type StaticFolderOpener interface {
@@ -19,6 +20,8 @@ type StaticController struct {
 }
 
 func NewStaticController(staticFolder StaticFolderOpener) *StaticController {
+	pwd, _ := os.Getwd()
+	fmt.Println("CURRENT DIRECTORY: ", pwd)
 	fileSystem := echo.MustSubFS(staticFolder, config.StaticDirPath)
 	return &StaticController{fileSystem}
 }
@@ -27,7 +30,8 @@ func (c *StaticController) GetIndex(ctx echo.Context) error {
 	ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 	ctx.Response().Header().Set("Pragma", "no-cache")
 	ctx.Response().Header().Set("Expires", "0")
-	f, err := c.fileSystem.Open(config.StaticDirPath + "index.html")
+
+	f, err := c.fileSystem.Open("index.html")
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domainGen.Error{500, err.Error()})
 	}
@@ -41,7 +45,7 @@ func (c *StaticController) GetStaticFile(ctx echo.Context, filePath string) erro
 	ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 	ctx.Response().Header().Set("Pragma", "no-cache")
 	ctx.Response().Header().Set("Expires", "0")
-	fullPath := fmt.Sprintf("%s%s%s", config.StaticDirPath, "static/", filePath)
+	fullPath := fmt.Sprintf("%s%s", "static/", filePath)
 	f, err := c.fileSystem.Open(fullPath)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, domainGen.Error{500, err.Error()})

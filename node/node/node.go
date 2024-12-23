@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	go_crypto "crypto"
 	"encoding/json"
 	"fmt"
 	"github.com/filinvadim/warpnet/database"
@@ -24,8 +23,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
-	webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
-
 	"log"
 	"time"
 )
@@ -57,7 +54,6 @@ type Node struct {
 //}
 
 func NewNode(
-	privKey <-chan go_crypto.PrivateKey,
 	ctx context.Context,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
@@ -67,23 +63,29 @@ func NewNode(
 	followRepo *database.FollowRepo,
 	replyRepo *database.RepliesRepo,
 ) (*Node, error) {
-	pKey := <-privKey // wait for key
+	fmt.Println("New Node")
+	privKey := authRepo.PrivateKey()
 
 	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
 	if err != nil {
-		log.Fatalln(err)
-	}
-
-	manager, err := connmgr.NewConnManager(100, 400, connmgr.WithGracePeriod(time.Minute*2))
-	if err != nil {
-		log.Fatalln(err)
-	}
-	rm, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()))
-	if err != nil {
+		fmt.Println("tut")
 		return nil, err
 	}
+	fmt.Println("store")
+	manager, err := connmgr.NewConnManager(100, 400, connmgr.WithGracePeriod(time.Minute*2))
+	if err != nil {
+		fmt.Println("tut2")
+		return nil, err
+	}
+	fmt.Println("manager")
+	rm, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()))
+	if err != nil {
+		fmt.Println("tut3")
+		return nil, err
+	}
+	fmt.Println("rm")
 	providersCache := NewProviderCache(ctx, nodeRepo)
-
+	fmt.Println("providersCache")
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(
 			"/ip4/0.0.0.0/tcp/4001",
@@ -92,14 +94,9 @@ func NewNode(
 			"/ip6/::/tcp/4001",
 			"/ip6/::/udp/4001/quic-v1/webtransport",
 		),
-		libp2p.Transport(
-			libp2p.ChainOptions(
-				libp2p.Transport(tcp.NewTCPTransport),
-				libp2p.Transport(ws.New),
-				libp2p.Transport(webtransport.New),
-			),
-		),
-		libp2p.Identity(pKey.(crypto.PrivKey)),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(ws.New),
+		libp2p.Identity(privKey.(crypto.PrivKey)),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
@@ -120,13 +117,18 @@ func NewNode(
 		}),
 	)
 	if err != nil {
+		fmt.Println("tut4")
 		return nil, err
 	}
+	fmt.Println("node")
 	mdnsService := mdns.NewMdnsService(node, NetworkName, &discoveryNotifee{node})
+	fmt.Println("mdnsService")
 	relay, err := relayv2.New(node)
 	if err != nil {
+		fmt.Println("tut5")
 		return nil, err
 	}
+	fmt.Println("relay")
 
 	n := &Node{
 		node.ID().String(),
@@ -142,8 +144,7 @@ func NewNode(
 		relay,
 	}
 
-	fmt.Println("NODE STARTED WITH ID", node.ID().String(), node.Addrs())
-	return n, err
+	return n, nil
 }
 
 func (n *Node) GetID() string {

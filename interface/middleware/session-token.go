@@ -40,8 +40,8 @@ func (m *SessionTokenMiddleware) VerifySessionToken(next echo.HandlerFunc) echo.
 		if !strings.Contains(c.Request().URL.Path, "/login") {
 			sessionToken := c.Request().Header.Get("X-SESSION-TOKEN")
 			if sessionToken == "" {
-				log.Error("missing X-SESSION-TOKEN header")
-				return c.JSON(http.StatusBadRequest, errors.New("missing X-SESSION-TOKEN header"))
+				log.Error("missing X-SESSION-TOKEN header", c.Request().URL.Path)
+				return c.JSON(http.StatusBadRequest, errors.New("missing X-SESSION-TOKEN header:"+c.Request().URL.Path))
 			}
 			m.mx.RLock()
 			isTokenValid := sessionToken == m.token

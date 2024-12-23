@@ -10,9 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
-	"io"
 	"net/http"
-	"os"
 )
 
 var ErrBrowserLoadFailed = errors.New("browser load failed")
@@ -46,11 +44,8 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 	dlc := echomiddleware.DefaultLoggerConfig
 	dlc.Format = config.LogFormat
-	//dlc.Output = e.Logger.Output()
-	dlc.Output = io.Discard
-
-	pwd, _ := os.Getwd()
-	fmt.Println("CURRENT DIRECTORY: ", pwd)
+	dlc.Output = e.Logger.Output()
+	//dlc.Output = io.Discard
 
 	e.Use(echomiddleware.LoggerWithConfig(dlc))
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
@@ -72,7 +67,7 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 
 func (p *interfaceServer) Start() {
 	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
-		p.e.Logger.Fatal(err)
+		p.e.Logger.Fatalf("interface server start: %v", err)
 	}
 }
 
