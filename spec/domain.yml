@@ -13,7 +13,6 @@ components:
           type: string
         node_id:
           type: string
-          format: uuid
         username:
           type: string
           minLength: 1
@@ -181,20 +180,6 @@ components:
         - user_id
         - tweet_id
 
-    AddSettingRequest:
-      type: object
-      properties:
-        name:
-          $ref: '#/components/schemas/SettingNameEnum'
-        value:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - name
-        - value
-
     CreateChatRequest:
       type: object
       properties:
@@ -233,50 +218,6 @@ components:
       required:
         - reader_id
         - writer_id
-
-    Node:
-      type: object
-      nullable: true
-      properties:
-        id:
-          type: string
-          format: uuid
-        host:
-          type: string
-          description: The IP address
-        is_active:
-          type: boolean
-          description: Whether the IP address is currently active
-        latency:
-          type: integer
-          format: int64
-          description: The network latency to this IP in milliseconds
-          example: 120
-        last_seen:
-          type: string
-          format: date-time
-          description: The timestamp when this IP address was last active
-        uptime:
-          type: integer
-          format: int64
-          description: Uptime of the node in seconds
-          example: 3600
-        created_at:
-          type: string
-          format: date-time
-        owner_id:
-          type: string
-          description: user ID
-        is_owned:
-          type: boolean
-      required:
-        - is_owned
-        - host
-        - is_active
-        - last_seen
-        - owner_id
-        - id
-        - created_at
 
     Error:
       type: object
@@ -375,21 +316,6 @@ components:
         - cursor
         - users
 
-    HostsResponse:
-      type: object
-      properties:
-        user_id:
-          type: string
-        cursor:
-          type: string
-        hosts:
-          type: array
-          items:
-            type: string
-      required:
-        - cursor
-        - hosts
-
     LoginResponse:
       type: object
       properties:
@@ -412,11 +338,6 @@ components:
         - username
         - password
 
-    SettingNameEnum:
-      type: string
-      enum: [node_addresses]
-      default: node_addresses
-
     Event:
       type: object
       properties:
@@ -425,7 +346,6 @@ components:
           format: date-time
         data:
           anyOf:
-            - $ref: '#/components/schemas/PingEvent'
             - $ref: '#/components/schemas/ErrorEvent'
             - $ref: '#/components/schemas/NewTweetEvent'
             - $ref: '#/components/schemas/NewUserEvent'
@@ -438,32 +358,11 @@ components:
             - $ref: '#/components/schemas/GetAllUsersEvent'
             - $ref: '#/components/schemas/LoginEvent'
             - $ref: '#/components/schemas/LogoutEvent'
-            - $ref: '#/components/schemas/GetSettingsHostsEvent'
-            - $ref: '#/components/schemas/NewSettingsHostsEvent'
             - $ref: '#/components/schemas/GetRepliesEvent'
             - $ref: '#/components/schemas/NewReplyEvent'
             - $ref: '#/components/schemas/GetReplyEvent'
       required:
         - timestamp
-
-    PingEvent:
-      type: object
-      properties:
-        owner_node:
-          $ref: '#/components/schemas/Node'
-        owner_info:
-          $ref: '#/components/schemas/User'
-        dest_host:
-          type: string
-        nodes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Node'
-      required:
-        - nodes
-
-    PongEvent:
-      $ref: '#/components/schemas/PingEvent'
 
     LoginEvent:
       type: object
@@ -559,25 +458,6 @@ components:
         is_followed:
           type: boolean
 
-    GetSettingsHostsEvent:
-      type: object
-      properties:
-        limit:
-          type: integer
-          x-go-type: uint64
-        cursor:
-          type: string
-
-    NewSettingsHostsEvent:
-      type: object
-      properties:
-        hosts:
-          type: array
-          items:
-            type: string
-      required:
-        - hosts
-
     GetAllTweetsEvent:
       type: object
       properties:
@@ -616,3 +496,4 @@ components:
       properties:
         request:
           $ref: '#/components/schemas/UnfollowRequest'
+

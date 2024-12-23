@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"github.com/dgraph-io/badger/v3"
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"
@@ -15,7 +15,9 @@ var ErrUserNotFound = errors.New("user not found")
 
 const (
 	UsersRepoName = "USERS"
-	KindUsers     = "users"
+	defaultRootID = "users"
+
+	DefaultOwnerUserID = "OWNER"
 )
 
 // UserRepo handles operations related to users
@@ -28,7 +30,7 @@ func NewUserRepo(db *storage.DB) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
+func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	if user.Id == "" {
 		user.Id = uuid.New().String()
 	}
@@ -41,13 +43,13 @@ func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
 	}
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(KindUsers).
+		AddRootID(defaultRootID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(user.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(KindUsers).
+		AddRootID(defaultRootID).
 		AddReversedTimestamp(user.CreatedAt).
 		AddParentId(user.Id).
 		Build()
@@ -62,12 +64,12 @@ func (repo *UserRepo) Create(user domain_gen.User) (domain_gen.User, error) {
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userID string) (user domain_gen.User, err error) {
+func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 	if userID == "" {
 		return user, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(KindUsers).
+		AddRootID(defaultRootID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
@@ -100,12 +102,12 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(KindUsers).
+		AddRootID(defaultRootID).
 		AddReversedTimestamp(u.CreatedAt).
 		AddParentId(u.Id).
 		Build()
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(KindUsers).
+		AddRootID(defaultRootID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
@@ -118,17 +120,17 @@ func (repo *UserRepo) Delete(userID string) error {
 	return err
 }
 
-func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, string, error) {
-	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(KindUsers).Build()
+func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(defaultRootID).Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}
 
-	users := make([]domain_gen.User, 0, len(items))
+	users := make([]domainGen.User, 0, len(items))
 	for _, item := range items {
-		var u domain_gen.User
+		var u domainGen.User
 		err = json.JSON.Unmarshal(item.Value, &u)
 		if err != nil {
 			return nil, "", err
@@ -137,4 +139,38 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain_gen.User, st
 	}
 
 	return users, cur, nil
+}
+
+type Owner struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	Id          string    `json:"id"`
+	NodeId      string    `json:"node_id"`
+	Username    string    `json:"username"`
+}
+
+func (repo *UserRepo) Owner() (Owner, error) {
+	owner, err := repo.Get(DefaultOwnerUserID)
+	if errors.Is(err, ErrUserNotFound) {
+		return Owner{}, ErrUserNotFound
+	}
+	return Owner{
+		CreatedAt:   owner.CreatedAt,
+		Description: owner.Description,
+		Id:          owner.Id,
+		NodeId:      owner.NodeId,
+		Username:    owner.Username,
+	}, err
+}
+
+func (repo *UserRepo) CreateOwner(o Owner) (err error) {
+	_, err = repo.Create(domainGen.User{
+		Birthdate:   nil,
+		CreatedAt:   o.CreatedAt,
+		Description: o.Description,
+		Id:          DefaultOwnerUserID,
+		NodeId:      o.NodeId,
+		Username:    o.Username,
+	})
+	return err
 }

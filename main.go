@@ -1,18 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/interface/server"
 	"github.com/filinvadim/warpnet/interface/server/handlers"
-	client "github.com/filinvadim/warpnet/node-client"
 	"github.com/filinvadim/warpnet/node/node"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -33,24 +31,19 @@ var (
 var staticFolder embed.FS
 
 type API struct {
-	*handlers.TweetController
-	*handlers.UserController
 	*handlers.StaticController
 	*handlers.AuthController
-	*handlers.SettingsController
-	*handlers.ReplyController
-	*handlers.ChatController
 }
 
 func main() {
 	hosts := flag.String("hosts", "", "comma-separated list of hostnames")
 	flag.Parse()
 
-	var predefinedHosts []string
+	var bootstrapAddrs []string
 	if hosts != nil && *hosts != "" {
-		predefinedHosts = strings.Split(strings.TrimSpace(*hosts), ",")
+		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
 	}
-	fmt.Println("PREDEFINED HOSTS ", predefinedHosts, len(predefinedHosts))
+	fmt.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
 
 	var interruptChan = make(chan os.Signal, 1)
 
@@ -65,44 +58,70 @@ func main() {
 	)
 	defer db.Close()
 
+	nodeRepo := database.NewNodeRepo(db)
+	authRepo := database.NewAuthRepo(db)
+	followRepo := database.NewFollowRepo(db)
+	timelineRepo := database.NewTimelineRepo(db)
+	tweetRepo := database.NewTweetRepo(db)
+	userRepo := database.NewUserRepo(db)
+	replyRepo := database.NewRepliesRepo(db)
+
 	interfaceServer, err := server.NewInterfaceServer()
-	if err != nil {
-		log.Fatalf("failed to run owner server: %v", err)
+	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
+		log.Fatalf("failed to run owner handler: %v", err)
+	}
+	if interfaceServer != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
+		interfaceServer.RegisterHandlers(&API{
+			handlers.NewStaticController(staticFolder),
+			handlers.NewAuthController(authRepo, userRepo, interruptChan),
+		})
+		go interfaceServer.Start()
+		defer interfaceServer.Shutdown(ctx)
 	}
 
-	cli, err := client.NewNodeClient(ctx)
-	if err != nil {
-		log.Fatal("node client loading: ", err)
+	if interfaceServer == nil {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter username: ")
+		username, _ := reader.ReadString('\n')
+		fmt.Print("Enter password: ")
+		pass, _ := reader.ReadString('\n')
+
+		if err = db.Run(username, pass); err != nil {
+			log.Fatalf("failed to run db: %v", err)
+		}
 	}
 
-	ip, err := GetOwnIPAddress()
-	if err != nil {
-		log.Println("failed to get own node ip address")
-	}
-	fmt.Println("YOUR OWN IP", ip)
-
-	interfaceServer.RegisterHandlers(&API{
-		handlers.NewTweetController(cli),
-		handlers.NewUserController(cli),
-		handlers.NewStaticController(staticFolder),
-		handlers.NewAuthController(cli),
-		handlers.NewSettingsController(cli),
-		handlers.NewReplyController(cli),
-		handlers.NewChatController(cli),
-	})
-	go interfaceServer.Start()
-	defer interfaceServer.Shutdown(ctx)
-
-	n, err := node.NewNodeService(ctx, ip, predefinedHosts, db, interruptChan)
+	n, err := node.NewNode(
+		authRepo.ReadyChan(),
+		ctx,
+		nodeRepo,
+		authRepo,
+		userRepo,
+		tweetRepo,
+		timelineRepo,
+		followRepo,
+		replyRepo,
+	)
 	if err != nil {
 		log.Fatalf("failed to init node service: %v", err)
 	}
-	defer n.Stop()
+	defer func() {
+		if err := n.Stop(); err != nil {
+			log.Fatalf("failed to stop node: %v", err)
+		}
+	}()
 
-	go n.Run()
+	owner, err := userRepo.Owner()
+	if err != nil {
+		log.Fatalf("failed to fetch owner user: %v", err)
+	}
+	owner.NodeId = n.GetID()
+	if err = userRepo.CreateOwner(owner); err != nil {
+		log.Fatalf("failed to update user: %v", err)
+	}
 
 	<-interruptChan
-
+	fmt.Println("interrupted...")
 }
 
 func getAppPath() string {
@@ -134,22 +153,4 @@ func getAppPath() string {
 	}
 
 	return dbPath
-}
-
-func GetOwnIPAddress() (string, error) {
-	for _, addr := range config.IPProviders {
-		resp, err := http.Get(addr)
-		if err != nil {
-			continue
-		}
-
-		bt, err := io.ReadAll(resp.Body)
-		if err != nil {
-			resp.Body.Close()
-			continue
-		}
-		resp.Body.Close()
-		return string(bt), nil
-	}
-	return "", errors.New("no IP address found")
 }

@@ -1,11 +1,13 @@
 package database
 
 import (
+	"crypto"
+	"encoding/base64"
 	"errors"
-	"github.com/dgraph-io/badger/v3"
-
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/google/uuid"
+	node_crypto "github.com/filinvadim/warpnet/node-crypto"
+	"math/rand/v2"
+	"time"
 )
 
 const (
@@ -20,50 +22,46 @@ var (
 )
 
 type AuthRepo struct {
-	db      *storage.DB
-	ownerId string
+	db             *storage.DB
+	ownerId        string
+	sessionToken   string
+	privateKeyChan chan crypto.PrivateKey
 }
 
 func NewAuthRepo(db *storage.DB) *AuthRepo {
-	return &AuthRepo{db: db}
+	return &AuthRepo{db: db, privateKeyChan: make(chan crypto.PrivateKey, 1)}
 }
 
 func (repo *AuthRepo) Authenticate(username, password string) (token string, err error) {
-	token, err = repo.db.Run(username, password)
+	if repo.db == nil {
+		return "", storage.ErrNotRunning
+	}
+	err = repo.db.Run(username, password)
 	if err != nil {
 		return "", ErrWrongPassword
 	}
-	return token, nil
-}
 
-func (repo *AuthRepo) NewOwner() (userId string, err error) {
-	id := uuid.New().String()
-	fixedKey := storage.NewPrefixBuilder(AuthRepoName).
-		AddRootID(OwnerSubName).
-		Build()
+	randChar := string(uint8(rand.Uint()))
+	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
+	repo.sessionToken = base64.StdEncoding.EncodeToString(node_crypto.ConvertToSHA256(feed))
 
-	if err := repo.db.Set(fixedKey, []byte(id)); err != nil {
-		return "", err
-	}
-
-	repo.ownerId = id
-	return id, nil
-}
-
-func (repo *AuthRepo) Owner() (userId string, err error) {
-	if repo.ownerId != "" {
-		return repo.ownerId, nil
-	}
-	fixedKey := storage.NewPrefixBuilder(AuthRepoName).
-		AddRootID(OwnerSubName).
-		Build()
-	data, err := repo.db.Get(fixedKey)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return "", ErrOwnerNotFound
-	}
+	seed := base64.StdEncoding.EncodeToString(
+		node_crypto.ConvertToSHA256(
+			[]byte(username + "@" + password + "@" + "seed"),
+		),
+	)
+	privateKey, err := node_crypto.GenerateKeyFromSeed([]byte(seed))
 	if err != nil {
 		return "", err
 	}
+	repo.privateKeyChan <- privateKey
+	return token, nil
+}
 
-	return string(data), nil
+func (repo *AuthRepo) SessionToken() string {
+	return repo.sessionToken
+}
+
+func (repo *AuthRepo) ReadyChan() <-chan crypto.PrivateKey {
+	return repo.privateKeyChan
 }

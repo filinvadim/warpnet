@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/jbenet/goprocess"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
 	"runtime"
 	"time"
@@ -16,10 +19,14 @@ import (
 )
 
 const (
-	NodesNamespace = "NODES"
+	NodesNamespace        = "NODES"
+	ProvidersSubNamespace = "PROVIDERS"
 )
 
-var _ ds.Batching = (*NodeRepo)(nil)
+var (
+	_ ds.Batching             = (*NodeRepo)(nil)
+	_ providers.ProviderStore = (*NodeRepo)(nil)
+)
 
 type NodeRepo struct {
 	db *storage.DB
@@ -206,11 +213,11 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 // It returns the sum of lsm and value log files sizes in bytes.
 func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
 	if ctx.Err() != nil {
-		return -1, ctx.Err()
+		return 0, ctx.Err()
 	}
 
 	if d.db.IsClosed() {
-		return -1, storage.ErrNotRunning
+		return 0, storage.ErrNotRunning
 	}
 	lsm, vlog := d.db.InnerDB().Size()
 	return uint64(lsm + vlog), nil
@@ -517,4 +524,38 @@ func (b *batch) Cancel() error {
 	b.writeBatch.Cancel()
 	runtime.SetFinalizer(b, nil)
 	return nil
+}
+
+func (d *NodeRepo) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+	addrs, err := d.GetProviders(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	addrs = append(addrs, prov)
+	bt, err := json.JSON.Marshal(addrs)
+	if err != nil {
+		return err
+	}
+
+	providerKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(ProvidersSubNamespace).
+		AddRootID(string(key)).
+		Build()
+
+	return d.db.SetWithTTL(providerKey, bt, time.Hour*24*7)
+}
+
+func (d *NodeRepo) GetProviders(_ context.Context, key []byte) (addrs []peer.AddrInfo, err error) {
+	providerKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(ProvidersSubNamespace).
+		AddRootID(string(key)).
+		Build()
+	bt, err := d.db.Get(providerKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.JSON.Unmarshal(bt, &addrs)
+	return addrs, err
 }

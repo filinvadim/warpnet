@@ -66,7 +66,7 @@ package chat
 //		rooms:     NewTableCache(),
 //	}
 //
-//	// Register to pubsub to listen to the server.
+//	// Register to pubsub to listen to the handler.
 //	// os.Hostname()
 //
 //	go c.eventloop()
@@ -74,7 +74,7 @@ package chat
 //	return &c
 //}
 //
-//// Close terminates the server goroutines gracefully.
+//// Close terminates the handler goroutines gracefully.
 //func (c *Chat) Close() {
 //	// This is preferred, as it will block unlike close.
 //	c.quit <- struct{}{}

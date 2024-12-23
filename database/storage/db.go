@@ -1,16 +1,14 @@
 package storage
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/crypto"
+	"github.com/filinvadim/warpnet/node-crypto"
 
 	"github.com/labstack/gommon/log"
-	"math/rand/v2"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -19,8 +17,7 @@ import (
 const discardRatio = 0.5
 
 var (
-	ErrWrongPassword = errors.New("wrong password")
-	ErrNotRunning    = errors.New("DB is not running")
+	ErrNotRunning = errors.New("DB is not running")
 )
 
 type DB struct {
@@ -57,31 +54,26 @@ func New(
 	return storage
 }
 
-func (db *DB) Run(username, password string) (token string, err error) {
+func (db *DB) Run(username, password string) (err error) {
 	if db.isRunning.Load() {
-		return "", nil
+		return nil
 	}
-	hashSum := crypto.ConvertToSHA256([]byte(username + "@" + password))
+	hashSum := node_crypto.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 
 	db.badger, err = badger.Open(db.opts)
 	if err != nil {
-		return "", err
+		return err
 	}
-
 	db.isRunning.Store(true)
-	fmt.Println("DATABASE IS RUNNING!")
 	db.sequence, err = db.badger.GetSequence([]byte("SEQUENCE"), 100)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	randChar := string(uint8(rand.Uint()))
-
-	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
-	sessionToken := base64.StdEncoding.EncodeToString(crypto.ConvertToSHA256(feed))
 	go db.runEventualGC()
-	return sessionToken, nil
+	fmt.Println("DATABASE IS RUNNING!")
+	return nil
 }
 
 func (db *DB) runEventualGC() {
@@ -291,6 +283,10 @@ func (db *DB) ReadTxn(f func(tx *badger.Txn) error) error {
 }
 
 func (db *DB) txn(isWrite bool, f func(tx *badger.Txn) error) error {
+	if !db.isRunning.Load() {
+		return ErrNotRunning
+	}
+
 	txn := db.badger.NewTransaction(isWrite)
 	defer txn.Discard()
 

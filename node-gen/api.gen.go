@@ -6,43 +6,31 @@ package node
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	externalRef0 "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/labstack/echo/v4"
-	"github.com/oapi-codegen/runtime"
 )
 
 // Defines values for NewEventParamsEventType.
 const (
-	Error            NewEventParamsEventType = "error"
-	Follow           NewEventParamsEventType = "follow"
-	GetReplies       NewEventParamsEventType = "get_replies"
-	GetReply         NewEventParamsEventType = "get_reply"
-	GetSettingsHosts NewEventParamsEventType = "get_settings_hosts"
-	GetTimeline      NewEventParamsEventType = "get_timeline"
-	GetTweet         NewEventParamsEventType = "get_tweet"
-	GetTweets        NewEventParamsEventType = "get_tweets"
-	GetUser          NewEventParamsEventType = "get_user"
-	GetUsers         NewEventParamsEventType = "get_users"
-	Login            NewEventParamsEventType = "login"
-	Logout           NewEventParamsEventType = "logout"
-	NewReply         NewEventParamsEventType = "new_reply"
-	NewSettingsHosts NewEventParamsEventType = "new_settings_hosts"
-	NewTweet         NewEventParamsEventType = "new_tweet"
-	NewUser          NewEventParamsEventType = "new_user"
-	Ping             NewEventParamsEventType = "ping"
-	Pong             NewEventParamsEventType = "pong"
-	Unfollow         NewEventParamsEventType = "unfollow"
+	Error       NewEventParamsEventType = "error"
+	Follow      NewEventParamsEventType = "follow"
+	GetReplies  NewEventParamsEventType = "get_replies"
+	GetReply    NewEventParamsEventType = "get_reply"
+	GetTimeline NewEventParamsEventType = "get_timeline"
+	GetTweet    NewEventParamsEventType = "get_tweet"
+	GetTweets   NewEventParamsEventType = "get_tweets"
+	GetUser     NewEventParamsEventType = "get_user"
+	GetUsers    NewEventParamsEventType = "get_users"
+	NewReply    NewEventParamsEventType = "new_reply"
+	NewTweet    NewEventParamsEventType = "new_tweet"
+	NewUser     NewEventParamsEventType = "new_user"
+	Unfollow    NewEventParamsEventType = "unfollow"
 )
 
 // NewEventParamsEventType defines parameters for NewEvent.
@@ -51,348 +39,30 @@ type NewEventParamsEventType string
 // NewEventJSONRequestBody defines body for NewEvent for application/json ContentType.
 type NewEventJSONRequestBody = externalRef0.Event
 
-// RequestEditorFn  is the function signature for the RequestEditor callback function
-type RequestEditorFn func(ctx context.Context, req *http.Request) error
-
-// Doer performs HTTP requests.
-//
-// The standard http.Client implements this interface.
-type HttpRequestDoer interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// Client which conforms to the OpenAPI3 specification for this service.
-type Client struct {
-	// The endpoint of the server conforming to this interface, with scheme,
-	// https://api.deepmap.com for example. This can contain a path relative
-	// to the server, such as https://api.deepmap.com/dev-test, and all the
-	// paths in the swagger spec will be appended to the server.
-	Server string
-
-	// Doer for performing requests, typically a *http.Client with any
-	// customized settings, such as certificate chains.
-	Client HttpRequestDoer
-
-	// A list of callbacks for modifying requests which are generated before sending over
-	// the network.
-	RequestEditors []RequestEditorFn
-}
-
-// ClientOption allows setting custom parameters during construction
-type ClientOption func(*Client) error
-
-// Creates a new Client, with reasonable defaults
-func NewClient(server string, opts ...ClientOption) (*Client, error) {
-	// create a client with sane default values
-	client := Client{
-		Server: server,
-	}
-	// mutate client and add all optional params
-	for _, o := range opts {
-		if err := o(&client); err != nil {
-			return nil, err
-		}
-	}
-	// ensure the server URL always has a trailing slash
-	if !strings.HasSuffix(client.Server, "/") {
-		client.Server += "/"
-	}
-	// create httpClient, if not already present
-	if client.Client == nil {
-		client.Client = &http.Client{}
-	}
-	return &client, nil
-}
-
-// WithHTTPClient allows overriding the default Doer, which is
-// automatically created using http.Client. This is useful for tests.
-func WithHTTPClient(doer HttpRequestDoer) ClientOption {
-	return func(c *Client) error {
-		c.Client = doer
-		return nil
-	}
-}
-
-// WithRequestEditorFn allows setting up a callback function, which will be
-// called right before sending the request. This can be used to mutate the request.
-func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
-	return func(c *Client) error {
-		c.RequestEditors = append(c.RequestEditors, fn)
-		return nil
-	}
-}
-
-// The interface specification for the client above.
-type ClientInterface interface {
-	// NewEventWithBody request with any body
-	NewEventWithBody(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	NewEvent(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) NewEventWithBody(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewNewEventRequestWithBody(c.Server, eventType, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) NewEvent(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewNewEventRequest(c.Server, eventType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// NewNewEventRequest calls the generic NewEvent builder with application/json body
-func NewNewEventRequest(server string, eventType NewEventParamsEventType, body NewEventJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewNewEventRequestWithBody(server, eventType, "application/json", bodyReader)
-}
-
-// NewNewEventRequestWithBody generates requests for NewEvent with any type of body
-func NewNewEventRequestWithBody(server string, eventType NewEventParamsEventType, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "event_type", runtime.ParamLocationPath, eventType)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/node/event/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
-	for _, r := range c.RequestEditors {
-		if err := r(ctx, req); err != nil {
-			return err
-		}
-	}
-	for _, r := range additionalEditors {
-		if err := r(ctx, req); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ClientWithResponses builds on ClientInterface to offer response payloads
-type ClientWithResponses struct {
-	ClientInterface
-}
-
-// NewClientWithResponses creates a new ClientWithResponses, which wraps
-// Client with return type handling
-func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithResponses, error) {
-	client, err := NewClient(server, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &ClientWithResponses{client}, nil
-}
-
-// WithBaseURL overrides the baseURL.
-func WithBaseURL(baseURL string) ClientOption {
-	return func(c *Client) error {
-		newBaseURL, err := url.Parse(baseURL)
-		if err != nil {
-			return err
-		}
-		c.Server = newBaseURL.String()
-		return nil
-	}
-}
-
-// ClientWithResponsesInterface is the interface specification for the client with responses above.
-type ClientWithResponsesInterface interface {
-	// NewEventWithBodyWithResponse request with any body
-	NewEventWithBodyWithResponse(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
-
-	NewEventWithResponse(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error)
-}
-
-type NewEventResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r NewEventResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r NewEventResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// NewEventWithBodyWithResponse request with arbitrary body returning *NewEventResponse
-func (c *ClientWithResponses) NewEventWithBodyWithResponse(ctx context.Context, eventType NewEventParamsEventType, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
-	rsp, err := c.NewEventWithBody(ctx, eventType, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseNewEventResponse(rsp)
-}
-
-func (c *ClientWithResponses) NewEventWithResponse(ctx context.Context, eventType NewEventParamsEventType, body NewEventJSONRequestBody, reqEditors ...RequestEditorFn) (*NewEventResponse, error) {
-	rsp, err := c.NewEvent(ctx, eventType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseNewEventResponse(rsp)
-}
-
-// ParseNewEventResponse parses an HTTP response from a NewEventWithResponse call
-func ParseNewEventResponse(rsp *http.Response) (*NewEventResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &NewEventResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ServerInterface represents all server handlers.
-type ServerInterface interface {
-	// Create a new user
-	// (POST /v1/node/event/{event_type})
-	NewEvent(ctx echo.Context, eventType NewEventParamsEventType) error
-}
-
-// ServerInterfaceWrapper converts echo contexts to parameters.
-type ServerInterfaceWrapper struct {
-	Handler ServerInterface
-}
-
-// NewEvent converts echo context to params.
-func (w *ServerInterfaceWrapper) NewEvent(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "event_type" -------------
-	var eventType NewEventParamsEventType
-
-	err = runtime.BindStyledParameterWithOptions("simple", "event_type", ctx.Param("event_type"), &eventType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter event_type: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.NewEvent(ctx, eventType)
-	return err
-}
-
-// This is a simple interface which specifies echo.Route addition functions which
-// are present on both echo.Echo and echo.Group, since we want to allow using
-// either of them for path registration
-type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-}
-
-// RegisterHandlers adds each server route to the EchoRouter.
-func RegisterHandlers(router EchoRouter, si ServerInterface) {
-	RegisterHandlersWithBaseURL(router, si, "")
-}
-
-// Registers handlers, and prepends BaseURL to the paths, so that the paths
-// can be served under a prefix.
-func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
-
-	wrapper := ServerInterfaceWrapper{
-		Handler: si,
-	}
-
-	router.POST(baseURL+"/v1/node/event/:event_type", wrapper.NewEvent)
-
-}
-
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"/er6FdvNd/8EAAD//yNC+aB0HgAA",
+	"H4sIAAAAAAAC/9RYS2/bRhD+K8S2Rzqy2jRAeHPb1DBqOIXh9GIIxJocSRuTu8zsUKpg6L8XsyTFpyTS",
+	"TYDmYq25855vHuSLiEyaGQ2arAhehI3WkEp3jE0qlQ4/IBr8sAFN/DBDkwGSAkcSmRj4l3YZiEAoTbAC",
+	"FHtfpGCtXDUvLaHSK7Hf+wLhS64QYhE8FiJq+oVf0ZunzxARy6oMGbYhliT5V+rdx6UIHl/EjwhLEYgf",
+	"ZrVrs9KvWd+pvT+K4w62D1sAmsr0ycJkRX+YJDHbyZr0cjrfNdBVkjjP7FTGB5VCojRM5pscx2ugyXEs",
+	"PGO2aY7dmpXSUzlMPtmhe8gSBXZqlplt9xpdFdNi7wtSKViSacaFszSYShIBVxJc8JXwzxRtzX+iXgsU",
+	"38OXHOxA3SLIGDBUMf+TKn0LekVrEcx7yn2xRUXjaDuG1kqaQk4Y3a+HftPL0Roc6Gy+SFSqaKAh+uKf",
+	"i5W5KJ/mStO7t0yfW8Cb+HyTLOnO2t1A+xSzlQ2L1gFNW56MSUDqFgEzDFJM83x/0pFWZXzL8GcSQVOI",
+	"XB0luHoy0RgavutCrSTsi12c9XZ3xNdRBn5j6xsaTjvSHgffTdk0plHPZuK7m+HQTjTCPwg7bU4953rW",
+	"fD23b9UzHPF2XENmFa9oxxWbX+s6ZWU9iQcqw9qtweOp0TKFcaFylH4t8bRFh0lfy+6RdVa4gdF3mIkj",
+	"5nd7jp7qne31YDi/I5W6qjin7GzpfE1l7fX2P8a0EjYyqmeKcqxSJj2l6R4OUft/V+bDsJmR0VQG6YyV",
+	"EYIkiENJYzdQXxwZcYl6LrQrgtSOTIVrgHUmJKLcHYSFkcl127Bi9PjslkrzVASX/sBLbzk6jw5qF9rJ",
+	"tlaoGDC3Evlqi4/vB+ORNLXfFjBzfyrANEPnN3aRRntuIOYEMLt1/Z28dXwqm0jb1ieFtOaSGF8jr6mr",
+	"GGyEKiNl9CAOmq8GB9z2qLrQrLhCzeAbAGYfjCUL2ldpQjtB1dFeop9bEnJMhkKWmEgejVe6CxGWgCiT",
+	"iZ5oE8Px7sEiIQ6fdmd3nilY7dZZEw2ti8q4Tmq78W/gpZnRMwXMVim9NO6DXhOP4ndlI7MB3HlXf914",
+	"S4Oe9GLFzjzlBLH3sFVEgBfcuT2ZZYkqU+MLUpRAIaJLzsKELzaAtlAzf3P55pLjaDLQMlMiED+7R9ya",
+	"aO3yN9vMZxyFGfAqMHtxPyF7snfFa4qGwyXsTOBdXdxBubG4HidTIAfwxxehWC8L5+C6zIlaomhmiTAH",
+	"v/w0yxrAAf1RAKLht6QVUOj2kPpoy3MxOhpnvtCwrej5WNHw2b3rlfTdM7elKqeMDX04Ounl618juwfI",
+	"LfxqP/vVxLvOqtBI2uyzLYqq9nXMx9ziw1Yb2Rwz98BmRtuiof50edkH2Mc/Oe1vh65u9EYmKvaUznIq",
+	"qOZ9qquc1t5SqgRipvllSFKN4rXUcQLoFbljm22ephJ3IhC/uRLxpKdh65UJIrliuIjCyQUzHHBI5Yhb",
+	"wQDwroH+nt+ZGB6Yamwk9i6MFnBTwbRNc2simXgxbCAxWQqaKocYEJiIQKyJsmA24xaZrI2lYP7u/bv3",
+	"Yr/Y/xsAAP//UixPPGwYAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

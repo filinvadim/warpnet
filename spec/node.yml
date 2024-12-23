@@ -5,9 +5,15 @@ info:
   description: Discovery API for a distributed Twitter-like application
 servers:
   - url: http://localhost:16969
-    description: Local development server
+    description: Local development handler
 
 paths:
+  /v1/node/test:
+    get:
+      responses:
+        '200':
+          description: OK
+
   /v1/node/event/{event_type}:
     post:
       tags:
@@ -20,8 +26,6 @@ paths:
           schema:
             type: string
             enum:
-              - ping
-              - pong
               - error
               - get_user
               - get_users
@@ -34,11 +38,7 @@ paths:
               - get_replies
               - follow
               - unfollow
-              - login
-              - logout
               - get_timeline
-              - get_settings_hosts
-              - new_settings_hosts
       operationId: newEvent
       requestBody:
         required: true
@@ -54,6 +54,6 @@ paths:
         '401':
           description: Auth failed
         '500':
-          description: Discovery server error
+          description: Discovery handler error
 
 

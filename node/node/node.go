@@ -2,65 +2,134 @@ package node
 
 import (
 	"context"
-	"crypto/rand"
+	go_crypto "crypto"
+	"encoding/json"
 	"fmt"
 	"github.com/filinvadim/warpnet/database"
-	"github.com/filinvadim/warpnet/database/storage"
-	client "github.com/filinvadim/warpnet/node-client"
-	"github.com/filinvadim/warpnet/node/server"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
+	webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+
 	"log"
-	"os"
+	"time"
 )
 
-type NodeServer interface {
-	Start() error
-	Stop() error
+const NetworkName = "warpnet"
+
+type Node struct {
+	ID           string
+	nodeRepo     *database.NodeRepo
+	authRepo     *database.AuthRepo
+	userRepo     *database.UserRepo
+	tweetRepo    *database.TweetRepo
+	timelineRepo *database.TimelineRepo
+	followRepo   *database.FollowRepo
+	replyRepo    *database.RepliesRepo
+
+	node  host.Host
+	mdns  mdns.Service
+	relay *relayv2.Relay
 }
 
-type NodeService struct {
-	ctx    context.Context
-	server NodeServer
-	client *client.NodeClient
+//for _, maddr := range n.bootstrapPeers {
+//peerInfo, _ := peer.AddrInfoFromP2pAddr(maddr)
+//if err := n.node.Connect(ctx, *peerInfo); err != nil {
+//log.Printf("Failed to connect to bootstrap node: %s", err)
+//} else {
+//log.Printf("Connected to bootstrap node: %s", peerInfo.ID)
+//}
+//}
 
-	nodeRepo *database.NodeRepo
-	authRepo *database.AuthRepo
-	userRepo *database.UserRepo
-
-	node host.Host
-}
-
-func NewNodeService(
+func NewNode(
+	privKey <-chan go_crypto.PrivateKey,
 	ctx context.Context,
-	ownIP string,
-	predefinedHosts []string,
-	db *storage.DB,
-	interrupt chan os.Signal,
-) (*NodeService, error) {
+	nodeRepo *database.NodeRepo,
+	authRepo *database.AuthRepo,
+	userRepo *database.UserRepo,
+	tweetRepo *database.TweetRepo,
+	timelineRepo *database.TimelineRepo,
+	followRepo *database.FollowRepo,
+	replyRepo *database.RepliesRepo,
+) (*Node, error) {
+	pKey := <-privKey // wait for key
 
-	nodeRepo := database.NewNodeRepo(db)
-	authRepo := database.NewAuthRepo(db)
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
-	userRepo := database.NewUserRepo(db)
-	replyRepo := database.NewRepliesRepo(db)
+	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	cli, err := client.NewNodeClient(ctx)
+	manager, err := connmgr.NewConnManager(100, 400, connmgr.WithGracePeriod(time.Minute*2))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	rm, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()))
 	if err != nil {
 		return nil, err
 	}
-	handler, err := server.NewNodeHandler(
-		ownIP,
+	providersCache := NewProviderCache(ctx, nodeRepo)
+
+	node, err := libp2p.New(
+		libp2p.ListenAddrStrings(
+			"/ip4/0.0.0.0/tcp/4001",
+			"/ip4/0.0.0.0/tcp/8081/ws",
+			"/ip4/0.0.0.0/udp/4001/quic-v1/webtransport",
+			"/ip6/::/tcp/4001",
+			"/ip6/::/udp/4001/quic-v1/webtransport",
+		),
+		libp2p.Transport(
+			libp2p.ChainOptions(
+				libp2p.Transport(tcp.NewTCPTransport),
+				libp2p.Transport(ws.New),
+				libp2p.Transport(webtransport.New),
+			),
+		),
+		libp2p.Identity(pKey.(crypto.PrivKey)),
+		libp2p.Ping(true),
+		libp2p.Security(noise.ID, noise.New),
+		libp2p.EnableAutoNATv2(),
+		libp2p.NATPortMap(),
+		libp2p.ForceReachabilityPrivate(),
+		libp2p.PrivateNetwork([]byte(NetworkName)),
+		libp2p.UserAgent(NetworkName),
+		libp2p.EnableHolePunching(),
+		libp2p.Peerstore(store),
+		libp2p.EnableNATService(),
+		libp2p.EnableAutoRelay(),
+		libp2p.EnableRelay(),
+		libp2p.ResourceManager(rm),
+		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
+		libp2p.ConnectionManager(manager),
+		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+			return setupPrivateDHT(ctx, h, nodeRepo, providersCache)
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	mdnsService := mdns.NewMdnsService(node, NetworkName, &discoveryNotifee{node})
+	relay, err := relayv2.New(node)
+	if err != nil {
+		return nil, err
+	}
+
+	n := &Node{
+		node.ID().String(),
 		nodeRepo,
 		authRepo,
 		userRepo,
@@ -68,109 +137,65 @@ func NewNodeService(
 		timelineRepo,
 		followRepo,
 		replyRepo,
-		cli,
-		interrupt,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("node handler: %w", err)
-	}
-	srv, err := server.NewNodeServer(ctx, handler)
-	if err != nil {
-		return nil, fmt.Errorf("node server: %w", err)
+		node,
+		mdnsService,
+		relay,
 	}
 
-	node := NewP2PNode(ctx, nodeRepo)
-
-	return &NodeService{
-		ctx, srv, cli, nodeRepo,
-		authRepo, userRepo, node,
-	}, nil
+	fmt.Println("NODE STARTED WITH ID", node.ID().String(), node.Addrs())
+	return n, err
 }
 
-func (ds *NodeService) Run() {
-	if err := ds.server.Start(); err != nil {
-		log.Fatalf("node server: %v", err)
-	}
+func (n *Node) GetID() string {
+	return n.ID
 }
 
-func (ds *NodeService) Stop() error {
+func (n *Node) Stop() error {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(r)
+			log.Println("recovered:", r)
 		}
 	}()
-	if err := ds.node.Close(); err != nil {
-		return err
+	if n.mdns != nil {
+		_ = n.mdns.Close()
 	}
-	_ = ds.nodeRepo.Close()
-	return ds.server.Stop()
+	if n.relay != nil {
+		_ = n.relay.Close()
+	}
+	_ = n.nodeRepo.Close()
+
+	return n.node.Close()
 }
 
-func NewP2PNode(ctx context.Context, nodeRepo *database.NodeRepo) host.Host {
-	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	rawKey, err := key.Raw()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Println(string(rawKey))
-
-	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
-	if err != nil {
-		log.Fatalln(err)
-	}
-	node, err := libp2p.New(
-		libp2p.ListenAddrStrings(
-			"/ip4/0.0.0.0/tcp/16969",
-			"/ip4/0.0.0.0/udp/16969/quic-v1",
-			"/ip4/0.0.0.0/udp/16969/quic-v1/webtransport",
-			"/ip6/::/tcp/16969",
-			"/ip6/::/udp/16969/quic-v1",
-			"/ip6/::/udp/16969/quic-v1/webtransport",
-		),
-		libp2p.Identity(key),
-		libp2p.Ping(true),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableAutoNATv2(),
-		libp2p.NATPortMap(),
-		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork([]byte("test")),
-		libp2p.UserAgent("myUserAgent"),
-		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(store),
-		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			idht, err := dht.New(ctx, h)
-			if err != nil {
-				return nil, err
-			}
-			go idht.Bootstrap(ctx)
-			return idht, nil
-		}),
+func setupPrivateDHT(
+	ctx context.Context, h host.Host, repo *database.NodeRepo, providerStore providers.ProviderStore,
+) (*dht.IpfsDHT, error) {
+	kdht, err := dht.New(
+		ctx, h,
+		dht.Mode(dht.ModeServer),
+		dht.ProtocolPrefix("/"+NetworkName),
+		dht.Datastore(repo),
+		dht.BootstrapPeers(),
+		dht.ProviderStore(providerStore),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	mdnsService := mdns.NewMdnsService(node, "warpnet", &discoveryNotifee{node})
-	defer mdnsService.Close()
-
-	bootstrapNodes := []string{}
-	for _, addr := range bootstrapNodes {
-		maddr, _ := multiaddr.NewMultiaddr(addr)
-		peerInfo, _ := peer.AddrInfoFromP2pAddr(maddr)
-		if err := node.Connect(ctx, *peerInfo); err != nil {
-			log.Printf("Failed to connect to bootstrap node: %s", err)
-		} else {
-			log.Printf("Connected to bootstrap node: %s", peerInfo.ID)
+	go func() {
+		if err := kdht.Bootstrap(ctx); err != nil {
+			log.Printf("failed to bootstrap kdht: %v", err)
 		}
-	}
+	}()
+	go monitorDHT(kdht)
+	return kdht, nil
+}
 
-	if err := node.Close(); err != nil {
-		panic(err)
+func monitorDHT(idht *dht.IpfsDHT) {
+	for {
+		time.Sleep(10 * time.Second)
+		peers := idht.RoutingTable().ListPeers()
+		log.Printf("DHT routing table contains %d peers", len(peers))
 	}
-	return node
 }
 
 type discoveryNotifee struct {
@@ -184,4 +209,135 @@ func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
 	} else {
 		log.Printf("Connected to new peer: %s", pi.ID)
 	}
+}
+
+const discoveryTopic = "peer-discovery"
+
+type DiscoveryMessage struct {
+	PeerID string   `json:"peer_id"`
+	Addrs  []string `json:"addrs"`
+}
+
+func registerHandler(h host.Host, protocolID protocol.ID) {
+	h.SetStreamHandler(protocolID, func(s network.Stream) {
+		defer s.Close()
+		log.Println("New stream opened")
+
+		buf := make([]byte, 1024)
+		n, err := s.Read(buf)
+		if err != nil {
+			log.Printf("Error reading from stream: %s", err)
+			return
+		}
+		log.Printf("Received message: %s", string(buf[:n]))
+
+		// Отправляем ответ
+		_, err = s.Write([]byte("Hello, client!"))
+		if err != nil {
+			log.Printf("Error writing to stream: %s", err)
+			return
+		}
+	})
+}
+
+func sendMessage(h host.Host, peerID peer.ID, protocol protocol.ID, message string) {
+	// Устанавливаем соединение
+	s, err := h.NewStream(context.Background(), peerID, protocol)
+	if err != nil {
+		log.Printf("Failed to create stream: %s", err)
+		return
+	}
+	defer s.Close()
+
+	// Отправляем сообщение
+	_, err = s.Write([]byte(message))
+	if err != nil {
+		log.Printf("Failed to write to stream: %s", err)
+		return
+	}
+
+	// Читаем ответ
+	buf := make([]byte, 1024)
+	n, err := s.Read(buf)
+	if err != nil {
+		log.Printf("Error reading from stream: %s", err)
+		return
+	}
+	log.Printf("Response: %s", string(buf[:n]))
+}
+
+func newPubSub(ctx context.Context, h host.Host) {
+	// Настраиваем PubSub
+	ps, err := pubsub.NewGossipSub(ctx, h)
+	if err != nil {
+		log.Fatalf("Failed to create PubSub: %s", err)
+	}
+
+	// Подключаемся к топику
+	topic, err := ps.Join(discoveryTopic)
+	if err != nil {
+		log.Fatalf("Failed to join discovery topic: %s", err)
+	}
+
+	// Подписываемся на сообщения
+	go subscribeToDiscovery(ctx, topic, h)
+
+	// Публикуем информацию об узле каждые 10 секунд
+	for {
+		addrs := make([]string, 0)
+		for _, addr := range h.Addrs() {
+			addrs = append(addrs, addr.String())
+		}
+		err := publishPeerInfo(ctx, topic, h.ID().String(), addrs)
+		if err != nil {
+			log.Printf("Failed to publish peer info: %s", err)
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func subscribeToDiscovery(ctx context.Context, topic *pubsub.Topic, h host.Host) {
+	sub, err := topic.Subscribe()
+	if err != nil {
+		log.Fatalf("Failed to subscribe to topic: %s", err)
+	}
+
+	for {
+		msg, err := sub.Next(ctx)
+		if err != nil {
+			log.Printf("Subscription error: %s", err)
+			continue
+		}
+
+		// Обработка сообщения
+		var discoveryMsg DiscoveryMessage
+		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+			log.Printf("Failed to decode discovery message: %s", err)
+			continue
+		}
+
+		// Подключение к узлу
+		peerInfo, err := peer.AddrInfoFromString(discoveryMsg.Addrs[0])
+		if err != nil {
+			log.Printf("Failed to parse address: %s", err)
+			continue
+		}
+		if err := h.Connect(ctx, *peerInfo); err != nil {
+			log.Printf("Failed to connect to peer: %s", err)
+		} else {
+			log.Printf("Connected to peer: %s", discoveryMsg.PeerID)
+		}
+	}
+}
+
+func publishPeerInfo(ctx context.Context, topic *pubsub.Topic, peerID string, addrs []string) error {
+	msg := DiscoveryMessage{
+		PeerID: peerID,
+		Addrs:  addrs,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return topic.Publish(ctx, data)
 }

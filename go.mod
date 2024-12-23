@@ -14,6 +14,7 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/libp2p/go-libp2p v0.38.1
 	github.com/libp2p/go-libp2p-kad-dht v0.28.1
+	github.com/libp2p/go-libp2p-pubsub v0.12.0
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1

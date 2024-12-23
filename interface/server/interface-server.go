@@ -2,19 +2,20 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	api_gen "github.com/filinvadim/warpnet/interface/api-gen"
 	ownMiddleware "github.com/filinvadim/warpnet/interface/middleware"
-	"io"
-	"net/http"
-	"os"
-	"time"
-
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
+	"io"
+	"net/http"
+	"os"
 )
+
+var ErrBrowserLoadFailed = errors.New("browser load failed")
 
 type (
 	Router            = api_gen.EchoRouter
@@ -61,18 +62,15 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 	e.Use(echomiddleware.Gzip())
 	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
+	err = browser.OpenURL(config.ExternalNodeAddress.String()) // NOTE connection is not protected!
+	if err != nil {
+		e.Logger.Errorf("failed to open browser: %v", err)
+		return nil, ErrBrowserLoadFailed
+	}
 	return &interfaceServer{e}, nil
 }
 
 func (p *interfaceServer) Start() {
-	go func() {
-		time.Sleep(time.Second)
-		err := browser.OpenURL(config.ExternalNodeAddress.String()) // NOTE connection is not protected!
-		if err != nil {
-			p.e.Logger.Errorf("failed to open browser: %v", err)
-		}
-	}()
-
 	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
 		p.e.Logger.Fatal(err)
 	}
@@ -87,6 +85,17 @@ func (p *interfaceServer) Router() Router {
 }
 
 func (p *interfaceServer) Shutdown(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			p.e.Logger.Error(r)
+		}
+	}()
+	if p == nil {
+		return
+	}
+	if p.e == nil {
+		return
+	}
 	if err := p.e.Shutdown(ctx); err != nil {
 		p.e.Logger.Error(err)
 	}
