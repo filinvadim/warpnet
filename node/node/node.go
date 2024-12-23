@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/filinvadim/warpnet/database"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -29,7 +30,7 @@ import (
 const NetworkName = "warpnet"
 
 var publicRelays = []string{
-	"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJ8S8B118DVjMrAzihsXFvGCGZeYThHH9y9MWanoPuNi1",
+	"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJ8S8B118DVjMrAzihsXFvGCGZeYThHH9y9MWanoPuNi1", // just a stub
 }
 
 type Node struct {
@@ -66,6 +67,7 @@ func NewNode(
 	followRepo *database.FollowRepo,
 	replyRepo *database.RepliesRepo,
 ) (*Node, error) {
+	_ = logging.SetLogLevel("*", "debug")
 	privKey := authRepo.PrivateKey()
 
 	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
