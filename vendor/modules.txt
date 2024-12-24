@@ -1,6 +1,9 @@
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2
+# github.com/armon/go-metrics v0.4.1
+## explicit; go 1.12
+github.com/armon/go-metrics
 # github.com/benbjohnson/clock v1.3.5
 ## explicit; go 1.15
 github.com/benbjohnson/clock
@@ -55,6 +58,9 @@ github.com/dustin/go-humanize
 ## explicit; go 1.14
 github.com/elastic/gosigar
 github.com/elastic/gosigar/sys/windows
+# github.com/fatih/color v1.16.0
+## explicit; go 1.17
+github.com/fatih/color
 # github.com/flynn/noise v1.1.0
 ## explicit; go 1.16
 github.com/flynn/noise
@@ -121,6 +127,15 @@ github.com/gorilla/websocket
 # github.com/hashicorp/errwrap v1.1.0
 ## explicit
 github.com/hashicorp/errwrap
+# github.com/hashicorp/go-hclog v1.6.3
+## explicit; go 1.13
+github.com/hashicorp/go-hclog
+# github.com/hashicorp/go-immutable-radix v1.3.1
+## explicit
+github.com/hashicorp/go-immutable-radix
+# github.com/hashicorp/go-msgpack/v2 v2.1.2
+## explicit; go 1.19
+github.com/hashicorp/go-msgpack/v2/codec
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
@@ -135,6 +150,9 @@ github.com/hashicorp/golang-lru/arc/v2
 github.com/hashicorp/golang-lru/v2
 github.com/hashicorp/golang-lru/v2/internal
 github.com/hashicorp/golang-lru/v2/simplelru
+# github.com/hashicorp/raft v1.7.1
+## explicit; go 1.20
+github.com/hashicorp/raft
 # github.com/huin/goupnp v1.3.0
 ## explicit; go 1.14
 github.com/huin/goupnp
@@ -314,6 +332,12 @@ github.com/libp2p/go-libp2p/p2p/transport/webtransport
 # github.com/libp2p/go-libp2p-asn-util v0.4.1
 ## explicit; go 1.19
 github.com/libp2p/go-libp2p-asn-util
+# github.com/libp2p/go-libp2p-consensus v0.0.1
+## explicit
+github.com/libp2p/go-libp2p-consensus
+# github.com/libp2p/go-libp2p-gostream v0.6.0
+## explicit; go 1.19
+github.com/libp2p/go-libp2p-gostream
 # github.com/libp2p/go-libp2p-kad-dht v0.28.1
 ## explicit; go 1.22.0
 github.com/libp2p/go-libp2p-kad-dht
@@ -337,6 +361,9 @@ github.com/libp2p/go-libp2p-kbucket/peerdiversity
 github.com/libp2p/go-libp2p-pubsub
 github.com/libp2p/go-libp2p-pubsub/pb
 github.com/libp2p/go-libp2p-pubsub/timecache
+# github.com/libp2p/go-libp2p-raft v0.5.0
+## explicit; go 1.21
+github.com/libp2p/go-libp2p-raft
 # github.com/libp2p/go-libp2p-record v0.2.0
 ## explicit; go 1.17
 github.com/libp2p/go-libp2p-record
@@ -642,6 +669,9 @@ github.com/spaolacci/murmur3
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
+# github.com/ugorji/go/codec v1.2.12
+## explicit; go 1.11
+github.com/ugorji/go/codec
 # github.com/valyala/bytebufferpool v1.0.0
 ## explicit
 github.com/valyala/bytebufferpool

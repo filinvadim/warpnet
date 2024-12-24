@@ -23,6 +23,9 @@ prune-idea:
 	rm -rf .config/JetBrains
 	rm -rf .cache/JetBrains
 	rm -rf .java/.userPrefs
+	rm -rf ~/.config/JetBrains
+	rm -rf ~/.cache/JetBrains
+	rm -rf ~/.local/share/JetBrains
 
 check-heap:
 	go build -gcflags="-m" main.go

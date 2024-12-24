@@ -6,10 +6,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/interface/server"
 	"github.com/filinvadim/warpnet/interface/server/handlers"
-	"github.com/filinvadim/warpnet/node/node"
 	"log"
 	"os"
 	"os/signal"
@@ -36,74 +36,79 @@ type API struct {
 }
 
 func main() {
-	hosts := flag.String("hosts", "", "comma-separated list of hostnames")
+	var (
+		hosts       = new(string)
+		isBootstrap = new(bool)
+	)
+	hosts = flag.String("hosts", "", "comma-separated list of hostnames")
+	isBootstrap = flag.Bool("is-bootstrap", false, "is bootstrap node?")
 	flag.Parse()
 
 	var bootstrapAddrs []string
-	if hosts != nil && *hosts != "" {
+	if *hosts != "" {
 		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
 	}
 	fmt.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
 
-	var (
-		interruptChan = make(chan os.Signal, 1)
-		authReadyChan = make(chan struct{}, 1)
-	)
-
+	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	path := getAppPath()
+	path := getAppPath(*isBootstrap)
 	db := storage.New(
-		path, false,
+		path, *isBootstrap,
 	)
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
 	authRepo := database.NewAuthRepo(db)
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
 	userRepo := database.NewUserRepo(db)
-	replyRepo := database.NewRepliesRepo(db)
 
-	interfaceServer, err := server.NewInterfaceServer()
-	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
-		log.Fatalf("failed to run owner handler: %v", err)
-	}
-	defer interfaceServer.Shutdown(ctx)
+	if isBootstrap != nil && !*isBootstrap {
+		//followRepo := database.NewFollowRepo(db)
+		//timelineRepo := database.NewTimelineRepo(db)
+		//tweetRepo := database.NewTweetRepo(db)
+		//replyRepo := database.NewRepliesRepo(db)
 
-	if interfaceServer != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
-		interfaceServer.RegisterHandlers(&API{
-			handlers.NewStaticController(staticFolder),
-			handlers.NewAuthController(authRepo, userRepo, interruptChan, authReadyChan),
-		})
-		go interfaceServer.Start()
-	} else {
-		manualCredsInput(interfaceServer, db)
-	}
+		if err := db.Run("", ""); err == nil {
+			log.Fatalln("DB run failed", err)
+		}
 
-	select {
-	case <-interruptChan:
-		return
-	case <-authReadyChan:
-		log.Println("auth is ready")
+		interfaceServer, err := server.NewInterfaceServer()
+		if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
+			log.Fatalf("failed to run owner handler: %v", err)
+		}
+		defer interfaceServer.Shutdown(ctx)
+
+		var authReadyChan = make(chan struct{}, 1)
+
+		if interfaceServer != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
+			interfaceServer.RegisterHandlers(&API{
+				handlers.NewStaticController(staticFolder),
+				handlers.NewAuthController(authRepo, userRepo, interruptChan, authReadyChan),
+			})
+			go interfaceServer.Start()
+		} else {
+			manualCredsInput(interfaceServer, db)
+		}
+
+		select {
+		case <-interruptChan:
+			return
+		case <-authReadyChan:
+			log.Println("auth is ready")
+		}
 	}
 
 	n, err := node.NewNode(
 		ctx,
 		nodeRepo,
 		authRepo,
-		userRepo,
-		tweetRepo,
-		timelineRepo,
-		followRepo,
-		replyRepo,
 	)
 	if err != nil {
-		log.Fatalf("failed to init node service: %v", err)
+		log.Fatalf("failed to init node: %v", err)
 	}
 	log.Println("NODE STARTED WITH ID", n.GetID())
 
@@ -126,7 +131,7 @@ func main() {
 	fmt.Println("interrupted...")
 }
 
-func getAppPath() string {
+func getAppPath(isBootstrap bool) string {
 	var dbPath string
 
 	switch runtime.GOOS {
@@ -147,6 +152,10 @@ func getAppPath() string {
 
 	default:
 		log.Fatal("unsupported OS")
+	}
+
+	if isBootstrap {
+		dbPath = dbPath + "/bootstrap"
 	}
 
 	err := os.MkdirAll(dbPath, os.ModePerm)

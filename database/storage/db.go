@@ -2,12 +2,11 @@ package storage
 
 import (
 	"errors"
+	"github.com/filinvadim/warpnet/core/encrypting"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/node-crypto"
-
 	"log"
 	"strings"
 	"sync/atomic"
@@ -27,15 +26,17 @@ type DB struct {
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
 
-	opts badger.Options
+	opts   badger.Options
+	dbPath string
 }
 
 func New(
 	path string,
 	isInMemory bool,
 ) *DB {
+	dbPath := path + config.DatabaseFolder
 	opts := badger.
-		DefaultOptions(path + config.DatabaseFolder).
+		DefaultOptions(dbPath).
 		WithSyncWrites(false).
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
@@ -48,7 +49,7 @@ func New(
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil, opts: opts,
+		sequence: nil, opts: opts, dbPath: dbPath,
 	}
 
 	return storage
@@ -58,7 +59,7 @@ func (db *DB) Run(username, password string) (err error) {
 	if db.isRunning.Load() {
 		return nil
 	}
-	hashSum := node_crypto.ConvertToSHA256([]byte(username + "@" + password))
+	hashSum := encrypting.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 
 	db.badger, err = badger.Open(db.opts)
@@ -95,6 +96,10 @@ func (db *DB) runEventualGC() {
 	}
 }
 
+func (db *DB) Path() string {
+	return db.dbPath
+}
+
 func (db *DB) IsClosed() bool {
 	return !db.isRunning.Load()
 }
@@ -116,7 +121,7 @@ func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
 		p := []byte(prefix)
 		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 			item := it.Item()
-			err := handler(string(item.Key()))
+			err := handler(string(item.KeyCopy(nil)))
 			if err != nil {
 				return err
 			}

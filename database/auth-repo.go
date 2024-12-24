@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database/storage"
-	node_crypto "github.com/filinvadim/warpnet/node-crypto"
 	"github.com/labstack/gommon/log"
 	"math/rand/v2"
 	"time"
@@ -41,14 +41,14 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 
 	randChar := string(uint8(rand.Uint()))
 	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
-	repo.sessionToken = base64.StdEncoding.EncodeToString(node_crypto.ConvertToSHA256(feed))
+	repo.sessionToken = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
 
 	seed := base64.StdEncoding.EncodeToString(
-		node_crypto.ConvertToSHA256(
+		encrypting.ConvertToSHA256(
 			[]byte(username + "@" + password + "@" + "seed"),
 		),
 	)
-	privateKey, err := node_crypto.GenerateKeyFromSeed([]byte(seed))
+	privateKey, err := encrypting.GenerateKeyFromSeed([]byte(seed))
 	if err != nil {
 		return "", fmt.Errorf("generate key from seed: %w", err)
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
@@ -294,7 +295,7 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 			if closedEarly {
 				select {
 				case qrb.Output <- dsq.Result{
-					Error: errors.New("node repo closed"),
+					Error: errors.New("core repo closed"),
 				}:
 				case <-qrb.Process.Closing():
 				}
@@ -558,4 +559,26 @@ func (d *NodeRepo) GetProviders(_ context.Context, key []byte) (addrs []peer.Add
 
 	err = json.JSON.Unmarshal(bt, &addrs)
 	return addrs, err
+}
+
+func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
+	providersKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(ProvidersSubNamespace).
+		Build()
+	items, _, err := d.db.List(providersKey, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	providersMap := make(map[string][]peer.AddrInfo, len(items))
+	for _, item := range items {
+		var addrs []peer.AddrInfo
+		providerKey := strings.TrimPrefix(item.Key, providersKey.String()+":")
+		if err := json.JSON.Unmarshal(item.Value, &addrs); err != nil {
+			return nil, err
+		}
+		providersMap[providerKey] = addrs
+	}
+
+	return providersMap, nil
 }
