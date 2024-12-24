@@ -8,7 +8,6 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/hashicorp/go-msgpack/v2/codec"
 	"github.com/hashicorp/raft"
-	"io"
 )
 
 const (
@@ -29,6 +28,10 @@ func NewConsensusRepo(db *storage.DB) *ConsensusRepo {
 	return &ConsensusRepo{db: db}
 }
 
+func (cr *ConsensusRepo) SnapshotPath() string {
+	return cr.db.Path() + "/snapshot"
+}
+
 // FirstIndex returns the first known index from the Raft log.
 func (cr *ConsensusRepo) FirstIndex() (uint64, error) {
 	var value uint64
@@ -36,10 +39,7 @@ func (cr *ConsensusRepo) FirstIndex() (uint64, error) {
 		value = bytesToUint64([]byte(key)[1:])
 		return nil
 	})
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
+	return value, err
 }
 
 // LastIndex returns the last known index from the Raft log.
@@ -58,23 +58,18 @@ func (cr *ConsensusRepo) LastIndex() (uint64, error) { // TODO
 		}
 		return nil
 	})
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
+	return value, err
 }
 
 // GetLog gets a log entry from Badger at a given index.
 func (cr *ConsensusRepo) GetLog(index uint64, log *raft.Log) error {
 	prefix := append([]byte(ConsensusLogsNamespace), uint64ToBytes(index)...)
 	val, err := cr.db.Get(storage.DatabaseKey(prefix))
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return ErrKeyNotFound
+	}
 	if err != nil {
-		switch {
-		case errors.Is(err, badger.ErrKeyNotFound):
-			return ErrKeyNotFound
-		default:
-			return err
-		}
+		return err
 	}
 	return decodeMsgPack(val, log)
 }
@@ -92,9 +87,9 @@ func (cr *ConsensusRepo) StoreLog(log *raft.Log) error {
 // StoreLogs stores a set of raft logs.
 func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
 	last := 0
+	errTooBig := error(nil)
 	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
 		for i, log := range logs {
-			last = i
 			var (
 				key = append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
 			)
@@ -102,11 +97,18 @@ func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
 			if err != nil {
 				return err
 			}
-			return txn.Set(key, val.Bytes())
+			err = txn.Set(key, val.Bytes())
+			if errors.Is(err, badger.ErrTxnTooBig) {
+				last = i
+				errTooBig = err
+				return nil
+			}
+			return err
 		}
 		return nil
 	})
-	if errors.Is(err, badger.ErrTxnTooBig) {
+	if errTooBig != nil {
+		errTooBig = nil
 		return cr.StoreLogs(logs[last:])
 	}
 	return err
@@ -115,8 +117,9 @@ func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
 // DeleteRange deletes logs within a given range inclusively.
 func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 	var (
-		start = append([]byte(ConsensusLogsNamespace), uint64ToBytes(min)...)
-		end   = start
+		start     = append([]byte(ConsensusLogsNamespace), uint64ToBytes(min)...)
+		end       = start
+		errTooBig error
 	)
 
 	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
@@ -124,12 +127,18 @@ func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 			if bytesToUint64([]byte(key)[1:]) > max {
 				return nil
 			}
-			end = []byte(key)
-			return txn.Delete([]byte(key))
+			err := txn.Delete([]byte(key))
+			if errors.Is(err, badger.ErrTxnTooBig) {
+				end = []byte(key)
+				errTooBig = err
+				return nil
+			}
+			return err
 		})
 		return err
 	})
-	if errors.Is(err, badger.ErrTxnTooBig) {
+	if errTooBig != nil {
+		errTooBig = nil
 		return cr.DeleteRange(bytesToUint64(end[1:]), max)
 	}
 	return err
@@ -144,16 +153,13 @@ func (cr *ConsensusRepo) Set(key []byte, val []byte) error {
 func (cr *ConsensusRepo) Get(key []byte) ([]byte, error) {
 	prefix := append([]byte(ConsensusConfigNamespace), key...)
 	val, err := cr.db.Get(storage.DatabaseKey(prefix))
-	if err != nil {
-		switch {
-		case errors.Is(err, badger.ErrKeyNotFound):
-			return nil, ErrKeyNotFound
-		default:
-			return nil, err
-		}
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, ErrKeyNotFound
 	}
-	return val, nil
+	return val, err
 }
+
+// ======================= INCREMENT =========================
 
 // SetUint64 is like Set, but handles uint64 values
 func (cr *ConsensusRepo) SetUint64(key []byte, val uint64) error {
@@ -163,14 +169,13 @@ func (cr *ConsensusRepo) SetUint64(key []byte, val uint64) error {
 // GetUint64 is like Get, but handles uint64 values
 func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
 	val, err := cr.db.Get(storage.DatabaseKey(key))
-	if err != nil {
-		return 0, err
-	}
-	return bytesToUint64(val), nil
+	return bytesToUint64(val), err
 }
 func (cr *ConsensusRepo) Close() error {
 	return nil
 }
+
+// ======================= UTILS =========================
 
 // Decode reverses the encode operation on a byte slice input
 func decodeMsgPack(buf []byte, out interface{}) error {
@@ -199,24 +204,4 @@ func uint64ToBytes(u uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, u)
 	return buf
-}
-
-// ======================= SNAPSHOTS =========================
-func (cr *ConsensusRepo) SnapshotPath() string {
-	return cr.db.Path() + "/snapshot"
-}
-
-func (cr *ConsensusRepo) Create(version raft.SnapshotVersion, index, term uint64, configuration raft.Configuration, configurationIndex uint64, trans raft.Transport) (raft.SnapshotSink, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (cr *ConsensusRepo) List() ([]*raft.SnapshotMeta, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (cr *ConsensusRepo) Open(id string) (*raft.SnapshotMeta, io.ReadCloser, error) {
-	//TODO implement me
-	panic("implement me")
 }
