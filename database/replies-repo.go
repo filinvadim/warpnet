@@ -12,19 +12,19 @@ import (
 )
 
 const (
-	RepliesNamespace = "REPLIES"
+	RepliesNamespace = "REPLY"
 )
 
 // TweetRepo handles operations related to tweets
-type RepliesRepo struct {
+type ReplyRepo struct {
 	db *storage.DB
 }
 
-func NewRepliesRepo(db *storage.DB) *RepliesRepo {
-	return &RepliesRepo{db: db}
+func NewRepliesRepo(db *storage.DB) *ReplyRepo {
+	return &ReplyRepo{db: db}
 }
 
-func (repo *RepliesRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) {
+func (repo *ReplyRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) {
 	if reply == (domainGen.Tweet{}) {
 		return reply, errors.New("empty reply")
 	}
@@ -60,7 +60,7 @@ func (repo *RepliesRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error
 	return reply, repo.db.Set(treeKey, metaData)
 }
 
-func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domainGen.Tweet, err error) {
+func (repo *ReplyRepo) GetReply(rootID, parentID, replyID string) (tweet domainGen.Tweet, err error) {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
@@ -79,7 +79,7 @@ func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domai
 	return tweet, nil
 }
 
-func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
+func (repo *ReplyRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
 	if rootID == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
