@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
+	api "github.com/filinvadim/warpnet/interface/api-gen"
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/fs"
@@ -33,7 +33,7 @@ func (c *StaticController) GetIndex(ctx echo.Context) error {
 
 	f, err := c.fileSystem.Open("index.html")
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domainGen.Error{500, err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	fi, _ := f.Stat()
 	ff := f.(io.ReadSeeker)
@@ -48,7 +48,7 @@ func (c *StaticController) GetStaticFile(ctx echo.Context, filePath string) erro
 	fullPath := fmt.Sprintf("%s%s", "static/", filePath)
 	f, err := c.fileSystem.Open(fullPath)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, domainGen.Error{500, err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	fi, _ := f.Stat()
 	ff := f.(io.ReadSeeker)

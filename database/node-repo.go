@@ -42,9 +42,6 @@ type batch struct {
 	writeBatch *badger.WriteBatch
 }
 
-//	implicit bool - Whether this transaction has been implicitly created as a result of a direct Datastore
-//	method invocation.
-
 func NewNodeRepo(db *storage.DB) *NodeRepo {
 	nr := &NodeRepo{
 		db:       db,
@@ -58,9 +55,12 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build().
+		Bytes()
 	return d.db.WriteTxn(func(tx *badger.Txn) error {
-		return tx.Set(key.Bytes(), value)
+		return tx.Set(prefix, value)
 	})
 }
 
@@ -77,7 +77,11 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 		return ctx.Err()
 	}
 	return d.db.WriteTxn(func(tx *badger.Txn) error {
-		return tx.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		return tx.SetEntry(badger.NewEntry(prefix, value).WithTTL(ttl))
 	})
 }
 
@@ -108,7 +112,11 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 
 	expiration := time.Time{}
 	err = d.db.ReadTxn(func(tx *badger.Txn) error {
-		item, err := tx.Get(key.Bytes())
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		item, err := tx.Get(prefix)
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return ds.ErrNotFound
 		} else if err != nil {
@@ -131,7 +139,11 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 
 	value = []byte{}
 	err = d.db.ReadTxn(func(tx *badger.Txn) error {
-		item, err := tx.Get(key.Bytes())
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		item, err := tx.Get(prefix)
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			err = ds.ErrNotFound
 		}
@@ -155,7 +167,11 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 	}
 
 	err = d.db.ReadTxn(func(tx *badger.Txn) error {
-		_, err := tx.Get(key.Bytes())
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		_, err := tx.Get(prefix)
 		switch {
 		case errors.Is(err, badger.ErrKeyNotFound):
 			return nil
@@ -183,7 +199,11 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 	}
 
 	err = d.db.ReadTxn(func(tx *badger.Txn) error {
-		item, err := tx.Get(key.Bytes())
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		item, err := tx.Get(prefix)
 		switch {
 		case err == nil:
 			size = int(item.ValueSize())
@@ -206,7 +226,11 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 		return storage.ErrNotRunning
 	}
 	return d.db.WriteTxn(func(tx *badger.Txn) error {
-		return tx.Delete(key.Bytes())
+		prefix := storage.NewPrefixBuilder(NodesNamespace).
+			AddRootID(key.String()).
+			Build().
+			Bytes()
+		return tx.Delete(prefix)
 	})
 }
 
@@ -244,10 +268,12 @@ func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Result
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 
-	prefix := ds.NewKey(q.Prefix).String()
-	if prefix != "/" {
-		opt.Prefix = []byte(prefix + "/")
-	}
+	key := ds.NewKey(q.Prefix).String()
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key).
+		Build().
+		Bytes()
+	opt.Prefix = prefix
 
 	// Handle ordering
 	if len(q.Orders) > 0 {
@@ -483,11 +509,17 @@ func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
 }
 
 func (b *batch) put(key ds.Key, value []byte) error {
-	return b.writeBatch.Set(key.Bytes(), value)
+	batchKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+	return b.writeBatch.Set(batchKey.Bytes(), value)
 }
 
 func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
-	return b.writeBatch.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+	batchKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+	return b.writeBatch.SetEntry(badger.NewEntry(batchKey.Bytes(), value).WithTTL(ttl))
 }
 
 func (b *batch) Delete(ctx context.Context, key ds.Key) error {
@@ -498,8 +530,10 @@ func (b *batch) Delete(ctx context.Context, key ds.Key) error {
 	if b.ds.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
-
-	return b.writeBatch.Delete(key.Bytes())
+	batchKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+	return b.writeBatch.Delete(batchKey.Bytes())
 }
 
 func (b *batch) Commit(_ context.Context) error {

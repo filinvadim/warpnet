@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	externalRef0 "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -19,13 +20,45 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// AuthRequest defines model for AuthRequest.
+type AuthRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	Token string `json:"token"`
+	User  Owner  `json:"user"`
+}
+
+// Owner defines model for Owner.
+type Owner struct {
+	Birthdate    *time.Time `json:"birthdate,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	Description  string     `json:"description"`
+	FollowedNum  int64      `json:"followed_num"`
+	FollowersNum int64      `json:"followers_num"`
+	Id           string     `json:"id"`
+	Link         *string    `json:"link,omitempty"`
+	Location     *string    `json:"location,omitempty"`
+	NodeId       string     `json:"node_id"`
+	Username     string     `json:"username"`
+}
+
 // PostV1ApiAuthLogoutParams defines parameters for PostV1ApiAuthLogout.
 type PostV1ApiAuthLogoutParams struct {
 	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
 }
 
 // PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
-type PostV1ApiAuthLoginJSONRequestBody = externalRef0.AuthRequest
+type PostV1ApiAuthLoginJSONRequestBody = AuthRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -151,21 +184,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6xVX2/bNhD/KgS3p0Gu7C0LUL1lWzYYDZqi7oYBRWDQ4sm6liLV4ympEfi7D0fZsGyr",
-	"a9LtxTCo4/35/Tk+6jI0bfDgOeriUceyhsakvzY0Bv3yquP6LXzqILKcthRaIEZIMa2J8SGQlf+8aUEX",
-	"OjKhX+ttprsI5E0DIx+3mSb41CGB1cX7Q2R2yHiX7S+F1QcoWTLuWvozAp33skLi2hpO9apAjWFdaDmY",
-	"MKbcZx2WBIbBLg0//Y6FWBK2jMGPTl0F58IDJEiQoYmjUbsDQ2Q2w1tL3zVHvaDny4tDH+gZ1kCDKxS/",
-	"qRLFZ5TCcYId+o9HGTpyY5C5UJov4tVslgQVEBn3zEl8sLD8Qmt9SrDL1ear2mzQ34Bfc62LWfYVpaLV",
-	"2VCuQzUcfdg3d0LtKf4DvQwZPZLmuROkK/RVSDYd6lFff2YCb5y6ejNXVSBllEWZZdUxWPXuAZmBJg4/",
-	"gjJt63DHTKYZ2UmN387DJZnO9D1Q7KvMXkxfTAXG0II3LepC/5SOxL9cJ/py+VlDcpbYNNWZW13oP4Dn",
-	"3sJnLdDGNvjYG/jH6fR8oNtXiYPYNY2hjS70AugeVGTDWKoKHcQUkPcn+aMc/bAdFD/O9xa4Ix+V8Zth",
-	"ElVRaBTXoPaJlEWCkgNtdHY+wCIF/Y6u31lkGuBkxfePGqWO4CAySBrTVR94UBJTB9lu247tx7txbMrg",
-	"GXwaa8BeHkoGnkQmMM1hix9Zc4XepFFOK52uNL0YoBIFbKtiV5YQY9U5l5x3Mb04R1bAUD6wqkLn7RNZ",
-	"u5/lpsXcdFznLqwx7Yg2xBHZvAmR/5pdtSgv0k2K7RGFyL8Eu/kXfD7EfvkccPmeoNKF/i4/PH/57u3L",
-	"Rx6+7fEeEPa2z2LomzpI79wIQ3KuLLBBF3s6Zud0SPuqMujASszPY+aae5aF5VRtvHVACogCnVLHgUCV",
-	"BBY8o2zpTLNZi9ZTEX03xmTo+OlUSvC4jWowFuhgpL8ni+vFYn77evLu9tX16//DUyfq76X+3yD71YXY",
-	"mwdLGIFLgsUQu0mPK9yE0jhl4R5caBvwvC8lDww5AYW5LfJcnlVXh8jF5cvLl3p7t/0nAAD//98gUqvO",
-	"CQAA",
+	"H4sIAAAAAAAC/6xVbW/bNhD+KwS3T4Nc2VsWoPqWDdlgtGiKuHsBiiBgxJN1DUWqx1NSI/B/H45yYNlS",
+	"mwTrF0Mm7/V5njs+6DI0bfDgOeriQceyhsakz7OO60v43EFk+dtSaIEYIV22Jsb7QFa+edOCLnRkQr/W",
+	"20x3EcibBiYut5km+NwhgdXFx71lto94lT06hZtPULJEPCcKNK6iDHaYBD3DGkgcGojRrJ9RQQqxt59K",
+	"/jas0V9CbIOPMC6Cwy34r+IgFz8SVLrQP+R7rPMd0PnFvZeKj6rqY+4iTNXUu41quUHi2hpOZVaBGsO6",
+	"0HIwY0wwj4osCQyDvTb8fB8LsSRsGcN041VwLtyDvfZdcxAVPZ+e7CMOCNu5UHyBD07Lz6G/PYjQkZvq",
+	"woXSfLUFHyxc49P6btC/Bb/mWheL7AmtodXZUPJDGA8uHpMfIXmM0gF5Y5VIevRVkDIPGNPnX5jAG6fO",
+	"3i9VFUgZZVGKvukYrPpwj8xAM4e3oEzbOtwBlWlGdpLjH0Ot8sCqouBZVaaUuu+AYp9h8Wr+ai5YhRa8",
+	"aVEX+pd0JIPOdRJrLj9rSLoTEaccS6sL/Sfw0lv4ogW/fu6Sx8/z+biZizcJ6Ng1jaGNLvQK6A5UZMNY",
+	"qgodxGSQ9yf5gxz9tB0kP4x3CdyRj8r4zTCIdNoorkE9BlIWCUoOtNHZuIFVMvoDXb/cyDTAQFEXHx80",
+	"Sh7BQbhOQtJVb7iXC1MH2W4fT62xq2lsyuAZfGprwFweSgaeRSYwzX7PH0zJDXqTWjnOdDzwejVAJQrY",
+	"VsWuLCHGqnNuI7SfzE/GyAoYygdWVei8fSZrd4vctJibjuvcySZOWy/ECdm8D5H/Xpy1KE9X2to7RCHy",
+	"b8FuvoHPp9jvgT0u31raw6dxezjlQtv2RdS8LPXjezEi5a8IpCywQRd7BhZjBqRwVRl0YMXm16l5WnqW",
+	"ReRUbbx1QArS43vEFgcCVRJY8IzGRdGNWYu8UxJ9NUVe6Pj57Inx9OTUYCzQfnb+na3OV6vlxbvZh4s3",
+	"5+++xxgdCb5X9/+D7HcXYj8vmJblMVxiLDOw63Qig2xZZawlqSVLz1qha+a2yHN5zFwdIhenr09f6+3V",
+	"9r8AAAD//9drl2DbCQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

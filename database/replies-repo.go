@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/google/uuid"
 	"sort"
@@ -24,8 +24,8 @@ func NewRepliesRepo(db *storage.DB) *RepliesRepo {
 	return &RepliesRepo{db: db}
 }
 
-func (repo *RepliesRepo) AddReply(reply domain_gen.Tweet) (domain_gen.Tweet, error) {
-	if reply == (domain_gen.Tweet{}) {
+func (repo *RepliesRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) {
+	if reply == (domainGen.Tweet{}) {
 		return reply, errors.New("empty reply")
 	}
 	if reply.RootId == "" {
@@ -60,7 +60,7 @@ func (repo *RepliesRepo) AddReply(reply domain_gen.Tweet) (domain_gen.Tweet, err
 	return reply, repo.db.Set(treeKey, metaData)
 }
 
-func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domain_gen.Tweet, err error) {
+func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domainGen.Tweet, err error) {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
@@ -79,7 +79,7 @@ func (repo *RepliesRepo) GetReply(rootID, parentID, replyID string) (tweet domai
 	return tweet, nil
 }
 
-func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domain_gen.ReplyNode, string, error) {
+func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
 	if rootID == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
@@ -95,9 +95,9 @@ func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, 
 		return nil, "", err
 	}
 
-	replies := make([]domain_gen.Tweet, 0, len(items))
+	replies := make([]domainGen.Tweet, 0, len(items))
 	for _, item := range items {
-		var t domain_gen.Tweet
+		var t domainGen.Tweet
 		err = json.JSON.Unmarshal(item.Value, &t)
 		if err != nil {
 			return nil, "", err
@@ -109,23 +109,23 @@ func (repo *RepliesRepo) GetRepliesTree(rootID, parentID string, limit *uint64, 
 	return buildRepliesTree(replies), cur, nil
 }
 
-func buildRepliesTree(replies []domain_gen.Tweet) []domain_gen.ReplyNode {
-	nodeMap := make(map[string]domain_gen.ReplyNode, len(replies)) // Карта для хранения всех узлов
-	roots := make([]domain_gen.ReplyNode, 0, len(replies))         // Массив для корневых узлов
+func buildRepliesTree(replies []domainGen.Tweet) []domainGen.ReplyNode {
+	nodeMap := make(map[string]domainGen.ReplyNode, len(replies)) // Карта для хранения всех узлов
+	roots := make([]domainGen.ReplyNode, 0, len(replies))         // Массив для корневых узлов
 
 	for _, reply := range replies { // Создаем узлы для всех твитов
 		if reply.Id == "" {
 			continue
 		}
-		nodeMap[reply.Id] = domain_gen.ReplyNode{
+		nodeMap[reply.Id] = domainGen.ReplyNode{
 			Reply:    reply,
-			Children: []domain_gen.ReplyNode{},
+			Children: []domainGen.ReplyNode{},
 		}
 	}
 
 	for _, reply := range replies { // Построение дерева
 		var (
-			node domain_gen.ReplyNode
+			node domainGen.ReplyNode
 			ok   bool
 		)
 		if reply.Id != "" {
@@ -147,7 +147,7 @@ func buildRepliesTree(replies []domain_gen.Tweet) []domain_gen.ReplyNode {
 			continue
 		}
 
-		expandedChildren := make([]domain_gen.ReplyNode, 0, len(parentNode.Children)+1)
+		expandedChildren := make([]domainGen.ReplyNode, 0, len(parentNode.Children)+1)
 		copy(expandedChildren, parentNode.Children)
 		expandedChildren = append(expandedChildren, node)
 		parentNode.Children = expandedChildren // Добавляем в Children родителя

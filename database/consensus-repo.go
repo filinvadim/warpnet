@@ -6,18 +6,18 @@ import (
 	"errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/hashicorp/go-msgpack/v2/codec"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/hashicorp/raft"
 )
 
 const (
-	ConsensusLogsNamespace   = "LOGS"
-	ConsensusConfigNamespace = "CONFIG"
+	ConsensusLogsNamespace   = "LOGS:"
+	ConsensusConfigNamespace = "CONFIG:"
 )
 
 var (
 	// ErrKeyNotFound is an error indicating a given key does not exist
-	ErrKeyNotFound = errors.New("not found")
+	ErrKeyNotFound = errors.New("consensus key not found")
 )
 
 type ConsensusRepo struct {
@@ -26,6 +26,10 @@ type ConsensusRepo struct {
 
 func NewConsensusRepo(db *storage.DB) *ConsensusRepo {
 	return &ConsensusRepo{db: db}
+}
+
+func (cr *ConsensusRepo) Sync() error {
+	return cr.db.Sync()
 }
 
 func (cr *ConsensusRepo) SnapshotPath() string {
@@ -71,12 +75,12 @@ func (cr *ConsensusRepo) GetLog(index uint64, log *raft.Log) error {
 	if err != nil {
 		return err
 	}
-	return decodeMsgPack(val, log)
+	return decode(val, log)
 }
 
 // StoreLog stores a single raft log.
 func (cr *ConsensusRepo) StoreLog(log *raft.Log) error {
-	val, err := encodeMsgPack(log)
+	val, err := encode(log)
 	if err != nil {
 		return err
 	}
@@ -93,7 +97,7 @@ func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
 			var (
 				key = append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
 			)
-			val, err := encodeMsgPack(log)
+			val, err := encode(log)
 			if err != nil {
 				return err
 			}
@@ -178,19 +182,15 @@ func (cr *ConsensusRepo) Close() error {
 // ======================= UTILS =========================
 
 // Decode reverses the encode operation on a byte slice input
-func decodeMsgPack(buf []byte, out interface{}) error {
+func decode(buf []byte, out interface{}) error {
 	r := bytes.NewBuffer(buf)
-	hd := codec.MsgpackHandle{}
-	dec := codec.NewDecoder(r, &hd)
-	return dec.Decode(out)
+	return json.JSON.NewDecoder(r).Decode(out)
 }
 
 // Encode writes an encoded object to a new bytes buffer
-func encodeMsgPack(in interface{}) (*bytes.Buffer, error) {
+func encode(in interface{}) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
-	hd := codec.MsgpackHandle{}
-	enc := codec.NewEncoder(buf, &hd)
-	err := enc.Encode(in)
+	err := json.JSON.NewEncoder(buf).Encode(in)
 	return buf, err
 }
 

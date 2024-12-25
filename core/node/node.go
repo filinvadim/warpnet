@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"encoding/json"
+	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -13,10 +15,12 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
@@ -56,14 +60,37 @@ func NewNode(
 	ctx context.Context,
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
+	isBootstrap bool,
 ) (*Node, error) {
 	_ = logging.SetLogLevel("*", "info")
 	privKey := authRepo.PrivateKey()
 
-	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
+	var (
+		store          peerstore.Peerstore
+		providersCache providers.ProviderStore
+		err            error
+	)
+	if isBootstrap {
+		store, err = pstoremem.NewPeerstore()
+		if err != nil {
+			return nil, err
+		}
+		mapStore := datastore.NewMapDatastore()
+		providersCache, err = providers.NewProviderManager("bootstrap", store, mapStore)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		store, err = pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
+		if err != nil {
+			return nil, err
+		}
+		providersCache, err = NewProviderCache(ctx, nodeRepo)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
 	manager, err := connmgr.NewConnManager(
@@ -89,10 +116,6 @@ func NewNode(
 		relays = append(relays, *ai)
 	}
 
-	providersCache, err := NewProviderCache(ctx, nodeRepo)
-	if err != nil {
-		return nil, err
-	}
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(
 			"/ip4/0.0.0.0/tcp/4001",
@@ -138,6 +161,7 @@ func NewNode(
 		mdnsService,
 		relay,
 	}
+	registerHandler(n.node)
 	return n, nil
 }
 
@@ -157,7 +181,9 @@ func (n *Node) Stop() error {
 	if n.relay != nil {
 		_ = n.relay.Close()
 	}
-	_ = n.nodeRepo.Close()
+	if n.nodeRepo != nil {
+		_ = n.nodeRepo.Close()
+	}
 
 	return n.node.Close()
 }
@@ -213,26 +239,35 @@ type DiscoveryMessage struct {
 	Addrs  []string `json:"addrs"`
 }
 
-func registerHandler(h host.Host, protocolID protocol.ID) {
-	h.SetStreamHandler(protocolID, func(s network.Stream) {
-		defer s.Close()
-		log.Println("New stream opened")
+func registerHandler(h host.Host) {
+	sw, _ := nodeGen.GetSwagger()
+	paths := sw.Paths
 
-		buf := make([]byte, 1024)
-		n, err := s.Read(buf)
-		if err != nil {
-			log.Printf("Error reading from stream: %s", err)
-			return
-		}
-		log.Printf("Received message: %s", string(buf[:n]))
+	if paths == nil {
+		log.Fatal("swagger has no paths")
+	}
 
-		// Отправляем ответ
-		_, err = s.Write([]byte("Hello, client!"))
-		if err != nil {
-			log.Printf("Error writing to stream: %s", err)
-			return
-		}
-	})
+	for k := range paths.Map() {
+		h.SetStreamHandler(protocol.ID(k), func(s network.Stream) {
+			defer s.Close()
+			log.Println("New stream opened", protocol.ID(k), s.Conn().RemotePeer())
+
+			buf := make([]byte, 1024)
+			n, err := s.Read(buf)
+			if err != nil {
+				log.Printf("Error reading from stream: %s", err)
+				return
+			}
+			log.Printf("Received message: %s", string(buf[:n]))
+
+			// Отправляем ответ
+			_, err = s.Write([]byte("Hello, client!"))
+			if err != nil {
+				log.Printf("Error writing to stream: %s", err)
+				return
+			}
+		})
+	}
 }
 
 func sendMessage(h host.Host, peerID peer.ID, protocol protocol.ID, message string) {

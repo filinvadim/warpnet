@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/database"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
-	"github.com/filinvadim/warpnet/interface/api-gen"
+	api "github.com/filinvadim/warpnet/interface/api-gen"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
@@ -39,12 +38,12 @@ func NewAuthController(
 
 func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	if c.isAuthenticated.Load() {
-		return ctx.JSON(http.StatusBadRequest, domainGen.Error{400, "already authenticated"})
+		return ctx.JSON(http.StatusBadRequest, api.Error{400, "already authenticated"})
 	}
-	var req domainGen.AuthRequest
+	var req api.AuthRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(
-			http.StatusBadRequest, domainGen.Error{400, fmt.Sprintf("bind: %v", err)},
+			http.StatusBadRequest, api.Error{400, fmt.Sprintf("bind: %v", err)},
 		)
 	}
 
@@ -52,13 +51,13 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(
 			http.StatusForbidden,
-			domainGen.Error{403, fmt.Sprintf("autenticate: %v", err)},
+			api.Error{403, fmt.Sprintf("autenticate: %v", err)},
 		)
 	}
 
 	owner, err := c.userRepo.Owner()
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
-		return ctx.JSON(http.StatusInternalServerError, domainGen.Error{500, err.Error()})
+		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	if errors.Is(err, database.ErrUserNotFound) {
 		err := c.userRepo.CreateOwner(database.Owner{
@@ -68,12 +67,12 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		if err != nil {
 			return ctx.JSON(
 				http.StatusInternalServerError,
-				domainGen.Error{500, fmt.Sprintf("create owner: %v", err)},
+				api.Error{500, fmt.Sprintf("create owner: %v", err)},
 			)
 		}
 		owner, _ = c.userRepo.Owner()
 	}
-	userResponse := domainGen.User{
+	userResponse := api.Owner{
 		CreatedAt:   owner.CreatedAt,
 		Description: owner.Description,
 		Id:          owner.Id,
@@ -83,14 +82,14 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	if owner.Username != req.Username {
 		return ctx.JSON(
 			http.StatusBadRequest,
-			domainGen.Error{400, fmt.Sprintf("user %s doesn't exist", req.Username)},
+			api.Error{400, fmt.Sprintf("user %s doesn't exist", req.Username)},
 		)
 	}
 
 	c.authReady <- struct{}{}
 	c.isAuthenticated.Store(true)
 	ctx.Response().Header().Set(config.SessionTokenName, token)
-	return ctx.JSON(http.StatusOK, domainGen.LoginResponse{token, userResponse})
+	return ctx.JSON(http.StatusOK, api.LoginResponse{token, userResponse})
 }
 
 func (c *AuthController) PostV1ApiAuthLogout(ctx echo.Context, _ api.PostV1ApiAuthLogoutParams) error {
