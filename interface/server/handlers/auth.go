@@ -18,6 +18,7 @@ type AuthController struct {
 	authRepo        *database.AuthRepo
 	userRepo        *database.UserRepo
 	interrupt       chan os.Signal
+	nodeReady       chan string
 	authReady       chan struct{}
 }
 
@@ -25,6 +26,7 @@ func NewAuthController(
 	authRepo *database.AuthRepo,
 	userRepo *database.UserRepo,
 	interrupt chan os.Signal,
+	nodeReady chan string,
 	authReady chan struct{},
 ) *AuthController {
 	return &AuthController{
@@ -32,6 +34,7 @@ func NewAuthController(
 		authRepo,
 		userRepo,
 		interrupt,
+		nodeReady,
 		authReady,
 	}
 }
@@ -54,6 +57,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 			api.Error{403, fmt.Sprintf("autenticate: %v", err)},
 		)
 	}
+	c.authReady <- struct{}{}
 
 	owner, err := c.userRepo.Owner()
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
@@ -86,7 +90,21 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		)
 	}
 
-	c.authReady <- struct{}{}
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return ctx.JSON(http.StatusInternalServerError, api.Error{500, "node starting is timed out"})
+	case nodeId := <-c.nodeReady:
+		owner.NodeId = nodeId
+	}
+
+	if err = c.userRepo.CreateOwner(owner); err != nil {
+		return ctx.JSON(
+			http.StatusInternalServerError,
+			api.Error{500, fmt.Sprintf("failed to update user: %v", err)},
+		)
+	}
 	c.isAuthenticated.Store(true)
 	ctx.Response().Header().Set(config.SessionTokenName, token)
 	return ctx.JSON(http.StatusOK, api.LoginResponse{token, userResponse})

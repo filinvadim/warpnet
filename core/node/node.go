@@ -38,9 +38,10 @@ var publicRelays = []string{
 }
 
 type Node struct {
-	ID       string
-	nodeRepo *database.NodeRepo
-	authRepo *database.AuthRepo
+	id        string
+	addresses []string
+	nodeRepo  *database.NodeRepo
+	authRepo  *database.AuthRepo
 
 	node  host.Host
 	mdns  mdns.Service
@@ -116,12 +117,14 @@ func NewNode(
 		relays = append(relays, *ai)
 	}
 
+	listenAddrs := []string{
+		"/ip4/0.0.0.0/tcp/4001",
+		"/ip4/0.0.0.0/tcp/4001/ws",
+		"/ip6/::/tcp/4001",
+	}
+
 	node, err := libp2p.New(
-		libp2p.ListenAddrStrings(
-			"/ip4/0.0.0.0/tcp/4001",
-			"/ip4/0.0.0.0/tcp/4001/ws",
-			"/ip6/::/tcp/4001",
-		),
+		libp2p.ListenAddrStrings(listenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
 		libp2p.Identity(privKey.(crypto.PrivKey)),
@@ -153,8 +156,14 @@ func NewNode(
 		return nil, err
 	}
 
+	var addresses = make([]string, 0, len(listenAddrs))
+	for _, addr := range node.Addrs() {
+		addresses = append(addresses, addr.Decapsulate(addr).String())
+	}
+
 	n := &Node{
 		node.ID().String(),
+		addresses,
 		nodeRepo,
 		authRepo,
 		node,
@@ -165,8 +174,12 @@ func NewNode(
 	return n, nil
 }
 
-func (n *Node) GetID() string {
-	return n.ID
+func (n *Node) ID() string {
+	return n.id
+}
+
+func (n *Node) Addresses() []string {
+	return n.addresses
 }
 
 func (n *Node) Stop() error {

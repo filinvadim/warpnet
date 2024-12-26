@@ -59,6 +59,9 @@ func (db *DB) Run(username, password string) (err error) {
 	if db.isRunning.Load() {
 		return nil
 	}
+	if username == "" || password == "" {
+		return errors.New("DB username or password is empty")
+	}
 	hashSum := encrypting.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
 

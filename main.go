@@ -48,6 +48,7 @@ func main() {
 	if *hosts != "" {
 		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
 	}
+	fmt.Println("IS BOOTSTRAP:", *isBootstrap)
 	fmt.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
 
 	var interruptChan = make(chan os.Signal, 1)
@@ -66,15 +67,21 @@ func main() {
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	if isBootstrap != nil && !*isBootstrap {
+	var nodeReadyChan = make(chan string, 1)
+	defer close(nodeReadyChan)
+	var authReadyChan = make(chan struct{})
+	defer close(authReadyChan)
+
+	if *isBootstrap {
+		if err := db.Run("bootstrap", "bootstrap"); err != nil {
+			log.Fatalln("DB bootstrap run failed", err)
+		}
+	}
+	if !*isBootstrap {
 		//followRepo := database.NewFollowRepo(db)
 		//timelineRepo := database.NewTimelineRepo(db)
 		//tweetRepo := database.NewTweetRepo(db)
 		//replyRepo := database.NewRepliesRepo(db)
-
-		if err := db.Run("", ""); err == nil {
-			log.Fatalln("DB run failed", err)
-		}
 
 		interfaceServer, err := server.NewInterfaceServer()
 		if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
@@ -82,12 +89,11 @@ func main() {
 		}
 		defer interfaceServer.Shutdown(ctx)
 
-		var authReadyChan = make(chan struct{}, 1)
-
 		if interfaceServer != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 			interfaceServer.RegisterHandlers(&API{
 				handlers.NewStaticController(staticFolder),
-				handlers.NewAuthController(authRepo, userRepo, interruptChan, authReadyChan),
+				handlers.NewAuthController(
+					authRepo, userRepo, interruptChan, nodeReadyChan, authReadyChan),
 			})
 			go interfaceServer.Start()
 		} else {
@@ -98,7 +104,7 @@ func main() {
 		case <-interruptChan:
 			return
 		case <-authReadyChan:
-			log.Println("auth is ready")
+			log.Println("authentication was successful")
 		}
 	}
 
@@ -111,22 +117,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
-	log.Println("NODE STARTED WITH ID", n.GetID())
+	nodeReadyChan <- n.ID()
+	log.Println("NODE STARTED WITH ID", n.ID())
+	log.Println("AND ADDRESSES", n.Addresses())
 
 	defer func() {
 		if err := n.Stop(); err != nil {
 			log.Fatalf("failed to stop node: %v", err)
 		}
 	}()
-
-	owner, err := userRepo.Owner()
-	if err != nil {
-		log.Fatalf("failed to fetch owner user: %v", err)
-	}
-	owner.NodeId = n.GetID()
-	if err = userRepo.CreateOwner(owner); err != nil {
-		log.Fatalf("failed to update user: %v", err)
-	}
 
 	<-interruptChan
 	fmt.Println("interrupted...")
