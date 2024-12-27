@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/rand"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/ipfs/go-datastore"
@@ -32,7 +31,7 @@ import (
 const NetworkName = "warpnet"
 
 var defaultBootstrapNodes = []string{
-	"/ip4/10.244.23.72/tcp/4001/p2p/12D3KooWShipNUXh4dWDMkRTvGLm8otnP7egHU15CuAsxkeCSFxZ",
+	"/dns4/warpnet-app-6vxu4.ondigitalocean.app/tcp/4001/p2p/12D3KooWShipNUXh4dWDMkRTvGLm8otnP7egHU15CuAsxkeCSFxZ",
 }
 
 type Node struct {
@@ -60,9 +59,7 @@ func NewNode(
 		providersCache providers.ProviderStore
 	)
 	if isBootstrap {
-		seed := make([]byte, 8)
-		_, _ = rand.Read(seed)
-		privKey, err = encrypting.GenerateKeyFromSeed(seed)
+		privKey, err = encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
 		if err != nil {
 			return nil, err
 		}
