@@ -31,8 +31,8 @@ import (
 const NetworkName = "warpnet"
 
 var defaultBootstrapNodes = []string{
-	"/ip4/188.166.192.56/tcp/4001/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee",
-	"/ip4/188.166.192.56/tcp/4002/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee",
+	"/ip4/188.166.192.56/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
+	"/ip4/188.166.192.56/tcp/4002/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
 }
 
 type Node struct {
@@ -60,7 +60,7 @@ func NewNode(
 		providersCache providers.ProviderStore
 	)
 	if isBootstrap {
-		privKey, err = encrypting.GenerateKeyFromSeed([]byte("1"))
+		privKey, err = encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
 		if err != nil {
 			return nil, err
 		}
@@ -164,6 +164,9 @@ func NewNode(
 	}
 	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 
+	if isBootstrap {
+		return n, nil
+	}
 	for _, maddr := range defaultBootstrapNodes {
 		peerInfo, _ := peer.AddrInfoFromString(maddr)
 		if err := n.node.Connect(ctx, *peerInfo); err != nil {
