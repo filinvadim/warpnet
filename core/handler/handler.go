@@ -2,10 +2,46 @@ package handler
 
 import (
 	"errors"
+	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
 	"github.com/filinvadim/warpnet/database"
 	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/labstack/echo/v4"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"log"
 )
+
+func registerHandler(h host.Host) {
+	sw, _ := nodeGen.GetSwagger()
+	paths := sw.Paths
+
+	if paths == nil {
+		log.Fatal("swagger has no paths")
+	}
+
+	for k := range paths.Map() {
+		h.SetStreamHandler(protocol.ID(k), func(s network.Stream) {
+			defer s.Close()
+			log.Println("New stream opened", protocol.ID(k), s.Conn().RemotePeer())
+
+			buf := make([]byte, 1024)
+			n, err := s.Read(buf)
+			if err != nil {
+				log.Printf("Error reading from stream: %s", err)
+				return
+			}
+			log.Printf("Received message: %s", string(buf[:n]))
+
+			// Отправляем ответ
+			_, err = s.Write([]byte("Hello, client!"))
+			if err != nil {
+				log.Printf("Error writing to stream: %s", err)
+				return
+			}
+		})
+	}
+}
 
 type NodeStreamHandler struct {
 	userRepo     *database.UserRepo

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
-	"github.com/filinvadim/warpnet/interface/server"
-	"github.com/filinvadim/warpnet/interface/server/handlers"
+	"github.com/filinvadim/warpnet/server/server"
+	"github.com/filinvadim/warpnet/server/server/handlers"
 	"log"
 	"os"
 	"os/signal"
@@ -24,10 +24,10 @@ import (
 )
 
 var (
-	version string
+	version = "0.0.1"
 )
 
-//go:embed interface/static
+//go:embed server/static
 var staticFolder embed.FS
 
 type API struct {
@@ -36,30 +36,27 @@ type API struct {
 }
 
 func main() {
-	var (
-		hosts       = new(string)
-		isBootstrap = new(bool)
-	)
-	hosts = flag.String("hosts", "", "comma-separated list of hostnames")
-	isBootstrap = flag.Bool("is-bootstrap", false, "is bootstrap node?")
+	hosts := flag.String("bootstrap-hosts", "", "comma-separated list of hostnames")
+	isBstp := flag.Bool("is-bootstrap", false, "is bootstrap node?")
 	flag.Parse()
-
-	var bootstrapAddrs []string
-	if *hosts != "" {
-		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
-	}
-	fmt.Println("IS BOOTSTRAP:", *isBootstrap)
-	fmt.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
+	isBootstrap := *isBstp
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
+	var bootstrapAddrs []string
+	if hosts != nil && *hosts != "" {
+		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
+	}
+	log.Println("IS BOOTSTRAP:", isBootstrap)
+	log.Println("BOOTSTRAP ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	path := getAppPath(*isBootstrap)
+	path := getAppPath(isBootstrap)
 	db := storage.New(
-		path, *isBootstrap,
+		path, isBootstrap,
 	)
 	defer db.Close()
 
@@ -72,20 +69,10 @@ func main() {
 	var authReadyChan = make(chan struct{})
 	defer close(authReadyChan)
 
-	if *isBootstrap {
-		if err := db.Run("bootstrap", "bootstrap"); err != nil {
-			log.Fatalln("DB bootstrap run failed", err)
-		}
-	}
-	if !*isBootstrap {
-		//followRepo := database.NewFollowRepo(db)
-		//timelineRepo := database.NewTimelineRepo(db)
-		//tweetRepo := database.NewTweetRepo(db)
-		//replyRepo := database.NewRepliesRepo(db)
-
+	if !isBootstrap {
 		interfaceServer, err := server.NewInterfaceServer()
 		if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
-			log.Fatalf("failed to run owner handler: %v", err)
+			log.Fatalf("failed to run public server: %v", err)
 		}
 		defer interfaceServer.Shutdown(ctx)
 
@@ -102,6 +89,7 @@ func main() {
 
 		select {
 		case <-interruptChan:
+			log.Println("logged out")
 			return
 		case <-authReadyChan:
 			log.Println("authentication was successful")
@@ -112,14 +100,12 @@ func main() {
 		ctx,
 		nodeRepo,
 		authRepo,
-		*isBootstrap,
+		isBootstrap,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
 	nodeReadyChan <- n.ID()
-	log.Println("NODE STARTED WITH ID", n.ID())
-	log.Println("AND ADDRESSES", n.Addresses())
 
 	defer func() {
 		if err := n.Stop(); err != nil {
@@ -128,7 +114,7 @@ func main() {
 	}()
 
 	<-interruptChan
-	fmt.Println("interrupted...")
+	log.Println("interrupted...")
 }
 
 func getAppPath(isBootstrap bool) string {
@@ -167,7 +153,7 @@ func getAppPath(isBootstrap bool) string {
 }
 
 func manualCredsInput(
-	interfaceServer server.PublicServerStarter,
+	interfaceServer server.PublicServer,
 	db *storage.DB,
 ) {
 	if interfaceServer == nil {
@@ -182,3 +168,8 @@ func manualCredsInput(
 		}
 	}
 }
+
+//followRepo := database.NewFollowRepo(db)
+//timelineRepo := database.NewTimelineRepo(db)
+//tweetRepo := database.NewTweetRepo(db)
+//replyRepo := database.NewRepliesRepo(db)

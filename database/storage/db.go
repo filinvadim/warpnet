@@ -32,7 +32,7 @@ type DB struct {
 
 func New(
 	path string,
-	isInMemory bool,
+	isBootstrap bool,
 ) *DB {
 	dbPath := path + config.DatabaseFolder
 	opts := badger.
@@ -43,13 +43,19 @@ func New(
 		WithNumCompactors(2).
 		WithLogger(nil)
 
-	if isInMemory {
-		opts.WithInMemory(isInMemory)
+	if isBootstrap {
+		opts.WithInMemory(true)
 	}
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
 		sequence: nil, opts: opts, dbPath: dbPath,
+	}
+
+	if isBootstrap {
+		if err := storage.Run("bootstrap", "bootstrap"); err != nil {
+			log.Fatalln("database bootstrap run failed", err)
+		}
 	}
 
 	return storage
@@ -60,7 +66,7 @@ func (db *DB) Run(username, password string) (err error) {
 		return nil
 	}
 	if username == "" || password == "" {
-		return errors.New("DB username or password is empty")
+		return errors.New("database username or password is empty")
 	}
 	hashSum := encrypting.ConvertToSHA256([]byte(username + "@" + password))
 	db.opts.WithEncryptionKey(hashSum)
@@ -76,12 +82,17 @@ func (db *DB) Run(username, password string) (err error) {
 	}
 
 	go db.runEventualGC()
-	log.Println("DATABASE IS RUNNING!")
+
+	if username == "bootstrap" {
+		log.Printf("database is running in bootstrap mode")
+	} else {
+		log.Printf("database is running in regular mode")
+	}
 	return nil
 }
 
 func (db *DB) runEventualGC() {
-	log.Println("badger GC started")
+	log.Println("database garbage collection started")
 	db.badger.RunValueLogGC(discardRatio)
 	for {
 		select {
@@ -346,6 +357,7 @@ func (db *DB) GC() {
 }
 
 func (db *DB) Close() {
+	log.Println("closing database...")
 	close(db.stopChan)
 	if db.sequence != nil {
 		_ = db.sequence.Release()
@@ -358,6 +370,6 @@ func (db *DB) Close() {
 	}
 	db.isRunning.Store(false)
 	if err := db.badger.Close(); err != nil {
-		log.Println("badger close: ", err)
+		log.Println("database close: ", err)
 	}
 }

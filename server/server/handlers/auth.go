@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/database"
-	api "github.com/filinvadim/warpnet/interface/api-gen"
+	api "github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"

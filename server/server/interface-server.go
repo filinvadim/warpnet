@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	api_gen "github.com/filinvadim/warpnet/interface/api-gen"
-	ownMiddleware "github.com/filinvadim/warpnet/interface/middleware"
+	api_gen "github.com/filinvadim/warpnet/server/api-gen"
+	ownMiddleware "github.com/filinvadim/warpnet/server/middleware"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -21,7 +22,7 @@ type (
 	HandlersInterface = api_gen.ServerInterface
 )
 
-type PublicServerStarter interface {
+type PublicServer interface {
 	Start()
 	Router() Router
 	Shutdown(ctx context.Context)
@@ -32,7 +33,7 @@ type interfaceServer struct {
 	e *echo.Echo
 }
 
-func NewInterfaceServer() (PublicServerStarter, error) {
+func NewInterfaceServer() (PublicServer, error) {
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
@@ -67,6 +68,7 @@ func NewInterfaceServer() (PublicServerStarter, error) {
 }
 
 func (p *interfaceServer) Start() {
+	log.Println("starting public server...")
 	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
 		p.e.Logger.Printf("interface server start: %v", err)
 	}
@@ -86,6 +88,7 @@ func (p *interfaceServer) Shutdown(ctx context.Context) {
 			p.e.Logger.Error(r)
 		}
 	}()
+	log.Println("shutting down public server...")
 	if p == nil {
 		return
 	}

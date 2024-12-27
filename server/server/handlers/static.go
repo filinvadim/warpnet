@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
-	api "github.com/filinvadim/warpnet/interface/api-gen"
+	api "github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 )
@@ -21,8 +21,8 @@ type StaticController struct {
 
 func NewStaticController(staticFolder StaticFolderOpener) *StaticController {
 	pwd, _ := os.Getwd()
-	fmt.Println("CURRENT DIRECTORY: ", pwd)
-	fileSystem := echo.MustSubFS(staticFolder, config.StaticDirPath)
+	log.Println("CURRENT DIRECTORY: ", pwd)
+	fileSystem := echo.MustSubFS(staticFolder, "server/static/")
 	return &StaticController{fileSystem}
 }
 

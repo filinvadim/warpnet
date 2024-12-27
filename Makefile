@@ -29,3 +29,6 @@ prune-idea:
 
 check-heap:
 	go build -gcflags="-m" main.go
+
+docker-build:
+	docker build -t warpnet .

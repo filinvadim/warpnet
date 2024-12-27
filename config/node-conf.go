@@ -10,7 +10,6 @@ const (
 	{"time":"${time_datetime_only}",` +
 		`"method":"${method}","host":"${host}","uri":"${uri}",` +
 		`"status":${status},"error":"${error}}` + "\n"
-	StaticDirPath = "interface/static/"
 )
 
 type NodeAddress string

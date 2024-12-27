@@ -39,7 +39,7 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 		return "", storage.ErrNotRunning
 	}
 
-	randChar := string(uint8(rand.Uint()))
+	randChar := string(uint8(rand.Int()))
 	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
 	repo.sessionToken = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
 

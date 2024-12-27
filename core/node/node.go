@@ -2,18 +2,16 @@ package node
 
 import (
 	"context"
-	"encoding/json"
-	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
+	"crypto/rand"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -62,16 +60,21 @@ func NewNode(
 	nodeRepo *database.NodeRepo,
 	authRepo *database.AuthRepo,
 	isBootstrap bool,
-) (*Node, error) {
-	_ = logging.SetLogLevel("*", "info")
+) (_ *Node, err error) {
+	_ = logging.SetLogLevel("*", "warn")
 	privKey := authRepo.PrivateKey()
 
 	var (
 		store          peerstore.Peerstore
 		providersCache providers.ProviderStore
-		err            error
 	)
 	if isBootstrap {
+		seed := make([]byte, 8)
+		_, _ = rand.Read(seed)
+		privKey, err = encrypting.GenerateKeyFromSeed(seed)
+		if err != nil {
+			return nil, err
+		}
 		store, err = pstoremem.NewPeerstore()
 		if err != nil {
 			return nil, err
@@ -158,14 +161,7 @@ func NewNode(
 
 	var addresses = make([]string, 0, len(listenAddrs))
 	for _, addr := range node.Addrs() {
-		if addr == nil {
-			continue
-		}
-		a := addr.Decapsulate(addr)
-		if a == nil {
-			continue
-		}
-		addresses = append(addresses, a.String())
+		addresses = append(addresses, addr.String())
 	}
 
 	n := &Node{
@@ -177,7 +173,7 @@ func NewNode(
 		mdnsService,
 		relay,
 	}
-	registerHandler(n.node)
+	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	return n, nil
 }
 
@@ -190,9 +186,10 @@ func (n *Node) Addresses() []string {
 }
 
 func (n *Node) Stop() error {
+	log.Println("shutting down node...")
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("recovered:", r)
+			log.Printf("recovered: %v\n", r)
 		}
 	}()
 	if n.mdns != nil {
@@ -224,10 +221,13 @@ func setupPrivateDHT(
 	}
 	go func() {
 		if err := kdht.Bootstrap(ctx); err != nil {
-			log.Printf("failed to bootstrap kdht: %v", err)
+			log.Printf("failed to bootstrap kdht: %v\n", err)
 		}
 	}()
 	go monitorDHT(kdht)
+	if err = <-kdht.RefreshRoutingTable(); err != nil {
+		log.Printf("failed to refresh kdht routing table: %v\n", err)
+	}
 	return kdht, nil
 }
 
@@ -236,57 +236,6 @@ func monitorDHT(idht *dht.IpfsDHT) {
 		time.Sleep(50 * time.Second)
 		peers := idht.RoutingTable().ListPeers()
 		log.Printf("DHT routing table contains %d peers", len(peers))
-	}
-}
-
-type discoveryNotifee struct {
-	host host.Host
-}
-
-func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
-	log.Printf("Found new peer: %s", pi.ID.String())
-	if err := n.host.Connect(context.Background(), pi); err != nil {
-		log.Printf("Failed to connect to new peer: %s", err)
-	} else {
-		log.Printf("Connected to new peer: %s", pi.ID)
-	}
-}
-
-const discoveryTopic = "peer-discovery"
-
-type DiscoveryMessage struct {
-	PeerID string   `json:"peer_id"`
-	Addrs  []string `json:"addrs"`
-}
-
-func registerHandler(h host.Host) {
-	sw, _ := nodeGen.GetSwagger()
-	paths := sw.Paths
-
-	if paths == nil {
-		log.Fatal("swagger has no paths")
-	}
-
-	for k := range paths.Map() {
-		h.SetStreamHandler(protocol.ID(k), func(s network.Stream) {
-			defer s.Close()
-			log.Println("New stream opened", protocol.ID(k), s.Conn().RemotePeer())
-
-			buf := make([]byte, 1024)
-			n, err := s.Read(buf)
-			if err != nil {
-				log.Printf("Error reading from stream: %s", err)
-				return
-			}
-			log.Printf("Received message: %s", string(buf[:n]))
-
-			// Отправляем ответ
-			_, err = s.Write([]byte("Hello, client!"))
-			if err != nil {
-				log.Printf("Error writing to stream: %s", err)
-				return
-			}
-		})
 	}
 }
 
@@ -314,80 +263,4 @@ func sendMessage(h host.Host, peerID peer.ID, protocol protocol.ID, message stri
 		return
 	}
 	log.Printf("Response: %s", string(buf[:n]))
-}
-
-func newPubSub(ctx context.Context, h host.Host) {
-	// Настраиваем PubSub
-	ps, err := pubsub.NewGossipSub(ctx, h)
-	if err != nil {
-		log.Fatalf("Failed to create PubSub: %s", err)
-	}
-
-	// Подключаемся к топику
-	topic, err := ps.Join(discoveryTopic)
-	if err != nil {
-		log.Fatalf("Failed to join discovery topic: %s", err)
-	}
-
-	// Подписываемся на сообщения
-	go subscribeToDiscovery(ctx, topic, h)
-
-	// Публикуем информацию об узле каждые 10 секунд
-	for {
-		addrs := make([]string, 0)
-		for _, addr := range h.Addrs() {
-			addrs = append(addrs, addr.String())
-		}
-		err := publishPeerInfo(ctx, topic, h.ID().String(), addrs)
-		if err != nil {
-			log.Printf("Failed to publish peer info: %s", err)
-		}
-		time.Sleep(10 * time.Second)
-	}
-}
-
-func subscribeToDiscovery(ctx context.Context, topic *pubsub.Topic, h host.Host) {
-	sub, err := topic.Subscribe()
-	if err != nil {
-		log.Fatalf("Failed to subscribe to topic: %s", err)
-	}
-
-	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			log.Printf("Subscription error: %s", err)
-			continue
-		}
-
-		// Обработка сообщения
-		var discoveryMsg DiscoveryMessage
-		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-			log.Printf("Failed to decode discovery message: %s", err)
-			continue
-		}
-
-		// Подключение к узлу
-		peerInfo, err := peer.AddrInfoFromString(discoveryMsg.Addrs[0])
-		if err != nil {
-			log.Printf("Failed to parse address: %s", err)
-			continue
-		}
-		if err := h.Connect(ctx, *peerInfo); err != nil {
-			log.Printf("Failed to connect to peer: %s", err)
-		} else {
-			log.Printf("Connected to peer: %s", discoveryMsg.PeerID)
-		}
-	}
-}
-
-func publishPeerInfo(ctx context.Context, topic *pubsub.Topic, peerID string, addrs []string) error {
-	msg := DiscoveryMessage{
-		PeerID: peerID,
-		Addrs:  addrs,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return topic.Publish(ctx, data)
 }
