@@ -31,7 +31,8 @@ import (
 const NetworkName = "warpnet"
 
 var defaultBootstrapNodes = []string{
-	"/dns4/warpnet-app-6vxu4.ondigitalocean.app/tcp/4001/p2p/12D3KooWShipNUXh4dWDMkRTvGLm8otnP7egHU15CuAsxkeCSFxZ",
+	"/ip4/188.166.192.56/tcp/4001/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee",
+	"/ip4/188.166.192.56/tcp/4002/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee",
 }
 
 type Node struct {
@@ -59,7 +60,7 @@ func NewNode(
 		providersCache providers.ProviderStore
 	)
 	if isBootstrap {
-		privKey, err = encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
+		privKey, err = encrypting.GenerateKeyFromSeed([]byte("1"))
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +124,7 @@ func NewNode(
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork([]byte(NetworkName)),
+		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))),
 		libp2p.UserAgent(NetworkName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
