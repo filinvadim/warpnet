@@ -119,7 +119,7 @@ func NewNode(
 
 	listenAddrs := []string{
 		"/ip4/0.0.0.0/tcp/4001",
-		"/ip4/0.0.0.0/tcp/4001/ws",
+		"/ip4/0.0.0.0/tcp/443/ws",
 		"/ip6/::/tcp/4001",
 	}
 
@@ -158,7 +158,14 @@ func NewNode(
 
 	var addresses = make([]string, 0, len(listenAddrs))
 	for _, addr := range node.Addrs() {
-		addresses = append(addresses, addr.Decapsulate(addr).String())
+		if addr == nil {
+			continue
+		}
+		a := addr.Decapsulate(addr)
+		if a == nil {
+			continue
+		}
+		addresses = append(addresses, a.String())
 	}
 
 	n := &Node{

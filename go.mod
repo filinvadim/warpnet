@@ -1,6 +1,6 @@
 module github.com/filinvadim/warpnet
 
-go 1.22.6
+go 1.22
 
 require (
 	github.com/dgraph-io/badger/v3 v3.2103.5
