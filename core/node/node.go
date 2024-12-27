@@ -31,8 +31,8 @@ import (
 
 const NetworkName = "warpnet"
 
-var publicRelays = []string{
-	"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJ8S8B118DVjMrAzihsXFvGCGZeYThHH9y9MWanoPuNi1", // just a stub
+var defaultBootstrapNodes = []string{
+	"/ip4/10.244.23.72/tcp/4001/p2p/12D3KooWShipNUXh4dWDMkRTvGLm8otnP7egHU15CuAsxkeCSFxZ",
 }
 
 type Node struct {
@@ -45,15 +45,6 @@ type Node struct {
 	mdns  mdns.Service
 	relay *relayv2.Relay
 }
-
-//for _, maddr := range n.bootstrapPeers {
-//peerInfo, _ := peer.AddrInfoFromP2pAddr(maddr)
-//if err := n.core.Connect(ctx, *peerInfo); err != nil {
-//log.Printf("Failed to connect to bootstrap core: %s", err)
-//} else {
-//log.Printf("Connected to bootstrap core: %s", peerInfo.ID)
-//}
-//}
 
 func NewNode(
 	ctx context.Context,
@@ -112,7 +103,7 @@ func NewNode(
 	}
 
 	var relays []peer.AddrInfo
-	for _, addr := range publicRelays {
+	for _, addr := range defaultBootstrapNodes {
 		ai, err := peer.AddrInfoFromString(addr)
 		if err != nil {
 			return nil, err
@@ -122,7 +113,7 @@ func NewNode(
 
 	listenAddrs := []string{
 		"/ip4/0.0.0.0/tcp/4001",
-		"/ip4/0.0.0.0/tcp/443/ws",
+		"/ip4/0.0.0.0/tcp/4002/ws",
 		"/ip6/::/tcp/4001",
 	}
 
@@ -174,6 +165,15 @@ func NewNode(
 		relay,
 	}
 	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
+
+	for _, maddr := range defaultBootstrapNodes {
+		peerInfo, _ := peer.AddrInfoFromString(maddr)
+		if err := n.node.Connect(ctx, *peerInfo); err != nil {
+			log.Printf("failed to connect to bootstrap node: %s", err)
+		} else {
+			log.Printf("connected to bootstrap node: %s", peerInfo.ID)
+		}
+	}
 	return n, nil
 }
 
