@@ -21,6 +21,7 @@ const (
 var (
 	ErrWrongPassword = errors.New("wrong password")
 	ErrOwnerNotFound = errors.New("owner not found")
+	ErrNilAuthRepo   = errors.New("auth repo is nil")
 )
 
 type AuthRepo struct {
@@ -35,6 +36,9 @@ func NewAuthRepo(db *storage.DB) *AuthRepo {
 }
 
 func (repo *AuthRepo) Authenticate(username, password string) (token string, err error) {
+	if repo == nil {
+		return "", ErrNilAuthRepo
+	}
 	if repo.db == nil {
 		return "", storage.ErrNotRunning
 	}
@@ -67,5 +71,8 @@ func (repo *AuthRepo) SessionToken() string {
 }
 
 func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
+	if repo == nil {
+		return ErrNilAuthRepo
+	}
 	return repo.privateKey
 }

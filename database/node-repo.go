@@ -25,8 +25,9 @@ const (
 )
 
 var (
-	_ ds.Batching             = (*NodeRepo)(nil)
-	_ providers.ProviderStore = (*NodeRepo)(nil)
+	_              ds.Batching             = (*NodeRepo)(nil)
+	_              providers.ProviderStore = (*NodeRepo)(nil)
+	ErrNilNodeRepo                         = errors.New("node repo is nil")
 )
 
 type NodeRepo struct {
@@ -52,6 +53,9 @@ func NewNodeRepo(db *storage.DB) *NodeRepo {
 }
 
 func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -65,6 +69,9 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 }
 
 func (d *NodeRepo) Sync(ctx context.Context, _ ds.Key) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -73,6 +80,9 @@ func (d *NodeRepo) Sync(ctx context.Context, _ ds.Key) error {
 }
 
 func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl time.Duration) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -86,6 +96,9 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 }
 
 func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -102,6 +115,9 @@ func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) er
 }
 
 func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, err error) {
+	if d == nil {
+		return t, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return t, ctx.Err()
 	}
@@ -129,6 +145,9 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 }
 
 func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
+	if d == nil {
+		return nil, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -158,6 +177,9 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 }
 
 func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
+	if d == nil {
+		return false, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return false, ctx.Err()
 	}
@@ -188,6 +210,9 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 }
 
 func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
+	if d == nil {
+		return -1, ErrNilNodeRepo
+	}
 	size := -1
 
 	if ctx.Err() != nil {
@@ -218,6 +243,9 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 }
 
 func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -237,6 +265,9 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 // DiskUsage implements the PersistentDatastore interface.
 // It returns the sum of lsm and value log files sizes in bytes.
 func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
+	if d == nil {
+		return 0, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return 0, ctx.Err()
 	}
@@ -249,6 +280,9 @@ func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
 }
 
 func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err error) {
+	if d == nil {
+		return nil, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -461,6 +495,9 @@ func expires(item *badger.Item) time.Time {
 }
 
 func (d *NodeRepo) Close() (err error) {
+	if d == nil {
+		return nil
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("close recovered: %v", r)
@@ -473,6 +510,9 @@ func (d *NodeRepo) Close() (err error) {
 // Batch creates a new Batch object. This provides a way to do many writes, when
 // there may be too many to fit into a single transaction.
 func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
+	if d == nil {
+		return nil, ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -497,6 +537,9 @@ func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
 var _ ds.Batch = (*batch)(nil)
 
 func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -509,6 +552,9 @@ func (b *batch) Put(ctx context.Context, key ds.Key, value []byte) error {
 }
 
 func (b *batch) put(key ds.Key, value []byte) error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	batchKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(key.String()).
 		Build()
@@ -516,6 +562,9 @@ func (b *batch) put(key ds.Key, value []byte) error {
 }
 
 func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	batchKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(key.String()).
 		Build()
@@ -523,6 +572,9 @@ func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
 }
 
 func (b *batch) Delete(ctx context.Context, key ds.Key) error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -537,6 +589,9 @@ func (b *batch) Delete(ctx context.Context, key ds.Key) error {
 }
 
 func (b *batch) Commit(_ context.Context) error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	if b.ds.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
@@ -552,6 +607,9 @@ func (b *batch) Commit(_ context.Context) error {
 }
 
 func (b *batch) Cancel() error {
+	if b == nil {
+		return ErrNilNodeRepo
+	}
 	if b.ds.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
@@ -562,6 +620,9 @@ func (b *batch) Cancel() error {
 }
 
 func (d *NodeRepo) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
 	addrs, err := d.GetProviders(ctx, key)
 	if err != nil {
 		return err
@@ -582,6 +643,9 @@ func (d *NodeRepo) AddProvider(ctx context.Context, key []byte, prov peer.AddrIn
 }
 
 func (d *NodeRepo) GetProviders(_ context.Context, key []byte) (addrs []peer.AddrInfo, err error) {
+	if d == nil {
+		return nil, ErrNilNodeRepo
+	}
 	providerKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddSubPrefix(ProvidersSubNamespace).
 		AddRootID(string(key)).
@@ -596,6 +660,9 @@ func (d *NodeRepo) GetProviders(_ context.Context, key []byte) (addrs []peer.Add
 }
 
 func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
+	if d == nil {
+		return nil, ErrNilNodeRepo
+	}
 	providersKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddSubPrefix(ProvidersSubNamespace).
 		Build()

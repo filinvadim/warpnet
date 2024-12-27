@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"github.com/filinvadim/warpnet/database"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/host"
 	"log"
 	"os"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/libp2p/go-libp2p-raft"
+)
+
+type (
+	Consensus = libp2praft.Consensus
+	State     = consensus.State
 )
 
 func NewRaft(

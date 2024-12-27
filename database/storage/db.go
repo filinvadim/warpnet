@@ -32,7 +32,7 @@ type DB struct {
 
 func New(
 	path string,
-	isBootstrap bool,
+	isInMemory bool,
 ) *DB {
 	dbPath := path + config.DatabaseFolder
 	opts := badger.
@@ -43,19 +43,13 @@ func New(
 		WithNumCompactors(2).
 		WithLogger(nil)
 
-	if isBootstrap {
+	if isInMemory {
 		opts.WithInMemory(true)
 	}
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
 		sequence: nil, opts: opts, dbPath: dbPath,
-	}
-
-	if isBootstrap {
-		if err := storage.Run("bootstrap", "bootstrap"); err != nil {
-			log.Fatalln("database bootstrap run failed", err)
-		}
 	}
 
 	return storage

@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	go_crypto "crypto"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/ipfs/go-datastore"
@@ -53,11 +54,11 @@ func NewNode(
 	isBootstrap bool,
 ) (_ *Node, err error) {
 	_ = logging.SetLogLevel("*", "warn")
-	privKey := authRepo.PrivateKey()
 
 	var (
 		store          peerstore.Peerstore
 		providersCache providers.ProviderStore
+		privKey        go_crypto.PrivateKey
 	)
 	if isBootstrap {
 		privKey, err = encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
@@ -74,6 +75,7 @@ func NewNode(
 			return nil, err
 		}
 	} else {
+		privKey = authRepo.PrivateKey()
 		store, err = pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
 		if err != nil {
 			return nil, err
