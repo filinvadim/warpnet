@@ -35,6 +35,10 @@ var defaultBootstrapNodes = []string{
 	"/ip4/188.166.192.56/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
 	"/ip4/188.166.192.56/tcp/4002/p2p/12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo",
 	"/ip4/188.166.192.56/tcp/4003/p2p/12D3KooWLJFqhpSJeMATLuHyHBo6qgAusACGhZLybtwVz3jGGfXy",
+
+	"/dnsaddr/warpnet-node1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
+	"/dnsaddr/warpnet-node2/tcp/4001/p2p/12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo",
+	"/dnsaddr/warpnet-node3/tcp/4001/p2p/12D3KooWLJFqhpSJeMATLuHyHBo6qgAusACGhZLybtwVz3jGGfXy",
 }
 
 var listenAddrs = []string{

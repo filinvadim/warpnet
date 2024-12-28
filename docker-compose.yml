@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   warpnet-node1:
     build:
