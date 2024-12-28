@@ -12,7 +12,7 @@ database:
     dir: "/storage"
 server:
   host: 127.0.0.1
-  port: 6969
+  port: 80
   logging:
     level: info
     format: '{"time":"${time_datetime_only}","method":"${method}","host":"${host}","uri":"${uri}","status":${status},"error":"${error}}'

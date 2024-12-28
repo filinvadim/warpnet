@@ -217,7 +217,11 @@ func NewRegularNode(
 	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	for _, maddr := range conf.Node.BootstrapAddrs {
-		peerInfo, _ := peer.AddrInfoFromString(maddr)
+		peerInfo, err := peer.AddrInfoFromString(maddr)
+		if err != nil {
+			log.Println("error creating peer info from maddr", err)
+		}
+		log.Printf("connecting to bootstrap node...: %s", peerInfo.ID)
 		if err := n.node.Connect(ctx, *peerInfo); err != nil {
 			log.Printf("failed to connect to bootstrap node: %s", err)
 		} else {
