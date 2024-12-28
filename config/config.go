@@ -12,10 +12,10 @@ type Config struct {
 }
 
 type Node struct {
-	SeedID        string   `yaml:"seed_id"`
-	BootstrapAddr []string `yaml:"bootstrap_addr"`
-	ListenAddrs   []string `yaml:"listen_addrs"`
-	Logging       Logging  `yaml:"logging"`
+	SeedID         string   `yaml:"seed_id"`
+	BootstrapAddrs []string `yaml:"bootstrap_addrs"`
+	ListenAddrs    []string `yaml:"listen_addrs"`
+	Logging        Logging  `yaml:"logging"`
 }
 
 type Logging struct {

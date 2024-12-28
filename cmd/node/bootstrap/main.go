@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"gopkg.in/yaml.v3"
@@ -28,7 +29,8 @@ func main() {
 	}
 
 	version = conf.Version.String()
-
+	fmt.Println("config bootstrap nodes: ", conf.Node.BootstrapAddrs)
+	fmt.Println(conf.Node.SeedID, "&&&")
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 

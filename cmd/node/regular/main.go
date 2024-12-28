@@ -45,6 +45,8 @@ func main() {
 		log.Fatal("unmarshalling config: ", err)
 	}
 
+	fmt.Println("config bootstrap nodes: ", conf.Node.BootstrapAddrs)
+
 	version = conf.Version.String()
 
 	var interruptChan = make(chan os.Signal, 1)

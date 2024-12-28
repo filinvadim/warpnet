@@ -79,7 +79,7 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 	}
 
 	var relays []peer.AddrInfo
-	for _, addr := range conf.Node.BootstrapAddr {
+	for _, addr := range conf.Node.BootstrapAddrs {
 		ai, err := peer.AddrInfoFromString(addr)
 		if err != nil {
 			return nil, err
@@ -164,7 +164,7 @@ func NewRegularNode(
 	}
 
 	var relays []peer.AddrInfo
-	for _, addr := range conf.Node.BootstrapAddr {
+	for _, addr := range conf.Node.BootstrapAddrs {
 		ai, err := peer.AddrInfoFromString(addr)
 		if err != nil {
 			return nil, err
@@ -216,7 +216,7 @@ func NewRegularNode(
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
-	for _, maddr := range conf.Node.BootstrapAddr {
+	for _, maddr := range conf.Node.BootstrapAddrs {
 		peerInfo, _ := peer.AddrInfoFromString(maddr)
 		if err := n.node.Connect(ctx, *peerInfo); err != nil {
 			log.Printf("failed to connect to bootstrap node: %s", err)
