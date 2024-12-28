@@ -4,18 +4,19 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/server/server"
 	"github.com/filinvadim/warpnet/server/server/handlers"
+	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
+
 	"syscall"
 
 	"embed"
@@ -30,28 +31,29 @@ var (
 //go:embed static
 var staticFolder embed.FS
 
+//go:embed config.yml
+var configFile []byte
+
 type API struct {
 	*handlers.StaticController
 	*handlers.AuthController
 }
 
 func main() {
-	hosts := flag.String("bootstrap-hosts", "", "comma-separated list of hostnames")
-	flag.Parse()
+	var conf config.Config
+	if err := yaml.Unmarshal(configFile, &conf); err != nil {
+		log.Fatal("unmarshalling config: ", err)
+	}
+
+	version = conf.Version.String()
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
-	var bootstrapAddrs []string
-	if hosts != nil && *hosts != "" {
-		bootstrapAddrs = strings.Split(strings.TrimSpace(*hosts), ",")
-	}
-	log.Println("BOOTSTRAP NODES ADDRESSES", bootstrapAddrs, len(bootstrapAddrs))
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db := storage.New(getAppPath(), false)
+	db := storage.New(getAppPath(), false, conf.Database.Dir)
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
@@ -67,7 +69,7 @@ func main() {
 	var authReadyChan = make(chan struct{})
 	defer close(authReadyChan)
 
-	interfaceServer, err := server.NewInterfaceServer()
+	interfaceServer, err := server.NewInterfaceServer(conf)
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run public server: %v", err)
 	}
@@ -94,8 +96,8 @@ func main() {
 
 	n, err := node.NewRegularNode(
 		ctx,
-		nodeRepo,
-		authRepo,
+		persistentLayer{nodeRepo, authRepo},
+		conf,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
@@ -110,6 +112,11 @@ func main() {
 
 	<-interruptChan
 	log.Println("interrupted...")
+}
+
+type persistentLayer struct {
+	*database.NodeRepo
+	*database.AuthRepo
 }
 
 func getAppPath() string {

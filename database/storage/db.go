@@ -6,7 +6,6 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	"github.com/filinvadim/warpnet/config"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -33,8 +32,9 @@ type DB struct {
 func New(
 	path string,
 	isInMemory bool,
+	dataFolder string,
 ) *DB {
-	dbPath := path + config.DatabaseFolder
+	dbPath := path + dataFolder
 	opts := badger.
 		DefaultOptions(dbPath).
 		WithSyncWrites(false).

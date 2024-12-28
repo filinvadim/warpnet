@@ -2,8 +2,9 @@ package node
 
 import (
 	"context"
+	go_crypto "crypto"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -29,35 +30,25 @@ import (
 
 const NetworkName = "warpnet"
 
-var _ = logging.SetLogLevel("*", "warn")
-
-var defaultBootstrapNodes = []string{
-	"/ip4/188.166.192.56/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
-	"/ip4/188.166.192.56/tcp/4002/p2p/12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo",
-	"/ip4/188.166.192.56/tcp/4003/p2p/12D3KooWLJFqhpSJeMATLuHyHBo6qgAusACGhZLybtwVz3jGGfXy",
-
-	"/dnsaddr/warpnet-node1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu",
-	"/dnsaddr/warpnet-node2/tcp/4001/p2p/12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo",
-	"/dnsaddr/warpnet-node3/tcp/4001/p2p/12D3KooWLJFqhpSJeMATLuHyHBo6qgAusACGhZLybtwVz3jGGfXy",
-}
-
-var listenAddrs = []string{
-	"/ip4/0.0.0.0/tcp/4001",
-	"/ip4/0.0.0.0/tcp/4002/ws",
-	"/ip6/::/tcp/4001",
+type PersistentLayer interface {
+	datastore.Batching
+	providers.ProviderStore
+	PrivateKey() go_crypto.PrivateKey
+	ListProviders() (_ map[string][]peer.AddrInfo, err error)
 }
 
 type Node struct {
-	nodeRepo *database.NodeRepo
-	authRepo *database.AuthRepo
+	db PersistentLayer
 
 	node  host.Host
 	mdns  mdns.Service
 	relay *relayv2.Relay
 }
 
-func NewBootstrapNode(ctx context.Context, id string) (_ *Node, err error) {
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte(id))
+func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
+	logging.SetLogLevel("*", conf.Node.Logging.Level)
+
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +79,7 @@ func NewBootstrapNode(ctx context.Context, id string) (_ *Node, err error) {
 	}
 
 	var relays []peer.AddrInfo
-	for _, addr := range defaultBootstrapNodes {
+	for _, addr := range conf.Node.BootstrapAddr {
 		ai, err := peer.AddrInfoFromString(addr)
 		if err != nil {
 			return nil, err
@@ -97,7 +88,7 @@ func NewBootstrapNode(ctx context.Context, id string) (_ *Node, err error) {
 	}
 
 	node, err := libp2p.New(
-		libp2p.ListenAddrStrings(listenAddrs...),
+		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
 		libp2p.Identity(privKey.(crypto.PrivKey)),
@@ -134,24 +125,24 @@ func NewBootstrapNode(ctx context.Context, id string) (_ *Node, err error) {
 		mdns:  mdnsService,
 		relay: relay,
 	}
-	log.Println("======================================================")
+	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
-	log.Println("======================================================")
+	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
 }
 
 func NewRegularNode(
 	ctx context.Context,
-	nodeRepo *database.NodeRepo,
-	authRepo *database.AuthRepo,
+	db PersistentLayer,
+	conf config.Config,
 ) (_ *Node, err error) {
-	privKey := authRepo.PrivateKey()
-	store, err := pstoreds.NewPeerstore(ctx, nodeRepo, pstoreds.DefaultOpts())
+	privKey := db.PrivateKey()
+	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	if err != nil {
 		return nil, err
 	}
-	providersCache, err := NewProviderCache(ctx, nodeRepo)
+	providersCache, err := NewProviderCache(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +164,7 @@ func NewRegularNode(
 	}
 
 	var relays []peer.AddrInfo
-	for _, addr := range defaultBootstrapNodes {
+	for _, addr := range conf.Node.BootstrapAddr {
 		ai, err := peer.AddrInfoFromString(addr)
 		if err != nil {
 			return nil, err
@@ -182,7 +173,7 @@ func NewRegularNode(
 	}
 
 	node, err := libp2p.New(
-		libp2p.ListenAddrStrings(listenAddrs...),
+		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
 		libp2p.Identity(privKey.(crypto.PrivKey)),
@@ -202,7 +193,7 @@ func NewRegularNode(
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, nodeRepo, providersCache)
+			return setupPrivateDHT(ctx, h, db, providersCache)
 		}),
 	)
 	if err != nil {
@@ -215,15 +206,17 @@ func NewRegularNode(
 	}
 
 	n := &Node{
-		nodeRepo,
-		authRepo,
+		db,
 		node,
 		mdnsService,
 		relay,
 	}
-	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 
-	for _, maddr := range defaultBootstrapNodes {
+	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
+	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+	for _, maddr := range conf.Node.BootstrapAddr {
 		peerInfo, _ := peer.AddrInfoFromString(maddr)
 		if err := n.node.Connect(ctx, *peerInfo); err != nil {
 			log.Printf("failed to connect to bootstrap node: %s", err)
@@ -264,8 +257,8 @@ func (n *Node) Stop() error {
 	if n.relay != nil {
 		_ = n.relay.Close()
 	}
-	if n.nodeRepo != nil {
-		_ = n.nodeRepo.Close()
+	if n.db != nil {
+		_ = n.db.Close()
 	}
 
 	return n.node.Close()

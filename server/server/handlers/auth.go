@@ -3,9 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/database"
 	api "github.com/filinvadim/warpnet/server/api-gen"
+	"github.com/filinvadim/warpnet/server/server"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
@@ -106,7 +106,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		)
 	}
 	c.isAuthenticated.Store(true)
-	ctx.Response().Header().Set(config.SessionTokenName, token)
+	ctx.Response().Header().Set(server.SessionTokenName, token)
 	return ctx.JSON(http.StatusOK, api.LoginResponse{token, userResponse})
 }
 

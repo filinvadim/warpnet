@@ -9,13 +9,28 @@ import (
 	ownMiddleware "github.com/filinvadim/warpnet/server/middleware"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
+	log2 "github.com/labstack/gommon/log"
 	"github.com/pkg/browser"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
-var ErrBrowserLoadFailed = errors.New("browser load failed")
+const SessionTokenName = "X-SESSION-TOKEN"
+
+var (
+	ErrBrowserLoadFailed = errors.New("browser load failed")
+)
+
+var logLevelsMap = map[string]uint8{
+	"debug": 1,
+	"info":  2,
+	"warn":  3,
+	"error": 4,
+	"off":   5,
+}
 
 type (
 	Router            = api_gen.EchoRouter
@@ -30,10 +45,11 @@ type PublicServer interface {
 }
 
 type interfaceServer struct {
-	e *echo.Echo
+	e    *echo.Echo
+	port string
 }
 
-func NewInterfaceServer() (PublicServer, error) {
+func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
@@ -41,11 +57,11 @@ func NewInterfaceServer() (PublicServer, error) {
 	swagger.Servers = nil
 
 	e := echo.New()
-
 	e.HideBanner = true
+	e.Logger.SetLevel(log2.Lvl(logLevelsMap[strings.ToLower(conf.Server.Logging.Level)]))
 
 	dlc := echomiddleware.DefaultLoggerConfig
-	dlc.Format = config.LogFormat
+	dlc.Format = conf.Server.Logging.Format
 	//dlc.Output = e.Logger.Output()
 	dlc.Output = io.Discard
 
@@ -53,23 +69,24 @@ func NewInterfaceServer() (PublicServer, error) {
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
 		AllowOrigins:  []string{"*"}, // TODO
 		AllowHeaders:  []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "X-SESSION-TOKEN"},
-		ExposeHeaders: []string{"X-SESSION-TOKEN"}, // ВАЖНО: Разрешить фронтенду видеть заголовок
+		ExposeHeaders: []string{SessionTokenName}, // ВАЖНО: Разрешить фронтенду видеть заголовок
 		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 	}))
 	e.Use(echomiddleware.Gzip())
 	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
-	err = browser.OpenURL(config.ExternalNodeAddress.String()) // NOTE connection is not protected!
+	port := ":" + strconv.Itoa(conf.Server.Port)
+	err = browser.OpenURL("http://" + conf.Server.Host + port) // NOTE connection is not protected!
 	if err != nil {
 		e.Logger.Errorf("failed to open browser: %v", err)
 		return nil, ErrBrowserLoadFailed
 	}
-	return &interfaceServer{e}, nil
+	return &interfaceServer{e, port}, nil
 }
 
 func (p *interfaceServer) Start() {
 	log.Println("starting public server...")
-	if err := p.e.Start(":" + config.ExternalNodeAddress.Port()); err != nil {
+	if err := p.e.Start(p.port); err != nil {
 		p.e.Logger.Printf("interface server start: %v", err)
 	}
 }

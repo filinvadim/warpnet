@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
 	"slices"
@@ -18,21 +17,21 @@ type addrEntry struct {
 
 type ProviderCache struct {
 	ctx      context.Context
-	nodeRepo *database.NodeRepo
+	db       PersistentLayer
 	mutex    *sync.RWMutex
 	m        map[string][]addrEntry
 	stopChan chan struct{}
 }
 
-func NewProviderCache(ctx context.Context, nodeRepo *database.NodeRepo) (*ProviderCache, error) {
+func NewProviderCache(ctx context.Context, db PersistentLayer) (*ProviderCache, error) {
 	pc := &ProviderCache{
 		ctx:      ctx,
-		nodeRepo: nodeRepo,
+		db:       db,
 		mutex:    new(sync.RWMutex),
 		m:        make(map[string][]addrEntry),
 		stopChan: make(chan struct{}),
 	}
-	prestoredProviders, err := nodeRepo.ListProviders()
+	prestoredProviders, err := db.ListProviders()
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +51,7 @@ func NewProviderCache(ctx context.Context, nodeRepo *database.NodeRepo) (*Provid
 
 func (d *ProviderCache) dumpProviders() {
 	tick := time.NewTicker(time.Minute * 10)
+	defer tick.Stop()
 	for {
 		now := time.Now()
 		select {
@@ -66,14 +66,13 @@ func (d *ProviderCache) dumpProviders() {
 						d.m[key] = newValues
 						continue
 					}
-					if err := d.nodeRepo.AddProvider(d.ctx, []byte(key), v.addr); err != nil {
+					if err := d.db.AddProvider(d.ctx, []byte(key), v.addr); err != nil {
 						log.Printf("error adding provider %s to cache: %v", key, err)
 					}
 				}
 			}
 			d.mutex.RUnlock()
 		case <-d.stopChan:
-			tick.Stop()
 			return
 		}
 	}
@@ -114,7 +113,7 @@ func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []p
 		return addrs, nil
 	}
 
-	addrs, err = d.nodeRepo.GetProviders(ctx, key)
+	addrs, err = d.db.GetProviders(ctx, key)
 	if err != nil {
 		return addrs, err
 	}

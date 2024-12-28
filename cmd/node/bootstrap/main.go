@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
-	"flag"
+	_ "embed"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
+	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/signal"
@@ -16,10 +18,16 @@ var (
 	version = "0.0.1"
 )
 
+//go:embed config.yml
+var configFile []byte
+
 func main() {
-	id := new(string)
-	id = flag.String("id", "", "node ID")
-	flag.Parse()
+	var conf config.Config
+	if err := yaml.Unmarshal(configFile, &conf); err != nil {
+		log.Fatal("unmarshalling config: ", err)
+	}
+
+	version = conf.Version.String()
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -29,7 +37,7 @@ func main() {
 
 	log.Println("starting bootstrap node...")
 
-	n, err := node.NewBootstrapNode(ctx, *id)
+	n, err := node.NewBootstrapNode(ctx, conf)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}
