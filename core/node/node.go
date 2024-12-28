@@ -108,7 +108,7 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, mapStore, providersCache)
+			return setupPrivateDHT(ctx, h, mapStore, providersCache, relays)
 		}),
 	)
 	if err != nil {
@@ -193,7 +193,7 @@ func NewRegularNode(
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, db, providersCache)
+			return setupPrivateDHT(ctx, h, db, providersCache, relays)
 		}),
 	)
 	if err != nil {
@@ -216,18 +216,6 @@ func NewRegularNode(
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
-	for _, maddr := range conf.Node.BootstrapAddrs {
-		peerInfo, err := peer.AddrInfoFromString(maddr)
-		if err != nil {
-			log.Println("error creating peer info from maddr", err)
-		}
-		log.Printf("connecting to bootstrap node...: %s", peerInfo.ID)
-		if err := n.node.Connect(ctx, *peerInfo); err != nil {
-			log.Printf("failed to connect to bootstrap node: %s", err)
-		} else {
-			log.Printf("connected to bootstrap node: %s", peerInfo.ID)
-		}
-	}
 	return n, nil
 }
 
@@ -269,14 +257,18 @@ func (n *Node) Stop() error {
 }
 
 func setupPrivateDHT(
-	ctx context.Context, h host.Host, repo datastore.Batching, providerStore providers.ProviderStore,
+	ctx context.Context,
+	h host.Host,
+	repo datastore.Batching,
+	providerStore providers.ProviderStore,
+	relays []peer.AddrInfo,
 ) (*dht.IpfsDHT, error) {
 	dht, err := dht.New(
 		ctx, h,
 		dht.Mode(dht.ModeServer),
 		dht.ProtocolPrefix("/"+NetworkName),
 		dht.Datastore(repo),
-		dht.BootstrapPeers(),
+		dht.BootstrapPeers(relays...),
 		dht.ProviderStore(providerStore),
 	)
 	if err != nil {
@@ -284,7 +276,7 @@ func setupPrivateDHT(
 	}
 	go func() {
 		if err := dht.Bootstrap(ctx); err != nil {
-			log.Printf("failed to bootstrap kdht: %v\n", err)
+			log.Printf("failed to bootstrap dht: %v\n", err)
 		}
 	}()
 	go monitorDHT(dht)

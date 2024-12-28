@@ -29,3 +29,6 @@ check-heap:
 
 docker-build:
 	docker build -t warpnet .
+
+compose-up:
+	docker compose --parallel 1 up -d --quiet-pull --build
