@@ -78,13 +78,9 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		return nil, err
 	}
 
-	var relays []peer.AddrInfo
-	for _, addr := range conf.Node.BootstrapAddrs {
-		ai, err := peer.AddrInfoFromString(addr)
-		if err != nil {
-			return nil, err
-		}
-		relays = append(relays, *ai)
+	addrInfos, err := conf.Node.AddrInfos()
+	if err != nil {
+		return nil, err
 	}
 
 	node, err := libp2p.New(
@@ -103,12 +99,12 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithStaticRelays(relays),
+		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, mapStore, providersCache, relays)
+			return setupPrivateDHT(ctx, h, mapStore, providersCache, addrInfos)
 		}),
 	)
 	if err != nil {
@@ -163,13 +159,9 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	var relays []peer.AddrInfo
-	for _, addr := range conf.Node.BootstrapAddrs {
-		ai, err := peer.AddrInfoFromString(addr)
-		if err != nil {
-			return nil, err
-		}
-		relays = append(relays, *ai)
+	addrInfos, err := conf.Node.AddrInfos()
+	if err != nil {
+		return nil, err
 	}
 
 	node, err := libp2p.New(
@@ -188,12 +180,12 @@ func NewRegularNode(
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithStaticRelays(relays),
+		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, db, providersCache, relays)
+			return setupPrivateDHT(ctx, h, db, providersCache, addrInfos)
 		}),
 	)
 	if err != nil {

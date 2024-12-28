@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/Masterminds/semver/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type Config struct {
@@ -16,6 +17,17 @@ type Node struct {
 	BootstrapAddrs []string `yaml:"bootstrap_addrs"`
 	ListenAddrs    []string `yaml:"listen_addrs"`
 	Logging        Logging  `yaml:"logging"`
+}
+
+func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {
+	for _, addr := range n.BootstrapAddrs {
+		ai, err := peer.AddrInfoFromString(addr)
+		if err != nil {
+			return nil, err
+		}
+		infos = append(infos, *ai)
+	}
+	return infos, nil
 }
 
 type Logging struct {
