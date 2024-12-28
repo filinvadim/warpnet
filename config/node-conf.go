@@ -6,10 +6,7 @@ const (
 	DatabaseFolder   = "/storage"
 	SessionTokenName = "X-SESSION-TOKEN"
 
-	LogFormat = `
-	{"time":"${time_datetime_only}",` +
-		`"method":"${method}","host":"${host}","uri":"${uri}",` +
-		`"status":${status},"error":"${error}}` + "\n"
+	LogFormat = `{"time":"${time_datetime_only}","method":"${method}","host":"${host}","uri":"${uri}","status":${status},"error":"${error}}`
 )
 
 type NodeAddress string
