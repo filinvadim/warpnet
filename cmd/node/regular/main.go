@@ -61,7 +61,7 @@ func main() {
 	//timelineRepo := database.NewTimelineRepo(db)
 	//tweetRepo := database.NewTweetRepo(db)
 	//replyRepo := database.NewRepliesRepo(db)
-	
+
 	var nodeReadyChan = make(chan string, 1)
 	defer close(nodeReadyChan)
 	var authReadyChan = make(chan struct{})
@@ -92,11 +92,10 @@ func main() {
 		log.Println("authentication was successful")
 	}
 
-	n, err := node.NewNode(
+	n, err := node.NewRegularNode(
 		ctx,
 		nodeRepo,
 		authRepo,
-		false,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)

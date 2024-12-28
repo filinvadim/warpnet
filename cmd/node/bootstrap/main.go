@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/filinvadim/warpnet/core/node"
 	"log"
 	"os"
@@ -16,6 +17,10 @@ var (
 )
 
 func main() {
+	id := new(string)
+	id = flag.String("id", "", "node ID")
+	flag.Parse()
+
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
@@ -24,12 +29,7 @@ func main() {
 
 	log.Println("starting bootstrap node...")
 
-	n, err := node.NewNode(
-		ctx,
-		nil,
-		nil,
-		true,
-	)
+	n, err := node.NewBootstrapNode(ctx, *id)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

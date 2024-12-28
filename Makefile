@@ -15,9 +15,6 @@ govendor:
 prune:
 	rm -rf /Users/vadim/.badgerdb && rm -rf /home/vadim/.badgerdb
 
-run:
-	go run main.go
-
 prune-idea:
 	rm -rf .local/share/JetBrains
 	rm -rf .config/JetBrains
