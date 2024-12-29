@@ -37,10 +37,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	http.ListenAndServe("/health", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	http.HandleFunc("/hello", func(writer http.ResponseWriter, request *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
-	}))
+	})
+	http.ListenAndServe(":8080", nil)
 
 	log.Println("starting bootstrap node...")
 
