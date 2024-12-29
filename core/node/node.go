@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	go_crypto "crypto"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/ipfs/go-datastore"
@@ -121,9 +122,9 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		mdns:  mdnsService,
 		relay: relay,
 	}
-	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
-	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
 }
@@ -204,9 +205,9 @@ func NewRegularNode(
 		relay,
 	}
 
-	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
-	log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
 }

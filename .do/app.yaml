@@ -1,0 +1,6 @@
+name: warpnet
+services:
+- name: web
+  github:
+    repo: filinvadim/warpnet
+    branch: master
