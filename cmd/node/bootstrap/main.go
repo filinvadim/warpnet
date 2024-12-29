@@ -37,7 +37,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	http.HandleFunc("/hello", func(writer http.ResponseWriter, request *http.Request) {
+	http.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	})
