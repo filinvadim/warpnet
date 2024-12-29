@@ -1,6 +1,16 @@
 name: warpnet
 services:
-- name: web
-  github:
-    repo: filinvadim/warpnet
-    branch: master
+  - name: warpnet-service
+    github:
+      repo: filinvadim/warpnet
+      branch: master
+    run_command: "/warpnet"
+    http_port: null # Указываем, что HTTP-портов нет
+    healthcheck: # Убираем HTTP healthcheck
+      protocol: tcp
+      path: null
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ID
+        value: 1
