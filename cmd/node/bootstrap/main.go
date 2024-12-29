@@ -39,6 +39,7 @@ func main() {
 
 	http.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 		return
 	})
 	go http.ListenAndServe(":8080", nil)
