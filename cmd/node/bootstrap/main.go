@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	_ "embed"
-	"flag"
-	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"gopkg.in/yaml.v3"
@@ -24,16 +22,10 @@ var (
 var configFile []byte
 
 func main() {
-	id := new(string)
-	id = flag.String("id", "", "node ID")
-	flag.Parse()
 	var conf config.Config
 	if err := yaml.Unmarshal(configFile, &conf); err != nil {
 		log.Fatal("unmarshalling config: ", err)
 	}
-	fmt.Println(*id, "@@@@@@@@@@@@@@@@@")
-
-	conf.Node.SeedID = *id // TODO temp
 
 	version = conf.Version.String()
 	log.Println("config bootstrap nodes: ", conf.Node.BootstrapAddrs)
