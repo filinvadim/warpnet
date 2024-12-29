@@ -4,7 +4,8 @@ node:
     - "/ip4/157.245.23.143/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
     - "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
     - "/ip4/0.0.0.0/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
-    - "/dns4/warpnet-node1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
+    - "/dns4/warpnet-a82xl.ondigitalocean.app/tcp/4001/p2p/12D3KooWBW4DTvC6V4fPnjPfRK7m9ykNEorkPF22EV2xT9vaZxwh"
+    - "/dns4/node1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
   listen_addrs:
     - "/ip4/0.0.0.0/tcp/4001"
     - "/ip4/0.0.0.0/tcp/4002/ws"
