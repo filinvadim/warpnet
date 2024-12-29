@@ -48,11 +48,7 @@ type Node struct {
 
 func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
 	logging.SetLogLevel("*", conf.Node.Logging.Level)
-
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
-	if err != nil {
-		return nil, err
-	}
+	
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
@@ -88,7 +84,6 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
-		libp2p.Identity(privKey.(crypto.PrivKey)),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),

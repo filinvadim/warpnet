@@ -3,7 +3,6 @@ package config
 import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"os"
 )
 
 type Config struct {
@@ -14,17 +13,9 @@ type Config struct {
 }
 
 type Node struct {
-	SeedID         string   `yaml:"seed_id"`
 	BootstrapAddrs []string `yaml:"bootstrap_addrs"`
 	ListenAddrs    []string `yaml:"listen_addrs"`
 	Logging        Logging  `yaml:"logging"`
-}
-
-func (n *Node) GetSeedID() string {
-	if id := os.Getenv("NODE_ID"); id != "" {
-		return id
-	}
-	return n.SeedID
 }
 
 func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {

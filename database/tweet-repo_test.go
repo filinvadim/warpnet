@@ -16,7 +16,7 @@ import (
 func setupTweetTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttweet"
 	// Открываем базу данных в этой директории
-	db := storage.New(path, true)
+	db := storage.New(path, true, "/storage")
 	db.Run("", "")
 
 	t.Cleanup(func() {
