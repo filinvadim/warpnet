@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NODE_ID: "1"
+        SEED_ID: "1"
     ports:
       - "4001:4001"
     environment:
-      NODE_ID: "1"
+      SEED_ID: "1"
     networks:
       - warpnet-network
 
@@ -17,11 +17,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NODE_ID: "2"
+        SEED_ID: "2"
     ports:
       - "4002:4001"
     environment:
-      NODE_ID: "2"
+      SEED_ID: "2"
     networks:
       - warpnet-network
 
@@ -30,11 +30,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NODE_ID: "3"
+        SEED_ID: "3"
     ports:
       - "4003:4001"
     environment:
-      NODE_ID: "3"
+      SEED_ID: "3"
     networks:
       - warpnet-network
 

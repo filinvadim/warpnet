@@ -4,12 +4,10 @@ services:
     github:
       repo: filinvadim/warpnet
       branch: master
-    http_port: null # Указываем, что HTTP-портов нет
-    healthcheck: # Убираем HTTP healthcheck
-      protocol: tcp
-      path: null
+    http_port: null
+    healthcheck: null
     instance_count: 1
     instance_size_slug: basic-xxs
     envs:
-      - key: NODE_ID
+      - key: SEED_ID
         value: 1
