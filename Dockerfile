@@ -11,4 +11,4 @@ COPY --from=builder /go/src/github.com/filinvadim/warpnet/warpnet /warpnet
 
 EXPOSE 4001
 
-CMD sh -c "/warpnet"
+CMD /warpnet
