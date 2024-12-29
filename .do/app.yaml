@@ -4,7 +4,6 @@ services:
     github:
       repo: filinvadim/warpnet
       branch: master
-    run_command: "/warpnet"
     http_port: null # Указываем, что HTTP-портов нет
     healthcheck: # Убираем HTTP healthcheck
       protocol: tcp
