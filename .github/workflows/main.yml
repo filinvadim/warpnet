@@ -28,6 +28,7 @@ jobs:
          push: true
          tags: ghcr.io/${{ github.repository }}:latest
      - name: Deploy the app
+       continue-on-error: true
        uses: digitalocean/app_action/deploy@v2
        env:
          SAMPLE_DIGEST: ${{ steps.push.outputs.digest }}
