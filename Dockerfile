@@ -13,6 +13,6 @@ COPY --from=builder /go/src/github.com/filinvadim/warpnet/warpnet /warpnet
 
 ENV SEED_ID=$SEED_ID
 
-EXPOSE 4001
+EXPOSE 4001, 4002
 
 CMD /warpnet

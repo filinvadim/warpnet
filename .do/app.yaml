@@ -1,13 +1,11 @@
 name: warpnet
+region: fra
 services:
   - name: warpnet-service
     github:
       repo: filinvadim/warpnet
       branch: master
-    http_port: 8080
-    http_path: /health
     instance_count: 1
-    instance_size_slug: basic-xxs
     envs:
       - key: SEED_ID
         value: 1
