@@ -18,8 +18,8 @@ services:
   health_check:
     port: 4001
   http_port: 8080
-  instance_count: 3
-  instance_size_slug: apps-s-1vcpu-0.5gb
+  instance_count: 2
+  instance_size_slug: apps-s-1vcpu-0.25gb
   internal_ports:
   - 4001
   name: warpnet-service
