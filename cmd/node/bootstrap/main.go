@@ -41,7 +41,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		return
 	})
-	http.ListenAndServe(":8080", nil)
+	go http.ListenAndServe(":8080", nil)
 
 	log.Println("starting bootstrap node...")
 
