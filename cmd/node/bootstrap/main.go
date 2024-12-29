@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/node"
 	"gopkg.in/yaml.v3"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,6 +36,11 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	http.ListenAndServe("/health", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		return
+	}))
 
 	log.Println("starting bootstrap node...")
 

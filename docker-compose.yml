@@ -1,5 +1,5 @@
 services:
-  warpnet-node1:
+  node1:
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,7 +12,7 @@ services:
     networks:
       - warpnet-network
 
-  warpnet-node2:
+  node2:
     build:
       context: .
       dockerfile: Dockerfile
@@ -25,7 +25,7 @@ services:
     networks:
       - warpnet-network
 
-  warpnet-node3:
+  node3:
     build:
       context: .
       dockerfile: Dockerfile

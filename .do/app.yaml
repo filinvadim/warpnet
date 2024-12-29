@@ -4,8 +4,8 @@ services:
     github:
       repo: filinvadim/warpnet
       branch: master
-    http_port: null
-    healthcheck: null
+    http_port: 8080
+    http_path: /health
     instance_count: 1
     instance_size_slug: basic-xxs
     envs:
