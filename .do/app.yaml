@@ -1,11 +1,25 @@
+ingress:
+  rules:
+  - component:
+      name: warpnet-service
+    match:
+      path:
+        prefix: /
 name: warpnet
 region: fra
 services:
-  - name: warpnet-service
-    github:
-      repo: filinvadim/warpnet
-      branch: master
-    instance_count: 1
-    envs:
-      - key: SEED_ID
-        value: 1
+- envs:
+  - key: SEED_ID
+    scope: RUN_AND_BUILD_TIME
+    value: "1"
+  github:
+    branch: master
+    repo: filinvadim/warpnet
+  health_check:
+    port: 4001
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  internal_ports:
+  - 4001
+  name: warpnet-service
