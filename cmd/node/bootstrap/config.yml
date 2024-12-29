@@ -1,14 +1,11 @@
 node:
   seed_id: 1
   bootstrap_addrs:
-    - "/ip4/157.245.23.143/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
-    - "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
-    - "/ip4/0.0.0.0/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
-    - "/dns4/warpnet-a82xl.ondigitalocean.app/tcp/4001/p2p/12D3KooWBW4DTvC6V4fPnjPfRK7m9ykNEorkPF22EV2xT9vaZxwh"
-    - "/dns4/node1/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
+    - "/dns4/warpnet-a82xl.ondigitalocean.app/tcp/4001/p2p/12D3KooWBPkgpPLj6rWbxDdaJqrZu5rP2DPPmPF3RniXwc959Wn9"
   listen_addrs:
     - "/ip4/0.0.0.0/tcp/4001"
     - "/ip4/0.0.0.0/tcp/4002/ws"
     - "/ip6/::/tcp/4001"
   logging:
     level: warn
+

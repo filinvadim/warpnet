@@ -17,7 +17,7 @@ services:
     repo: filinvadim/warpnet
   health_check:
     port: 4001
-  http_port: 8080
+  http_port: null
   instance_count: 1
   instance_size_slug: apps-s-1vcpu-0.5gb
   internal_ports:
