@@ -31,8 +31,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/${{ github.repository }}:latest
+          build-args: --dns 8.8.8.8
 
       - name: Debug DNS
         run: |
