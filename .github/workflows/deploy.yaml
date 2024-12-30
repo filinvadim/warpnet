@@ -41,6 +41,5 @@ jobs:
 
       - name: Deploy to Droplet
         run: |
-          echo "Deploying to $DO_HOST"
-          scp ./deploy.sh root@$DO_HOST:/root
-          ssh root@$DO_HOST 'bash /root/deploy.sh'
+          scp ./deploy.sh root@${{ secrets.DO_HOST }}:/root
+          ssh root@${{ secrets.DO_HOST }} 'bash /root/deploy.sh'
