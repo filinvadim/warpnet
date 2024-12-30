@@ -1,7 +1,7 @@
 node:
   seed_id: 1
   bootstrap_addrs:
-    - "/dns4/warpnet-a82xl.ondigitalocean.app/tcp/4001/p2p/12D3KooWBPkgpPLj6rWbxDdaJqrZu5rP2DPPmPF3RniXwc959Wn9"
+    - "/dns4/warpnet.bootstrap.net/tcp/4001/p2p/12D3KooWBPkgpPLj6rWbxDdaJqrZu5rP2DPPmPF3RniXwc959Wn9"
   listen_addrs:
     - "/ip4/0.0.0.0/tcp/4001"
     - "/ip4/0.0.0.0/tcp/4002/ws"
