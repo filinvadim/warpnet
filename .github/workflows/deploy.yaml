@@ -35,8 +35,6 @@ jobs:
           build-args: --dns 8.8.8.8
 
       - name: Set up SSH agent
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DO_SSH_KEY }}" > ~/.ssh/id_rsa
