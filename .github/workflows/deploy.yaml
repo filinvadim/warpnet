@@ -34,11 +34,6 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:latest
           build-args: --dns 8.8.8.8
 
-      - name: Debug DNS
-        run: |
-          cat /etc/resolv.conf
-          nslookup ghcr.io
-
       - name: Set up SSH agent
         run: |
           mkdir -p ~/.ssh
