@@ -34,10 +34,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
 
-      - name: Set up SSH
-        uses: actions/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.DO_SSH_KEY }}
+      - name: Set up SSH agent
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       - name: Deploy to Droplet
         run: |
