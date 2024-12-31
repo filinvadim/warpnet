@@ -3,15 +3,22 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"log"
+	"strings"
 	"time"
 )
 
 type discoveryNotifee struct {
 	host host.Host
+}
+
+func NewDiscoveryNotifee(h host.Host) *discoveryNotifee {
+	return &discoveryNotifee{h}
 }
 
 func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
@@ -25,83 +32,150 @@ func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
 
 const discoveryTopic = "peer-discovery"
 
-type DiscoveryMessage struct {
-	PeerID string   `json:"peer_id"`
-	Addrs  []string `json:"addrs"`
+type Gossip struct {
+	ctx      context.Context
+	pubsub   *pubsub.PubSub
+	node     host.Host
+	stopChan chan struct{}
+	tick     *time.Ticker
+	subs     []*pubsub.Subscription
+	topics   map[string]*pubsub.Topic
 }
 
-func subscribeToDiscovery(ctx context.Context, topic *pubsub.Topic, h host.Host) {
-	sub, err := topic.Subscribe()
-	if err != nil {
-		log.Fatalf("Failed to subscribe to topic: %s", err)
-	}
-
-	for {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			log.Printf("Subscription error: %s", err)
-			continue
-		}
-
-		// Обработка сообщения
-		var discoveryMsg DiscoveryMessage
-		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-			log.Printf("Failed to decode discovery message: %s", err)
-			continue
-		}
-
-		// Подключение к узлу
-		peerInfo, err := peer.AddrInfoFromString(discoveryMsg.Addrs[0])
-		if err != nil {
-			log.Printf("Failed to parse address: %s", err)
-			continue
-		}
-		if err := h.Connect(ctx, *peerInfo); err != nil {
-			log.Printf("Failed to connect to peer: %s", err)
-		} else {
-			log.Printf("Connected to peer: %s", discoveryMsg.PeerID)
-		}
-	}
-}
-
-func publishPeerInfo(ctx context.Context, topic *pubsub.Topic, peerID string, addrs []string) error {
-	msg := DiscoveryMessage{
-		PeerID: peerID,
-		Addrs:  addrs,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return topic.Publish(ctx, data)
-}
-
-func newPubSub(ctx context.Context, h host.Host) {
+func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
 	// Настраиваем PubSub
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
-		log.Fatalf("Failed to create PubSub: %s", err)
+		return nil, fmt.Errorf("failed to create PubSub: %s", err)
 	}
 
 	// Подключаемся к топику
 	topic, err := ps.Join(discoveryTopic)
 	if err != nil {
-		log.Fatalf("Failed to join discovery topic: %s", err)
+		return nil, fmt.Errorf("failed to join discovery topic: %s", err)
 	}
 
-	// Подписываемся на сообщения
-	go subscribeToDiscovery(ctx, topic, h)
+	g := &Gossip{
+		ctx:      ctx,
+		pubsub:   ps,
+		node:     h,
+		stopChan: make(chan struct{}),
+		tick:     time.NewTicker(time.Second * 10),
+		subs:     []*pubsub.Subscription{},
+		topics:   map[string]*pubsub.Topic{},
+	}
+	g.topics[topic.String()] = topic
 
-	// Публикуем информацию об узле каждые 10 секунд
+	go func() {
+		if err := g.subscribeToDiscovery(topic); err != nil {
+			log.Printf("failed to subscribe to discovery topic: %v", err)
+		}
+	}()
+	go func() {
+		if err := g.publishPeerInfo(topic); err != nil {
+			log.Printf("failed to publish peer info to discovery topic: %v", err)
+		}
+	}()
+	return g, nil
+}
+
+func (g *Gossip) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	for _, sub := range g.subs {
+		sub.Cancel()
+	}
+	for _, topic := range g.topics {
+		if err = topic.Close(); err != nil {
+			return err
+		}
+	}
+	g.tick.Stop()
+	close(g.stopChan)
+	g.pubsub = nil
+	return
+}
+
+type DiscoveryMessage struct {
+	PeerID string   `json:"peer_id"`
+	Addrs  []string `json:"addrs"`
+}
+
+func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
+	sub, err := topic.Subscribe()
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to topic: %s", err)
+	}
+	g.subs = append(g.subs, sub)
+
 	for {
-		addrs := make([]string, 0)
-		for _, addr := range h.Addrs() {
-			addrs = append(addrs, addr.String())
-		}
-		err := publishPeerInfo(ctx, topic, h.ID().String(), addrs)
+		msg, err := sub.Next(g.ctx)
 		if err != nil {
-			log.Printf("Failed to publish peer info: %s", err)
+			return fmt.Errorf("subscription error: %v", err)
 		}
-		time.Sleep(10 * time.Second)
+
+		var discoveryMsg DiscoveryMessage
+		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+			return fmt.Errorf("failed to decode discovery message: %w", err)
+		}
+
+		for _, addr := range discoveryMsg.Addrs {
+			if addr == "" {
+				log.Println("discovery message address is empty", addr)
+				continue
+			}
+			if strings.Contains(addr, "/p2p-circuit") {
+				continue
+			}
+			if discoveryMsg.PeerID == g.node.ID().String() {
+				continue
+			}
+
+			addr = fmt.Sprintf("%s/p2p/%s", addr, discoveryMsg.PeerID)
+			peerInfo, err := peer.AddrInfoFromString(addr)
+			if err != nil || peerInfo == nil {
+				return fmt.Errorf("failed to parse peer info: %w", err)
+			}
+			if err := g.node.Connect(g.ctx, *peerInfo); err != nil {
+				return fmt.Errorf("failed to connect to peer: %w", err)
+			}
+			log.Printf("connected to peer: %s", discoveryMsg.PeerID)
+		}
 	}
+}
+
+func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
+	for {
+		select {
+		case <-g.ctx.Done():
+			return g.ctx.Err()
+		case <-g.stopChan:
+			return nil
+		case <-g.tick.C:
+			msg := DiscoveryMessage{
+				PeerID: g.node.ID().String(),
+				Addrs:  convertAddrs(g.node.Addrs()),
+			}
+			data, err := json.Marshal(msg)
+			if err != nil {
+				return err
+			}
+			err = topic.Publish(g.ctx, data)
+			if err != nil {
+				return fmt.Errorf("failed to publish peer info: %w", err)
+			}
+		}
+	}
+}
+
+func convertAddrs(maddrs []multiaddr.Multiaddr) []string {
+	var addrs []string
+	for _, maddr := range maddrs {
+		addrs = append(addrs, maddr.String())
+	}
+	return addrs
 }

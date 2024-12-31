@@ -41,14 +41,19 @@ type PersistentLayer interface {
 type Node struct {
 	db PersistentLayer
 
-	node  host.Host
-	mdns  mdns.Service
-	relay *relayv2.Relay
+	node   host.Host
+	mdns   mdns.Service
+	relay  *relayv2.Relay
+	pubsub *Gossip
 }
 
 func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
 	logging.SetLogLevel("*", conf.Node.Logging.Level)
-	
+
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
+	if err != nil {
+		return nil, err
+	}
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
@@ -84,6 +89,7 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
+		libp2p.Identity(privKey.(crypto.PrivKey)),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
@@ -106,7 +112,7 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 	if err != nil {
 		return nil, err
 	}
-	mdnsService := mdns.NewMdnsService(node, NetworkName, &discoveryNotifee{node})
+	mdnsService := mdns.NewMdnsService(node, NetworkName, NewDiscoveryNotifee(node))
 	relay, err := relayv2.New(node)
 	if err != nil {
 		return nil, err
@@ -121,6 +127,15 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
+	logConf := logging.GetConfig()
+	logConf.Labels["node_id"] = n.ID()
+	logging.SetupLogging(logConf)
+
+	pubsub, err := NewPubSub(ctx, n.node)
+	if err != nil {
+		return nil, err
+	}
+	n.pubsub = pubsub
 	return n, nil
 }
 
@@ -129,6 +144,8 @@ func NewRegularNode(
 	db PersistentLayer,
 	conf config.Config,
 ) (_ *Node, err error) {
+	logging.SetLogLevel("*", conf.Node.Logging.Level)
+
 	privKey := db.PrivateKey()
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	if err != nil {
@@ -193,17 +210,25 @@ func NewRegularNode(
 		return nil, err
 	}
 
+	pubsub, err := NewPubSub(ctx, node)
+	if err != nil {
+		return nil, err
+	}
+
 	n := &Node{
 		db,
 		node,
 		mdnsService,
 		relay,
+		pubsub,
 	}
 
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
+	log.Printf("REGULAR NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
+	logConf := logging.GetConfig()
+	logConf.Labels["node_id"] = n.ID()
+	logging.SetupLogging(logConf)
 	return n, nil
 }
 
@@ -240,6 +265,9 @@ func (n *Node) Stop() error {
 	if n.db != nil {
 		_ = n.db.Close()
 	}
+	if n.pubsub != nil {
+		_ = n.pubsub.Close()
+	}
 
 	return n.node.Close()
 }
@@ -251,7 +279,7 @@ func setupPrivateDHT(
 	providerStore providers.ProviderStore,
 	relays []peer.AddrInfo,
 ) (*dht.IpfsDHT, error) {
-	dht, err := dht.New(
+	DHT, err := dht.New(
 		ctx, h,
 		dht.Mode(dht.ModeServer),
 		dht.ProtocolPrefix("/"+NetworkName),
@@ -263,23 +291,14 @@ func setupPrivateDHT(
 		return nil, err
 	}
 	go func() {
-		if err := dht.Bootstrap(ctx); err != nil {
+		if err := DHT.Bootstrap(ctx); err != nil {
 			log.Printf("failed to bootstrap dht: %v\n", err)
 		}
 	}()
-	go monitorDHT(dht)
-	if err = <-dht.RefreshRoutingTable(); err != nil {
+	if err = <-DHT.RefreshRoutingTable(); err != nil {
 		log.Printf("failed to refresh kdht routing table: %v\n", err)
 	}
-	return dht, nil
-}
-
-func monitorDHT(idht *dht.IpfsDHT) {
-	for {
-		time.Sleep(50 * time.Second)
-		peers := idht.RoutingTable().ListPeers()
-		log.Printf("DHT routing table contains %d peers", len(peers))
-	}
+	return DHT, nil
 }
 
 func sendMessage(h host.Host, peerID peer.ID, protocol protocol.ID, message string) {

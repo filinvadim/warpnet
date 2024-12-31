@@ -1,8 +1,7 @@
 node:
   seed_id: 1
   bootstrap_addrs:
-    - "/dns4/warpnet.bootstrap.net/tcp/4001/p2p/12D3KooWRuPjS1BxxipZLMp6QiEXJNSeC4E783JBVaSQRUVydRP6"
-    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWRuPjS1BxxipZLMp6QiEXJNSeC4E783JBVaSQRUVydRP6"
+    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWR13Xoj9ioZLhA9rs9H4BwCNGBAkkvSUghhwDkRpUVwf9"
   listen_addrs:
     - "/ip4/0.0.0.0/tcp/4001"
     - "/ip4/0.0.0.0/tcp/4002/ws"

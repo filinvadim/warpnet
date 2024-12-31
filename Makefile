@@ -32,3 +32,6 @@ docker-build:
 
 compose-up:
 	docker compose --parallel 1 up -d --quiet-pull --build
+
+bootstrap-port:
+	nc -zv bootstrap.warp.net 4001
