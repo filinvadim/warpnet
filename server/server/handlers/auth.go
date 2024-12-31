@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database"
+	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	api "github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/server"
 	"github.com/labstack/echo/v4"
@@ -13,26 +14,30 @@ import (
 	"time"
 )
 
+type UserPersistencyLayer interface {
+	Authenticate(username, password string) (token string, err error)
+	Create(user domainGen.User) (domainGen.User, error)
+	Owner() (domainGen.Owner, error)
+	CreateOwner(o domainGen.Owner) (err error)
+}
+
 type AuthController struct {
 	isAuthenticated *atomic.Bool
-	authRepo        *database.AuthRepo
-	userRepo        *database.UserRepo
+	userPersistence UserPersistencyLayer
 	interrupt       chan os.Signal
 	nodeReady       chan string
 	authReady       chan struct{}
 }
 
 func NewAuthController(
-	authRepo *database.AuthRepo,
-	userRepo *database.UserRepo,
+	userPersistence UserPersistencyLayer,
 	interrupt chan os.Signal,
 	nodeReady chan string,
 	authReady chan struct{},
 ) *AuthController {
 	return &AuthController{
 		new(atomic.Bool),
-		authRepo,
-		userRepo,
+		userPersistence,
 		interrupt,
 		nodeReady,
 		authReady,
@@ -50,7 +55,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		)
 	}
 
-	token, err := c.authRepo.Authenticate(req.Username, req.Password)
+	token, err := c.userPersistence.Authenticate(req.Username, req.Password)
 	if err != nil {
 		return ctx.JSON(
 			http.StatusForbidden,
@@ -59,12 +64,12 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 	}
 	c.authReady <- struct{}{}
 
-	owner, err := c.userRepo.Owner()
+	owner, err := c.userPersistence.Owner()
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
 		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	if errors.Is(err, database.ErrUserNotFound) {
-		err := c.userRepo.CreateOwner(database.Owner{
+		err := c.userPersistence.CreateOwner(domainGen.Owner{
 			CreatedAt: time.Now(),
 			Username:  req.Username,
 		})
@@ -74,7 +79,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 				api.Error{500, fmt.Sprintf("create owner: %v", err)},
 			)
 		}
-		owner, _ = c.userRepo.Owner()
+		owner, _ = c.userPersistence.Owner()
 	}
 	userResponse := api.Owner{
 		CreatedAt:   owner.CreatedAt,
@@ -99,7 +104,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		owner.NodeId = nodeId
 	}
 
-	if err = c.userRepo.CreateOwner(owner); err != nil {
+	if err = c.userPersistence.CreateOwner(owner); err != nil {
 		return ctx.JSON(
 			http.StatusInternalServerError,
 			api.Error{500, fmt.Sprintf("failed to update user: %v", err)},

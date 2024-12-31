@@ -17,11 +17,19 @@ const (
 	MessageSubNamespace = "MESSAGE"
 )
 
-type ChatRepo struct {
-	db *storage.DB
+type ChatStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	Set(key storage.DatabaseKey, value []byte) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Delete(key storage.DatabaseKey) error
 }
 
-func NewChatRepo(db *storage.DB) *ChatRepo {
+type ChatRepo struct {
+	db ChatStorer
+}
+
+func NewChatRepo(db ChatStorer) *ChatRepo {
 	return &ChatRepo{db: db}
 }
 

@@ -12,10 +12,6 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -29,40 +25,34 @@ import (
 	"time"
 )
 
-const NetworkName = "warpnet"
+const (
+	NetworkName    = "warpnet"
+	ProtocolPrefix = "/" + NetworkName
+)
 
 type PersistentLayer interface {
 	datastore.Batching
 	providers.ProviderStore
 	PrivateKey() go_crypto.PrivateKey
-	ListProviders() (_ map[string][]peer.AddrInfo, err error)
+	ListProviders() (_ map[string][]WarpAddrInfo, err error)
 }
 
 type Node struct {
-	db PersistentLayer
-
-	node   host.Host
-	mdns   mdns.Service
-	relay  *relayv2.Relay
-	pubsub *Gossip
+	node   WarpNode
+	mdns   WarpMDNS
+	relay  WarpRelayCloser
+	pubsub WarpGossiper
 }
 
-func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
+func createNode(
+	ctx context.Context,
+	privKey WarpPrivateKey,
+	store WarpPeerstore,
+	addrInfos []WarpAddrInfo,
+	conf config.Config,
+	routingFn func(node WarpNode) (WarpPeerRouting, error),
+) (*Node, error) {
 	logging.SetLogLevel("*", conf.Node.Logging.Level)
-
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
-	if err != nil {
-		return nil, err
-	}
-	store, err := pstoremem.NewPeerstore()
-	if err != nil {
-		return nil, err
-	}
-	mapStore := datastore.NewMapDatastore()
-	providersCache, err := providers.NewProviderManager("bootstrap", store, mapStore)
-	if err != nil {
-		return nil, err
-	}
 
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
@@ -80,21 +70,16 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		return nil, err
 	}
 
-	addrInfos, err := conf.Node.AddrInfos()
-	if err != nil {
-		return nil, err
-	}
-
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
-		libp2p.Identity(privKey.(crypto.PrivKey)),
+		libp2p.Identity(privKey),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))),
+		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))), // TODO shuffle name
 		libp2p.UserAgent(NetworkName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
@@ -105,38 +90,69 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.ConnectionManager(manager),
-		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, mapStore, providersCache, addrInfos)
-		}),
+		libp2p.Routing(routingFn),
 	)
 	if err != nil {
 		return nil, err
 	}
+
 	mdnsService := mdns.NewMdnsService(node, NetworkName, NewDiscoveryNotifee(node))
 	relay, err := relayv2.New(node)
 	if err != nil {
 		return nil, err
 	}
 
-	n := &Node{
-		node:  node,
-		mdns:  mdnsService,
-		relay: relay,
+	pubsub, err := NewPubSub(ctx, node)
+	if err != nil {
+		return nil, err
 	}
+
+	n := &Node{
+		node:   node,
+		mdns:   mdnsService,
+		relay:  relay,
+		pubsub: pubsub,
+	}
+
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("BOOTSRAP NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
+	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	logConf := logging.GetConfig()
 	logConf.Labels["node_id"] = n.ID()
 	logging.SetupLogging(logConf)
 
-	pubsub, err := NewPubSub(ctx, n.node)
+	return n, nil
+}
+
+func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
 	if err != nil {
 		return nil, err
 	}
-	n.pubsub = pubsub
-	return n, nil
+
+	store, err := pstoremem.NewPeerstore()
+	if err != nil {
+		return nil, err
+	}
+
+	mapStore := datastore.NewMapDatastore()
+	providersCache, err := providers.NewProviderManager("bootstrap", store, mapStore)
+	if err != nil {
+		return nil, err
+	}
+
+	addrInfos, err := conf.Node.AddrInfos()
+	if err != nil {
+		return nil, err
+	}
+
+	return createNode(
+		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
+		func(n WarpNode) (WarpPeerRouting, error) {
+			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
+		},
+	)
 }
 
 func NewRegularNode(
@@ -151,23 +167,8 @@ func NewRegularNode(
 	if err != nil {
 		return nil, err
 	}
+
 	providersCache, err := NewProviderCache(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-
-	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
-
-	manager, err := connmgr.NewConnManager(
-		100,
-		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Minute),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	rm, err := rcmgr.NewResourceManager(limiter)
 	if err != nil {
 		return nil, err
 	}
@@ -177,59 +178,12 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	node, err := libp2p.New(
-		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(ws.New),
-		libp2p.Identity(privKey.(crypto.PrivKey)),
-		libp2p.Ping(true),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableAutoNATv2(),
-		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))),
-		libp2p.UserAgent(NetworkName),
-		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(store),
-		libp2p.EnableNATService(),
-		libp2p.NATPortMap(),
-		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
-		libp2p.ResourceManager(rm),
-		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
-		libp2p.ConnectionManager(manager),
-		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			return setupPrivateDHT(ctx, h, db, providersCache, addrInfos)
-		}),
+	return createNode(
+		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
+		func(n WarpNode) (WarpPeerRouting, error) {
+			return setupPrivateDHT(ctx, n, db, providersCache, addrInfos)
+		},
 	)
-	if err != nil {
-		return nil, err
-	}
-	mdnsService := mdns.NewMdnsService(node, NetworkName, &discoveryNotifee{node})
-	relay, err := relayv2.New(node)
-	if err != nil {
-		return nil, err
-	}
-
-	pubsub, err := NewPubSub(ctx, node)
-	if err != nil {
-		return nil, err
-	}
-
-	n := &Node{
-		db,
-		node,
-		mdnsService,
-		relay,
-		pubsub,
-	}
-
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("REGULAR NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	logConf := logging.GetConfig()
-	logConf.Labels["node_id"] = n.ID()
-	logging.SetupLogging(logConf)
-	return n, nil
 }
 
 func (n *Node) ID() string {
@@ -262,9 +216,6 @@ func (n *Node) Stop() error {
 	if n.relay != nil {
 		_ = n.relay.Close()
 	}
-	if n.db != nil {
-		_ = n.db.Close()
-	}
 	if n.pubsub != nil {
 		_ = n.pubsub.Close()
 	}
@@ -274,15 +225,15 @@ func (n *Node) Stop() error {
 
 func setupPrivateDHT(
 	ctx context.Context,
-	h host.Host,
+	n WarpNode,
 	repo datastore.Batching,
 	providerStore providers.ProviderStore,
-	relays []peer.AddrInfo,
-) (*dht.IpfsDHT, error) {
+	relays []WarpAddrInfo,
+) (*WarpDHT, error) {
 	DHT, err := dht.New(
-		ctx, h,
+		ctx, n,
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix("/"+NetworkName),
+		dht.ProtocolPrefix(ProtocolPrefix),
 		dht.Datastore(repo),
 		dht.BootstrapPeers(relays...),
 		dht.ProviderStore(providerStore),
@@ -301,7 +252,7 @@ func setupPrivateDHT(
 	return DHT, nil
 }
 
-func sendMessage(h host.Host, peerID peer.ID, protocol protocol.ID, message string) {
+func sendMessage(h WarpNode, peerID WarpPeerID, protocol WarpDiscriminator, message string) {
 	// Устанавливаем соединение
 	s, err := h.NewStream(context.Background(), peerID, protocol)
 	if err != nil {

@@ -141,20 +141,12 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 	return users, cur, nil
 }
 
-type Owner struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	Id          string    `json:"id"`
-	NodeId      string    `json:"node_id"`
-	Username    string    `json:"username"`
-}
-
-func (repo *UserRepo) Owner() (Owner, error) {
+func (repo *UserRepo) Owner() (domainGen.Owner, error) {
 	owner, err := repo.Get(DefaultOwnerUserID)
 	if errors.Is(err, ErrUserNotFound) {
-		return Owner{}, ErrUserNotFound
+		return domainGen.Owner{}, ErrUserNotFound
 	}
-	return Owner{
+	return domainGen.Owner{
 		CreatedAt:   owner.CreatedAt,
 		Description: owner.Description,
 		Id:          owner.Id,
@@ -163,7 +155,7 @@ func (repo *UserRepo) Owner() (Owner, error) {
 	}, err
 }
 
-func (repo *UserRepo) CreateOwner(o Owner) (err error) {
+func (repo *UserRepo) CreateOwner(o domainGen.Owner) (err error) {
 	_, err = repo.Create(domainGen.User{
 		Birthdate:   nil,
 		CreatedAt:   o.CreatedAt,

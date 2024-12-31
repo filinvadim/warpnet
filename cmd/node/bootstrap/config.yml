@@ -1,7 +1,7 @@
 node:
-  seed_id: 1
+  seed_id: 2
   bootstrap_addrs:
-    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWR13Xoj9ioZLhA9rs9H4BwCNGBAkkvSUghhwDkRpUVwf9"
+    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
   listen_addrs:
     - "/ip4/0.0.0.0/tcp/4001"
     - "/ip4/0.0.0.0/tcp/4002/ws"

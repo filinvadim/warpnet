@@ -24,14 +24,18 @@ var (
 	ErrNilAuthRepo   = errors.New("auth repo is nil")
 )
 
+type AuthStorer interface {
+	Run(username, password string) (err error)
+}
+
 type AuthRepo struct {
-	db           *storage.DB
+	db           AuthStorer
 	ownerId      string
 	sessionToken string
 	privateKey   crypto.PrivateKey
 }
 
-func NewAuthRepo(db *storage.DB) *AuthRepo {
+func NewAuthRepo(db AuthStorer) *AuthRepo {
 	return &AuthRepo{db: db, privateKey: nil}
 }
 

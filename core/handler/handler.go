@@ -12,7 +12,7 @@ import (
 	"log"
 )
 
-func registerHandler(h host.Host) {
+func RegisterHandlers(h host.Host) error {
 	sw, _ := nodeGen.GetSwagger()
 	paths := sw.Paths
 
@@ -23,12 +23,12 @@ func registerHandler(h host.Host) {
 	for k := range paths.Map() {
 		h.SetStreamHandler(protocol.ID(k), func(s network.Stream) {
 			defer s.Close()
-			log.Println("New stream opened", protocol.ID(k), s.Conn().RemotePeer())
+			log.Println("new stream opened", protocol.ID(k), s.Conn().RemotePeer())
 
 			buf := make([]byte, 1024)
 			n, err := s.Read(buf)
 			if err != nil {
-				log.Printf("Error reading from stream: %s", err)
+				log.Printf("fail reading from stream: %s", err)
 				return
 			}
 			log.Printf("Received message: %s", string(buf[:n]))

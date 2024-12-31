@@ -30,8 +30,19 @@ var (
 	ErrNilNodeRepo                         = errors.New("node repo is nil")
 )
 
+type NodeStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Sync() error
+	IsClosed() bool
+	InnerDB() *badger.DB
+	ReadTxn(f func(tx *badger.Txn) error) error
+	SetWithTTL(key storage.DatabaseKey, value []byte, ttl time.Duration) error
+}
+
 type NodeRepo struct {
-	db *storage.DB
+	db NodeStorer
 
 	stopChan chan struct{}
 }
@@ -43,7 +54,7 @@ type batch struct {
 	writeBatch *badger.WriteBatch
 }
 
-func NewNodeRepo(db *storage.DB) *NodeRepo {
+func NewNodeRepo(db NodeStorer) *NodeRepo {
 	nr := &NodeRepo{
 		db:       db,
 		stopChan: make(chan struct{}),

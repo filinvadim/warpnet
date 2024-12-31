@@ -59,6 +59,8 @@ func main() {
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
+	defer nodeRepo.Close()
+
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
 	//followRepo := database.NewFollowRepo(db)
@@ -80,10 +82,17 @@ func main() {
 		manualCredsInput(interfaceServer, db)
 	}
 
+	userPersistency := struct {
+		*database.AuthRepo
+		*database.UserRepo
+	}{
+		authRepo, userRepo,
+	}
+
 	interfaceServer.RegisterHandlers(&API{
 		handlers.NewStaticController(staticFolder),
 		handlers.NewAuthController(
-			authRepo, userRepo, interruptChan, nodeReadyChan, authReadyChan),
+			userPersistency, interruptChan, nodeReadyChan, authReadyChan),
 	})
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()

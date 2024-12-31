@@ -60,7 +60,7 @@ func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
 		pubsub:   ps,
 		node:     h,
 		stopChan: make(chan struct{}),
-		tick:     time.NewTicker(time.Second * 10),
+		tick:     time.NewTicker(time.Minute),
 		subs:     []*pubsub.Subscription{},
 		topics:   map[string]*pubsub.Topic{},
 	}

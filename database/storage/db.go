@@ -287,6 +287,8 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 	return result, nil
 }
 
+type WarpTxn = badger.Txn
+
 func (db *DB) WriteTxn(f func(tx *badger.Txn) error) error {
 	return db.txn(true, f)
 }
