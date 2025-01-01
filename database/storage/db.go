@@ -2,10 +2,9 @@ package storage
 
 import (
 	"errors"
-	"github.com/filinvadim/warpnet/core/encrypting"
-
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -14,9 +13,14 @@ import (
 
 const discardRatio = 0.5
 
-var ErrNotRunning = errors.New("DB is not running")
+var (
+	ErrNotRunning  = errors.New("DB is not running")
+	ErrKeyNotFound = badger.ErrKeyNotFound
+)
 
-type WarpDB = badger.DB
+type (
+	WarpDB = badger.DB
+)
 
 type DB struct {
 	badger   *badger.DB
@@ -29,10 +33,18 @@ type DB struct {
 	dbPath string
 }
 
+type WarpDBLogger interface {
+	Errorf(string, ...interface{})
+	Warningf(string, ...interface{})
+	Infof(string, ...interface{})
+	Debugf(string, ...interface{})
+}
+
 func New(
 	path string,
 	isInMemory bool,
 	dataFolder string,
+	logger badger.Logger,
 ) *DB {
 	dbPath := path + dataFolder
 	opts := badger.
@@ -41,7 +53,7 @@ func New(
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2).
-		WithLogger(nil)
+		WithLogger(logger)
 
 	if isInMemory {
 		opts.WithInMemory(true)
@@ -76,7 +88,7 @@ func (db *DB) Run(username, password string) (err error) {
 	}
 
 	go db.runEventualGC()
-	
+
 	return nil
 }
 

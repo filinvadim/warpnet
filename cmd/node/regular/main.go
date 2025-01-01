@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/logger"
 	handlers2 "github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
 	"gopkg.in/yaml.v3"
@@ -25,12 +26,7 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-var (
-	version = "0.0.1"
-)
-
-//go:embed config.yml
-var configFile []byte
+var version = "0.0.1"
 
 type API struct {
 	*handlers2.StaticController
@@ -39,7 +35,7 @@ type API struct {
 
 func main() {
 	var conf config.Config
-	if err := yaml.Unmarshal(configFile, &conf); err != nil {
+	if err := yaml.Unmarshal(warpnet.GetConfigFile(), &conf); err != nil {
 		log.Fatal("unmarshalling config: ", err)
 	}
 
@@ -53,7 +49,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db := storage.New(getAppPath(), false, conf.Database.Dir)
+	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
+
+	db := storage.New(getAppPath(), false, conf.Database.Dir, l)
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
@@ -71,7 +69,7 @@ func main() {
 	var authReadyChan = make(chan struct{})
 	defer close(authReadyChan)
 
-	interfaceServer, err := server.NewInterfaceServer(conf)
+	interfaceServer, err := server.NewInterfaceServer(conf, l)
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run public server: %v", err)
 	}
@@ -107,6 +105,7 @@ func main() {
 		ctx,
 		persistentLayer{nodeRepo, authRepo},
 		conf,
+		l,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)

@@ -3,6 +3,7 @@ package database_test
 import (
 	"fmt"
 	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	"github.com/filinvadim/warpnet/logger"
 	"os"
 	"testing"
 	"time"
@@ -16,7 +17,8 @@ import (
 func setupTweetTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttweet"
 	// Открываем базу данных в этой директории
-	db := storage.New(path, true, "/storage")
+	l := logger.NewUnifiedLogger("debug", true)
+	db := storage.New(path, true, "/storage", l)
 	db.Run("", "")
 
 	t.Cleanup(func() {

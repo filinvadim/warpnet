@@ -2,6 +2,7 @@ package database_test
 
 import (
 	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	"github.com/filinvadim/warpnet/logger"
 	"os"
 	"testing"
 	"time"
@@ -14,7 +15,8 @@ import (
 
 func setupTimelineTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttimeline"
-	db := storage.New(path, true, "/storage")
+	l := logger.NewUnifiedLogger("debug", true)
+	db := storage.New(path, true, "/storage", l)
 	db.Run("", "")
 
 	t.Cleanup(func() {

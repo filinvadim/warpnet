@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
+	"github.com/filinvadim/warpnet/logger"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -37,8 +38,8 @@ type PersistentLayer interface {
 	ListProviders() (_ map[string][]WarpAddrInfo, err error)
 }
 
-type Node struct {
-	node   WarpNode
+type WarpNode struct {
+	node   P2PNode
 	mdns   WarpMDNS
 	relay  WarpRelayCloser
 	pubsub WarpGossiper
@@ -50,10 +51,8 @@ func createNode(
 	store WarpPeerstore,
 	addrInfos []WarpAddrInfo,
 	conf config.Config,
-	routingFn func(node WarpNode) (WarpPeerRouting, error),
-) (*Node, error) {
-	logging.SetLogLevel("*", conf.Node.Logging.Level)
-
+	routingFn func(node P2PNode) (WarpPeerRouting, error),
+) (*WarpNode, error) {
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
 	manager, err := connmgr.NewConnManager(
@@ -107,7 +106,7 @@ func createNode(
 		return nil, err
 	}
 
-	n := &Node{
+	n := &WarpNode{
 		node:   node,
 		mdns:   mdnsService,
 		relay:  relay,
@@ -125,7 +124,17 @@ func createNode(
 	return n, nil
 }
 
-func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err error) {
+func NewBootstrapNode(
+	ctx context.Context,
+	conf config.Config,
+	l logger.Core,
+) (_ *WarpNode, err error) {
+	core := l.With([]logger.Field{{
+		Key:    "node",
+		String: "bootstrap",
+	}})
+	logging.SetPrimaryCore(core)
+
 	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
 	if err != nil {
 		return nil, err
@@ -149,7 +158,7 @@ func NewBootstrapNode(ctx context.Context, conf config.Config) (_ *Node, err err
 
 	return createNode(
 		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
-		func(n WarpNode) (WarpPeerRouting, error) {
+		func(n P2PNode) (WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
 		},
 	)
@@ -159,8 +168,13 @@ func NewRegularNode(
 	ctx context.Context,
 	db PersistentLayer,
 	conf config.Config,
-) (_ *Node, err error) {
-	logging.SetLogLevel("*", conf.Node.Logging.Level)
+	l logger.Core,
+) (_ *WarpNode, err error) {
+	core := l.With([]logger.Field{{
+		Key:    "node",
+		String: "regular",
+	}})
+	logging.SetPrimaryCore(core)
 
 	privKey := db.PrivateKey()
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
@@ -180,20 +194,20 @@ func NewRegularNode(
 
 	return createNode(
 		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
-		func(n WarpNode) (WarpPeerRouting, error) {
+		func(n P2PNode) (WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, db, providersCache, addrInfos)
 		},
 	)
 }
 
-func (n *Node) ID() string {
+func (n *WarpNode) ID() string {
 	if n == nil || n.node == nil {
 		return ""
 	}
 	return n.node.ID().String()
 }
 
-func (n *Node) Addresses() (addrs []string) {
+func (n *WarpNode) Addresses() (addrs []string) {
 	if n == nil || n.node == nil {
 		return addrs
 	}
@@ -203,7 +217,7 @@ func (n *Node) Addresses() (addrs []string) {
 	return addrs
 }
 
-func (n *Node) Stop() error {
+func (n *WarpNode) Stop() error {
 	log.Println("shutting down node...")
 	defer func() {
 		if r := recover(); r != nil {
@@ -225,7 +239,7 @@ func (n *Node) Stop() error {
 
 func setupPrivateDHT(
 	ctx context.Context,
-	n WarpNode,
+	n P2PNode,
 	repo datastore.Batching,
 	providerStore providers.ProviderStore,
 	relays []WarpAddrInfo,
@@ -252,7 +266,7 @@ func setupPrivateDHT(
 	return DHT, nil
 }
 
-func sendMessage(h WarpNode, peerID WarpPeerID, protocol WarpDiscriminator, message string) {
+func sendMessage(h P2PNode, peerID WarpPeerID, protocol WarpDiscriminator, message string) {
 	// Устанавливаем соединение
 	s, err := h.NewStream(context.Background(), peerID, protocol)
 	if err != nil {

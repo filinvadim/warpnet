@@ -1,11 +1,14 @@
 version: 0.0.1
 node:
+    seed_id: 2
     bootstrap:
-      - "/ip4/157.245.23.143/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
+      - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
     listen_addrs:
       - "/ip4/0.0.0.0/tcp/4001"
       - "/ip4/0.0.0.0/tcp/4002/ws"
       - "/ip6/::/tcp/4001"
+    logging:
+      level: warn
 database:
     dir: "/storage"
 server:

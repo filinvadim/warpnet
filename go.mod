@@ -22,9 +22,11 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.28.1
 	github.com/libp2p/go-libp2p-pubsub v0.12.0
 	github.com/libp2p/go-libp2p-raft v0.5.0
+	github.com/miekg/dns v1.1.62
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.5.3
 	gopkg.in/yaml.v3 v3.0.1
@@ -101,7 +103,6 @@ require (
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/miekg/dns v1.1.62 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect

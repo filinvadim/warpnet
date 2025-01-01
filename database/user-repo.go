@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"github.com/dgraph-io/badger/v3"
 	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	"time"
 
@@ -61,7 +60,7 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		AddParentId(user.Id).
 		Build()
 
-	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = repo.db.Set(fixedKey, data); err != nil {
 			return err
 		}
@@ -81,7 +80,7 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 		AddParentId(userID).
 		Build()
 	data, err := repo.db.Get(fixedKey)
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	if errors.Is(err, storage.ErrKeyNotFound) {
 		return user, ErrUserNotFound
 	}
 	if err != nil {
@@ -118,7 +117,7 @@ func (repo *UserRepo) Delete(userID string) error {
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
-	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}

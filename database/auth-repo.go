@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/labstack/gommon/log"
 	"math/rand/v2"
 	"time"
 )
@@ -63,7 +62,6 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 
 	err = repo.db.Run(username, password)
 	if err != nil {
-		log.Error("run db:", err)
 		return "", err
 	}
 	repo.privateKey = privateKey

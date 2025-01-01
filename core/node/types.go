@@ -26,7 +26,7 @@ type (
 
 type (
 	WarpPeerRouting   = routing.PeerRouting
-	WarpNode          = host.Host
+	P2PNode           = host.Host
 	WarpAddrInfo      = peer.AddrInfo
 	WarpPeerstore     = peerstore.Peerstore
 	WarpPrivateKey    crypto.PrivKey

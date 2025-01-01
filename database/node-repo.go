@@ -9,7 +9,6 @@ import (
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"log"
 	"runtime"
 	"strings"
 	"time"
@@ -535,12 +534,7 @@ func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
 	b := &batch{d, d.db.InnerDB().NewWriteBatch()}
 	// Ensure that incomplete transaction resources are cleaned up in case
 	// batch is abandoned.
-	runtime.SetFinalizer(b, func(b *batch) {
-		log.Printf(
-			"batch not committed or canceled: %v",
-			b.Cancel(),
-		)
-	})
+	runtime.SetFinalizer(b, func(b *batch) { b.Cancel() })
 
 	return b, nil
 }

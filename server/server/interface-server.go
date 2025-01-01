@@ -9,13 +9,10 @@ import (
 	ownMiddleware "github.com/filinvadim/warpnet/server/middleware"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	log2 "github.com/labstack/gommon/log"
 	"github.com/pkg/browser"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 const SessionTokenName = "X-SESSION-TOKEN"
@@ -49,7 +46,7 @@ type interfaceServer struct {
 	port string
 }
 
-func NewInterfaceServer(conf config.Config) (PublicServer, error) {
+func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error) {
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
@@ -58,14 +55,8 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 
 	e := echo.New()
 	e.HideBanner = true
-	e.Logger.SetLevel(log2.Lvl(logLevelsMap[strings.ToLower(conf.Server.Logging.Level)]))
+	e.Logger = l
 
-	dlc := echomiddleware.DefaultLoggerConfig
-	dlc.Format = conf.Server.Logging.Format
-	//dlc.Output = e.Logger.Output()
-	dlc.Output = io.Discard
-
-	e.Use(echomiddleware.LoggerWithConfig(dlc))
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
 		AllowOrigins:  []string{"*"}, // TODO
 		AllowHeaders:  []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "X-SESSION-TOKEN"},

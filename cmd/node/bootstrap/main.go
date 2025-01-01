@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	_ "embed"
+	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
+	"github.com/filinvadim/warpnet/logger"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
@@ -18,12 +20,9 @@ var (
 	version = "0.0.1"
 )
 
-//go:embed config.yml
-var configFile []byte
-
 func main() {
 	var conf config.Config
-	if err := yaml.Unmarshal(configFile, &conf); err != nil {
+	if err := yaml.Unmarshal(warpnet.GetConfigFile(), &conf); err != nil {
 		log.Fatal("unmarshalling config: ", err)
 	}
 
@@ -36,9 +35,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 	log.Println("starting bootstrap node...")
 
-	n, err := node.NewBootstrapNode(ctx, conf)
+	n, err := node.NewBootstrapNode(ctx, conf, l)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

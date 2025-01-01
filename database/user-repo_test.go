@@ -2,6 +2,7 @@ package database_test
 
 import (
 	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	"github.com/filinvadim/warpnet/logger"
 	"os"
 	"testing"
 
@@ -14,7 +15,8 @@ import (
 func setupUserTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtestuser"
 	// Открываем базу данных в этой директории
-	db := storage.New(path, true, "/storage")
+	l := logger.NewUnifiedLogger("debug", true)
+	db := storage.New(path, true, "/storage", l)
 	db.Run("", "")
 
 	t.Cleanup(func() {
