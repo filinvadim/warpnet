@@ -36,8 +36,8 @@ type NodeStorer interface {
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Sync() error
 	IsClosed() bool
-	InnerDB() *badger.DB
-	ReadTxn(f func(tx *badger.Txn) error) error
+	InnerDB() *storage.WarpDB
+	ReadTxn(f func(tx *storage.WarpTxn) error) error
 	SetWithTTL(key storage.DatabaseKey, value []byte, ttl time.Duration) error
 }
 

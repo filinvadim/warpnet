@@ -76,7 +76,7 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
 	port := ":" + strconv.Itoa(conf.Server.Port)
-	err = browser.OpenURL("http://" + conf.Server.Host + port) // NOTE connection is not protected!
+	err = browser.OpenURL("http://localhost" + port) // NOTE connection is not protected!
 	if err != nil {
 		e.Logger.Errorf("failed to open browser: %v", err)
 		return nil, ErrBrowserLoadFailed

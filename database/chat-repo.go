@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
 	domainGen "github.com/filinvadim/warpnet/domain-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -13,8 +12,8 @@ import (
 )
 
 const (
-	ChatNamespace       = "CHAT"
-	MessageSubNamespace = "MESSAGE"
+	ChatNamespace       = "CHATS"
+	MessageSubNamespace = "MESSAGES"
 )
 
 type ChatStorer interface {
@@ -59,7 +58,7 @@ func (repo *ChatRepo) CreateChat(userId, otherUserId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return chatId, repo.db.WriteTxn(func(tx *badger.Txn) error {
+	return chatId, repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		err := repo.db.Set(userKey, bt)
 		if err != nil {
 			return err
@@ -128,7 +127,7 @@ func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMe
 		return msg, fmt.Errorf("message marshal: %w", err)
 	}
 
-	return msg, repo.db.WriteTxn(func(tx *badger.Txn) error {
+	return msg, repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = repo.db.Set(fixedKey, data); err != nil {
 			return err
 		}
@@ -235,7 +234,7 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 		AddParentId(userId).
 		AddId(id).
 		Build()
-	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}

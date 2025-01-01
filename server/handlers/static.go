@@ -20,6 +20,7 @@ type StaticController struct {
 }
 
 func NewStaticController(staticFolder StaticFolderOpener) *StaticController {
+
 	pwd, _ := os.Getwd()
 	log.Println("CURRENT DIRECTORY: ", pwd)
 	fileSystem := echo.MustSubFS(staticFolder, "server/static/")

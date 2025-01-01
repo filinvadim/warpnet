@@ -20,12 +20,19 @@ const (
 	DefaultOwnerUserID = "OWNER"
 )
 
-// UserRepo handles operations related to users
-type UserRepo struct {
-	db *storage.DB
+type UserStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	Set(key storage.DatabaseKey, value []byte) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Delete(key storage.DatabaseKey) error
 }
 
-func NewUserRepo(db *storage.DB) *UserRepo {
+type UserRepo struct {
+	db UserStorer
+}
+
+func NewUserRepo(db UserStorer) *UserRepo {
 	return &UserRepo{db: db}
 }
 

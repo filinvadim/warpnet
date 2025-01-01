@@ -12,7 +12,7 @@ import (
 
 const (
 	ConsensusLogsNamespace   = "LOGS:"
-	ConsensusConfigNamespace = "CONFIG:"
+	ConsensusConfigNamespace = "CONFIGS:"
 )
 
 var (
@@ -20,11 +20,21 @@ var (
 	ErrKeyNotFound = errors.New("consensus key not found")
 )
 
-type ConsensusRepo struct {
-	db *storage.DB
+type ConsensusStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	Set(key storage.DatabaseKey, value []byte) error
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Sync() error
+	Path() string
+	IterateKeys(prefix storage.DatabaseKey, handler storage.IterKeysFunc) error
+	InnerDB() *storage.WarpDB
 }
 
-func NewConsensusRepo(db *storage.DB) *ConsensusRepo {
+type ConsensusRepo struct {
+	db ConsensusStorer
+}
+
+func NewConsensusRepo(db ConsensusStorer) *ConsensusRepo {
 	return &ConsensusRepo{db: db}
 }
 

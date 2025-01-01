@@ -41,6 +41,7 @@ func RegisterHandlers(h host.Host) error {
 			}
 		})
 	}
+	return nil
 }
 
 type NodeStreamHandler struct {

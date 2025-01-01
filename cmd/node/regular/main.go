@@ -3,13 +3,15 @@ package main
 import (
 	"bufio"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
+	handlers2 "github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
-	"github.com/filinvadim/warpnet/server/server/handlers"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
@@ -19,7 +21,6 @@ import (
 
 	"syscall"
 
-	"embed"
 	"github.com/filinvadim/warpnet/database/storage"
 	_ "go.uber.org/automaxprocs"
 )
@@ -28,15 +29,12 @@ var (
 	version = "0.0.1"
 )
 
-//go:embed static
-var staticFolder embed.FS
-
 //go:embed config.yml
 var configFile []byte
 
 type API struct {
-	*handlers.StaticController
-	*handlers.AuthController
+	*handlers2.StaticController
+	*handlers2.AuthController
 }
 
 func main() {
@@ -90,8 +88,8 @@ func main() {
 	}
 
 	interfaceServer.RegisterHandlers(&API{
-		handlers.NewStaticController(staticFolder),
-		handlers.NewAuthController(
+		handlers2.NewStaticController(warpnet.GetStaticFolder()),
+		handlers2.NewAuthController(
 			userPersistency, interruptChan, nodeReadyChan, authReadyChan),
 	})
 	defer interfaceServer.Shutdown(ctx)

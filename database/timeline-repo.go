@@ -13,12 +13,17 @@ import (
 
 const TimelineRepoName = "TIMELINE"
 
-// TimelineRepo manages user timelines
-type TimelineRepo struct {
-	db *storage.DB
+type TimelineStorer interface {
+	Set(key storage.DatabaseKey, value []byte) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Delete(key storage.DatabaseKey) error
 }
 
-func NewTimelineRepo(db *storage.DB) *TimelineRepo {
+type TimelineRepo struct {
+	db TimelineStorer
+}
+
+func NewTimelineRepo(db TimelineStorer) *TimelineRepo {
 	return &TimelineRepo{db: db}
 }
 

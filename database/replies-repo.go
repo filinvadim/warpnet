@@ -15,12 +15,19 @@ const (
 	RepliesNamespace = "REPLY"
 )
 
-// TweetRepo handles operations related to tweets
-type ReplyRepo struct {
-	db *storage.DB
+type ReplyStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	Set(key storage.DatabaseKey, value []byte) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Delete(key storage.DatabaseKey) error
 }
 
-func NewRepliesRepo(db *storage.DB) *ReplyRepo {
+type ReplyRepo struct {
+	db ReplyStorer
+}
+
+func NewRepliesRepo(db ReplyStorer) *ReplyRepo {
 	return &ReplyRepo{db: db}
 }
 

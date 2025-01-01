@@ -14,9 +14,9 @@ import (
 
 const discardRatio = 0.5
 
-var (
-	ErrNotRunning = errors.New("DB is not running")
-)
+var ErrNotRunning = errors.New("DB is not running")
+
+type WarpDB = badger.DB
 
 type DB struct {
 	badger   *badger.DB
@@ -76,12 +76,7 @@ func (db *DB) Run(username, password string) (err error) {
 	}
 
 	go db.runEventualGC()
-
-	if username == "bootstrap" {
-		log.Printf("database is running in bootstrap mode")
-	} else {
-		log.Printf("database is running in regular mode")
-	}
+	
 	return nil
 }
 

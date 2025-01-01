@@ -17,12 +17,19 @@ const (
 	TweetsNamespace = "TWEETS"
 )
 
-// TweetRepo handles operations related to tweets
-type TweetRepo struct {
-	db *storage.DB
+type TweetsStorer interface {
+	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	Set(key storage.DatabaseKey, value []byte) error
+	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	Get(key storage.DatabaseKey) ([]byte, error)
+	Delete(key storage.DatabaseKey) error
 }
 
-func NewTweetRepo(db *storage.DB) *TweetRepo {
+type TweetRepo struct {
+	db TweetsStorer
+}
+
+func NewTweetRepo(db TweetsStorer) *TweetRepo {
 	return &TweetRepo{db: db}
 }
 
