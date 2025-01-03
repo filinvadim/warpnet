@@ -19,9 +19,9 @@ paths:
           '*/*':
             schema:
               anyOf:
-                - $ref: '#/components/schemas/GetUserEvent'
-                - $ref: '#/components/schemas/NewUserEvent'
-                - $ref: '#/components/schemas/GetAllUsersEvent'
+                - $ref: './event.yml#/components/schemas/GetUserEvent'
+                - $ref: './event.yml#/components/schemas/NewUserEvent'
+                - $ref: './event.yml#/components/schemas/GetAllUsersEvent'
       responses:
         200:
           description: HTTP is not supported
@@ -29,7 +29,7 @@ paths:
             '*/*':
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/UsersResponse'
+                  - $ref: './dto.yml#/components/schemas/UsersResponse'
                   - $ref: './domain.yml#/components/schemas/User'
 
   /tweet/1.0.0:
@@ -39,9 +39,9 @@ paths:
           '*/*':
             schema:
               anyOf:
-                - $ref: '#/components/schemas/GetTweetEvent'
-                - $ref: '#/components/schemas/NewTweetEvent'
-                - $ref: '#/components/schemas/GetAllTweetsEvent'
+                - $ref: './event.yml#/components/schemas/GetTweetEvent'
+                - $ref: './event.yml#/components/schemas/NewTweetEvent'
+                - $ref: './event.yml#/components/schemas/GetAllTweetsEvent'
       responses:
         200:
           description: HTTP is not supported
@@ -49,7 +49,7 @@ paths:
             '*/*':
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/TweetsResponse'
+                  - $ref: './dto.yml#/components/schemas/TweetsResponse'
                   - $ref: './domain.yml#/components/schemas/Tweet'
 
   /timeline/1.0.0:
@@ -58,14 +58,14 @@ paths:
         content:
           '*/*':
             schema:
-              $ref: '#/components/schemas/GetTimelineEvent'
+              $ref: './event.yml#/components/schemas/GetTimelineEvent'
       responses:
         200:
           description: HTTP is not supported
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/TweetsResponse'
+                $ref: './dto.yml#/components/schemas/TweetsResponse'
 
   /node/1.0.0:
     options:
@@ -87,9 +87,9 @@ paths:
           '*/*':
             schema:
               anyOf:
-                - $ref: '#/components/schemas/NewChatEvent'
-                - $ref: '#/components/schemas/GetChatEvent'
-                - $ref: '#/components/schemas/GetAllChatsEvent'
+                - $ref: './event.yml#/components/schemas/NewChatEvent'
+                - $ref: './event.yml#/components/schemas/GetChatEvent'
+                - $ref: './event.yml#/components/schemas/GetAllChatsEvent'
       responses:
         200:
           description: HTTP is not supported
@@ -97,7 +97,7 @@ paths:
             '*/*':
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/ChatsResponse'
+                  - $ref: './dto.yml#/components/schemas/ChatsResponse'
                   - $ref: './domain.yml#/components/schemas/Chat'
 
   /reply/1.0.0:
@@ -107,9 +107,9 @@ paths:
           '*/*':
             schema:
               anyOf:
-                - $ref: '#/components/schemas/NewReplyEvent'
-                - $ref: '#/components/schemas/GetReplyEvent'
-                - $ref: '#/components/schemas/GetAllRepliesEvent'
+                - $ref: './event.yml#/components/schemas/NewReplyEvent'
+                - $ref: './event.yml#/components/schemas/GetReplyEvent'
+                - $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
       responses:
         200:
           description: HTTP is not supported
@@ -117,7 +117,7 @@ paths:
             '*/*':
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/RepliesTreeResponse'
+                  - $ref: './dto.yml#/components/schemas/RepliesTreeResponse'
                   - $ref: './domain.yml#/components/schemas/ReplyNode'
 
   /message/1.0.0:
@@ -127,9 +127,9 @@ paths:
           '*/*':
             schema:
               anyOf:
-                - $ref: '#/components/schemas/NewMessageEvent'
-                - $ref: '#/components/schemas/GetMessageEvent'
-                - $ref: '#/components/schemas/GetAllMessagesEvent'
+                - $ref: './event.yml#/components/schemas/NewMessageEvent'
+                - $ref: './event.yml#/components/schemas/GetMessageEvent'
+                - $ref: './event.yml#/components/schemas/GetAllMessagesEvent'
       responses:
         200:
           description: HTTP is not supported
@@ -137,308 +137,15 @@ paths:
             '*/*':
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/MessagesResponse'
-                  - $ref: './domain.yml'
+                  - $ref: './dto.yml#/components/schemas/MessagesResponse'
                   - $ref: './domain.yml#/components/schemas/ChatMessage'
 
 components:
   schemas:
-    EventEnum:
-      type: string
-      enum:
-        - error
-        - get_user
-        - get_users
-        - get_tweet
-        - get_tweets
-        - new_user
-        - new_tweet
-        - new_reply
-        - get_reply
-        - get_replies
-        - follow
-        - unfollow
-        - get_timeline
-
-    TweetsResponse:
+    None:
       type: object
-      properties:
-        user_id:
-          type: string
-        cursor:
-          type: string
-        tweets:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/Tweet'
-      required:
-        - cursor
-        - tweets
 
-    RepliesTreeResponse:
-      type: object
-      properties:
-        user_id:
-          type: string
-        cursor:
-          type: string
-        replies:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/ReplyNode'
-      required:
-        - cursor
-        - replies
 
-    ChatsResponse:
-      type: object
-      properties:
-        user_id:
-          type: string
-        cursor:
-          type: string
-        chats:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/Chat'
-      required:
-        - cursor
-        - chats
 
-    MessagesResponse:
-      type: object
-      properties:
-        user_id:
-          type: string
-        chat_id:
-          type: string
-        cursor:
-          type: string
-        messages:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/ChatMessage'
-      required:
-        - cursor
-        - messages
 
-    UsersResponse:
-      type: object
-      properties:
-        cursor:
-          type: string
-        users:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/User'
-      required:
-        - cursor
-        - users
-
-    NewMessageEvent:
-      type: object
-      properties:
-        created_at:
-          type: string
-          format: date-time
-        message:
-          $ref: './domain.yml#/components/schemas/ChatMessage'
-
-    GetMessageEvent:
-      type: object
-      properties:
-        user_id:
-          type: string
-          minLength: 1
-        username:
-          type: string
-        id:
-          type: string
-        chat_id:
-          type: string
-      required:
-        - user_id
-        - chat_id
-        - id
-
-    GetAllMessagesEvent:
-      type: object
-      properties:
-        chat_id:
-          type: string
-        limit:
-          type: integer
-          x-go-type: uint64
-        cursor:
-          type: string
-      required:
-        - chat_id
-
-    NewReplyEvent:
-      type: object
-      properties:
-        tweet:
-          $ref: './domain.yml#/components/schemas/Tweet'
-
-    GetReplyEvent:
-      type: object
-      properties:
-        parent_reply_id:
-          type: string
-        root_id:
-          type: string
-        reply_id:
-          type: string
-      required:
-        - root_id
-        - parent_reply_id
-        - reply_id
-
-    GetAllRepliesEvent:
-      type: object
-      properties:
-        parent_reply_id:
-          type: string
-        root_id:
-          type: string
-        limit:
-          type: integer
-          x-go-type: uint64
-        cursor:
-          type: string
-      required:
-        - root_id
-        - parent_reply_id
-
-    NewTweetEvent:
-      type: object
-      properties:
-        tweet:
-          $ref: './domain.yml#/components/schemas/Tweet'
-
-    GetTweetEvent:
-      type: object
-      properties:
-        userId:
-          type: string
-        tweetId:
-          type: string
-      required:
-        - userId
-        - tweetId
-
-    GetAllTweetsEvent:
-      type: object
-      properties:
-        userId:
-          type: string
-        limit:
-          type: integer
-          x-go-type: uint64
-        cursor:
-          type: string
-      required:
-        - userId
-
-    GetTimelineEvent:
-      $ref: '#/components/schemas/GetAllTweetsEvent'
-
-    NewUserEvent:
-      type: object
-      properties:
-        user:
-          $ref: './domain.yml#/components/schemas/User'
-
-    GetUserEvent:
-      type: object
-      properties:
-        userId:
-          type: string
-      required:
-        - userId
-
-    GetAllUsersEvent:
-      type: object
-      properties:
-        limit:
-          type: integer
-          x-go-type: uint64
-        cursor:
-          type: string
-        is_following:
-          type: boolean
-        is_followed:
-          type: boolean
-
-    NewChatEvent:
-      type: object
-      properties:
-        created_at:
-          type: string
-          format: date-time
-        from_user_id:
-          type: string
-          minLength: 1
-        to_user_id:
-          type: string
-          minLength: 1
-      required:
-        - from_user_id
-        - to_user_id
-        - created_at
-
-    GetChatEvent:
-      type: object
-      properties:
-        created_at:
-          type: string
-          format: date-time
-        from_user_id:
-          type: string
-          minLength: 1
-        to_user_id:
-          type: string
-          minLength: 1
-      required:
-        - from_user_id
-        - to_user_id
-        - created_at
-
-    GetAllChatsEvent:
-      type: object
-      properties:
-        user_id:
-          type: string
-        cursor:
-          type: string
-        limit:
-          type: integer
-        chats:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/Chat'
-      required:
-        - chats
-        - user_id
-
-    NewFollowEvent:
-      type: object
-      properties:
-        request: {}
-
-    NewUnfollowEvent:
-      type: object
-      properties:
-        request: {}
-
-    ErrorEvent:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-        - code
-        - message
 

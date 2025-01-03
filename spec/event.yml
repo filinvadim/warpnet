@@ -1,0 +1,290 @@
+openapi: 3.0.0
+info:
+  title: Warp Network
+  version: 1.0.0
+  description: Events for a distributed Twitter-like application
+
+paths: {}
+
+components:
+  schemas:
+    Event:
+      type: object
+      discriminator:
+        propertyName: event_type
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ErrorEvent'
+            - $ref: '#/components/schemas/NewTweetEvent'
+            - $ref: '#/components/schemas/NewUserEvent'
+            - $ref: '#/components/schemas/NewFollowEvent'
+            - $ref: '#/components/schemas/NewUnfollowEvent'
+            - $ref: '#/components/schemas/GetAllTweetsEvent'
+            - $ref: '#/components/schemas/GetTimelineEvent'
+            - $ref: '#/components/schemas/GetTweetEvent'
+            - $ref: '#/components/schemas/GetUserEvent'
+            - $ref: '#/components/schemas/GetAllUsersEvent'
+            - $ref: '#/components/schemas/GetAllRepliesEvent'
+            - $ref: '#/components/schemas/NewReplyEvent'
+            - $ref: '#/components/schemas/GetReplyEvent'
+          discriminator:
+            propertyName: event_type
+      required:
+        - timestamp
+
+    BaseEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+      required:
+        - event_type
+
+    NewMessageEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            message:
+              $ref: './domain.yml#/components/schemas/ChatMessage'
+
+    GetMessageEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            username:
+              type: string
+            id:
+              type: string
+            chat_id:
+              type: string
+          required:
+            - user_id
+            - chat_id
+            - id
+
+    GetAllMessagesEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            chat_id:
+              type: string
+            limit:
+              type: integer
+              x-go-type: uint64
+            cursor:
+              type: string
+          required:
+            - chat_id
+
+    NewReplyEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            tweet:
+              $ref: './domain.yml#/components/schemas/Tweet'
+
+    GetReplyEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            parent_reply_id:
+              type: string
+            root_id:
+              type: string
+            reply_id:
+              type: string
+          required:
+            - root_id
+            - parent_reply_id
+            - reply_id
+
+    GetAllRepliesEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            parent_reply_id:
+              type: string
+            root_id:
+              type: string
+            limit:
+              type: integer
+              x-go-type: uint64
+            cursor:
+              type: string
+          required:
+            - root_id
+            - parent_reply_id
+
+    NewTweetEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            tweet:
+              $ref: './domain.yml#/components/schemas/Tweet'
+
+    GetTweetEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            userId:
+              type: string
+            tweetId:
+              type: string
+          required:
+            - userId
+            - tweetId
+
+    GetAllTweetsEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            userId:
+              type: string
+            limit:
+              type: integer
+              x-go-type: uint64
+            cursor:
+              type: string
+          required:
+            - userId
+
+    GetTimelineEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - $ref: '#/components/schemas/GetAllTweetsEvent'
+
+    NewUserEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            user:
+              $ref: './domain.yml#/components/schemas/User'
+
+    GetUserEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            userId:
+              type: string
+          required:
+            - userId
+
+    GetAllUsersEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            limit:
+              type: integer
+              x-go-type: uint64
+            cursor:
+              type: string
+            is_following:
+              type: boolean
+            is_followed:
+              type: boolean
+
+    NewChatEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            from_user_id:
+              type: string
+              minLength: 1
+            to_user_id:
+              type: string
+              minLength: 1
+          required:
+            - from_user_id
+            - to_user_id
+            - created_at
+
+    GetChatEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            from_user_id:
+              type: string
+              minLength: 1
+            to_user_id:
+              type: string
+              minLength: 1
+          required:
+            - from_user_id
+            - to_user_id
+            - created_at
+
+    GetAllChatsEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            user_id:
+              type: string
+            cursor:
+              type: string
+            limit:
+              type: integer
+            chats:
+              type: array
+              items:
+                $ref: './domain.yml#/components/schemas/Chat'
+          required:
+            - chats
+            - user_id
+
+    NewFollowEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            request: { }
+
+    NewUnfollowEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            request: { }
+
+    ErrorEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+          required:
+            - code
+            - message

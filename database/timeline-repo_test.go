@@ -1,7 +1,7 @@
 package database_test
 
 import (
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/logger"
 	"os"
 	"testing"

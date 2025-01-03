@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"sort"
 	"time"
 

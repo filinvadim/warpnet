@@ -11,282 +11,41 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
+	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// Defines values for EventEnum.
-const (
-	Error       EventEnum = "error"
-	Follow      EventEnum = "follow"
-	GetReplies  EventEnum = "get_replies"
-	GetReply    EventEnum = "get_reply"
-	GetTimeline EventEnum = "get_timeline"
-	GetTweet    EventEnum = "get_tweet"
-	GetTweets   EventEnum = "get_tweets"
-	GetUser     EventEnum = "get_user"
-	GetUsers    EventEnum = "get_users"
-	NewReply    EventEnum = "new_reply"
-	NewTweet    EventEnum = "new_tweet"
-	NewUser     EventEnum = "new_user"
-	Unfollow    EventEnum = "unfollow"
-)
-
-// Chat defines model for Chat.
-type Chat struct {
-	CreatedAt  time.Time `json:"created_at"`
-	FromUserId string    `json:"from_user_id"`
-	Id         string    `json:"id"`
-	ToUserId   string    `json:"to_user_id"`
-	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-// ChatMessage defines model for ChatMessage.
-type ChatMessage struct {
-	ChatId    string    `json:"chat_id"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	Id        string    `json:"id"`
-	UserId    string    `json:"user_id"`
-	Username  string    `json:"username"`
-}
-
-// ChatsResponse defines model for ChatsResponse.
-type ChatsResponse struct {
-	Chats  []Chat  `json:"chats"`
-	Cursor string  `json:"cursor"`
-	UserId *string `json:"user_id,omitempty"`
-}
-
-// ErrorEvent defines model for ErrorEvent.
-type ErrorEvent struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// EventEnum defines model for EventEnum.
-type EventEnum string
-
-// GetAllChatsEvent defines model for GetAllChatsEvent.
-type GetAllChatsEvent struct {
-	Chats  []Chat  `json:"chats"`
-	Cursor *string `json:"cursor,omitempty"`
-	Limit  *int    `json:"limit,omitempty"`
-	UserId string  `json:"user_id"`
-}
-
-// GetAllMessagesEvent defines model for GetAllMessagesEvent.
-type GetAllMessagesEvent struct {
-	ChatId string  `json:"chat_id"`
-	Cursor *string `json:"cursor,omitempty"`
-	Limit  *uint64 `json:"limit,omitempty"`
-}
-
-// GetAllRepliesEvent defines model for GetAllRepliesEvent.
-type GetAllRepliesEvent struct {
-	Cursor        *string `json:"cursor,omitempty"`
-	Limit         *uint64 `json:"limit,omitempty"`
-	ParentReplyId string  `json:"parent_reply_id"`
-	RootId        string  `json:"root_id"`
-}
-
-// GetAllTweetsEvent defines model for GetAllTweetsEvent.
-type GetAllTweetsEvent struct {
-	Cursor *string `json:"cursor,omitempty"`
-	Limit  *uint64 `json:"limit,omitempty"`
-	UserId string  `json:"userId"`
-}
-
-// GetAllUsersEvent defines model for GetAllUsersEvent.
-type GetAllUsersEvent struct {
-	Cursor      *string `json:"cursor,omitempty"`
-	IsFollowed  *bool   `json:"is_followed,omitempty"`
-	IsFollowing *bool   `json:"is_following,omitempty"`
-	Limit       *uint64 `json:"limit,omitempty"`
-}
-
-// GetChatEvent defines model for GetChatEvent.
-type GetChatEvent struct {
-	CreatedAt  time.Time `json:"created_at"`
-	FromUserId string    `json:"from_user_id"`
-	ToUserId   string    `json:"to_user_id"`
-}
-
-// GetMessageEvent defines model for GetMessageEvent.
-type GetMessageEvent struct {
-	ChatId   string  `json:"chat_id"`
-	Id       string  `json:"id"`
-	UserId   string  `json:"user_id"`
-	Username *string `json:"username,omitempty"`
-}
-
-// GetReplyEvent defines model for GetReplyEvent.
-type GetReplyEvent struct {
-	ParentReplyId string `json:"parent_reply_id"`
-	ReplyId       string `json:"reply_id"`
-	RootId        string `json:"root_id"`
-}
-
-// GetTimelineEvent defines model for GetTimelineEvent.
-type GetTimelineEvent = GetAllTweetsEvent
-
-// GetTweetEvent defines model for GetTweetEvent.
-type GetTweetEvent struct {
-	TweetId string `json:"tweetId"`
-	UserId  string `json:"userId"`
-}
-
-// GetUserEvent defines model for GetUserEvent.
-type GetUserEvent struct {
-	UserId string `json:"userId"`
-}
-
-// Like defines model for Like.
-type Like struct {
-	TweetId string `json:"tweet_id"`
-	UserId  string `json:"user_id"`
-}
-
-// MessagesResponse defines model for MessagesResponse.
-type MessagesResponse struct {
-	ChatId   *string       `json:"chat_id,omitempty"`
-	Cursor   string        `json:"cursor"`
-	Messages []ChatMessage `json:"messages"`
-	UserId   *string       `json:"user_id,omitempty"`
-}
-
-// NewChatEvent defines model for NewChatEvent.
-type NewChatEvent struct {
-	CreatedAt  time.Time `json:"created_at"`
-	FromUserId string    `json:"from_user_id"`
-	ToUserId   string    `json:"to_user_id"`
-}
-
-// NewFollowEvent defines model for NewFollowEvent.
-type NewFollowEvent struct {
-	Request *interface{} `json:"request,omitempty"`
-}
-
-// NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	CreatedAt *time.Time   `json:"created_at,omitempty"`
-	Message   *ChatMessage `json:"message,omitempty"`
-}
-
-// NewReplyEvent defines model for NewReplyEvent.
-type NewReplyEvent struct {
-	Tweet *Tweet `json:"tweet,omitempty"`
-}
-
-// NewTweetEvent defines model for NewTweetEvent.
-type NewTweetEvent struct {
-	Tweet *Tweet `json:"tweet,omitempty"`
-}
-
-// NewUnfollowEvent defines model for NewUnfollowEvent.
-type NewUnfollowEvent struct {
-	Request *interface{} `json:"request,omitempty"`
-}
-
-// NewUserEvent defines model for NewUserEvent.
-type NewUserEvent struct {
-	User *User `json:"user,omitempty"`
-}
-
-// RepliesTreeResponse defines model for RepliesTreeResponse.
-type RepliesTreeResponse struct {
-	Cursor  string      `json:"cursor"`
-	Replies []ReplyNode `json:"replies"`
-	UserId  *string     `json:"user_id,omitempty"`
-}
-
-// ReplyNode defines model for ReplyNode.
-type ReplyNode struct {
-	Children []ReplyNode `json:"children"`
-	Reply    Tweet       `json:"reply"`
-}
-
-// Retweet defines model for Retweet.
-type Retweet struct {
-	TweetId string `json:"tweet_id"`
-	UserId  string `json:"user_id"`
-}
-
-// Tweet defines model for Tweet.
-type Tweet struct {
-	Content       string     `json:"content"`
-	CreatedAt     time.Time  `json:"created_at"`
-	Id            string     `json:"id"`
-	Likes         *[]Like    `json:"likes,omitempty"`
-	LikesCount    *int64     `json:"likes_count,omitempty"`
-	ParentId      string     `json:"parent_id"`
-	Retweets      *[]Retweet `json:"retweets,omitempty"`
-	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	RootId        string     `json:"root_id"`
-	UserId        string     `json:"user_id"`
-	Username      string     `json:"username"`
-}
-
-// TweetsResponse defines model for TweetsResponse.
-type TweetsResponse struct {
-	Cursor string  `json:"cursor"`
-	Tweets []Tweet `json:"tweets"`
-	UserId *string `json:"user_id,omitempty"`
-}
-
-// User defines model for User.
-type User struct {
-	Birthdate    *time.Time `json:"birthdate,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	Description  string     `json:"description"`
-	Followed     []string   `json:"followed"`
-	FollowedNum  int64      `json:"followed_num"`
-	Followers    []string   `json:"followers"`
-	FollowersNum int64      `json:"followers_num"`
-	Id           string     `json:"id"`
-	Link         *string    `json:"link,omitempty"`
-	Location     *string    `json:"location,omitempty"`
-	MyReferrals  *[]string  `json:"my_referrals,omitempty"`
-	NodeId       string     `json:"node_id"`
-	ReferredBy   *string    `json:"referred_by,omitempty"`
-	Username     string     `json:"username"`
-}
-
-// UsersResponse defines model for UsersResponse.
-type UsersResponse struct {
-	Cursor string `json:"cursor"`
-	Users  []User `json:"users"`
-}
+// None defines model for None.
+type None = map[string]interface{}
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"wmQj3ULe+RHcZ9mDVf+w+ysAAP//fwFdd/YmAAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
@@ -326,6 +85,12 @@ func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
 		res[pathToFile] = rawSpec
 	}
 
+	for rawPath, rawFunc := range externalRef0.PathToRawSpec(path.Join(path.Dir(pathToFile), "./domain.yml")) {
+		if _, ok := res[rawPath]; ok {
+			// it is not possible to compare functions in golang, so always overwrite the old value
+		}
+		res[rawPath] = rawFunc
+	}
 	return res
 }
 

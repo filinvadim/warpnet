@@ -172,7 +172,7 @@ func NewRegularNode(
 ) (_ *WarpNode, err error) {
 	core := l.With([]logger.Field{{
 		Key:    "node",
-		String: "regular",
+		String: "member",
 	}})
 	logging.SetPrimaryCore(core)
 

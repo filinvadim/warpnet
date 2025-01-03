@@ -1,48 +1,20 @@
 package handler
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"github.com/filinvadim/warpnet/core/node"
 	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
 	"github.com/filinvadim/warpnet/database"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	eventGen "github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"log"
 )
-
-func RegisterHandlers(h host.Host) error {
-	sw, _ := nodeGen.GetSwagger()
-	paths := sw.Paths
-
-	if paths == nil {
-		log.Fatal("swagger has no paths")
-	}
-
-	for k := range paths.Map() {
-		h.SetStreamHandler(protocol.ID(k), func(s network.Stream) {
-			defer s.Close()
-			log.Println("new stream opened", protocol.ID(k), s.Conn().RemotePeer())
-
-			buf := make([]byte, 1024)
-			n, err := s.Read(buf)
-			if err != nil {
-				log.Printf("fail reading from stream: %s", err)
-				return
-			}
-			log.Printf("Received message: %s", string(buf[:n]))
-
-			// Отправляем ответ
-			_, err = s.Write([]byte("Hello, client!"))
-			if err != nil {
-				log.Printf("Error writing to stream: %s", err)
-				return
-			}
-		})
-	}
-	return nil
-}
 
 type NodeStreamHandler struct {
 	userRepo     *database.UserRepo
@@ -53,6 +25,83 @@ type NodeStreamHandler struct {
 
 func NewNodeStreamHandler() (*NodeStreamHandler, error) {
 	return &NodeStreamHandler{}, nil
+}
+
+func (d *NodeStreamHandler) RegisterHandlers(h node.P2PNode) error {
+	sw, _ := nodeGen.GetSwagger()
+	paths := sw.Paths
+
+	if paths == nil {
+		log.Fatal("swagger has no paths")
+	}
+
+	for k := range paths.Map() {
+		h.SetStreamHandler(node.WarpDiscriminator(k), func(s network.Stream) {
+			defer s.Close()
+			log.Println("new stream opened", node.WarpDiscriminator(k), s.Conn().RemotePeer())
+
+			buf := bytes.NewBuffer(nil)
+			_, err := buf.ReadFrom(s)
+			if err != nil {
+				log.Printf("fail reading from stream: %s", err)
+				return
+			}
+
+			log.Printf("Received message: %s", buf.String())
+			var ev eventGen.Event
+			err = json.JSON.Unmarshal(buf.Bytes(), &ev)
+			if err != nil {
+				log.Printf("fail unmarshaling event: %s", err)
+				return
+			}
+			value, err := ev.Data.ValueByDiscriminator()
+			if err != nil {
+				log.Printf("fail getting discriminator value: %s", err)
+				return
+			}
+
+			var response any
+
+			switch value.(type) {
+			case eventGen.NewUserEvent:
+			case eventGen.GetUserEvent:
+			case eventGen.GetAllUsersEvent:
+			case eventGen.NewChatEvent:
+			case eventGen.GetChatEvent:
+			case eventGen.GetAllChatsEvent:
+			case eventGen.NewTweetEvent:
+			case eventGen.GetTweetEvent:
+			case eventGen.GetAllTweetsEvent:
+			case eventGen.GetTimelineEvent:
+			case eventGen.NewReplyEvent:
+			case eventGen.GetReplyEvent:
+			case eventGen.GetAllRepliesEvent:
+			case eventGen.NewMessageEvent:
+			case eventGen.GetMessageEvent:
+			case eventGen.GetAllMessagesEvent:
+			default:
+				msg := fmt.Sprintf("unknown event type: %T", value)
+				log.Println(msg)
+				response = eventGen.ErrorEvent{
+					Code:    500,
+					Message: msg,
+				}
+			}
+
+			bt, err := json.JSON.Marshal(response)
+			if err != nil {
+				log.Printf("fail marshaling response: %s", err)
+				return
+			}
+
+			_, err = s.Write(bt)
+			if err != nil {
+				log.Printf("Error writing to stream: %s", err)
+				return
+			}
+		})
+	}
+	return nil
 }
 
 func (d *NodeStreamHandler) handleNewUser(ctx echo.Context, data *domainGen.Event_Data) (domainGen.NewUserEvent, error) {
@@ -70,7 +119,7 @@ func (d *NodeStreamHandler) handleNewUser(ctx echo.Context, data *domainGen.Even
 	return userEvent, err
 }
 
-func (d *NodeStreamHandler) handleNewReply(ctx echo.Context, data *domainGen.Event_Data) (reply domainGen.Tweet, err error) {
+func (d *NodeStreamHandler) handleNewReply(ctx echo.Context, data *domainGen.Event_Data) (reply domain.Tweet, err error) {
 	if ctx.Request().Context().Err() != nil {
 		return reply, ctx.Request().Context().Err()
 	}
@@ -111,22 +160,22 @@ func (d *NodeStreamHandler) handleGetReplies(ctx echo.Context, data *domainGen.E
 	}
 	return response, nil
 }
-func (d *NodeStreamHandler) handleGetSingleReply(ctx echo.Context, data *domainGen.Event_Data) (domainGen.Tweet, error) {
+func (d *NodeStreamHandler) handleGetSingleReply(ctx echo.Context, data *domainGen.Event_Data) (domain.Tweet, error) {
 	if ctx.Request().Context().Err() != nil {
-		return domainGen.Tweet{}, ctx.Request().Context().Err()
+		return domain.Tweet{}, ctx.Request().Context().Err()
 	}
 	event, err := data.AsGetReplyEvent()
 	if err != nil {
-		return domainGen.Tweet{}, err
+		return domain.Tweet{}, err
 	}
 	tweet, err := d.replyRepo.GetReply(event.RootId, event.ParentReplyId, event.ReplyId)
 	if err != nil {
-		return domainGen.Tweet{}, err
+		return domain.Tweet{}, err
 	}
 	return tweet, nil
 }
 
-func (d *NodeStreamHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (t domainGen.Tweet, err error) {
+func (d *NodeStreamHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (t domain.Tweet, err error) {
 	if ctx.Request().Context().Err() != nil {
 		return t, ctx.Request().Context().Err()
 	}
@@ -159,7 +208,7 @@ func (d *NodeStreamHandler) handleGetTimeline(ctx echo.Context, data *domainGen.
 		return TweetsResponse{}, err
 	}
 	if _, err := d.userRepo.Get(event.UserId); err != nil && errors.Is(err, database.ErrUserNotFound) {
-		return TweetsResponse{Tweets: []domainGen.Tweet{}, Cursor: ""}, nil
+		return TweetsResponse{Tweets: []domain.Tweet{}, Cursor: ""}, nil
 	}
 
 	tweets, nextCursor, err := d.timelineRepo.GetTimeline(event.UserId, event.Limit, event.Cursor)
@@ -194,34 +243,34 @@ func (d *NodeStreamHandler) handleGetTweets(ctx echo.Context, data *domainGen.Ev
 	return response, nil
 }
 
-func (d *NodeStreamHandler) handleGetSingleTweet(ctx echo.Context, data *domainGen.Event_Data) (domainGen.Tweet, error) {
+func (d *NodeStreamHandler) handleGetSingleTweet(ctx echo.Context, data *domainGen.Event_Data) (domain.Tweet, error) {
 	if ctx.Request().Context().Err() != nil {
-		return domainGen.Tweet{}, ctx.Request().Context().Err()
+		return domain.Tweet{}, ctx.Request().Context().Err()
 	}
 	event, err := data.AsGetTweetEvent()
 	if err != nil {
-		return domainGen.Tweet{}, err
+		return domain.Tweet{}, err
 	}
 	tweet, err := d.tweetRepo.Get(event.UserId, event.TweetId)
 	if err != nil {
-		return domainGen.Tweet{}, err
+		return domain.Tweet{}, err
 	}
 	return tweet, nil
 }
 
-func (d *NodeStreamHandler) handleGetUser(ctx echo.Context, data *domainGen.Event_Data) (domainGen.User, error) {
+func (d *NodeStreamHandler) handleGetUser(ctx echo.Context, data *domainGen.Event_Data) (domain.User, error) {
 	if ctx.Request().Context().Err() != nil {
-		return domainGen.User{}, ctx.Request().Context().Err()
+		return domain.User{}, ctx.Request().Context().Err()
 	}
 
 	event, err := data.AsGetUserEvent()
 	if err != nil {
-		return domainGen.User{}, err
+		return domain.User{}, err
 	}
 
 	u, err := d.userRepo.Get(event.UserId)
 	if err != nil {
-		return domainGen.User{}, err
+		return domain.User{}, err
 	}
 	return u, nil
 }

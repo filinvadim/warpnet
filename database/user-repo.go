@@ -2,7 +2,7 @@ package database
 
 import (
 	"errors"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"

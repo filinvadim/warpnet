@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	api "github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/server"
 	"github.com/labstack/echo/v4"
@@ -81,7 +81,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		}
 		owner, _ = c.userPersistence.Owner()
 	}
-	userResponse := api.Owner{
+	userResponse := domainGen.Owner{
 		CreatedAt:   owner.CreatedAt,
 		Description: owner.Description,
 		Id:          owner.Id,

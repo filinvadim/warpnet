@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
-	domain_gen "github.com/filinvadim/warpnet/domain-gen"
+	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"sort"
 	"time"
 

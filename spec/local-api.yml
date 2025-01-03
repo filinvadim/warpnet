@@ -54,7 +54,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Owner'
+                $ref: './domain.yml#/components/schemas/Owner'
         '401':
           description: Auth failed
         '500':
@@ -86,7 +86,7 @@ components:
         token:
           type: string
         user:
-          $ref: '#/components/schemas/Owner'
+          $ref: './domain.yml#/components/schemas/Owner'
       required:
         - token
         - user
@@ -101,45 +101,6 @@ components:
       required:
         - username
         - password
-
-    Owner:
-      type: object
-      properties:
-        id:
-          type: string
-        node_id:
-          type: string
-        username:
-          type: string
-          minLength: 1
-        description:
-          type: string
-        followers_num:
-          type: integer
-          format: int64
-        followed_num:
-          type: integer
-          format: int64
-        link:
-          type: string
-          format: url
-        location:
-          type: string
-        birthdate:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - username
-        - description
-        - username
-        - node_id
-        - followed_num
-        - followers_num
-        - created_at
 
     Error:
       type: object

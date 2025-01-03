@@ -64,8 +64,7 @@ func (l *UnifiedLogger) Check(entry zapcore.Entry, ce *zapcore.CheckedEntry) *za
 }
 
 func (l *UnifiedLogger) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	l.logger.Core().Write(entry, fields)
-	return nil
+	return l.logger.Core().Write(entry, fields)
 }
 
 func (l *UnifiedLogger) Sync() error {
@@ -196,7 +195,6 @@ func (l *UnifiedLogger) Debugf(s string, i ...interface{}) {
 	l.logger.Debug(concatFormat(s, i...))
 }
 
-// Helper functions
 func concatArgs(args ...interface{}) string {
 	if len(args) == 1 {
 		if str, ok := args[0].(string); ok {

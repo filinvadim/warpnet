@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
-	domainGen "github.com/filinvadim/warpnet/domain-gen"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/google/uuid"
 	"sort"

@@ -12,9 +12,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
-	externalRef0 "github.com/filinvadim/warpnet/domain-gen"
+	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
@@ -34,22 +33,8 @@ type Error struct {
 
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
-	Token string `json:"token"`
-	User  Owner  `json:"user"`
-}
-
-// Owner defines model for Owner.
-type Owner struct {
-	Birthdate    *time.Time `json:"birthdate,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	Description  string     `json:"description"`
-	FollowedNum  int64      `json:"followed_num"`
-	FollowersNum int64      `json:"followers_num"`
-	Id           string     `json:"id"`
-	Link         *string    `json:"link,omitempty"`
-	Location     *string    `json:"location,omitempty"`
-	NodeId       string     `json:"node_id"`
-	Username     string     `json:"username"`
+	Token string             `json:"token"`
+	User  externalRef0.Owner `json:"user"`
 }
 
 // PostV1ApiAuthLogoutParams defines parameters for PostV1ApiAuthLogout.
@@ -184,21 +169,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6xVbW/bNhD+KwS3T4Nc2VsWoPqWDdlgtGiKuHsBiiBgxJN1DUWqx1NSI/B/H45yYNlS",
-	"mwTrF0Mm7/V5njs+6DI0bfDgOeriQceyhsakz7OO60v43EFk+dtSaIEYIV22Jsb7QFa+edOCLnRkQr/W",
-	"20x3EcibBiYut5km+NwhgdXFx71lto94lT06hZtPULJEPCcKNK6iDHaYBD3DGkgcGojRrJ9RQQqxt59K",
-	"/jas0V9CbIOPMC6Cwy34r+IgFz8SVLrQP+R7rPMd0PnFvZeKj6rqY+4iTNXUu41quUHi2hpOZVaBGsO6",
-	"0HIwY0wwj4osCQyDvTb8fB8LsSRsGcN041VwLtyDvfZdcxAVPZ+e7CMOCNu5UHyBD07Lz6G/PYjQkZvq",
-	"woXSfLUFHyxc49P6btC/Bb/mWheL7AmtodXZUPJDGA8uHpMfIXmM0gF5Y5VIevRVkDIPGNPnX5jAG6fO",
-	"3i9VFUgZZVGKvukYrPpwj8xAM4e3oEzbOtwBlWlGdpLjH0Ot8sCqouBZVaaUuu+AYp9h8Wr+ai5YhRa8",
-	"aVEX+pd0JIPOdRJrLj9rSLoTEaccS6sL/Sfw0lv4ogW/fu6Sx8/z+biZizcJ6Ng1jaGNLvQK6A5UZMNY",
-	"qgodxGSQ9yf5gxz9tB0kP4x3CdyRj8r4zTCIdNoorkE9BlIWCUoOtNHZuIFVMvoDXb/cyDTAQFEXHx80",
-	"Sh7BQbhOQtJVb7iXC1MH2W4fT62xq2lsyuAZfGprwFweSgaeRSYwzX7PH0zJDXqTWjnOdDzwejVAJQrY",
-	"VsWuLCHGqnNuI7SfzE/GyAoYygdWVei8fSZrd4vctJibjuvcySZOWy/ECdm8D5H/Xpy1KE9X2to7RCHy",
-	"b8FuvoHPp9jvgT0u31raw6dxezjlQtv2RdS8LPXjezEi5a8IpCywQRd7BhZjBqRwVRl0YMXm16l5WnqW",
-	"ReRUbbx1QArS43vEFgcCVRJY8IzGRdGNWYu8UxJ9NUVe6Pj57Inx9OTUYCzQfnb+na3OV6vlxbvZh4s3",
-	"5+++xxgdCb5X9/+D7HcXYj8vmJblMVxiLDOw63Qig2xZZawlqSVLz1qha+a2yHN5zFwdIhenr09f6+3V",
-	"9r8AAAD//9drl2DbCQAA",
+	"H4sIAAAAAAAC/6xV72/bNhD9Vwhunwa5sreuQPUtG7LBaNEUcfcDKIKAEU8WW4pU705JDcP/+3CUC8mW",
+	"1ibYvhiyeLx39969016XsWljgMCki72msobGpMeLjutr+NQBsfxtMbaA7CAdtoboIaKVZ961oAtNjC5s",
+	"9SHTHQEG08DM4SHTCJ86h2B18X6IzIaMN9mXS/HuA5QsGS8RI06rKKMdg7jAsAWUCw0Qme0jKkgphvg5",
+	"8Ndx68I1UBsDwbQIjh8h/CsPcvA9QqUL/V0+cJ0fic5tbIwLt1cPQQo/K65PfUw0V9rJ7Sk9CIbB3pok",
+	"YBWxkSdtDcOCXWJ9UrMFKtG17OJ8T25e8hAt3Lpvj0PjwmsIW651scq+IY2zOhtPyLi0ATEbtznlSJK6",
+	"UEUBP+lNX35mhGC8uni7VlVEZZR1Uspdx2DVuwfHDLjw7iMo07beleYIzY69YPxlsFUBWFUYA6vKlFLm",
+	"PSD1CKtny2dLYSC2EEzrdKF/Sq9k2rlOGuXys4WkkGiXMNZWF/p34HWw8FkLK/3wpRs/LpfTZq5eJfqo",
+	"axqDO13oDeA9KGLDrlSV80ApIO/f5Ht59cNhBH6a7xq4w0DKhN04iXTaKK5BfUmkrEMoOeJOZ9MGNino",
+	"N+d7h6NpgAFJF+/32gmO8CBipvHQVR84DAFjB9lxKc15+WaemzIGhpDaGimXx5KBF8QIphmW3Yk37lww",
+	"qZVzpHNr6M2IFRKyraKuLIGo6rzfiezPl8+nzAoZKkRWVeyCfaRq96vctC43Hde5l3WUzB5pZmzeRuI/",
+	"Vxetk/2dVteRUSD+JdrdV/j5QL3pB16+trnG34fDqXdFtsOTpHka9NnSnGjzBwEqC2ycp16I1VQIqV9V",
+	"xnmwEvPznK3WgWX9eFWbYD2ggvQhOhONI4IqESwEdsaTjI/ZypQnEH0zp2Hs+PEiSvC8gWowFnCw0N+L",
+	"zeVms756s3h39eryzf/hprO574f8v1H2q4/U28alnXlOlwSLFY6dziDIslXGWpRaMt2hFzKY2yLPfSyN",
+	"ryNx8eLli5f6cHP4JwAA//9ILAGt5wgAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
