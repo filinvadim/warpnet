@@ -2,53 +2,80 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/node"
-	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
+	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
-	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
-	eventGen "github.com/filinvadim/warpnet/gen/event-gen"
+	dto "github.com/filinvadim/warpnet/gen/dto-gen"
+	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/labstack/echo/v4"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 )
 
+type StreamRegisterer interface {
+	SetStreamHandler(pid types.WarpDiscriminator, handler network.StreamHandler)
+}
+
+type StreamLogger interface {
+	Info(args ...interface{})
+}
+
 type NodeStreamHandler struct {
+	ctx          context.Context
+	n            StreamRegisterer
+	l            StreamLogger
 	userRepo     *database.UserRepo
 	replyRepo    *database.ReplyRepo
 	tweetRepo    *database.TweetRepo
 	timelineRepo *database.TimelineRepo
 }
 
-func NewNodeStreamHandler() (*NodeStreamHandler, error) {
-	return &NodeStreamHandler{}, nil
+func NewNodeStreamHandler(
+	ctx context.Context,
+	n StreamRegisterer,
+	l StreamLogger,
+	userRepo *database.UserRepo,
+	replyRepo *database.ReplyRepo,
+	tweetRepo *database.TweetRepo,
+	timelineRepo *database.TimelineRepo,
+) (*NodeStreamHandler, error) {
+
+	return &NodeStreamHandler{
+		ctx:          ctx,
+		n:            n,
+		l:            l,
+		userRepo:     userRepo,
+		replyRepo:    replyRepo,
+		tweetRepo:    tweetRepo,
+		timelineRepo: timelineRepo,
+	}, nil
 }
 
-func (d *NodeStreamHandler) RegisterHandlers(h node.P2PNode) error {
-	sw, _ := nodeGen.GetSwagger()
-	paths := sw.Paths
-
-	if paths == nil {
-		log.Fatal("swagger has no paths")
-	}
-
+func (d *NodeStreamHandler) RegisterHandlers(paths *openapi3.Paths) error {
 	for k := range paths.Map() {
-		h.SetStreamHandler(node.WarpDiscriminator(k), func(s network.Stream) {
+		d.l.Info("registering handler: " + k)
+		d.n.SetStreamHandler(types.WarpDiscriminator(k), func(s network.Stream) {
 			defer s.Close()
-			log.Println("new stream opened", node.WarpDiscriminator(k), s.Conn().RemotePeer())
+			log.Println("new stream opened", types.WarpDiscriminator(k), s.Conn().RemotePeer())
+
+			var (
+				response any
+				err      error
+			)
 
 			buf := bytes.NewBuffer(nil)
-			_, err := buf.ReadFrom(s)
+			_, err = buf.ReadFrom(s)
 			if err != nil {
 				log.Printf("fail reading from stream: %s", err)
 				return
 			}
 
 			log.Printf("Received message: %s", buf.String())
-			var ev eventGen.Event
+			var ev event.Event
 			err = json.JSON.Unmarshal(buf.Bytes(), &ev)
 			if err != nil {
 				log.Printf("fail unmarshaling event: %s", err)
@@ -60,31 +87,49 @@ func (d *NodeStreamHandler) RegisterHandlers(h node.P2PNode) error {
 				return
 			}
 
-			var response any
-
 			switch value.(type) {
-			case eventGen.NewUserEvent:
-			case eventGen.GetUserEvent:
-			case eventGen.GetAllUsersEvent:
-			case eventGen.NewChatEvent:
-			case eventGen.GetChatEvent:
-			case eventGen.GetAllChatsEvent:
-			case eventGen.NewTweetEvent:
-			case eventGen.GetTweetEvent:
-			case eventGen.GetAllTweetsEvent:
-			case eventGen.GetTimelineEvent:
-			case eventGen.NewReplyEvent:
-			case eventGen.GetReplyEvent:
-			case eventGen.GetAllRepliesEvent:
-			case eventGen.NewMessageEvent:
-			case eventGen.GetMessageEvent:
-			case eventGen.GetAllMessagesEvent:
+			case event.NewUserEvent:
+				response, err = d.handleNewUser(d.ctx, ev.Data)
+			case event.GetUserEvent:
+				response, err = d.handleGetUser(d.ctx, ev.Data)
+			case event.GetAllUsersEvent:
+				response, err = d.handleGetAllUsers(d.ctx, ev.Data)
+			case event.NewChatEvent:
+				//response, err = d.handleNewChat(d.ctx, ev.Data)
+			case event.GetChatEvent:
+				//response, err = d.handleGetChat(d.ctx, ev.Data)
+			case event.GetAllChatsEvent:
+				//response, err = d.handleGetAllChats(d.ctx, ev.Data)
+			case event.NewTweetEvent:
+				response, err = d.handleNewTweet(d.ctx, ev.Data)
+			case event.GetTweetEvent:
+				response, err = d.handleGetTweet(d.ctx, ev.Data)
+			case event.GetAllTweetsEvent:
+				response, err = d.handleGetAllTweets(d.ctx, ev.Data)
+			case event.GetTimelineEvent:
+				response, err = d.handleGetTimeline(d.ctx, ev.Data)
+			case event.NewReplyEvent:
+				response, err = d.handleNewReply(d.ctx, ev.Data)
+			case event.GetReplyEvent:
+				response, err = d.handleGetReply(d.ctx, ev.Data)
+			case event.GetAllRepliesEvent:
+				response, err = d.handleGetAllReplies(d.ctx, ev.Data)
+			case event.NewMessageEvent:
+				//response, err = d.handleNewChat(d.ctx, ev.Data)
+			case event.GetMessageEvent:
+				//response, err = d.handleNewChat(d.ctx, ev.Data)
+			case event.GetAllMessagesEvent:
+				//response, err = d.handleNewChat(d.ctx, ev.Data)
 			default:
 				msg := fmt.Sprintf("unknown event type: %T", value)
 				log.Println(msg)
-				response = eventGen.ErrorEvent{
+				err = errors.New(msg)
+			}
+
+			if err != nil {
+				response = event.ErrorEvent{
 					Code:    500,
-					Message: msg,
+					Message: err.Error(),
 				}
 			}
 
@@ -96,7 +141,7 @@ func (d *NodeStreamHandler) RegisterHandlers(h node.P2PNode) error {
 
 			_, err = s.Write(bt)
 			if err != nil {
-				log.Printf("Error writing to stream: %s", err)
+				log.Printf("fail writing to stream: %s", err)
 				return
 			}
 		})
@@ -104,24 +149,24 @@ func (d *NodeStreamHandler) RegisterHandlers(h node.P2PNode) error {
 	return nil
 }
 
-func (d *NodeStreamHandler) handleNewUser(ctx echo.Context, data *domainGen.Event_Data) (domainGen.NewUserEvent, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domainGen.NewUserEvent{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleNewUser(ctx context.Context, data *event.Event_Data) (event.NewUserEvent, error) {
+	if ctx.Err() != nil {
+		return event.NewUserEvent{}, ctx.Err()
 	}
 	userEvent, err := data.AsNewUserEvent()
 	if err != nil {
-		return domainGen.NewUserEvent{}, err
+		return event.NewUserEvent{}, err
 	}
 	if userEvent.User == nil {
-		return domainGen.NewUserEvent{}, nil
+		return event.NewUserEvent{}, nil
 	}
 	_, err = d.userRepo.Create(*userEvent.User)
 	return userEvent, err
 }
 
-func (d *NodeStreamHandler) handleNewReply(ctx echo.Context, data *domainGen.Event_Data) (reply domain.Tweet, err error) {
-	if ctx.Request().Context().Err() != nil {
-		return reply, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleNewReply(ctx context.Context, data *event.Event_Data) (reply domain.Tweet, err error) {
+	if ctx.Err() != nil {
+		return reply, ctx.Err()
 	}
 	replyEvent, err := data.AsNewReplyEvent()
 	if err != nil {
@@ -137,13 +182,13 @@ func (d *NodeStreamHandler) handleNewReply(ctx echo.Context, data *domainGen.Eve
 	return r, err
 }
 
-type RepliesResponse = domainGen.RepliesTreeResponse
+type RepliesResponse = dto.RepliesTreeResponse
 
-func (d *NodeStreamHandler) handleGetReplies(ctx echo.Context, data *domainGen.Event_Data) (response RepliesResponse, err error) {
-	if ctx.Request().Context().Err() != nil {
-		return response, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetAllReplies(ctx context.Context, data *event.Event_Data) (response RepliesResponse, err error) {
+	if ctx.Err() != nil {
+		return response, ctx.Err()
 	}
-	event, err := data.AsGetRepliesEvent()
+	event, err := data.AsGetAllRepliesEvent()
 	if err != nil {
 		return response, err
 	}
@@ -160,9 +205,9 @@ func (d *NodeStreamHandler) handleGetReplies(ctx echo.Context, data *domainGen.E
 	}
 	return response, nil
 }
-func (d *NodeStreamHandler) handleGetSingleReply(ctx echo.Context, data *domainGen.Event_Data) (domain.Tweet, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domain.Tweet{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetReply(ctx context.Context, data *event.Event_Data) (domain.Tweet, error) {
+	if ctx.Err() != nil {
+		return domain.Tweet{}, ctx.Err()
 	}
 	event, err := data.AsGetReplyEvent()
 	if err != nil {
@@ -175,9 +220,9 @@ func (d *NodeStreamHandler) handleGetSingleReply(ctx echo.Context, data *domainG
 	return tweet, nil
 }
 
-func (d *NodeStreamHandler) handleNewTweet(ctx echo.Context, data *domainGen.Event_Data) (t domain.Tweet, err error) {
-	if ctx.Request().Context().Err() != nil {
-		return t, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleNewTweet(ctx context.Context, data *event.Event_Data) (t domain.Tweet, err error) {
+	if ctx.Err() != nil {
+		return domain.Tweet{}, ctx.Err()
 	}
 	tweetEvent, err := data.AsNewTweetEvent()
 	if err != nil {
@@ -191,27 +236,25 @@ func (d *NodeStreamHandler) handleNewTweet(ctx echo.Context, data *domainGen.Eve
 		return t, err
 	}
 
-	//if myOwnTweet {
-	//	err = d.timelineRepo.AddTweetToTimeline(tweetEvent.Tweet.UserId, t)
-	//}
+	err = d.timelineRepo.AddTweetToTimeline(tweetEvent.Tweet.UserId, t)
 	return t, err
 }
 
-type TweetsResponse = domainGen.TweetsResponse
+type TweetsResponse = dto.TweetsResponse
 
-func (d *NodeStreamHandler) handleGetTimeline(ctx echo.Context, data *domainGen.Event_Data) (TweetsResponse, error) {
-	if ctx.Request().Context().Err() != nil {
-		return TweetsResponse{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetTimeline(ctx context.Context, data *event.Event_Data) (TweetsResponse, error) {
+	if ctx.Err() != nil {
+		return TweetsResponse{}, ctx.Err()
 	}
-	event, err := data.AsGetTimelineEvent()
+	ev, err := data.AsGetTimelineEvent()
 	if err != nil {
 		return TweetsResponse{}, err
 	}
-	if _, err := d.userRepo.Get(event.UserId); err != nil && errors.Is(err, database.ErrUserNotFound) {
+	if _, err := d.userRepo.Get(ev.UserId); err != nil && errors.Is(err, database.ErrUserNotFound) {
 		return TweetsResponse{Tweets: []domain.Tweet{}, Cursor: ""}, nil
 	}
 
-	tweets, nextCursor, err := d.timelineRepo.GetTimeline(event.UserId, event.Limit, event.Cursor)
+	tweets, nextCursor, err := d.timelineRepo.GetTimeline(ev.UserId, ev.Limit, ev.Cursor)
 	if err != nil {
 		return TweetsResponse{}, err
 	}
@@ -223,9 +266,9 @@ func (d *NodeStreamHandler) handleGetTimeline(ctx echo.Context, data *domainGen.
 	return response, nil
 }
 
-func (d *NodeStreamHandler) handleGetTweets(ctx echo.Context, data *domainGen.Event_Data) (TweetsResponse, error) {
-	if ctx.Request().Context().Err() != nil {
-		return TweetsResponse{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetAllTweets(ctx context.Context, data *event.Event_Data) (TweetsResponse, error) {
+	if ctx.Err() != nil {
+		return TweetsResponse{}, ctx.Err()
 	}
 	event, err := data.AsGetAllTweetsEvent()
 	if err != nil {
@@ -243,9 +286,9 @@ func (d *NodeStreamHandler) handleGetTweets(ctx echo.Context, data *domainGen.Ev
 	return response, nil
 }
 
-func (d *NodeStreamHandler) handleGetSingleTweet(ctx echo.Context, data *domainGen.Event_Data) (domain.Tweet, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domain.Tweet{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetTweet(ctx context.Context, data *event.Event_Data) (domain.Tweet, error) {
+	if ctx.Err() != nil {
+		return domain.Tweet{}, ctx.Err()
 	}
 	event, err := data.AsGetTweetEvent()
 	if err != nil {
@@ -258,9 +301,9 @@ func (d *NodeStreamHandler) handleGetSingleTweet(ctx echo.Context, data *domainG
 	return tweet, nil
 }
 
-func (d *NodeStreamHandler) handleGetUser(ctx echo.Context, data *domainGen.Event_Data) (domain.User, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domain.User{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetUser(ctx context.Context, data *event.Event_Data) (domain.User, error) {
+	if ctx.Err() != nil {
+		return domain.User{}, ctx.Err()
 	}
 
 	event, err := data.AsGetUserEvent()
@@ -275,19 +318,19 @@ func (d *NodeStreamHandler) handleGetUser(ctx echo.Context, data *domainGen.Even
 	return u, nil
 }
 
-func (d *NodeStreamHandler) handleGetAllUsers(ctx echo.Context, data *domainGen.Event_Data) (domainGen.UsersResponse, error) {
-	if ctx.Request().Context().Err() != nil {
-		return domainGen.UsersResponse{}, ctx.Request().Context().Err()
+func (d *NodeStreamHandler) handleGetAllUsers(ctx context.Context, data *event.Event_Data) (r dto.UsersResponse, err error) {
+	if ctx.Err() != nil {
+		return r, ctx.Err()
 	}
 	event, err := data.AsGetAllUsersEvent()
 	if err != nil {
-		return domainGen.UsersResponse{}, err
+		return r, err
 	}
 
 	users, cur, err := d.userRepo.List(event.Limit, event.Cursor)
 	if err != nil {
-		return domainGen.UsersResponse{}, err
+		return r, err
 	}
 
-	return domainGen.UsersResponse{cur, users}, nil
+	return dto.UsersResponse{cur, users}, nil
 }

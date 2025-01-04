@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
+	"github.com/filinvadim/warpnet/core/handler"
+	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
+	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/logger"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -22,6 +25,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
+	"go.uber.org/zap/zapcore"
 	"log"
 	"time"
 )
@@ -35,23 +39,28 @@ type PersistentLayer interface {
 	datastore.Batching
 	providers.ProviderStore
 	PrivateKey() go_crypto.PrivateKey
-	ListProviders() (_ map[string][]WarpAddrInfo, err error)
+	ListProviders() (_ map[string][]types.WarpAddrInfo, err error)
+}
+
+type NodeLogger interface {
+	zapcore.Core
+	Info(args ...interface{})
 }
 
 type WarpNode struct {
-	node   P2PNode
-	mdns   WarpMDNS
-	relay  WarpRelayCloser
-	pubsub WarpGossiper
+	node   types.P2PNode
+	mdns   types.WarpMDNS
+	relay  types.WarpRelayCloser
+	pubsub types.WarpGossiper
 }
 
 func createNode(
 	ctx context.Context,
-	privKey WarpPrivateKey,
-	store WarpPeerstore,
-	addrInfos []WarpAddrInfo,
+	privKey types.WarpPrivateKey,
+	store types.WarpPeerstore,
+	addrInfos []types.WarpAddrInfo,
 	conf config.Config,
-	routingFn func(node P2PNode) (WarpPeerRouting, error),
+	routingFn func(node types.P2PNode) (types.WarpPeerRouting, error),
 ) (*WarpNode, error) {
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
@@ -158,7 +167,7 @@ func NewBootstrapNode(
 
 	return createNode(
 		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
-		func(n P2PNode) (WarpPeerRouting, error) {
+		func(n types.P2PNode) (types.WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
 		},
 	)
@@ -168,13 +177,10 @@ func NewRegularNode(
 	ctx context.Context,
 	db PersistentLayer,
 	conf config.Config,
-	l logger.Core,
+	l NodeLogger,
 ) (_ *WarpNode, err error) {
-	core := l.With([]logger.Field{{
-		Key:    "node",
-		String: "member",
-	}})
-	logging.SetPrimaryCore(core)
+	//core := l.With([]logger.Field{{Key: "node", String: "member"}})
+	logging.SetPrimaryCore(l)
 
 	privKey := db.PrivateKey()
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
@@ -192,12 +198,23 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	return createNode(
+	n, err := createNode(
 		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
-		func(n P2PNode) (WarpPeerRouting, error) {
+		func(n types.P2PNode) (types.WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, db, providersCache, addrInfos)
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	sw, _ := nodeGen.GetSwagger()
+	h, err := handler.NewNodeStreamHandler(ctx, n.node, l, nil, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = h.RegisterHandlers(sw.Paths)
+	return n, err
 }
 
 func (n *WarpNode) ID() string {
@@ -239,11 +256,11 @@ func (n *WarpNode) Stop() error {
 
 func setupPrivateDHT(
 	ctx context.Context,
-	n P2PNode,
+	n types.P2PNode,
 	repo datastore.Batching,
 	providerStore providers.ProviderStore,
-	relays []WarpAddrInfo,
-) (*WarpDHT, error) {
+	relays []types.WarpAddrInfo,
+) (*types.WarpDHT, error) {
 	DHT, err := dht.New(
 		ctx, n,
 		dht.Mode(dht.ModeServer),
@@ -266,7 +283,7 @@ func setupPrivateDHT(
 	return DHT, nil
 }
 
-func sendMessage(h P2PNode, peerID WarpPeerID, protocol WarpDiscriminator, message string) {
+func sendMessage(h types.P2PNode, peerID types.WarpPeerID, protocol types.WarpDiscriminator, message string) {
 	// Устанавливаем соединение
 	s, err := h.NewStream(context.Background(), peerID, protocol)
 	if err != nil {

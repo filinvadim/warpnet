@@ -17,7 +17,7 @@ components:
           type: string
           format: date-time
         data:
-          oneOf:
+          anyOf:
             - $ref: '#/components/schemas/ErrorEvent'
             - $ref: '#/components/schemas/NewTweetEvent'
             - $ref: '#/components/schemas/NewUserEvent'
