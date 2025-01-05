@@ -27,3 +27,4 @@ go.work.sum
 bin/
 .idea
 var/
+frontend/node_modules
