@@ -86,7 +86,7 @@ func main() {
 	}
 
 	interfaceServer.RegisterHandlers(&API{
-		handlers2.NewStaticController(warpnet.GetStaticFolder()),
+		handlers2.NewStaticController(nil), // TODO
 		handlers2.NewAuthController(
 			userPersistency, interruptChan, nodeReadyChan, authReadyChan),
 	})
