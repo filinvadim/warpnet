@@ -2,7 +2,7 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import authentication from './modules/authentication';
 import signup from './modules/signup';
-import twitter from './modules/warpnet';
+import warpnet from './modules/warpnet';
 import profilePage from './modules/warpnet';
 
 Vue.use(Vuex);
@@ -11,7 +11,7 @@ export default new Vuex.Store({
   modules: {
     authentication,
     signup,
-    twitter,
+    warpnet,
     profilePage,
   },
 });

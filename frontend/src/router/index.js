@@ -89,7 +89,7 @@ const routes = [
     meta: { protected: true },
   },
   {
-    path: "/:screenName",
+    path: "/:username",
     name: "Profile",
     // route level code-splitting
     // this generates a separate chunk (about.[hash].js) for this route
@@ -99,7 +99,7 @@ const routes = [
     meta: { protected: true },
   },
   {
-    path: "/:screenName/followers",
+    path: "/:username/followers",
     name: "Followers",
     // route level code-splitting
     // this generates a separate chunk (about.[hash].js) for this route
@@ -110,7 +110,7 @@ const routes = [
     meta: { protected: true },
   },
   {
-    path: "/:screenName/following",
+    path: "/:username/following",
     name: "Following",
     // route level code-splitting
     // this generates a separate chunk (about.[hash].js) for this route

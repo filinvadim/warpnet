@@ -5,7 +5,6 @@ import router from "./router";
 import store from "./store";
 import directives from "./directives";
 import filters from "./filters";
-import './registerServiceWorker'
 
 const appConfig = {
   aws_appsync_graphqlEndpoint: process.env.VUE_APP_APPSYNC_GRAPHQL_ENDPOINT,

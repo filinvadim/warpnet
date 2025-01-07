@@ -16,13 +16,11 @@ export default {
     router.push("/");
   },
   async signUp({ commit }, form) {
-    const user = await Auth.signUp({
-      username: form.username,
-      password: form.password,
-      attributes: {
-        name: form.name,
-      },
-    });
+    const user = await this.postAsync(
+        "/v1/api/auth/login",
+        {username:form.email,password:form.password},
+    );
+    console.log(user);
     commit("USER_SIGNUP", user);
   },
   async confirmSignUp(_, form) {
@@ -33,11 +31,29 @@ export default {
   },
 
   async signInUser({ dispatch }, form) {
-    const user = await Auth.signIn(form.email, form.password);
-    await dispatch("loginUser", user);
+    const user = await this.postAsync(
+        "/v1/api/auth/login",
+        {username:form.email,password:form.password},
+        );
+    console.log(user);
     await dispatch("warpnet/setProfile", null, { root: true });
     await dispatch("warpnet/subscribeNotifications", null, { root: true });
     router.push({ name: "Home" });
+  },
+
+  async fetchAsync(url) {
+    let response = await fetch(url);
+    let data = await response.json();
+    return data;
+  },
+
+  async postAsync(url, body) {
+    let response = await fetch(
+        url,
+        {method:"POST", body:body},
+    );
+    let data = await response.json();
+    return data;
   },
 
   async loginUserIfAlreadyAuthenticated({ dispatch }) {

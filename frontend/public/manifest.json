@@ -1,6 +1,6 @@
 {
-  "name": "front-end",
-  "short_name": "front-end",
+  "name": "warpnet-frontend",
+  "short_name": "frontend",
   "theme_color": "#4DBA87",
   "icons": [
     {

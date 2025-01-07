@@ -4,6 +4,8 @@ import { noise } from '@chainsafe/libp2p-noise';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { pipe } from 'it-pipe';
 
+let backendMultiAddr = ""
+
 async function createClient() {
     const node = await createLibp2p({
         transports: [tcp()],
@@ -17,8 +19,12 @@ async function createClient() {
     return node;
 }
 
-async function sendRequest(node: Libp2p, peerAddress: string, message: string) {
-    console.log(`Connecting to peer: ${peerAddress}`);
+async function sendRequest(node: Libp2p, message: string) {
+    if (backendMultiAddr === "") {
+        console.log("Empty backend address");
+        return;
+    }
+    console.log(`Connecting to peer: ${backendMultiAddr}`);
 
     const connection = await node.dial(peerAddress);
     console.log('Connected to peer:', peerAddress);
