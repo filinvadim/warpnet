@@ -82,11 +82,10 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		owner, _ = c.userPersistence.Owner()
 	}
 	userResponse := domainGen.Owner{
-		CreatedAt:   owner.CreatedAt,
-		Description: owner.Description,
-		Id:          owner.Id,
-		NodeId:      owner.NodeId,
-		Username:    owner.Username,
+		CreatedAt: owner.CreatedAt,
+		Id:        owner.Id,
+		NodeId:    owner.NodeId,
+		Username:  owner.Username,
 	}
 	if owner.Username != req.Username {
 		return ctx.JSON(

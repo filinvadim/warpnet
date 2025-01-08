@@ -153,22 +153,20 @@ func (repo *UserRepo) Owner() (domainGen.Owner, error) {
 		return domainGen.Owner{}, ErrUserNotFound
 	}
 	return domainGen.Owner{
-		CreatedAt:   owner.CreatedAt,
-		Description: owner.Description,
-		Id:          owner.Id,
-		NodeId:      owner.NodeId,
-		Username:    owner.Username,
+		CreatedAt: owner.CreatedAt,
+		Id:        owner.Id,
+		NodeId:    owner.NodeId,
+		Username:  owner.Username,
 	}, err
 }
 
 func (repo *UserRepo) CreateOwner(o domainGen.Owner) (err error) {
 	_, err = repo.Create(domainGen.User{
-		Birthdate:   nil,
-		CreatedAt:   o.CreatedAt,
-		Description: o.Description,
-		Id:          DefaultOwnerUserID,
-		NodeId:      o.NodeId,
-		Username:    o.Username,
+		Birthdate: nil,
+		CreatedAt: o.CreatedAt,
+		Id:        DefaultOwnerUserID,
+		NodeId:    o.NodeId,
+		Username:  o.Username,
 	})
 	return err
 }

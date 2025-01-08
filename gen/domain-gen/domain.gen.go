@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Chat defines model for Chat.
@@ -49,11 +50,10 @@ type Like struct {
 
 // Owner defines model for Owner.
 type Owner struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	Id          string    `json:"id"`
-	NodeId      string    `json:"node_id"`
-	Username    string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        string    `json:"id"`
+	NodeId    string    `json:"node_id"`
+	Username  string    `json:"username"`
 }
 
 // ReplyNode defines model for ReplyNode.
@@ -70,7 +70,6 @@ type Retweet struct {
 
 // Tweet defines model for Tweet.
 type Tweet struct {
-	Content       string     `json:"content"`
 	CreatedAt     time.Time  `json:"created_at"`
 	Id            string     `json:"id"`
 	Likes         *[]Like    `json:"likes,omitempty"`
@@ -79,42 +78,45 @@ type Tweet struct {
 	Retweets      *[]Retweet `json:"retweets,omitempty"`
 	RetweetsCount *int64     `json:"retweets_count,omitempty"`
 	RootId        string     `json:"root_id"`
+	Text          string     `json:"text"`
 	UserId        string     `json:"user_id"`
 	Username      string     `json:"username"`
 }
 
 // User defines model for User.
 type User struct {
-	Birthdate    *time.Time `json:"birthdate,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	Description  string     `json:"description"`
-	Followed     []string   `json:"followed"`
-	FollowedNum  int64      `json:"followed_num"`
-	Followers    []string   `json:"followers"`
-	FollowersNum int64      `json:"followers_num"`
-	Id           string     `json:"id"`
-	Link         *string    `json:"link,omitempty"`
-	Location     *string    `json:"location,omitempty"`
-	MyReferrals  *[]string  `json:"my_referrals,omitempty"`
-	NodeId       string     `json:"node_id"`
-	ReferredBy   *string    `json:"referred_by,omitempty"`
-	Username     string     `json:"username"`
+	Avatar          *openapi_types.File `json:"avatar,omitempty"`
+	BackgroundImage *openapi_types.File `json:"background_image,omitempty"`
+	Bio             string              `json:"bio"`
+	Birthdate       *time.Time          `json:"birthdate,omitempty"`
+	CreatedAt       time.Time           `json:"created_at"`
+	FollowedBy      []string            `json:"followed_by"`
+	FollowedNum     int64               `json:"followed_num"`
+	FollowersNum    int64               `json:"followers_num"`
+	Following       []string            `json:"following"`
+	Id              string              `json:"id"`
+	Location        *string             `json:"location,omitempty"`
+	NodeId          string              `json:"node_id"`
+	TweetsNum       *int64              `json:"tweets_num,omitempty"`
+	Username        string              `json:"username"`
+	Website         *string             `json:"website,omitempty"`
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xWS2/bPBD8Kwa/76i80KIHXYPe0hQoUvRQFAItrizW4qPLVQ0h8H8vSDnWw5RtGSnS",
-	"UwSG3J2dmd31M8uNskaDJsfSZ+byEhQPn/clJ//XorGAJCGc5gicQGTt/wqDyn8xwQmuSCpgCaPGAkuZ",
-	"I5R6xbYJK9CorHaAmRT+1cGFiWMyR1/VVsyEsk0Ywq9aIgiWfvdpR+AGOZN+sYN0P/aRzfIn5OTReLo+",
-	"gXN8BRHWSk5TZeRGE+hQg5L6AfSKSpbeRXi8hPsp7jpeTyT1NzVXEAkzorPH267cpKX4pcJesEExMTo/",
-	"IhqMEGlEH4nUBCtA/0B13B+HGUJ092PJH+Q6IiJtAOh80s65OcngPlcM3ueNBnyd1hTgcpSWpNFzOlMb",
-	"AdkRa70YZk7xoe6eQfrQuownjfMFbNU87mwy7kJZCYRQqSRQ4fB/hIKl7L+bbhDe7KbgTRdru8/EEXnD",
-	"AnZbNaciPHkdD0ptnyYdoHghwQT/sA+f4vjeZKBVct1mP0vY0OARTUOULDe1HiKSmj6890NDaqlqxdLb",
-	"JDKCLEfQk3MeWz3dDPe1Boh6r411MVQ0hrI32Q2jjdBx1oGasye+utgoXEqk0tvofF/9jelZmKoyGxAD",
-	"yQ9/5ozEfXmVaS9fRNpDOXdP0F2UCd2MVJP9p9eDCDVWMcoqk/NJvlSTIRSAyKuZlRxbSG1IENmyef2F",
-	"NdxSPd92C2ug55j0nkn6Mp7wvYcidWE85IEJ2f1+jiwKgwu+ENLDX9YEYvG0kUSAV37MLbi1ldyJkTCS",
-	"VPkM3zjaxSPQxuCaJew3oGsD313fXt96uowFza1kKXsXjnwPU+ll2m7/BAAA//9sIepLTwwAAA==",
+	"H4sIAAAAAAAC/8xWTW/bMAz9K4G2o/uFDTv4WuzWdcDQYYdhMGSLSbjYkkbTzYIi/32Q7MYfkRs7yGGn",
+	"GqpIPr73SOVFZKawRoPmUsQvoszWUEj/eb+W7P5aMhaIEfxpRiAZVFL/b2mocF9CSYYrxgJEJHhnQcSi",
+	"ZEK9EvtILMkUSVUCJahc1NGFkWM2b0ZVVs2Eso8EwZ8KCZSIf7qyA3C9mlG32V65X4fMJv0NGTs0jq4v",
+	"UJZyBQHW1pLH2siMZtC+hwL1A+gVr0V8F+DxHO7HuGt5PVHU3dSygECaAZ0d3pp2o5ri1w47yXrNhOj8",
+	"TGQoQKRRXSSoGVZALqBouX8bpk/R3g8Vf8BNQETeAvB00qbcHGXwUCsE7+tWA11mNEfsoY2C5A3rvBpi",
+	"TnO+r44BXmuctMI3sPnusRF+OFeYKwLtvpGh8IfvCZYiFu9u2tV20+y1mzbX/lBJEsmd8GhtvjuV4ckp",
+	"c9RcHRq1gMKNeFn/Y2c9hfFd0Fk5buqck+TygxhQymdJMlPpPiLU/OmjG27UWFSFiG+jwKqwkkCP7mOq",
+	"VSpneKqWNeioOtfZUMmYUaAMf/mCjjlv1deecki6e75luG1hzvb/XoYWnHyWLKnHYopa0i7kv1RmmxWZ",
+	"SqsEi+ZhmBKGJkh2isRrZ/jpE3DWTyWT52YLKkl3Pf8diz9w2iFQOy8FfHbsrSaEytkxDsMsdGPLwGSS",
+	"0ejZb1AzVdNxT360IrGFtMSBzhXl035NOvuMvHI9hYbsd5ntu+DErDgUqJfetArKjNDWjIr7w6ZaLA0t",
+	"5EKhQ55WDGrxtEVmoCu3SBfS2hwbJSLByLmr8EOSXTwCbw1tRCSegco68d317fWtY8pY0NKiiMUHf+Tm",
+	"ntfOEfv9vwAAAP//wmKGw1kMAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

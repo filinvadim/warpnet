@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	api "github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -20,10 +19,9 @@ type StaticController struct {
 }
 
 func NewStaticController(staticFolder StaticFolderOpener) *StaticController {
-
 	pwd, _ := os.Getwd()
 	log.Println("CURRENT DIRECTORY: ", pwd)
-	fileSystem := echo.MustSubFS(staticFolder, "server/static/")
+	fileSystem := echo.MustSubFS(staticFolder, "server/frontend/dist/")
 	return &StaticController{fileSystem}
 }
 
@@ -46,8 +44,7 @@ func (c *StaticController) GetStaticFile(ctx echo.Context, filePath string) erro
 	ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 	ctx.Response().Header().Set("Pragma", "no-cache")
 	ctx.Response().Header().Set("Expires", "0")
-	fullPath := fmt.Sprintf("%s%s", "static/", filePath)
-	f, err := c.fileSystem.Open(fullPath)
+	f, err := c.fileSystem.Open(filePath)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}

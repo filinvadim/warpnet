@@ -27,4 +27,5 @@ go.work.sum
 bin/
 .idea
 var/
-frontend/node_modules
+server/frontend/node_modules
+/server/frontend/package-lock.json

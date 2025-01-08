@@ -30,7 +30,7 @@ func setupTimelineTestDB(t *testing.T) *storage.DB {
 func createTestTweet(id string, timestamp time.Time) domain_gen.Tweet {
 	return domain_gen.Tweet{
 		Id:        id,
-		Content:   "Test content",
+		Text:      "Test content",
 		UserId:    uuid.New().String(),
 		CreatedAt: timestamp,
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	api_gen "github.com/filinvadim/warpnet/server/api-gen"
-	ownMiddleware "github.com/filinvadim/warpnet/server/middleware"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
@@ -64,7 +63,9 @@ func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error)
 		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 	}))
 	e.Use(echomiddleware.Gzip())
-	e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
+
+	l.Warn("VerifySessionToken temp disabled!")
+	//e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
 	port := ":" + strconv.Itoa(conf.Server.Port)
 	err = browser.OpenURL("http://localhost" + port) // NOTE connection is not protected!

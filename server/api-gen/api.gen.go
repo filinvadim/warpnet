@@ -50,15 +50,15 @@ type ServerInterface interface {
 	// Serve static files
 	// (GET /)
 	GetIndex(ctx echo.Context) error
-	// Serve static files
-	// (GET /static/{file*})
-	GetStaticFile(ctx echo.Context, file string) error
 	// Store credentials
 	// (POST /v1/api/auth/login)
 	PostV1ApiAuthLogin(ctx echo.Context) error
 	// Close service
 	// (POST /v1/api/auth/logout)
 	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
+	// Serve static files
+	// (GET /{file*})
+	GetStaticFile(ctx echo.Context, file string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -72,22 +72,6 @@ func (w *ServerInterfaceWrapper) GetIndex(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetIndex(ctx)
-	return err
-}
-
-// GetStaticFile converts echo context to params.
-func (w *ServerInterfaceWrapper) GetStaticFile(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "file" -------------
-	var file string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "file", ctx.Param("file"), &file, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter file: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetStaticFile(ctx, file)
 	return err
 }
 
@@ -131,6 +115,22 @@ func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
 	return err
 }
 
+// GetStaticFile converts echo context to params.
+func (w *ServerInterfaceWrapper) GetStaticFile(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "file" -------------
+	var file string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file", ctx.Param("file"), &file, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter file: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetStaticFile(ctx, file)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -160,29 +160,29 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/", wrapper.GetIndex)
-	router.GET(baseURL+"/static/:file", wrapper.GetStaticFile)
 	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
 	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
+	router.GET(baseURL+"/:file", wrapper.GetStaticFile)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6xV72/bNhD9Vwhunwa5sreuQPUtG7LBaNEUcfcDKIKAEU8WW4pU705JDcP/+3CUC8mW",
-	"1ibYvhiyeLx39969016XsWljgMCki72msobGpMeLjutr+NQBsfxtMbaA7CAdtoboIaKVZ961oAtNjC5s",
-	"9SHTHQEG08DM4SHTCJ86h2B18X6IzIaMN9mXS/HuA5QsGS8RI06rKKMdg7jAsAWUCw0Qme0jKkgphvg5",
-	"8Ndx68I1UBsDwbQIjh8h/CsPcvA9QqUL/V0+cJ0fic5tbIwLt1cPQQo/K65PfUw0V9rJ7Sk9CIbB3pok",
-	"YBWxkSdtDcOCXWJ9UrMFKtG17OJ8T25e8hAt3Lpvj0PjwmsIW651scq+IY2zOhtPyLi0ATEbtznlSJK6",
-	"UEUBP+lNX35mhGC8uni7VlVEZZR1Uspdx2DVuwfHDLjw7iMo07beleYIzY69YPxlsFUBWFUYA6vKlFLm",
-	"PSD1CKtny2dLYSC2EEzrdKF/Sq9k2rlOGuXys4WkkGiXMNZWF/p34HWw8FkLK/3wpRs/LpfTZq5eJfqo",
-	"axqDO13oDeA9KGLDrlSV80ApIO/f5Ht59cNhBH6a7xq4w0DKhN04iXTaKK5BfUmkrEMoOeJOZ9MGNino",
-	"N+d7h6NpgAFJF+/32gmO8CBipvHQVR84DAFjB9lxKc15+WaemzIGhpDaGimXx5KBF8QIphmW3Yk37lww",
-	"qZVzpHNr6M2IFRKyraKuLIGo6rzfiezPl8+nzAoZKkRWVeyCfaRq96vctC43Hde5l3WUzB5pZmzeRuI/",
-	"Vxetk/2dVteRUSD+JdrdV/j5QL3pB16+trnG34fDqXdFtsOTpHka9NnSnGjzBwEqC2ycp16I1VQIqV9V",
-	"xnmwEvPznK3WgWX9eFWbYD2ggvQhOhONI4IqESwEdsaTjI/ZypQnEH0zp2Hs+PEiSvC8gWowFnCw0N+L",
-	"zeVms756s3h39eryzf/hprO574f8v1H2q4/U28alnXlOlwSLFY6dziDIslXGWpRaMt2hFzKY2yLPfSyN",
-	"ryNx8eLli5f6cHP4JwAA//9ILAGt5wgAAA==",
+	"H4sIAAAAAAAC/6yUb2/bNhDGvwpx26tBruytK1C9y4ZsMFo0Rdz9AQYjYMSTxZYi1ePJqWH4uw9HpbNs",
+	"KYiB7o0hS0fe8fc8D/dQhqYNHj1HKPYQyxobnR6vOq5v8XOHkeVvS6FFYovpY6tjfAhk5Jl3LUIBkcn6",
+	"DRwy6CKS1w1OfDxkQPi5s4QGin+Oldlxx3X2dVG4/4gly47XRIHGU5TBDJtYz7hBkgUNxqg3F0yQtjjW",
+	"TzV/GzbW32Jsg484HoLDJ/RPcpAP3xNWUMB3+ZF1/gg6N6HR1t/dPHgZ/Gy4fuvHjaZGO1k9xkOoGc2d",
+	"TgJWgRp5AqMZZ2wT9dHMdlpSHwze2eflbqx/i37DNRSL7Bn01kA2dMDXHtlw8PGpZRvrqyDtDMaSbMs2",
+	"eCjg+gsTeu3U1fulqgIprYyV5vcdo1EfHiwz0szZT6h02zpb6rQyA7bspMdfmlrlkVVFwbOqdCmDbZFi",
+	"32HxYv5iLmcOLXrdWijgp/RK/Mt1op7LzwYTc1Ej9VgaKOB35KU3+AWEQ2+ntOLH+Xx8mJs3CVjsmkbT",
+	"DgpYIW1RRdZsS1VZhzEV5NtFrlub647r3IlVkxFCnBjgfYj85+KqtZLtZGvoJcHIvwSz6zPlGX1aPGCU",
+	"f4zBHy+I51w9vDsOp7ozdXiYBvC/tD4LlITkhOsfEUkZZG1dFCVfzhdj+DK/qrR1aKTm5ymBlp7Fuk7V",
+	"2huHpDBdUmeicSBUJaFBz1a7KGbTmyj+lyawntIwdHy5iFIs9iPdICPJ1nsQF0CN2iBJslI64e/Z6nq1",
+	"Wt68m324eXP9Ds5lyQaIz6O7vsSzq64sMcZvQ/arCxFVRNralL4JXHux/w+HQdBO+9wid+Sj0n43DIyk",
+	"ulFco8r7t7kylrDkQDvIxmFdpaLfrMMnAEvmj3irvvCbmT4Rg1Ay8iwyoW5O4/DfzX5vvU5HOe80SsFq",
+	"QEVQo1GxF6/qnNv1wXg5JiswlA+sqtB5c8kNJRXy/pHbhCHkllXaGBLrZNCRE+8yt0Weu1BqV4fIxavX",
+	"r17DYX34NwAA//8xdYwusggAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

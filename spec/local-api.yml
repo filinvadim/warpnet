@@ -16,9 +16,10 @@ paths:
         '200':
           description: OK
 
-  /static/{file*}:
+  /{file*}:
     get:
       summary: Serve static files
+      operationId: GetStaticFile
       description: Returns any static file from the /static/ directory
       parameters:
         - in: path
@@ -76,7 +77,6 @@ paths:
           description: Success
         '500':
           description: Internal handler error
-
 
 components:
   schemas:
