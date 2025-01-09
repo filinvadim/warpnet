@@ -8,7 +8,7 @@ node:
       - "/ip4/0.0.0.0/tcp/4002/ws"
       - "/ip6/::/tcp/4001"
     logging:
-      level: debug
+      level: info
 database:
     dir: "/storage"
 server:

@@ -56,7 +56,7 @@
       <div class="flex items-center justify-center w-full h-full">
         <div class="w-full md:w-1/2 flex flex-col font-bold p-5 md:p-0">
           <p class="text-3xl mb-12">
-            See what's happening in the world right now
+            Dive deep into the Warp and see what happens...
           </p>
           <p>Join Warpnet today.</p>
           <button
@@ -356,7 +356,6 @@ export default {
       birthdate: "",
       password: "",
       revealPassword: false,
-      verificationCode: "",
     };
   },
   computed: {
@@ -388,21 +387,7 @@ export default {
         console.log("error signing up:", error);
       }
     },
-    async confirmUserSignUp() {
-      if (!this.verificationCode) return;
-      try {
-        await this.confirmSignUp({
-          email: this.email,
-          verificationCode: this.verificationCode,
-        });
-        await this.signIn();
-      } catch (error) {
-        alert(
-          "Error confirming verification code, please check console for error detail"
-        );
-        console.log("error confirming verification code:", error);
-      }
-    },
+
     async signIn() {
       try {
         await this.signInUser({
@@ -415,19 +400,7 @@ export default {
         console.log("error signing in:", error);
       }
     },
-    async resendVerificationCode() {
-      try {
-        await this.resendSignUp({
-          email: this.email,
-        });
-        console.log("code resent successfully");
-      } catch (error) {
-        alert(
-          "Error resending verification code, please check console for error detail"
-        );
-        console.log("error resending verification code:", error);
-      }
-    },
+
     setSignUpStep(step) {
       switch (step) {
         case "step2":

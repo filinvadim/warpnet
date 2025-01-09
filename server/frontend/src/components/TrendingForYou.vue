@@ -24,10 +24,6 @@ export default {
   data() {
     return {
       trending: [
-        {top: 'Trending in NL', title: 'REDALERT', bottom: '7,451 tweets', id: 'NL-READALERT'},
-        {top: 'Music', title: 'We Won', bottom: '135K Tweets', id: 'MUSIC-WE_WON'},
-        {top: 'Pop', title: 'Blue Ivy', bottom: '40k tweets', id: 'POP-BLUE_IVY'},
-        {top: 'Trending in NL', title: 'Zwarte Piet', bottom: '13.9k tweets', id: 'NL-ZWARTE_PIET'},
         {top: 'Trending', title: 'When Beyonce', bottom: '25.4k tweets', id: 'TRENDING-WHEN_BEYONCE'},
       ],
     };

@@ -27,7 +27,7 @@ export default {
     };
   },
   async created() {
-    const user = await Auth.currentUserInfo();
+    const user = sessionStorage.getItem("owner")
     if (user.username === this.tweet.profile.id) {
       this.label = "You Retweeted";
     } else {

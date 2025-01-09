@@ -62,13 +62,13 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 			api.Error{403, fmt.Sprintf("autenticate: %v", err)},
 		)
 	}
-	c.authReady <- struct{}{}
 
 	owner, err := c.userPersistence.Owner()
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
 		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	if errors.Is(err, database.ErrUserNotFound) {
+		ctx.Logger().Info("creating owner")
 		err := c.userPersistence.CreateOwner(domainGen.Owner{
 			CreatedAt: time.Now(),
 			Username:  req.Username,
@@ -81,6 +81,8 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 		}
 		owner, _ = c.userPersistence.Owner()
 	}
+	ctx.Logger().Info(owner.Username, "===", req.Username)
+
 	userResponse := domainGen.Owner{
 		CreatedAt: owner.CreatedAt,
 		Id:        owner.Id,
@@ -93,6 +95,7 @@ func (c *AuthController) PostV1ApiAuthLogin(ctx echo.Context) error {
 			api.Error{400, fmt.Sprintf("user %s doesn't exist", req.Username)},
 		)
 	}
+	c.authReady <- struct{}{}
 
 	timer := time.NewTimer(30 * time.Second)
 	defer timer.Stop()
