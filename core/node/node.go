@@ -138,11 +138,7 @@ func NewBootstrapNode(
 	conf config.Config,
 	l logger.Core,
 ) (_ *WarpNode, err error) {
-	core := l.With([]logger.Field{{
-		Key:    "node",
-		String: "bootstrap",
-	}})
-	logging.SetPrimaryCore(core)
+	logging.SetPrimaryCore(l)
 
 	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
 	if err != nil {

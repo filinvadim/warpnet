@@ -24,7 +24,8 @@ import {
 } from "../../../lib/backend";
 
 export default {
-  async setProfile({ commit }, profile) {
+  async setProfile({ commit }) {
+    const profile = await getMyProfile();
     commit("PROFILE_SET", profile);
   },
   async loadProfile({ commit, rootState }, screenName) {
