@@ -41,7 +41,7 @@
           >
             <i class="text-2xl fas fa-camera text-white"></i>
             <input
-              @change="fileChange('backgroundFileInput', 'backgroundImageUrl')"
+              @change="fileChange('backgroundFileInput', 'background_image')"
               ref="backgroundFileInput"
               accept="image/jpeg"
               type="file"
@@ -49,11 +49,11 @@
             />
           </button>
 
-          <div v-if="backgroundImageUrl" class="h-full max-h-full">
-            <img :src="backgroundImageUrl" class="h-full w-full object-cover" />
+          <div v-if="background_image" class="h-full max-h-full">
+            <img :src="background_image" class="h-full w-full object-cover" />
           </div>
           <div
-            v-if="!backgroundImageUrl"
+            v-if="!background_image"
             class="bg-gray-400 h-full max-h-full"
           ></div>
         </div>
@@ -73,7 +73,7 @@
             >
               <i class="text-2xl fas fa-camera text-white"></i>
               <input
-                @change="fileChange('imageUrlFileInput', 'imageUrl')"
+                @change="fileChange('imageUrlFileInput', 'avatar')"
                 ref="imageUrlFileInput"
                 accept="image/jpeg"
                 type="file"
@@ -82,7 +82,7 @@
             </button>
 
             <img
-              :src="imageUrl"
+              :src="avatar"
               class="w-32 h-32 rounded-full border-4 border-white"
             />
           </div>
@@ -149,8 +149,8 @@ export default {
   data() {
     return {
       name: undefined,
-      backgroundImageUrl: undefined,
-      imageUrl: undefined,
+      background_image: undefined,
+      avatar: undefined,
       bio: undefined,
       location: undefined,
       website: undefined,
@@ -188,8 +188,8 @@ export default {
     async saveProfile() {
       const p = {
         name: this.name,
-        imageUrl: this.imageUrl,
-        backgroundImageUrl: this.backgroundImageUrl,
+        avatar: this.avatar,
+        background_image: this.background_image,
         bio: this.bio,
         location: this.location,
         website: this.website,
@@ -197,19 +197,19 @@ export default {
       };
       const newProfile = await this.editMyProfile(p);
       await Promise.all([
-        this.loadProfile(newProfile.screenName),
-        this.loadTweets(newProfile.screenName),
+        this.loadProfile(newProfile.username),
+        this.loadTweets(newProfile.username),
         this.editUserProfile(p),
       ]);
-      this.backgroundImageUrl = newProfile.backgroundImageUrl;
-      this.imageUrl = newProfile.imageUrl;
+      this.background_image = newProfile.background_image;
+      this.avatar = newProfile.avatar;
       this.$emit("update:showEditProfileModal", false);
     },
   },
   created() {
     this.name = this.profile.name;
-    this.backgroundImageUrl = this.profile.backgroundImageUrl;
-    this.imageUrl = this.profile.imageUrl;
+    this.background_image = this.profile.background_image;
+    this.avatar = this.profile.avatar;
     this.bio = this.profile.bio;
     this.location = this.profile.location;
     this.website = this.profile.website;

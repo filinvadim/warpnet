@@ -59,17 +59,17 @@
                     class="pt-1 fas fa-retweet text-green-500"
                   ></i>
 
-                  <a :href="`#/${profile.screenName}`">
+                  <a :href="`#/${profile.username}`">
                     <img
-                      :src="`${profile.imageUrl || 'default_profile.png'}`"
+                      :src="`${profile.avatar || 'default_profile.png'}`"
                       class="h-8 w-8 ml-2 rounded-full flex-none"
                     />
                   </a>
                 </div>
                 <div class="flex items-center w-full">
-                  <p class="font-sm">{{ "@" + profile.screenName }}</p>
+                  <p class="font-sm">{{ "@" + profile.username }}</p>
                   <p class="text-sm text-dark ml-auto">
-                    {{ $filters.timeago(notification.createdAt) }}
+                    {{ $filters.timeago(notification.created_at) }}
                   </p>
                 </div>
               </div>
@@ -92,17 +92,17 @@
             >
               <div class="w-full">
                 <div class="flex flex-row mr-2 md:mr-4 pt-1 text-2xl">
-                  <a :href="`#/${profile.screenName}`">
+                  <a :href="`#/${profile.username}`">
                     <img
-                      :src="`${profile.imageUrl || 'default_profile.png'}`"
+                      :src="`${profile.avatar || 'default_profile.png'}`"
                       class="h-8 w-8 ml-2 rounded-full flex-none"
                     />
                   </a>
                 </div>
                 <div class="flex items-center w-full">
-                  <p class="font-sm">{{ "@" + profile.screenName }}</p>
+                  <p class="font-sm">{{ "@" + profile.username }}</p>
                   <p class="text-sm text-dark ml-auto">
-                    {{ $filters.timeago(notification.createdAt) }}
+                    {{ $filters.timeago(notification.created_at) }}
                   </p>
                 </div>
               </div>

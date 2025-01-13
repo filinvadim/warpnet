@@ -127,7 +127,7 @@
         class="flex items-center w-full hover:bg-lightblue rounded-full"
       >
         <img
-          :src="`${profile.imageUrl || 'default_profile.png'}`"
+          :src="`${profile.avatar || 'default_profile.png'}`"
           class="w-10 h-10 rounded-full"
         />
         <div class="hidden xl:block ml-4 truncate">
@@ -135,7 +135,7 @@
             {{ profile.name }}
           </div>
           <div class="text-left text-sm leading-tight text-dark truncate">
-            {{ profile.ScreenName }}
+            {{ profile.username }}
           </div>
         </div>
         <i class="hidden xl:block fas fa-angle-down ml-auto text-lg"></i>
@@ -149,7 +149,7 @@
           class="p-3 flex items-center w-full hover:bg-lightest"
         >
           <img
-            :src="`${profile.imageUrl || 'default_profile.png'}`"
+            :src="`${profile.avatar || 'default_profile.png'}`"
             class="w-10 h-10 rounded-full"
           />
           <div class="ml-4">
@@ -157,7 +157,7 @@
               {{ profile.name }}
             </p>
             <p class="text-left text-sm leading-tight text-dark">
-              {{ profile.ScreenName }}
+              {{ profile.username }}
             </p>
           </div>
           <i class="fas fa-check ml-auto text-blue"></i>
@@ -171,7 +171,7 @@
           @click="signOut"
           class="w-full text-left hover:bg-lightest border-t border-lighter p-3 text-sm"
         >
-          Log out {{ profile.ScreenName }}
+          Log out {{ profile.username }}
         </button>
       </div>
     </div>
@@ -196,12 +196,12 @@ export default {
       const current = this.$route.name;
       if (
         target != current ||
-        this.$route.params.screenName != this.profile.screenName
+        this.$route.params.username != this.profile.username
       ) {
         this.$router.push({
           name: target,
           params: {
-            screenName: this.profile.screenName,
+            username: this.profile.username,
           },
         });
       }

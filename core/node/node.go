@@ -24,7 +24,6 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	"go.uber.org/zap/zapcore"
 	"log"
 	"time"
@@ -81,13 +80,12 @@ func createNode(
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
 		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(ws.New),
 		libp2p.Identity(privKey),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))), // TODO shuffle name
+		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))), // TODO shuffle name. "warpnet" now
 		libp2p.UserAgent(NetworkName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),

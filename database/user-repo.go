@@ -147,12 +147,12 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 	return users, cur, nil
 }
 
-func (repo *UserRepo) Owner() (domainGen.Owner, error) {
+func (repo *UserRepo) Owner() (domainGen.User, error) {
 	owner, err := repo.Get(DefaultOwnerUserID)
 	if errors.Is(err, ErrUserNotFound) {
-		return domainGen.Owner{}, ErrUserNotFound
+		return domainGen.User{}, ErrUserNotFound
 	}
-	return domainGen.Owner{
+	return domainGen.User{
 		CreatedAt: owner.CreatedAt,
 		Id:        owner.Id,
 		NodeId:    owner.NodeId,
@@ -160,7 +160,7 @@ func (repo *UserRepo) Owner() (domainGen.Owner, error) {
 	}, err
 }
 
-func (repo *UserRepo) CreateOwner(o domainGen.Owner) (err error) {
+func (repo *UserRepo) CreateOwner(o domainGen.User) (err error) {
 	_, err = repo.Create(domainGen.User{
 		Birthdate: nil,
 		CreatedAt: o.CreatedAt,

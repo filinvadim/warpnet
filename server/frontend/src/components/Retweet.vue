@@ -31,7 +31,7 @@ export default {
     if (user.username === this.tweet.profile.id) {
       this.label = "You Retweeted";
     } else {
-      this.label = `@${this.tweet.profile.screenName} Retweeted`;
+      this.label = `@${this.tweet.profile.username} Retweeted`;
     }
   },
 };

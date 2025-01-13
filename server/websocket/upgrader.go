@@ -1,0 +1,134 @@
+package websocket
+
+import (
+	"encoding/base64"
+	"fmt"
+	"github.com/filinvadim/warpnet/core/encrypting"
+	ws "github.com/gorilla/websocket"
+	"log"
+	"net/http"
+	"sync"
+)
+
+type EncryptedUpgrader struct {
+	upgrader        ws.Upgrader
+	conn            *ws.Conn
+	readCallback    func(msg []byte) error
+	encrypter       *encrypting.DiffieHellmanEncrypter
+	mx              *sync.Mutex
+	isAuthenticated bool
+}
+
+func NewEncryptedUpgrader() *EncryptedUpgrader {
+	e, err := encrypting.NewDiffieHellmanEncrypter()
+	if err != nil {
+		panic(err)
+	}
+
+	return &EncryptedUpgrader{
+		upgrader: ws.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				//origin := r.Header.Get("Origin")
+				//addr, err := url.Parse(origin)
+				//if err != nil {
+				//	return false
+				//}
+				//if addr.Hostname() != "warp.net" {
+				//	return false
+				//}
+				return true
+			},
+		},
+		encrypter: e,
+		mx:        new(sync.Mutex),
+	}
+}
+
+func (s *EncryptedUpgrader) UpgradeConnection(w http.ResponseWriter, r *http.Request) (err error) {
+	s.conn, err = s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.readLoop()
+}
+
+func (s *EncryptedUpgrader) Close() error {
+	return s.conn.Close()
+}
+
+func (s *EncryptedUpgrader) OnMessage(fn func(msg []byte) error) {
+	s.readCallback = fn
+}
+
+func (s *EncryptedUpgrader) readLoop() error {
+	for {
+		messageType, message, err := s.conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		if messageType == ws.TextMessage && !s.isAuthenticated {
+			pubKey, err := base64.StdEncoding.DecodeString(string(message))
+			if err != nil {
+				_ = s.SendPlain(err.Error())
+				return err
+			}
+			log.Println("websocket received public key message")
+
+			if err := s.encrypter.ComputeSharedSecret(pubKey); err != nil {
+				_ = s.SendPlain(err.Error())
+				continue
+			}
+			encoded := base64.StdEncoding.EncodeToString(s.encrypter.PublicKey())
+			err = s.SendPlain(encoded)
+			if err != nil {
+				log.Printf("Websocket error encoding public key: %s", err)
+				continue
+			}
+			s.isAuthenticated = true
+			log.Println("websocket authenticated")
+			continue
+		}
+		if messageType != ws.BinaryMessage && s.isAuthenticated {
+			log.Printf("unexpected message type: %v", messageType)
+			continue
+		}
+
+		if s.readCallback == nil {
+			log.Println("no read callback provided")
+			continue
+		}
+		decryptedMessage, err := s.encrypter.DecryptMessage(message)
+		if err != nil {
+			log.Printf("failed to decrypt message: %v", err)
+		}
+
+		log.Println("got message: ", string(decryptedMessage))
+
+		if err = s.readCallback(decryptedMessage); err != nil {
+			log.Printf("failed to process decrypted message: %v", err)
+		}
+	}
+}
+func (s *EncryptedUpgrader) SendPlain(msg string) error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	return s.conn.WriteMessage(ws.TextMessage, []byte(msg))
+}
+
+func (s *EncryptedUpgrader) SendEncrypted(msg []byte) error {
+	encryptedMessage, err := s.encrypter.EncryptMessage(msg)
+	if err != nil {
+		return err
+	}
+
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	err = s.conn.WriteMessage(ws.BinaryMessage, encryptedMessage)
+	if err != nil {
+		return fmt.Errorf("write encrypted message: %w", err)
+	}
+	return nil
+}

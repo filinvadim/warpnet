@@ -4,10 +4,10 @@
       <p class="text-lg font-bold">Who to follow</p>
     </div>
     <button v-for="suggestion in followSuggestions" :key="suggestion.id" class="w-full flex hover:bg-lighter p-3 border-t border-lighter">
-      <img :src="suggestion.imageUrl" class="w-12 h-12 rounded-full" />
+      <img :src="suggestion.avatar" class="w-12 h-12 rounded-full" />
       <div class="hidden lg:block ml-4">
         <p class="text-left text-sm font-bold leading-tight">{{ suggestion.name }}</p>
-        <p class="text-left text-sm leading-tight text-dark">{{ suggestion.screenName }}</p>
+        <p class="text-left text-sm leading-tight text-dark">{{ suggestion.username }}</p>
       </div>
       <button class="ml-auto text-sm text-blue font-bold px-4 py-1 rounded-full border border-blue m-2">
         Follow
@@ -25,7 +25,7 @@ export default {
   data() {
     return {
       followSuggestions: [
-        {imageUrl: 'https://i.imgur.com/wHoKLev.jpg', name: 'Hanna', screenName: '@bestofallhans', id: 'bestofallhans'}
+        {avatar: 'https://i.imgur.com/wHoKLev.jpg', name: 'Hanna', username: '@bestofallhans', id: 'bestofallhans'}
       ],
     };
   },

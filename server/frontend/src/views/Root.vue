@@ -24,48 +24,19 @@
 
     <!-- right side -->
     <div class="flex w-full md:w-1/2 h-full">
-      <div class="w-full absolute mt-4 hidden md:flex bg-white">
-        <form class="w-1/2 flex justify-center">
-          <div class="bg-lightblue border-b-2 border-dark mr-4 p-2 w-1/3">
-            <p class="text-dark truncate">Phone, email, or username</p>
-            <input
-              v-model="email"
-              class="bg-lightblue text-lg w-full"
-              type="text"
-            />
-          </div>
-          <div class="bg-lightblue border-b-2 border-dark mr-4 p-2 w-1/3">
-            <p class="text-dark">Password</p>
-            <input
-              v-model="password"
-              class="bg-lightblue text-lg w-full"
-              type="password"
-            />
-          </div>
-          <div class="self-center">
-            <button
-              @click.prevent="signIn"
-              class="font-bold rounded-full border border-blue text-blue p-2 pl-3 pr-3 hover:bg-lightblue bg-white"
-            >
-              Log in
-            </button>
-          </div>
-        </form>
-      </div>
-
       <div class="flex items-center justify-center w-full h-full">
         <div class="w-full md:w-1/2 flex flex-col font-bold p-5 md:p-0">
           <p class="text-3xl mb-12">
             Dive deep into the Warp and see what happens...
           </p>
           <p>Join Warpnet today.</p>
-          <button
+          <button v-if="isFirstRun"
             @click.prevent="setSignupStep('step1')"
             class="rounded-full bg-blue font-bold text-lg text-white mt-4 p-3 hover:bg-darkblue"
           >
             Sign up
           </button>
-          <button
+          <button v-else
             @click.prevent="showSignInPage"
             class="rounded-full border border-blue bg-white font-bold text-lg text-blue mt-4 p-3 hover:bg-lightblue"
           >
@@ -77,7 +48,7 @@
 
     <!-- sign up modal -->
     <div
-      v-if="showModal != ''"
+      v-if="showModal !== ''"
       class="fixed w-full h-full top-0 left-0 flex items-center justify-center"
     >
       <div
@@ -95,7 +66,7 @@
               class="rounded-full bg-blue font-bold text-white mt-2 p-1 pl-3 pr-3 relative right-0 float-right hover:bg-darkblue"
               :class="
                 `${
-                  !name || !email || !birthdate
+                  !username
                     ? 'opacity-50 cursor-not-allowed'
                     : ''
                 }`
@@ -112,29 +83,9 @@
               <p class="text-2xl font-bold">Create your account</p>
             </div>
             <div class="w-full bg-lightblue border-b-2 border-dark mb-8 p-2">
-              <p class="text-dark">Name</p>
+              <p class="text-dark">Username</p>
               <input
-                v-model="name"
-                class="w-full bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-            <div class="w-full bg-lightblue border-b-2 border-dark mb-8 p-2">
-              <p class="text-dark">Email</p>
-              <input
-                v-model="email"
-                class="w-full bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-            <p class="font-bold">Date of birth</p>
-            <p class="text-dark">
-              This will not be shown publicly. Confirm your own age, even if
-              this account is for a business, a pet, or something else.
-            </p>
-            <div class="w-full bg-lightblue border-b-2 border-dark mb-8 p-2">
-              <input
-                v-model="birthdate"
+                v-model="username"
                 class="w-full bg-lightblue text-lg"
                 type="text"
               />
@@ -169,7 +120,7 @@
               <p class="font-bold text-xl mb-1">Get more out of Warpnet</p>
               <div class="flex justify-between items-top">
                 <p>
-                  Receive email about your Warpnet activity and recommendations.
+                  TODO.
                 </p>
                 <input class="mt-1 ml-2 mr-2" type="checkbox" />
               </div>
@@ -179,7 +130,7 @@
               <p class="font-bold text-xl mb-1">Connect with people you know</p>
               <div class="flex justify-between items-top">
                 <p>
-                  Let others find your Warpnet account by your email address.
+                  TODO.
                 </p>
                 <input class="mt-1 ml-2 mr-2" type="checkbox" />
               </div>
@@ -212,9 +163,6 @@
             <button
               @click="setSignUpStep('step4')"
               class="rounded-full bg-blue font-bold text-white mt-2 p-1 pl-3 pr-3 relative right-0 float-right hover:bg-darkblue"
-              :class="
-                `${password.length < 8 ? 'opacity-50 cursor-not-allowed' : ''}`
-              "
             >
               Next
             </button>
@@ -226,8 +174,6 @@
             <div class="flex justify-between items-center pb-4">
               <p class="text-2xl font-bold">You'll need a password</p>
             </div>
-
-            <p class="text-dark mb-2">Make sure it's 8 characters or more.</p>
 
             <div class="w-full bg-lightblue border-b-2 border-dark p-2">
               <p class="leading-tight text-dark">Password</p>
@@ -264,79 +210,16 @@
               <p class="text-2xl font-bold">Create your account</p>
             </div>
 
-            <div class="w-full bg-lightblue border-b-2 border-dark mb-6 p-2">
-              <input
-                v-model="name"
-                class="w-full py-2 bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-            <div class="w-full bg-lightblue border-b-2 border-dark mb-6 p-2">
-              <input
-                v-model="email"
-                class="w-full py-2 bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-            <div class="w-full bg-lightblue border-b-2 border-dark mb-16 p-2">
-              <input
-                v-model="birthdate"
-                class="w-full py-2 bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-
             <p>
               By signing up, you agree to our
               <a href="#" class="text-blue">Terms</a>,
               <a href="#" class="text-blue">Privacy Policy</a> and
-              <a href="#" class="text-blue">Cookie Use</a>.
             </p>
             <button
               @click="signMeUp"
               class="w-full rounded-full mt-4 py-3 bg-blue text-white font-bold hover:bg-darkblue"
             >
               Sign up
-            </button>
-          </div>
-        </div>
-
-        <div v-if="showModal === 'step5'">
-          <div class="pl-1 pr-4 py-1 h-12">
-            <button
-              @click="confirmUserSignUp"
-              class="rounded-full bg-blue font-bold text-white mt-2 p-1 pl-3 pr-3 relative right-0 float-right hover:bg-darkblue"
-              :class="
-                `${!verificationCode ? 'opacity-50 cursor-not-allowed' : ''}`
-              "
-            >
-              Next
-            </button>
-            <i
-              class="flex justify-center fab text-blue text-2xl mt-2 mb-8"
-            ></i>
-          </div>
-          <div class="pt-5 px-8">
-            <div class="flex justify-between items-center pb-4">
-              <p class="text-2xl font-bold">We sent you a code</p>
-            </div>
-
-            <p class="text-dark mb-2">Enter it below to verify {{ email }}.</p>
-
-            <div class="w-full bg-lightblue border-b-2 border-dark p-2">
-              <p class="leading-tight text-dark">Verification code</p>
-              <input
-                v-model="verificationCode"
-                class="w-full bg-lightblue text-lg"
-                type="text"
-              />
-            </div>
-
-            <button
-              @click="resendVerificationCode"
-              class="text-blue pl-2 hover:underline"
-            >
-              Didn't receive an email?
             </button>
           </div>
         </div>
@@ -351,12 +234,15 @@ export default {
   name: "Root",
   data() {
     return {
-      name: "",
-      email: "",
-      birthdate: "",
+      username: "",
       password: "",
       revealPassword: false,
+      isFirstRun: false,
     };
+  },
+  mounted() {
+    this.isFirstRun = window.isFirstRun || false;
+    console.log("Is first run:", this.isFirstRun);
   },
   computed: {
     ...mapGetters("signup", ["showModal"]),
@@ -368,50 +254,31 @@ export default {
     },
     ...mapActions("signup", ["setSignupStep"]),
     ...mapActions("authentication", [
-      "signUp",
-      "confirmSignUp",
       "signInUser",
-      "resendSignUp",
       "logoutUser",
     ]),
     async signMeUp() {
       try {
-        await this.signUp({
-          username: this.email,
+        await this.signInUser({
+          username: this.username,
           password: this.password,
-          name: this.name,
         });
         this.setSignupStep("step5");
       } catch (error) {
+        this.logoutUser();
         alert("Error signing up, please check console for error detail");
         console.log("error signing up:", error);
-      }
-    },
-
-    async signIn() {
-      try {
-        await this.signInUser({
-          email: this.email,
-          password: this.password,
-        });
-      } catch (error) {
-        this.logoutUser();
-        alert("Error signing in, please check console for error detail");
-        console.log("error signing in:", error);
       }
     },
 
     setSignUpStep(step) {
       switch (step) {
         case "step2":
-          if (!this.name || !this.email || !this.birthdate) {
+          if (!this.username) {
             return;
           }
           break;
         case "step4":
-          if (this.password.length < 8) {
-            return;
-          }
           break;
       }
       this.setSignupStep(step);

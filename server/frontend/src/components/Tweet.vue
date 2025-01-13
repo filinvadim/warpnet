@@ -4,9 +4,9 @@
     class="w-full p-2 pt-1 pb-1 md:p-4 md:pt-2 md:pb-2 border-b hover:bg-lightest flex"
   >
     <div class="flex-none mr-2 md:mr-4 pt-1">
-      <a :href="`#/${tweet.profile.screenName}`">
+      <a :href="`#/${tweet.profile.username}`">
         <img
-          :src="`${tweet.profile.imageUrl || 'default_profile.png'}`"
+          :src="`${tweet.profile.avatar || 'default_profile.png'}`"
           class="h-12 w-12 rounded-full flex-none"
         />
       </a>
@@ -15,10 +15,10 @@
       <div class="flex items-center w-full">
         <p class="font-semibold">{{ tweet.profile.name }}</p>
         <p class="hidden md:block text-sm text-dark ml-2">
-          @{{ tweet.profile.screenName }}
+          @{{ tweet.profile.username }}
         </p>
         <p class="text-sm text-dark ml-2">·</p>
-        <p class="text-sm text-dark ml-2">{{ $filters.timeago(tweet.createdAt) }}</p>
+        <p class="text-sm text-dark ml-2">{{ $filters.timeago(tweet.created_at) }}</p>
         <i class="fas fa-angle-down text-sm ml-auto text-dark"></i>
       </div>
       <p
@@ -26,7 +26,7 @@
         class="text-dark text-xs md:text-sm"
       >
         Replying to
-        {{ tweet.inReplyToUsers.map((x) => `@${x.screenName}`).join(",") }}
+        {{ tweet.inReplyToUsers.map((x) => `@${x.username}`).join(",") }}
       </p>
       <p class="pb-2" v-linkify>
         {{ tweet.text }}

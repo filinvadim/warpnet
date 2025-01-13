@@ -7,11 +7,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -19,43 +22,205 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
-// AuthRequest defines model for AuthRequest.
-type AuthRequest struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-
 // Error defines model for Error.
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
+// ErrorMessage defines model for ErrorMessage.
+type ErrorMessage struct {
+	Code        int    `json:"code"`
+	Message     string `json:"message"`
+	MessageType string `json:"message_type"`
+}
+
+// LoginMessage defines model for LoginMessage.
+type LoginMessage struct {
+	MessageType string `json:"message_type"`
+	Password    string `json:"password"`
+	Username    string `json:"username"`
+}
+
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
-	Token string             `json:"token"`
-	User  externalRef0.Owner `json:"user"`
+	Token string            `json:"token"`
+	User  externalRef0.User `json:"user"`
 }
 
-// PostV1ApiAuthLogoutParams defines parameters for PostV1ApiAuthLogout.
-type PostV1ApiAuthLogoutParams struct {
-	XSESSIONTOKEN string `json:"X-SESSION-TOKEN"`
+// LogoutMessage defines model for LogoutMessage.
+type LogoutMessage struct {
+	MessageType string `json:"message_type"`
+	Token       string `json:"token"`
 }
 
-// PostV1ApiAuthLoginJSONRequestBody defines body for PostV1ApiAuthLogin for application/json ContentType.
-type PostV1ApiAuthLoginJSONRequestBody = AuthRequest
+// WebsocketMessage defines model for WebsocketMessage.
+type WebsocketMessage struct {
+	Timestamp *time.Time `json:"timestamp,omitempty"`
+	union     json.RawMessage
+}
+
+// AsLoginMessage returns the union data inside the WebsocketMessage as a LoginMessage
+func (t WebsocketMessage) AsLoginMessage() (LoginMessage, error) {
+	var body LoginMessage
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLoginMessage overwrites any union data inside the WebsocketMessage as the provided LoginMessage
+func (t *WebsocketMessage) FromLoginMessage(v LoginMessage) error {
+	v.MessageType = "LoginMessage"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLoginMessage performs a merge with any union data inside the WebsocketMessage, using the provided LoginMessage
+func (t *WebsocketMessage) MergeLoginMessage(v LoginMessage) error {
+	v.MessageType = "LoginMessage"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsLogoutMessage returns the union data inside the WebsocketMessage as a LogoutMessage
+func (t WebsocketMessage) AsLogoutMessage() (LogoutMessage, error) {
+	var body LogoutMessage
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLogoutMessage overwrites any union data inside the WebsocketMessage as the provided LogoutMessage
+func (t *WebsocketMessage) FromLogoutMessage(v LogoutMessage) error {
+	v.MessageType = "LogoutMessage"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLogoutMessage performs a merge with any union data inside the WebsocketMessage, using the provided LogoutMessage
+func (t *WebsocketMessage) MergeLogoutMessage(v LogoutMessage) error {
+	v.MessageType = "LogoutMessage"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsErrorMessage returns the union data inside the WebsocketMessage as a ErrorMessage
+func (t WebsocketMessage) AsErrorMessage() (ErrorMessage, error) {
+	var body ErrorMessage
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromErrorMessage overwrites any union data inside the WebsocketMessage as the provided ErrorMessage
+func (t *WebsocketMessage) FromErrorMessage(v ErrorMessage) error {
+	v.MessageType = "ErrorMessage"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeErrorMessage performs a merge with any union data inside the WebsocketMessage, using the provided ErrorMessage
+func (t *WebsocketMessage) MergeErrorMessage(v ErrorMessage) error {
+	v.MessageType = "ErrorMessage"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t WebsocketMessage) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"message_type"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t WebsocketMessage) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "ErrorMessage":
+		return t.AsErrorMessage()
+	case "LoginMessage":
+		return t.AsLoginMessage()
+	case "LogoutMessage":
+		return t.AsLogoutMessage()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t WebsocketMessage) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Timestamp != nil {
+		object["timestamp"], err = json.Marshal(t.Timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'timestamp': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *WebsocketMessage) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["timestamp"]; found {
+		err = json.Unmarshal(raw, &t.Timestamp)
+		if err != nil {
+			return fmt.Errorf("error reading 'timestamp': %w", err)
+		}
+	}
+
+	return err
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Serve static files
 	// (GET /)
 	GetIndex(ctx echo.Context) error
-	// Store credentials
-	// (POST /v1/api/auth/login)
-	PostV1ApiAuthLogin(ctx echo.Context) error
-	// Close service
-	// (POST /v1/api/auth/logout)
-	PostV1ApiAuthLogout(ctx echo.Context, params PostV1ApiAuthLogoutParams) error
+	// Serve Websocket connection
+	// (GET /v1/api/ws)
+	WebsocketUpgrade(ctx echo.Context) error
 	// Serve static files
 	// (GET /{file*})
 	GetStaticFile(ctx echo.Context, file string) error
@@ -75,43 +240,12 @@ func (w *ServerInterfaceWrapper) GetIndex(ctx echo.Context) error {
 	return err
 }
 
-// PostV1ApiAuthLogin converts echo context to params.
-func (w *ServerInterfaceWrapper) PostV1ApiAuthLogin(ctx echo.Context) error {
+// WebsocketUpgrade converts echo context to params.
+func (w *ServerInterfaceWrapper) WebsocketUpgrade(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiAuthLogin(ctx)
-	return err
-}
-
-// PostV1ApiAuthLogout converts echo context to params.
-func (w *ServerInterfaceWrapper) PostV1ApiAuthLogout(ctx echo.Context) error {
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostV1ApiAuthLogoutParams
-
-	headers := ctx.Request().Header
-	// ------------- Required header parameter "X-SESSION-TOKEN" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-SESSION-TOKEN")]; found {
-		var XSESSIONTOKEN string
-		n := len(valueList)
-		if n != 1 {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-SESSION-TOKEN, got %d", n))
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-SESSION-TOKEN", valueList[0], &XSESSIONTOKEN, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-SESSION-TOKEN: %s", err))
-		}
-
-		params.XSESSIONTOKEN = XSESSIONTOKEN
-	} else {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-SESSION-TOKEN is required, but not found"))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostV1ApiAuthLogout(ctx, params)
+	err = w.Handler.WebsocketUpgrade(ctx)
 	return err
 }
 
@@ -160,8 +294,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/", wrapper.GetIndex)
-	router.POST(baseURL+"/v1/api/auth/login", wrapper.PostV1ApiAuthLogin)
-	router.POST(baseURL+"/v1/api/auth/logout", wrapper.PostV1ApiAuthLogout)
+	router.GET(baseURL+"/v1/api/ws", wrapper.WebsocketUpgrade)
 	router.GET(baseURL+"/:file", wrapper.GetStaticFile)
 
 }
@@ -169,20 +302,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6yUb2/bNhDGvwpx26tBruytK1C9y4ZsMFo0Rdz9AQYjYMSTxZYi1ePJqWH4uw9HpbNs",
-	"KYiB7o0hS0fe8fc8D/dQhqYNHj1HKPYQyxobnR6vOq5v8XOHkeVvS6FFYovpY6tjfAhk5Jl3LUIBkcn6",
-	"DRwy6CKS1w1OfDxkQPi5s4QGin+Oldlxx3X2dVG4/4gly47XRIHGU5TBDJtYz7hBkgUNxqg3F0yQtjjW",
-	"TzV/GzbW32Jsg484HoLDJ/RPcpAP3xNWUMB3+ZF1/gg6N6HR1t/dPHgZ/Gy4fuvHjaZGO1k9xkOoGc2d",
-	"TgJWgRp5AqMZZ2wT9dHMdlpSHwze2eflbqx/i37DNRSL7Bn01kA2dMDXHtlw8PGpZRvrqyDtDMaSbMs2",
-	"eCjg+gsTeu3U1fulqgIprYyV5vcdo1EfHiwz0szZT6h02zpb6rQyA7bspMdfmlrlkVVFwbOqdCmDbZFi",
-	"32HxYv5iLmcOLXrdWijgp/RK/Mt1op7LzwYTc1Ej9VgaKOB35KU3+AWEQ2+ntOLH+Xx8mJs3CVjsmkbT",
-	"DgpYIW1RRdZsS1VZhzEV5NtFrlub647r3IlVkxFCnBjgfYj85+KqtZLtZGvoJcHIvwSz6zPlGX1aPGCU",
-	"f4zBHy+I51w9vDsOp7ozdXiYBvC/tD4LlITkhOsfEUkZZG1dFCVfzhdj+DK/qrR1aKTm5ymBlp7Fuk7V",
-	"2huHpDBdUmeicSBUJaFBz1a7KGbTmyj+lyawntIwdHy5iFIs9iPdICPJ1nsQF0CN2iBJslI64e/Z6nq1",
-	"Wt68m324eXP9Ds5lyQaIz6O7vsSzq64sMcZvQ/arCxFVRNralL4JXHux/w+HQdBO+9wid+Sj0n43DIyk",
-	"ulFco8r7t7kylrDkQDvIxmFdpaLfrMMnAEvmj3irvvCbmT4Rg1Ay8iwyoW5O4/DfzX5vvU5HOe80SsFq",
-	"QEVQo1GxF6/qnNv1wXg5JiswlA+sqtB5c8kNJRXy/pHbhCHkllXaGBLrZNCRE+8yt0Weu1BqV4fIxavX",
-	"r17DYX34NwAA//8xdYwusggAAA==",
+	"H4sIAAAAAAAC/6RW32/bNhD+VwhuT4NS2VsWoHrbQzcE69ahWdGHIjBo8WTfIpLa8RTXCPS/D0c5sWTL",
+	"i5O+JLJ4P7677+OdHnQZXBM8eI66eNCxXIMz6fEdUSB5aCg0QIyQXpfBgvznbQO60OgZVkC6y7SDGM1q",
+	"eBiZ0K9012Wa4N8WCawuvvQh9va32aN9WP4DJUuslPyPfcBvx/B0tugPXgjywH0K8/uwQn8S8zPZM92Y",
+	"GDeB7ORhG4G8cWfgfrIcRDwX/EeITfBxAj2HO/AnkcnB9wSVLvR3+V5Q+U5NuQ3OoF98EtNDvH3kXZwT",
+	"yELLr+/rKegHOEZxHr2m8HyGZQzlHQwhGb/9UOniy/+3YSSQLnvWeFD2c9aj+9LdZtpiLAkdesOjW7z9",
+	"M6loXK6ob0w3OohsXCM/qkDOsC60NQwXcqSzo2Z2mR6yfESTuTdsaBRuid7Q9jhWppemvFtRaL1doNu1",
+	"+Bw3DJMKWCLxWsCfW02mSwLDYBdiea5PFeo6bMAulltxQgYXpxXZvzBEZjtwpLjwrRvlQ89Xl/tcg0HX",
+	"+0jAV6RCv3pBKpweSXUoDWOYngo+WFiccOQNAL+k1uHwc+jfg1/xWhfzCQ42sIx4QHRL9YRgx7cfZUiK",
+	"frLhAH2sYsCtoD5kbMjGWAYjIR0PE0GBvkqqtSAXtuk7qt99ZQJvavXLX9eqCqSMsijYly2DVX9vkBno",
+	"osY7UKZpatxxkWlGriXHZ0ON8sCqouBZVaaUiu6BYp9h/mb2ZiYtCw1406Au9E/plewNXic55fJnBekO",
+	"yGVOOa6tLvRvwNfewlctbeyXRvL4cTY7LubD76nfsXVObm6hb4DuQUU2jKWqsIaYDPL7eW4azDfxZN6n",
+	"4fupWZFJG3qUfz6bH+ff2Vqp9ucpgNeehfNaRQFGCtKnzxTmp/yqDN5DmQIk7A9Sxw/dAPk4x0fglnxU",
+	"xm+HlQs9TvEaVN6/zZVFgpJDmnFHXb9JRr9i3S94Mg4YKKbdg5JHyBPp9mO+6g33UmdqIdt95k0txdtp",
+	"QsvgGXwqayC3PJQMfBGZwLj95+NZ4zptjFGHbgZdSURYFduyhBirtq7T+LqcXR53VpqhfGBVycY4R2pi",
+	"kZju+zYhBrkuylhLEKPMBKp1odfMTZHnMvjqdYhcXL29equ72+6/AAAA//8bsiQhRgsAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

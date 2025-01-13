@@ -17,7 +17,7 @@
       <div class="px-5 py-3 border-b-8 border-lighter flex">
         <div class="flex-none mr-4">
           <img
-            :src="`${profile.imageUrl || 'default_profile.png'}`"
+            :src="`${profile.avatar || 'default_profile.png'}`"
             class="flex-none w-12 h-12 rounded-full"
           />
         </div>

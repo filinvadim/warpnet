@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Extrenal API for a distributed Twitter-like application
 servers:
-  - url: http://localhost:6969
+  - url: http://localhost:4002
     description: Interface address
 
 paths:
@@ -38,69 +38,120 @@ paths:
         '404':
           description: File not found
 
-  /v1/api/auth/login:
-    post:
-      tags:
-        - Auth
-      summary: Store credentials
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRequest'
+  /v1/api/ws:
+    get:
+      summary: Serve Websocket connection
+      operationId: WebsocketUpgrade
       responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                $ref: './domain.yml#/components/schemas/Owner'
-        '401':
-          description: Auth failed
+        '101':
+          description: Upgraded
         '500':
-          description: Internal handler error
+          description: Internal server error
 
-  /v1/api/auth/logout:
-    post:
-      tags:
-        - Auth
-      parameters:
-        - in: header
-          name: X-SESSION-TOKEN
-          required: true
-          schema:
-            type: string
-      summary: Close service
-      responses:
-        '200':
-          description: Success
-        '500':
-          description: Internal handler error
+#  /v1/api/auth/login:
+#    post:
+#      tags:
+#        - Auth
+#      summary: Store credentials
+#      deprecated: true
+#      requestBody:
+#        required: true
+#        content:
+#          application/json:
+#            schema:
+#              $ref: '#/components/schemas/AuthRequest'
+#      responses:
+#        '200':
+#          description: Owner user details
+#          content:
+#            application/json:
+#              schema:
+#                $ref: './domain.yml#/components/schemas/User'
+#        '401':
+#          description: Auth failed
+#        '500':
+#          description: Internal handler error
+
+#  /v1/api/auth/logout:
+#    post:
+#      tags:
+#        - Auth
+#      parameters:
+#        - in: header
+#          name: X-SESSION-TOKEN
+#          required: true
+#          schema:
+#            type: string
+#      summary: Close service
+#      responses:
+#        '200':
+#          description: Success
+#        '500':
+#          description: Internal handler error
 
 components:
   schemas:
+    WebsocketMessage:
+      discriminator:
+        propertyName: message_type
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+      anyOf:
+        - '$ref': '#/components/schemas/LoginMessage'
+        - '$ref': '#/components/schemas/LogoutMessage'
+        - '$ref': '#/components/schemas/ErrorMessage'
+
     LoginResponse:
       type: object
       properties:
         token:
           type: string
         user:
-          $ref: './domain.yml#/components/schemas/Owner'
+          $ref: './domain.yml#/components/schemas/User'
       required:
         - token
         - user
 
-    AuthRequest:
+    LoginMessage:
       type: object
       properties:
         username:
           type: string
         password:
           type: string
+        message_type:
+          type: string
       required:
         - username
         - password
+        - message_type
+
+    LogoutMessage:
+      type: object
+      properties:
+        token:
+          type: string
+        message_type:
+          type: string
+      required:
+        - message_type
+        - token
+
+    ErrorMessage:
+      type: object
+      properties:
+        message_type:
+          type: string
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+        - message_type
 
     Error:
       type: object

@@ -6,6 +6,7 @@ import (
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"log"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -29,8 +30,9 @@ type DB struct {
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
 
-	opts   badger.Options
-	dbPath string
+	opts       badger.Options
+	dbPath     string
+	isDirEmpty bool
 }
 
 type WarpDBLogger interface {
@@ -45,7 +47,7 @@ func New(
 	isInMemory bool,
 	dataFolder string,
 	logger badger.Logger,
-) *DB {
+) (*DB, error) {
 	dbPath := path + dataFolder
 	opts := badger.
 		DefaultOptions(dbPath).
@@ -59,12 +61,30 @@ func New(
 		opts.WithInMemory(true)
 	}
 
-	storage := &DB{
-		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil, opts: opts, dbPath: dbPath,
+	isDirEmpty, err := isDirectoryEmpty(dbPath)
+	if err != nil {
+		return nil, err
 	}
 
-	return storage
+	storage := &DB{
+		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
+		sequence: nil, opts: opts, dbPath: dbPath, isDirEmpty: isDirEmpty,
+	}
+
+	return storage, nil
+}
+
+func isDirectoryEmpty(dirPath string) (bool, error) {
+	dirEntries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return false, err
+	}
+
+	return len(dirEntries) == 0, nil
+}
+
+func (db *DB) IsFirstRun() bool {
+	return db.isDirEmpty
 }
 
 func (db *DB) Run(username, password string) (err error) {

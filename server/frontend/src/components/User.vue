@@ -1,9 +1,9 @@
 <template>
   <div class="w-full px-4 py-2 border-b hover:bg-lightest flex flex-row">
     <div class="flex-none">
-      <a :href="`#/${user.screenName}`">
+      <a :href="`#/${user.username}`">
         <img
-          :src="`${user.imageUrl || 'default_profile.png'}`"
+          :src="`${user.avatar || 'default_profile.png'}`"
           class="h-12 w-12 rounded-full"
         />
       </a>
@@ -12,7 +12,7 @@
       <div class="flex flex-row justify-between w-full">
         <div class="flex flex-col">
           <p class="font-bold">{{ user.name }}</p>
-          <p class="text-dark text-sm">@{{ user.screenName }}</p>
+          <p class="text-dark text-sm">@{{ user.username }}</p>
         </div>
         <div v-if="profile.id !== user.id">
           <button

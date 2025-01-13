@@ -2,12 +2,12 @@
   <div class="w-full mt-5 flex justify-center items-center flex-col p-5 md:p-0">
     <p class="font-bold text-2xl mb-4">Log in to Warpnet</p>
     <div class="w-full md:w-1/3 bg-lightblue border-b-2 border-dark mb-4 p-2">
-      <p class="text-dark">Phone, email, or username</p>
+      <p class="text-dark">Username</p>
       <input
-        v-model="email"
+        v-model="username"
         class="w-full bg-lightblue text-lg"
         type="text"
-        ref="email"
+        ref="username"
       />
     </div>
     <div class="w-full md:w-1/3 bg-lightblue border-b-2 border-dark mb-4 p-2">
@@ -29,22 +29,24 @@
 
 <script>
 import { mapActions } from "vuex";
+import {connectClient} from "@/store/modules/authentication/actions";
 export default {
   name: "LogIn",
   data() {
     return {
-      email: "",
+      username: "",
       password: "",
     };
   },
   created: function() {
-    this.$nextTick(() => this.$refs.email.focus());
+    this.$nextTick(() => this.$refs.username.focus());
+    connectClient();
   },
   methods: {
     ...mapActions("authentication", ["signInUser", "logoutUser"]),
     async signIn() {
       try {
-        await this.signInUser({ email: this.email, password: this.password });
+        await this.signInUser({ username: this.username, password: this.password });
       } catch (error) {
         this.logoutUser();
         alert("Error signing in, please check console for error detail");

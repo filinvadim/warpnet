@@ -57,7 +57,7 @@ export default {
     }
   },
   WARPNET_NOTIFICATIONS_NEW(state, newMessage) {
-    if (newMessage?.type == "Mentioned") {
+    if (newMessage?.type === "Mentioned") {
       state.notifications.mentions = [
         newMessage,
         ...state.notifications.mentions,
@@ -84,7 +84,7 @@ export default {
         : `${notification.otherUserId}_${state.profile.id}`;
 
     // if conversation is active we ignore this
-    const notActive = (c) => !c || c.id != conversationId;
+    const notActive = (c) => !c || c.id !== conversationId;
     if (notActive(c)) {
       if (!set.has(conversationId)) {
         set.add(conversationId);
@@ -134,8 +134,8 @@ export default {
     Object.assign(state, {
       profile: {
         id: "",
-        createdAt: "1970-01-01",
-        imageUrl: "default_profile.png",
+        created_at: "1970-01-01",
+        avatar: "default_profile.png",
       },
       tweets: {
         tweets: [],

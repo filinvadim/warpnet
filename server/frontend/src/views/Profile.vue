@@ -15,9 +15,9 @@
             <i class="fas fa-arrow-left text-blue"></i>
           </button>
           <div class="lg:block ml-4">
-            <h1 class="text-xl font-bold">{{ profile.name || "Profile" }}</h1>
+            <h1 class="text-xl font-bold">{{ profile.username || "Profile" }}</h1>
             <p v-if="!noUser" class="text-left text-sm leading-tight text-dark">
-              {{ profile.tweetsCount }} Tweets
+              {{ profile.tweets_num }} Tweets
             </p>
           </div>
         </div>
@@ -27,14 +27,14 @@
           class="border-b-1 border-lighter flex"
           style="height:200px; display:block"
         >
-          <div v-if="profile.backgroundImageUrl" class="h-full max-h-full">
+          <div v-if="profile.background_image" class="h-full max-h-full">
             <img
-              :src="profile.backgroundImageUrl"
+              :src="profile.background_image"
               class="h-full w-full object-cover"
             />
           </div>
           <div
-            v-if="!profile.backgroundImageUrl"
+            v-if="!profile.background_image"
             class="bg-gray-400 h-full max-h-full"
           ></div>
         </div>
@@ -44,7 +44,7 @@
           <div class="px-3 flex flex-row justify-between">
             <img
               v-if="profile"
-              :src="profile.imageUrl"
+              :src="profile.avatar"
               class="w-24 h-24 md:w-32 md:h-32 rounded-full border-white"
               style="margin-top: -80px; border-width: 6px;"
             />
@@ -52,8 +52,8 @@
             <div v-if="isSelf && profile">
               <button
                 v-if="
-                  profile.imageUrl === null ||
-                    profile.imageUrl === 'default_profile.png'
+                  profile.avatar === null ||
+                    profile.avatar === 'default_profile.png'
                 "
                 @click="setUpProfile()"
                 class="text-xs md:text-base md:ml-auto text-blue font-bold px-4 py-2 rounded-full border border-blue mb-2 hover:bg-lightblue"
@@ -62,8 +62,8 @@
               </button>
               <button
                 v-if="
-                  profile.imageUrl !== null &&
-                    profile.imageUrl !== 'default_profile.png'
+                  profile.avatar !== null &&
+                    profile.avatar !== 'default_profile.png'
                 "
                 @click="editProfile()"
                 class="text-xs md:text-base md:ml-auto text-blue font-bold px-4 py-2 rounded-full border border-blue mb-2 hover:bg-lightblue"
@@ -103,9 +103,9 @@
             </div>
           </div>
           <div v-if="!noUser && !loading" class="px-3">
-            <p class="font-bold text-xl">{{ profile.name }}</p>
+            <p class="font-bold text-xl">{{ profile.username }}</p>
             <p class="text-dark">
-              @{{ profile.screenName
+              @{{ profile.username
               }}<span
                 v-if="profile.followedBy"
                 class="text-sm font-medium bg-gray-100 py-1 px-1 mx-2 rounded text-gray-500 align-middle"
@@ -147,21 +147,21 @@
                 @click="goToFollowing()"
                 class="mr-4 flex flex-row hover:underline"
               >
-                <span class="font-bold">{{ profile.followingCount }}</span>
+                <span class="font-bold">{{ profile.following_num }}</span>
                 <span class="text-dark whitespace-pre"> Following</span>
               </button>
               <button
                 @click="goToFollowers()"
                 class="flex flex-row hover:underline"
               >
-                <span class="font-bold">{{ profile.followersCount }}</span>
+                <span class="font-bold">{{ profile.followers_num }}</span>
                 <span class="text-dark whitespace-pre"> Followers</span>
               </button>
             </div>
           </div>
           <div v-if="noUser" class="px-5">
             <p class="text-black text-lg">
-              @{{ this.$route.params.screenName }}
+              @{{ this.$route.params.username }}
             </p>
           </div>
           <div
@@ -198,13 +198,13 @@
           class="flex flex-col items-center justify-center w-full pt-10"
         >
           <p class="font-bold text-lg">
-            <span>{{ isSelf ? "You" : `@${profile.screenName}` }}</span> haven’t
+            <span>{{ isSelf ? "You" : `@${profile.username}` }}</span> haven’t
             Tweeted yet
           </p>
           <p class="text-sm text-dark">
             When
             <span>{{
-              isSelf ? "you post" : `@${profile.screenName} posts`
+              isSelf ? "you post" : `@${profile.username} posts`
             }}</span>
             a Tweet, it’ll show up here.
           </p>
@@ -312,7 +312,7 @@ export default {
       this.$router.push({
         name: "Following",
         params: {
-          screenName: this.profile.screenName,
+          username: this.profile.username,
         },
       });
     },
@@ -320,7 +320,7 @@ export default {
       this.$router.push({
         name: "Followers",
         params: {
-          screenName: this.profile.screenName,
+          username: this.profile.username,
         },
       });
     },
@@ -332,20 +332,20 @@ export default {
     },
     async followUser() {
       this.profile.following = true;
-      this.profile.followersCount++;
+      this.profile.followers_num++;
       await this.follow(this.profile.id).catch((err) => {
         console.error(`failed to follow [${this.profile.id}]`, err);
         this.profile.following = false;
-        this.profile.followersCount--;
+        this.profile.followers_num--;
       });
     },
     async unfollowUser() {
       this.profile.following = false;
-      this.profile.followersCount--;
+      this.profile.followers_num--;
       await this.unfollow(this.profile.id).catch((err) => {
         console.error(`failed to unfollow [${this.profile.id}]`, err);
         this.profile.following = true;
-        this.profile.followersCount++;
+        this.profile.followers_num++;
       });
     },
     async loadMore() {
@@ -358,11 +358,11 @@ export default {
   async created() {
     if (this.tweets.length > 0) this.loading = false;
     await this.loginUserIfAlreadyAuthenticated();
-    const screenName = this.$route.params.screenName;
-    this.isSelf = this.isMySelf(screenName);
+    const username = this.$route.params.username;
+    this.isSelf = this.isMySelf(username);
     await Promise.all([
-      this.loadProfile(screenName),
-      this.loadTweets(screenName)
+      this.loadProfile(username),
+      this.loadTweets(username)
         .then(() => (this.loading = false))
         .catch(() => {
           this.loading = false;

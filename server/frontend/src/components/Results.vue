@@ -3,7 +3,7 @@
     <div v-for="result in results" :key="result.id">
       <Tweet v-if="!result.retweetOf" :tweet="result" />
       <Retweet v-if="result.retweetOf" :tweet="result" />
-      <User v-if="result.screenName" :user="result" />
+      <User v-if="result.username" :user="result" />
     </div>
   </div>
 </template>

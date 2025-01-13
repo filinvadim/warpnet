@@ -54,10 +54,10 @@
                 @click="selectConversation(conversation)"
               >
                 <div class="flex-none mr-2 md:mr-4 pt-1">
-                  <a :href="`#/${conversation.otherUser.screenName}`">
+                  <a :href="`#/${conversation.otherUser.username}`">
                     <img
                       :src="
-                        `${conversation.otherUser.imageUrl ||
+                        `${conversation.otherUser.avatar ||
                           'default_profile.png'}`
                       "
                       class="h-12 w-12 rounded-full flex-none"
@@ -70,7 +70,7 @@
                       {{ conversation.otherUser.name }}
                     </p>
                     <p class="hidden md:block text-sm text-dark ml-2 truncate">
-                      @{{ conversation.otherUser.screenName }}
+                      @{{ conversation.otherUser.username }}
                     </p>
                     <p class="text-sm text-dark ml-auto">
                       {{  $filters.timeago(conversation.lastModified) }}
@@ -141,16 +141,16 @@
             <i class="fas fa-arrow-left text-blue"></i>
           </button>
           <div class="flex-none mr-4">
-            <a :href="`#/${active.otherUser.screenName}`">
+            <a :href="`#/${active.otherUser.username}`">
               <img
-                :src="`${active.otherUser.imageUrl || 'default_profile.png'}`"
+                :src="`${active.otherUser.avatar || 'default_profile.png'}`"
                 class="flex-none w-6 h-6 rounded-full mt-2"
               />
             </a>
           </div>
           <div class="w-full flex flex-col">
             <h1 class="text-m font-bold flex-1">{{ active.otherUser.name }}</h1>
-            <p class="text-dark text-xs">@{{ active.otherUser.screenName }}</p>
+            <p class="text-dark text-xs">@{{ active.otherUser.username }}</p>
           </div>
           <i
             class="fas fa-info-circle ml-3 text-xl text-blue mt-2 cursor-pointer"
@@ -170,7 +170,7 @@
               <div ref="scrollToMe"></div>
               <div v-for="message in messages" :key="message.id">
                 <!-- Me -->
-                <div v-if="isMyMessage(message.from.screenName)">
+                <div v-if="isMyMessage(message.from.username)">
                   <div class="flex justify-end">
                     <div
                       class="mr-2 py-3 px-4 bg-blue rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white"
@@ -185,13 +185,13 @@
                   </div>
                 </div>
                 <!-- Other -->
-                <div v-if="!isMyMessage(message.from.screenName)">
+                <div v-if="!isMyMessage(message.from.username)">
                   <div class="flex justify-start">
                     <div class="flex-none mr-4">
-                      <a :href="`#/${message.from.screenName}`">
+                      <a :href="`#/${message.from.username}`">
                         <img
                           :src="
-                            `${message.from.imageUrl || 'default_profile.png'}`
+                            `${message.from.avatar || 'default_profile.png'}`
                           "
                           class="object-cover h-8 w-8 rounded-full self-end"
                         />

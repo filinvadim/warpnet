@@ -104,11 +104,11 @@ export default {
     async finishSetUpProfile() {
       const p = {
         name: this.profile.name,
-        imageUrl: this.newImage,
+        avatar: this.newImage,
       };
       await Promise.all([
         this.editMyProfile(p),
-        this.loadTweets(this.profile.screenName),
+        this.loadTweets(this.profile.username),
         this.editUserProfile(p),
       ]);
       this.$emit("update:showSetUpProfileModal", false);

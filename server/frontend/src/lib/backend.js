@@ -5,19 +5,18 @@ const getMyProfile = async () => {
       query getMyProfile {
         getMyProfile {
           id
-          name
-          screenName
-          imageUrl
-          backgroundImageUrl
+          username
+          avatar
+          background_image
           bio
           location
           website
           birthdate
-          createdAt
-          followersCount
-          followingCount
-          tweetsCount
-          likesCount
+          created_at
+          followers_num
+          following_num
+          tweets_num
+          likes_num
         }
       }
     `,
@@ -25,42 +24,42 @@ const getMyProfile = async () => {
   });
   const profile = result.data.getMyProfile;
 
-  profile.imageUrl = profile.imageUrl || "default_profile.png";
+  profile.avatar = profile.avatar || "default_profile.png";
   return profile;
 };
 
-const getProfileByScreenName = async (screenName) => {
+const getProfileByusername = async (username) => {
   const result = await API.graphql({
     query: gql`
-      query getProfile($screenName: String!) {
-        getProfile(screenName: $screenName) {
+      query getProfile($username: String!) {
+        getProfile(username: $username) {
           id
           name
-          screenName
-          imageUrl
-          backgroundImageUrl
+          username
+          avatar
+          background_image
           bio
           location
           website
           birthdate
-          createdAt
-          followersCount
-          followingCount
-          tweetsCount
-          likesCount
+          created_at
+          followers_num
+          following_num
+          tweets_num
+          likes_num
           following
           followedBy
         }
       }
     `,
     variables: {
-      screenName,
+      username,
     },
     authMode: process.env.VUE_APP_APPSYNC_AUTHENTICATION_TYPE,
   });
   const profile = result.data.getProfile || {};
 
-  profile.imageUrl = profile.imageUrl || "default_profile.png";
+  profile.avatar = profile.avatar || "default_profile.png";
   return profile;
 };
 
@@ -76,10 +75,10 @@ const getMyTimeline = async (limit, nextToken) => {
             profile {
               id
               name
-              screenName
-              imageUrl
+              username
+              avatar
             }
-            createdAt
+            created_at
             ... on Tweet {
               text
               liked
@@ -94,10 +93,10 @@ const getMyTimeline = async (limit, nextToken) => {
                 profile {
                   id
                   name
-                  screenName
-                  imageUrl
+                  username
+                  avatar
                 }
-                createdAt
+                created_at
                 ... on Tweet {
                   text
                   liked
@@ -128,10 +127,10 @@ const getMyTimeline = async (limit, nextToken) => {
                 profile {
                   id
                   name
-                  screenName
-                  imageUrl
+                  username
+                  avatar
                 }
-                createdAt
+                created_at
                 ... on Tweet {
                   text
                   liked
@@ -157,8 +156,8 @@ const getMyTimeline = async (limit, nextToken) => {
               inReplyToUsers {
                 id
                 name
-                screenName
-                imageUrl
+                username
+                avatar
               }
             }
           }
@@ -184,7 +183,7 @@ const getTweets = async (userId, limit, nextToken) => {
           tweets {
             ... on Tweet {
               id
-              createdAt
+              created_at
               text
               liked
               likes
@@ -194,8 +193,8 @@ const getTweets = async (userId, limit, nextToken) => {
               profile {
                 id
                 name
-                screenName
-                imageUrl
+                username
+                avatar
               }
             }
             ... on Reply {
@@ -210,10 +209,10 @@ const getTweets = async (userId, limit, nextToken) => {
                 profile {
                   id
                   name
-                  screenName
-                  imageUrl
+                  username
+                  avatar
                 }
-                createdAt
+                created_at
                 ... on Tweet {
                   text
                   liked
@@ -234,8 +233,8 @@ const getTweets = async (userId, limit, nextToken) => {
               inReplyToUsers {
                 id
                 name
-                screenName
-                imageUrl
+                username
+                avatar
               }
             }
           }
@@ -275,19 +274,19 @@ const editMyProfile = async (newProfile) => {
     query: gql`
       mutation editMyProfile($newProfile: ProfileInput!) {
         editMyProfile(newProfile: $newProfile) {
-          backgroundImageUrl
+          background_image
           bio
-          createdAt
+          created_at
           birthdate
-          followersCount
-          followingCount
+          followers_num
+          following_num
           id
-          imageUrl
-          likesCount
+          avatar
+          likes_num
           location
           name
-          screenName
-          tweetsCount
+          username
+          tweets_num
           website
         }
       }
@@ -305,14 +304,14 @@ const tweet = async (text) => {
     query: gql`
       mutation tweet($text: String!) {
         tweet(text: $text) {
-          createdAt
+          created_at
           id
           liked
           likes
           profile {
-            imageUrl
+            avatar
             name
-            screenName
+            username
           }
           replies
           retweeted
@@ -335,7 +334,7 @@ const retweet = async (tweetId) => {
       mutation retweet($tweetId: ID!) {
         retweet(tweetId: $tweetId) {
           id
-          createdAt
+          created_at
         }
       }
     `,
@@ -394,13 +393,13 @@ const reply = async (tweetId, text) => {
       mutation reply($tweetId: ID!, $text: String!) {
         reply(tweetId: $tweetId, text: $text) {
           id
-          createdAt
+          created_at
           liked
           likes
           profile {
-            imageUrl
+            avatar
             name
-            screenName
+            username
           }
           replies
           retweeted
@@ -455,8 +454,8 @@ const getFollowers = async (userId, limit = 10) => {
           profiles {
             id
             name
-            screenName
-            imageUrl
+            username
+            avatar
             bio
             ... on OtherProfile {
               following
@@ -485,8 +484,8 @@ const getFollowing = async (userId, limit = 10) => {
           profiles {
             id
             name
-            screenName
-            imageUrl
+            username
+            avatar
             bio
             ... on OtherProfile {
               following
@@ -526,7 +525,7 @@ const getOnNotifiedSubscription = (userId) => {
         onNotified(userId: $userId) {
           ... on Retweeted {
             id
-            createdAt
+            created_at
             retweetedBy
             tweetId
             retweetId
@@ -534,21 +533,21 @@ const getOnNotifiedSubscription = (userId) => {
           }
           ... on Liked {
             id
-            createdAt
+            created_at
             likedBy
             tweetId
             type
           }
           ... on Mentioned {
             id
-            createdAt
+            created_at
             mentionedBy
             mentionedByTweetId
             type
           }
           ... on Replied {
             id
-            createdAt
+            created_at
             repliedBy
             tweetId
             replyTweetId
@@ -557,7 +556,7 @@ const getOnNotifiedSubscription = (userId) => {
           ... on DMed {
             id
             message
-            createdAt
+            created_at
             otherUserId
             type
           }
@@ -582,18 +581,18 @@ const listConversations = async (limit, nextToken) => {
             otherUser {
               id
               name
-              screenName
-              imageUrl
-              backgroundImageUrl
+              username
+              avatar
+              background_image
               bio
               location
               website
               birthdate
-              createdAt
-              followersCount
-              followingCount
-              tweetsCount
-              likesCount
+              created_at
+              followers_num
+              following_num
+              tweets_num
+              likes_num
               following
               followedBy
             }
@@ -632,8 +631,8 @@ const getDirectMessages = async (otherUserId, limit, nextToken) => {
             message
             timestamp
             from {
-              imageUrl
-              screenName
+              avatar
+              username
             }
           }
           nextToken
@@ -661,8 +660,8 @@ const sendDirectMessage = async (message, otherUserId) => {
           lastModified
           otherUser {
             name
-            screenName
-            imageUrl
+            username
+            avatar
           }
         }
       }
@@ -679,7 +678,7 @@ const sendDirectMessage = async (message, otherUserId) => {
 
 export {
   getMyProfile,
-  getProfileByScreenName,
+  getProfileByusername,
   getMyTimeline,
   getTweets,
   getImageUploadUrl,

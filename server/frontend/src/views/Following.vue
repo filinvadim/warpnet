@@ -13,9 +13,9 @@
             <i class="fas fa-arrow-left text-blue"></i>
           </button>
           <div class="lg:block ml-4">
-            <h1 class="text-xl font-bold">{{ profile.name }}</h1>
+            <h1 class="text-xl font-bold">{{ profile.username }}</h1>
             <p class="text-left text-sm leading-tight text-dark">
-              @{{ profile.screenName }}
+              @{{ profile.username }}
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default {
       this.$router.push({
         name: "Profile",
         params: {
-          screenName: this.profile.screenName,
+          username: this.profile.username,
         },
       });
     },
@@ -88,7 +88,7 @@ export default {
       this.$router.push({
         name: "Followers",
         params: {
-          screenName: this.profile.screenName,
+          username: this.profile.username,
         },
       });
     },
@@ -98,8 +98,8 @@ export default {
 
     // Handle full page reload
     await this.loginUserIfAlreadyAuthenticated();
-    const screenName = this.$route.params.screenName;
-    await this.loadProfile(screenName);
+    const username = this.$route.params.username;
+    await this.loadProfile(username);
     await this.getFollowing({ userId: this.profile.id, limit: 10 }).then(
       () => (this.loading = false)
     );

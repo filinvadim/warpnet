@@ -51,7 +51,10 @@ func main() {
 
 	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 
-	db := storage.New(getAppPath(), false, conf.Database.Dir, l)
+	db, err := storage.New(getAppPath(), false, conf.Database.Dir, l)
+	if err != nil {
+		log.Fatalf("failed to init db: %v", err)
+	}
 	defer db.Close()
 
 	nodeRepo := database.NewNodeRepo(db)
@@ -69,7 +72,8 @@ func main() {
 	var authReadyChan = make(chan struct{})
 	defer close(authReadyChan)
 
-	interfaceServer, err := server.NewInterfaceServer(conf, l)
+	serverLogger := logger.NewUnifiedLogger(conf.Server.Logging.Level, true)
+	interfaceServer, err := server.NewInterfaceServer(conf, serverLogger)
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run public server: %v", err)
 	}
@@ -85,10 +89,12 @@ func main() {
 		authRepo, userRepo,
 	}
 
+	authCtrl := handlers2.NewAuthController(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
+	staticCtrl := handlers2.NewStaticController(db.IsFirstRun(), warpnet.GetStaticFS())
+
 	interfaceServer.RegisterHandlers(&API{
-		handlers2.NewStaticController(warpnet.GetStaticFS()),
-		handlers2.NewAuthController(
-			userPersistency, interruptChan, nodeReadyChan, authReadyChan),
+		staticCtrl,
+		authCtrl,
 	})
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()

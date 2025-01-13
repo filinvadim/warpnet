@@ -29,7 +29,7 @@
         <div class="p-3 flex flex-row">
           <div class="flex-none mr-4">
             <img
-              :src="`${tweet.profile.imageUrl || 'default_profile.png'}`"
+              :src="`${tweet.profile.avatar || 'default_profile.png'}`"
               class="h-12 w-12 rounded-full flex-none"
             />
           </div>
@@ -38,11 +38,11 @@
             <div class="flex items-center w-full">
               <p class="font-semibold">{{ tweet.profile.name }}</p>
               <p class="text-sm text-dark ml-2">
-                @{{ tweet.profile.screenName }}
+                @{{ tweet.profile.username }}
               </p>
               <p class="text-sm text-dark ml-2">.</p>
               <p class="text-sm text-dark ml-2">
-                {{ $filters.timeago(tweet.createdAt) }}
+                {{ $filters.timeago(tweet.created_at) }}
               </p>
             </div>
             <p class="py-2" v-linkify>
@@ -55,7 +55,7 @@
         <div class="p-3 flex flex-row">
           <div class="flex-none mr-4">
             <img
-              :src="`${profile.imageUrl || 'default_profile.png'}`"
+              :src="`${profile.avatar || 'default_profile.png'}`"
               class="h-12 w-12 rounded-full flex-none"
             />
           </div>

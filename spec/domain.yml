@@ -8,25 +8,6 @@ paths: {}
 
 components:
   schemas:
-    Owner:
-      type: object
-      properties:
-        id:
-          type: string
-        node_id:
-          type: string
-        username:
-          type: string
-          minLength: 1
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - username
-        - node_id
-        - created_at
-
     User:
       type: object
       properties:
@@ -48,7 +29,7 @@ components:
         followers_num:
           type: integer
           format: int64
-        followed_num:
+        following_num:
           type: integer
           format: int64
         tweets_num:

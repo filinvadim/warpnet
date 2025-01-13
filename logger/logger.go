@@ -27,7 +27,7 @@ type UnifiedLogger struct {
 
 func NewUnifiedLogger(logLevel string, isJSON bool) *UnifiedLogger {
 	level := zapcore.InfoLevel
-	if err := level.Set(logLevel); err != nil {
+	if err := (&level).Set(logLevel); err != nil {
 		level = zapcore.InfoLevel // Default to Info level if invalid
 	}
 

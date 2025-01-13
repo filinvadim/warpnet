@@ -64,7 +64,7 @@ func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error)
 	}))
 	e.Use(echomiddleware.Gzip())
 
-	l.Warn("VerifySessionToken temp disabled!")
+	l.Warn("VerifySessionToken temp disabled!") // TODO
 	//e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
 
 	port := ":" + strconv.Itoa(conf.Server.Port)

@@ -2,7 +2,7 @@
   <div>
     <div v-for="result in results" :key="result.id">
       <UserNewMessage
-        v-if="result.screenName"
+        v-if="result.username"
         :user="result"
         @selected="selected"
       />

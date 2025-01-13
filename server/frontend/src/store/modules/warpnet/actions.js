@@ -1,6 +1,6 @@
 import {
   getMyProfile,
-  getProfileByScreenName,
+  getProfileByusername,
   getImageUploadUrl,
   editMyProfile,
   getMyTimeline,
@@ -28,29 +28,29 @@ export default {
     const profile = await getMyProfile();
     commit("PROFILE_SET", profile);
   },
-  async loadProfile({ commit, rootState }, screenName) {
-    if (!screenName) return;
-    if (rootState.warpnet.profile.screenName == screenName) {
+  async loadProfile({ commit, rootState }, username) {
+    if (!username) return;
+    if (rootState.warpnet.profile.username === username) {
       const profile = await getMyProfile();
       commit("PROFILE_SET", profile);
     } else {
-      const profile = await getProfileByScreenName(screenName);
+      const profile = await getProfileByusername(username);
       commit("PROFILE_SET", profile);
     }
   },
   async loadMyTimeline({ dispatch }) {
     await dispatch("getMyTimeline", 10);
   },
-  async loadTweets({ dispatch, rootState }, screenName) {
-    if (!screenName) return;
+  async loadTweets({ dispatch, rootState }, username) {
+    if (!username) return;
 
-    if (rootState.warpnet.profile.screenName == screenName) {
+    if (rootState.warpnet.profile.username === username) {
       await dispatch("getTweets", {
         userId: rootState.warpnet.profile.id,
         limit: 10,
       });
     } else {
-      const profile = await getProfileByScreenName(screenName);
+      const profile = await getProfileByusername(username);
       await dispatch("getTweets", { userId: profile.id, limit: 10 });
     }
   },
