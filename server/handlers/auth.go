@@ -98,7 +98,7 @@ func (c *AuthController) messageCallback(msg []byte) error {
 	if err != nil {
 		return err
 	}
-	return c.upgrader.SendMessage(bt)
+	return c.upgrader.SendEncrypted(bt)
 }
 
 func (c *AuthController) authLogin(message api.LoginMessage) (resp api.LoginResponse, err error) {

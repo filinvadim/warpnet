@@ -3,13 +3,13 @@ package encrypting
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/monnand/dhkx"
+	"golang.org/x/crypto/hkdf"
 	"io"
 	"strings"
 	"sync"
@@ -116,13 +116,14 @@ func (e *DiffieHellmanEncrypter) ComputeSharedSecret(clientPublicKeyBytes []byte
 	if err != nil {
 		return fmt.Errorf("computing shared secret: %v", err)
 	}
-	e.aesKey = deriveKey(sharedSecret.Bytes())
-	return nil
+	e.aesKey, err = deriveKey(sharedSecret.Bytes())
+	return err
 }
 
 // Derive AES key using HKDF
-func deriveKey(sharedSecret []byte) []byte {
-	h := hmac.New(sha256.New, []byte("TODO")) // Use zero-filled salt for HKDF
-	h.Write(sharedSecret)
-	return h.Sum(nil)[:32] // AES-256 key
+func deriveKey(sharedSecret []byte) ([]byte, error) {
+	h := hkdf.New(sha256.New, sharedSecret, []byte("TODO"), []byte(""))
+	key := make([]byte, 32) // AES-256
+	_, err := io.ReadFull(h, key)
+	return key, err
 }

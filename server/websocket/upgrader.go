@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	ws "github.com/gorilla/websocket"
 	"log"
@@ -67,7 +66,15 @@ func (s *EncryptedUpgrader) readLoop() error {
 		if err != nil {
 			return err
 		}
-		if messageType == ws.TextMessage && !s.isAuthenticated {
+		log.Println("got encrypted message: ", string(message))
+		if messageType != ws.TextMessage {
+			_ = s.SendPlain("message type must be text")
+			continue
+		}
+
+		if !s.isAuthenticated {
+			log.Printf("auth: unexpected message type: %v", messageType)
+
 			pubKey, err := base64.StdEncoding.DecodeString(string(message))
 			if err != nil {
 				_ = s.SendPlain(err.Error())
@@ -89,10 +96,6 @@ func (s *EncryptedUpgrader) readLoop() error {
 			log.Println("websocket authenticated")
 			continue
 		}
-		if messageType != ws.BinaryMessage && s.isAuthenticated {
-			log.Printf("unexpected message type: %v", messageType)
-			continue
-		}
 
 		if s.readCallback == nil {
 			log.Println("no read callback provided")
@@ -101,6 +104,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 		decryptedMessage, err := s.encrypter.DecryptMessage(message)
 		if err != nil {
 			log.Printf("failed to decrypt message: %v", err)
+			return nil
 		}
 
 		log.Println("got message: ", string(decryptedMessage))
@@ -126,9 +130,5 @@ func (s *EncryptedUpgrader) SendEncrypted(msg []byte) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	err = s.conn.WriteMessage(ws.BinaryMessage, encryptedMessage)
-	if err != nil {
-		return fmt.Errorf("write encrypted message: %w", err)
-	}
-	return nil
+	return s.conn.WriteMessage(ws.TextMessage, encryptedMessage)
 }
