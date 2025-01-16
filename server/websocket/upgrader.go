@@ -12,10 +12,13 @@ import (
 type EncryptedUpgrader struct {
 	upgrader        ws.Upgrader
 	conn            *ws.Conn
-	readCallback    func(msg []byte) error
+	readCallback    func(msg []byte) ([]byte, error)
 	encrypter       *encrypting.DiffieHellmanEncrypter
 	mx              *sync.Mutex
 	isAuthenticated bool
+	externalPubKey  []byte
+	isSaltRenewed   bool
+	salt            []byte
 }
 
 func NewEncryptedUpgrader() *EncryptedUpgrader {
@@ -40,6 +43,7 @@ func NewEncryptedUpgrader() *EncryptedUpgrader {
 		},
 		encrypter: e,
 		mx:        new(sync.Mutex),
+		salt:      []byte("warpnet"),
 	}
 }
 
@@ -56,7 +60,7 @@ func (s *EncryptedUpgrader) Close() error {
 	return s.conn.Close()
 }
 
-func (s *EncryptedUpgrader) OnMessage(fn func(msg []byte) error) {
+func (s *EncryptedUpgrader) OnMessage(fn func(msg []byte) ([]byte, error)) {
 	s.readCallback = fn
 }
 
@@ -73,19 +77,19 @@ func (s *EncryptedUpgrader) readLoop() error {
 		}
 
 		if !s.isAuthenticated {
-			log.Printf("auth: unexpected message type: %v", messageType)
-
 			pubKey, err := base64.StdEncoding.DecodeString(string(message))
 			if err != nil {
 				_ = s.SendPlain(err.Error())
 				return err
 			}
 			log.Println("websocket received public key message")
+			s.externalPubKey = pubKey
 
-			if err := s.encrypter.ComputeSharedSecret(pubKey); err != nil {
+			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, []byte("TODO")); err != nil {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
+			// send ours public key
 			encoded := base64.StdEncoding.EncodeToString(s.encrypter.PublicKey())
 			err = s.SendPlain(encoded)
 			if err != nil {
@@ -107,10 +111,18 @@ func (s *EncryptedUpgrader) readLoop() error {
 			return nil
 		}
 
-		log.Println("got message: ", string(decryptedMessage))
-
-		if err = s.readCallback(decryptedMessage); err != nil {
+		response, err := s.readCallback(decryptedMessage)
+		if err != nil {
 			log.Printf("failed to process decrypted message: %v", err)
+		}
+		if response == nil {
+			continue
+		}
+		if err = s.SendEncrypted(response); err != nil {
+			log.Printf("failed to send encrypted message: %v", err)
+		}
+		if err := s.renewSalt(); err != nil {
+			log.Printf("failed to renew salt: %v", err)
 		}
 	}
 }
@@ -119,6 +131,28 @@ func (s *EncryptedUpgrader) SendPlain(msg string) error {
 	defer s.mx.Unlock()
 
 	return s.conn.WriteMessage(ws.TextMessage, []byte(msg))
+}
+func (s *EncryptedUpgrader) SetNewSalt(salt string) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.salt = []byte(salt)
+	s.isSaltRenewed = false
+}
+
+func (s *EncryptedUpgrader) renewSalt() error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	if s.isSaltRenewed {
+		return nil
+	}
+	err := s.encrypter.ComputeSharedSecret(s.externalPubKey, s.salt)
+	if err != nil {
+		return err
+	}
+	s.isSaltRenewed = true
+	log.Println("secret renewed")
+	return nil
 }
 
 func (s *EncryptedUpgrader) SendEncrypted(msg []byte) error {

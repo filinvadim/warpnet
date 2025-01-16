@@ -230,6 +230,7 @@
 
 <script>
 import { mapGetters, mapActions } from "vuex";
+import {connectClient} from "@/store/modules/authentication/actions";
 export default {
   name: "Root",
   data() {
@@ -243,6 +244,7 @@ export default {
   mounted() {
     this.isFirstRun = window.isFirstRun || false;
     console.log("Is first run:", this.isFirstRun);
+    connectClient();
   },
   computed: {
     ...mapGetters("signup", ["showModal"]),

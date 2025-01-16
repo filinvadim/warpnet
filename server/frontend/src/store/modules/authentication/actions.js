@@ -9,10 +9,8 @@ export function connectClient() {
     return;
   }
   client.connect()
-  client.setupCallback(async (event) => {
-    console.log(event);
-    sessionStorage.setItem("token", event.data.token);
-    sessionStorage.setItem("owner", event.data.user);
+  client.setupCallback(async (data) => {
+    sessionStorage.setItem("owner", data.user);
   });
 }
 
@@ -23,10 +21,9 @@ export default {
     commit("USER_LOGIN", user);
   },
   async logoutUser({ commit, dispatch }) {
-    await client.sendMessage(JSON.stringify({
+    await client.sendMessage({
       message_type: "LogoutMessage",
-      token: sessionStorage.getItem("token"),
-    }))
+    })
     client.close();
 
     commit("USER_LOGOUT");
@@ -40,18 +37,27 @@ export default {
   },
 
   async signInUser({ dispatch, commit }, form) {
-    await client.sendMessage(JSON.stringify({
+    await client.sendMessage({
           message_type: "LoginMessage",
           username: form.username,
           password: form.password,
-        }));
+        });
 
-    while (true) {
-      let t = sessionStorage.getItem("token")
-      if (t) {
-        await new Promise(r => setTimeout(r, 200));
+
+    const maxRetries = 25;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      const token = sessionStorage.getItem("owner");
+      if (token) {
         break;
       }
+      await new Promise((r) => setTimeout(r, 100));
+      retryCount++;
+    }
+
+    if (retryCount >= maxRetries) {
+      throw new Error("Token not found after maximum retries.");
     }
 
     let user = sessionStorage.getItem("owner")

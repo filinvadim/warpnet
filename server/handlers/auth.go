@@ -64,41 +64,44 @@ func (c *AuthController) WebsocketUpgrade(ctx echo.Context) (err error) {
 	return nil
 }
 
-func (c *AuthController) messageCallback(msg []byte) error {
-	c.l.Infof("received message: %s", string(msg))
+func (c *AuthController) messageCallback(msg []byte) ([]byte, error) {
 	var wsMsg api.WebsocketMessage
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {
-		return err
+		return nil, err
 	}
 
 	value, err := wsMsg.ValueByDiscriminator()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var response any
 
 	switch value.(type) {
 	case api.LoginMessage:
-		response, err = c.authLogin(value.(api.LoginMessage))
+		loginMsg := value.(api.LoginMessage)
+		loginResp, err := c.authLogin(loginMsg)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		c.upgrader.SetNewSalt(loginResp.Token)
+		response = loginMsg
+
 	case api.LogoutMessage:
 		err = c.authLogout()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if response == nil {
-		return nil
+		return nil, nil
 	}
 
 	bt, err := json.JSON.Marshal(response)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.upgrader.SendEncrypted(bt)
+	return bt, nil
 }
 
 func (c *AuthController) authLogin(message api.LoginMessage) (resp api.LoginResponse, err error) {

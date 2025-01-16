@@ -10,21 +10,8 @@ ggen:
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
 
-govendor:
-	go mod tidy
-	go mod vendor
-
 prune:
 	rm -rf /Users/vadim/.badgerdb && rm -rf /home/vadim/.badgerdb
-
-prune-idea:
-	rm -rf .local/share/JetBrains
-	rm -rf .config/JetBrains
-	rm -rf .cache/JetBrains
-	rm -rf .java/.userPrefs
-	rm -rf ~/.config/JetBrains
-	rm -rf ~/.cache/JetBrains
-	rm -rf ~/.local/share/JetBrains
 
 check-heap:
 	go build -gcflags="-m" main.go
@@ -35,5 +22,3 @@ docker-build:
 compose-up:
 	docker compose --parallel 1 up -d --quiet-pull --build
 
-bootstrap-port:
-	nc -zv bootstrap.warp.net 4001

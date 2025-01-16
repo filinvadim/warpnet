@@ -9,9 +9,11 @@ export default class EncryptedSocketClient {
         this.dh.generateKeys();
         this.url = url;
         this.publicKey = this.dh.getPublicKey();
+        this.externalPublicKey = null
         this.aesKey = null; // Will be derived after receiving server's public key
         this.callback = null;
         this.socket = null
+        this.secretRenew = false;
     }
 
     // Helper function to split message into ciphertext and nonce
@@ -23,7 +25,7 @@ export default class EncryptedSocketClient {
         return parts
     }
 
-    async deriveKey(sharedSecret) {
+    async deriveKey(sharedSecret, salt) {
         const keyMaterial = await crypto.subtle.importKey(
             'raw',
             sharedSecret,
@@ -35,7 +37,7 @@ export default class EncryptedSocketClient {
         return crypto.subtle.deriveKey(
             {
                 name: 'HKDF',
-                salt: new TextEncoder().encode('TODO'),
+                salt: new TextEncoder().encode(salt),
                 info: new Uint8Array(),
                 hash: 'SHA-256',
             },
@@ -84,12 +86,9 @@ export default class EncryptedSocketClient {
         // Handle the server's public key (first message)
         if (!this.aesKey) {
             console.log('Received server public key');
-
+            this.externalPublicKey = receivedMessage
             // Compute shared secret
-            const sharedSecret = this.dh.computeSecret(receivedMessage);
-
-            // Derive AES key from the shared secret
-            this.aesKey = await this.deriveKey(sharedSecret);
+            await this.computeSecret('warpnet') // temp salt
             console.log('Shared secret established.');
             return;
         }
@@ -103,19 +102,35 @@ export default class EncryptedSocketClient {
         let plaintext = ''
         try {
             plaintext = await this.decryptMessage(this.aesKey, ciphertext, nonce);
-            console.log('Decrypted message:', plaintext);
         } catch (err) {
             console.error('Error decrypting message:', err.message);
             return;
         }
-        console.log('Decrypted message:', plaintext);
 
         if (!this.callback) {
             console.log('No callback provided.');
             return;
         }
 
-        const response = this.callback(plaintext);
+        let data = null
+        try {
+            data = JSON.parse(plaintext);
+        } catch (error) {
+            console.error("JSON parsing:", error.message);
+            this.socket.send(error.message)
+            return;
+        }
+        if (!data) {
+            return;
+        }
+
+        if (data.token && !this.secretRenew) {
+            await this.computeSecret(data.token); // renew salt to more secure one
+            this.secretRenew = true;
+            console.log('secret renewed')
+        }
+
+        const response = this.callback(data);
         if (!response) {
             return;
         }
@@ -148,6 +163,12 @@ export default class EncryptedSocketClient {
         }
     }
 
+    async computeSecret(salt) {
+        const sharedSecret = this.dh.computeSecret(this.externalPublicKey);
+        // Derive AES key from the shared secret
+        this.aesKey = await this.deriveKey(sharedSecret, salt);
+    }
+
     connect() {
         console.log("connect called");
         try {
@@ -174,6 +195,7 @@ export default class EncryptedSocketClient {
     }
 
     async sendMessage(message) {
+        message = JSON.stringify(message)
         if (!this.aesKey) {
             console.log("Sending message: not authenticated!");
             throw new Error("Not authenticated!");
