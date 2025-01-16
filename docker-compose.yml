@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SEED_ID: "1"
+        SEED_ID_ARG: "1"
     ports:
       - "4001:4001"
     environment:
@@ -17,7 +17,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SEED_ID: "2"
+        SEED_ID_ARG: "2"
     ports:
       - "4002:4001"
     environment:
@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SEED_ID: "3"
+        SEED_ID_ARG: "3"
     ports:
       - "4003:4001"
     environment:
