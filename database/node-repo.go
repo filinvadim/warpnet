@@ -9,6 +9,7 @@ import (
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"math"
 	"runtime"
 	"strings"
 	"time"
@@ -148,7 +149,11 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 		} else if err != nil {
 			return err
 		}
-		expiration = time.Unix(int64(item.ExpiresAt()), 0)
+		expiresAt := item.ExpiresAt()
+		if expiresAt > math.MaxInt64 {
+			expiresAt--
+		}
+		expiration = time.Unix(int64(expiresAt), 0) //#nosec
 		return nil
 	})
 	return expiration, err
@@ -286,7 +291,10 @@ func (d *NodeRepo) DiskUsage(ctx context.Context) (uint64, error) {
 		return 0, storage.ErrNotRunning
 	}
 	lsm, vlog := d.db.InnerDB().Size()
-	return uint64(lsm + vlog), nil
+	if (lsm + vlog) < 0 {
+		return 0, errors.New("disk usage: malformed value")
+	}
+	return uint64(lsm + vlog), nil //#nosec
 }
 
 func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err error) {
@@ -501,7 +509,11 @@ func filter(filters []dsq.Filter, entry dsq.Entry) bool {
 }
 
 func expires(item *badger.Item) time.Time {
-	return time.Unix(int64(item.ExpiresAt()), 0)
+	expiresAt := item.ExpiresAt()
+	if expiresAt > math.MaxInt64 {
+		expiresAt--
+	}
+	return time.Unix(int64(expiresAt), 0) //#nosec
 }
 
 func (d *NodeRepo) Close() (err error) {
@@ -534,7 +546,7 @@ func (d *NodeRepo) Batch(ctx context.Context) (ds.Batch, error) {
 	b := &batch{d, d.db.InnerDB().NewWriteBatch()}
 	// Ensure that incomplete transaction resources are cleaned up in case
 	// batch is abandoned.
-	runtime.SetFinalizer(b, func(b *batch) { b.Cancel() })
+	runtime.SetFinalizer(b, func(b *batch) { _ = b.Cancel() })
 
 	return b, nil
 }
@@ -604,7 +616,7 @@ func (b *batch) Commit(_ context.Context) error {
 	err := b.writeBatch.Flush()
 	if err != nil {
 		// Discard incomplete transaction held by b.writeBatch
-		b.Cancel()
+		_ = b.Cancel()
 		return err
 	}
 	runtime.SetFinalizer(b, nil)

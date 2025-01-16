@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -48,7 +49,7 @@ func New(
 	dataFolder string,
 	logger badger.Logger,
 ) (*DB, error) {
-	dbPath := path + dataFolder
+	dbPath := filepath.Join(path, dataFolder)
 	opts := badger.
 		DefaultOptions(dbPath).
 		WithSyncWrites(false).
@@ -114,7 +115,7 @@ func (db *DB) Run(username, password string) (err error) {
 
 func (db *DB) runEventualGC() {
 	log.Println("database garbage collection started")
-	db.badger.RunValueLogGC(discardRatio)
+	_ = db.badger.RunValueLogGC(discardRatio)
 	for {
 		select {
 		case <-time.After(time.Hour * 24):
@@ -222,7 +223,7 @@ func (db *DB) iterateKeysValues(
 		if !startCursor.IsEmpty() {
 			p = startCursor.Bytes()
 		}
-		iterNum := 0
+		iterNum := uint64(0)
 		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 			p = prefix.Bytes() // starting point found
 
@@ -233,7 +234,7 @@ func (db *DB) iterateKeysValues(
 				return nil
 			}
 
-			if iterNum > int(*limit) {
+			if iterNum > *limit {
 				lastKey = DatabaseKey(key)
 				return nil
 			}
@@ -247,7 +248,7 @@ func (db *DB) iterateKeysValues(
 				return err
 			}
 		}
-		if iterNum < int(*limit) {
+		if iterNum < *limit {
 			lastKey = ""
 		}
 		return nil

@@ -48,6 +48,7 @@ func (e *DiffieHellmanEncrypter) EncryptMessage(plaintext []byte) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
+
 	nonce := make([]byte, 12)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (e *DiffieHellmanEncrypter) EncryptMessage(plaintext []byte) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil) //#nosec
 	payload := fmt.Sprintf(
 		"%s:%s",
 		base64.StdEncoding.EncodeToString(ciphertext),

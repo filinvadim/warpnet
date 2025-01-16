@@ -156,7 +156,7 @@ func getAppPath() string {
 		log.Fatal("unsupported OS")
 	}
 
-	err := os.MkdirAll(dbPath, os.ModePerm)
+	err := os.MkdirAll(dbPath, 0750)
 	if err != nil {
 		log.Fatal(err)
 	}

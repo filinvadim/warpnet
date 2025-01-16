@@ -88,11 +88,17 @@ func (l *UnifiedLogger) SetPrefix(p string) {
 }
 
 func (l *UnifiedLogger) Level() log.Lvl {
-	return log.Lvl(l.level)
+	if l.level > 127 {
+		panic("level overflow")
+	}
+	return log.Lvl(l.level) //#nosec
 }
 
 func (l *UnifiedLogger) SetLevel(v log.Lvl) {
-	l.level = zapcore.Level(v)
+	if v > 127 {
+		panic("level overflow")
+	}
+	l.level = zapcore.Level(v) //#nosec
 	l.logger = l.logger.WithOptions(zap.IncreaseLevel(l.level))
 }
 

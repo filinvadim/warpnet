@@ -2,12 +2,13 @@ package database
 
 import (
 	"crypto"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database/storage"
-	"math/rand/v2"
+	"math/big"
 	"time"
 )
 
@@ -46,7 +47,11 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 		return "", storage.ErrNotRunning
 	}
 
-	randChar := string(uint8(rand.Int()))
+	n, err := rand.Int(rand.Reader, big.NewInt(127))
+	if err != nil {
+		return "", err
+	}
+	randChar := string(uint8(n.Uint64())) //#nosec
 	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
 	repo.sessionToken = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
 
