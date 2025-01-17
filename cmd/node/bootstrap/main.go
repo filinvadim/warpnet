@@ -27,7 +27,7 @@ func main() {
 	}
 
 	version = conf.Version.String()
-	log.Println("config bootstrap nodes: ", conf.Node.BootstrapAddrs)
+	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)

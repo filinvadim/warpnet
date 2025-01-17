@@ -22,3 +22,5 @@ docker-build:
 compose-up:
 	docker compose --parallel 1 up -d --quiet-pull --build
 
+gosec:
+	~/go/bin/gosec ./...
