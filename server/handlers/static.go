@@ -26,12 +26,19 @@ func NewStaticController(isFirstRun bool, staticFolder StaticFolderOpener) *Stat
 	pwd, _ := os.Getwd()
 	log.Println("CURRENT DIRECTORY: ", pwd)
 	fileSystem := echo.MustSubFS(staticFolder, "server/frontend/dist/")
+
+	_, err := fileSystem.Open("index.html")
+	if err != nil {
+		log.Fatalf("index.html does not exist")
+	}
+
 	return &StaticController{fileSystem, isFirstRun}
 }
 
 func (c *StaticController) GetIndex(ctx echo.Context) error {
 	f, err := c.fileSystem.Open("index.html")
 	if err != nil {
+		log.Println("failed opening index.html: ", err)
 		return ctx.JSON(http.StatusInternalServerError, api.Error{500, err.Error()})
 	}
 	fi, _ := f.Stat()

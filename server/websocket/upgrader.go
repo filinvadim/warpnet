@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type EncryptedUpgrader struct {
@@ -85,7 +86,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 			log.Println("websocket received public key message")
 			s.externalPubKey = pubKey
 
-			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, []byte("TODO")); err != nil {
+			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, getCurrentDate()); err != nil {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
@@ -165,4 +166,8 @@ func (s *EncryptedUpgrader) SendEncrypted(msg []byte) error {
 	defer s.mx.Unlock()
 
 	return s.conn.WriteMessage(ws.TextMessage, encryptedMessage)
+}
+
+func getCurrentDate() []byte {
+	return []byte(time.Now().UTC().Format("2006-01-02"))
 }

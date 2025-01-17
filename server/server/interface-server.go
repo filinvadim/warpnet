@@ -64,11 +64,8 @@ func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error)
 	}))
 	e.Use(echomiddleware.Gzip())
 
-	l.Warn("VerifySessionToken temp disabled!") // TODO
-	//e.Use(ownMiddleware.NewSessionTokenMiddleware().VerifySessionToken)
-
 	port := ":" + strconv.Itoa(conf.Server.Port)
-	err = browser.OpenURL("http://localhost" + port) // NOTE connection is not protected!
+	err = browser.OpenURL("http://localhost" + port)
 	if err != nil {
 		e.Logger.Errorf("failed to open browser: %v", err)
 		return nil, ErrBrowserLoadFailed

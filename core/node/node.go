@@ -26,6 +26,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"go.uber.org/zap/zapcore"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -137,8 +138,8 @@ func NewBootstrapNode(
 	l logger.Core,
 ) (_ *WarpNode, err error) {
 	logging.SetPrimaryCore(l)
-
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte(conf.Node.SeedID))
+	seedId := []byte(strconv.Itoa(conf.Node.SeedID))
+	privKey, err := encrypting.GenerateKeyFromSeed(seedId)
 	if err != nil {
 		return nil, err
 	}

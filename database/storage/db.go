@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/filinvadim/warpnet/core/encrypting"
@@ -78,7 +79,11 @@ func New(
 func isDirectoryEmpty(dirPath string) (bool, error) {
 	dirEntries, err := os.ReadDir(dirPath)
 	if err != nil {
-		return false, err
+		if strings.Contains(err.Error(), "no such file or directory") {
+			err := os.Mkdir(dirPath, 0750)
+			return true, err
+		}
+		return false, fmt.Errorf("is dir empty: %w", err)
 	}
 
 	return len(dirEntries) == 0, nil

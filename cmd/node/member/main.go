@@ -28,6 +28,8 @@ import (
 
 var version = "0.0.1"
 
+var _ = warpnet.CloneStatic()
+
 type API struct {
 	*handlers2.StaticController
 	*handlers2.AuthController
@@ -39,7 +41,7 @@ func main() {
 		log.Fatal("unmarshalling config: ", err)
 	}
 
-	fmt.Println("config bootstrap nodes: ", conf.Node.BootstrapAddrs)
+	fmt.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	version = conf.Version.String()
 
@@ -51,7 +53,7 @@ func main() {
 
 	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 
-	db, err := storage.New(getAppPath(), false, conf.Database.Dir, l)
+	db, err := storage.New(getAppPath(), false, conf.Database.DirName, l)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}

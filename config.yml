@@ -9,7 +9,7 @@ node:
     logging:
       level: info
 database:
-    dir: "/storage"
+    dirName: "storage"
 server:
   host: localhost
   port: 4002
