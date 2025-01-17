@@ -30,3 +30,4 @@ var/
 server/frontend/*
 server/frontend/.git
 !/server/frontend/.gitkeep
+!/server/frontend/dist

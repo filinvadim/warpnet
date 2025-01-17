@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 )
 
 // NOTE this file always must be in a root dir of project
@@ -51,6 +52,9 @@ func CloneStatic() error {
 			Password: pass,
 		},
 	})
+	defer func() {
+		_ = os.RemoveAll(path.Join(cloneDir, ".git"))
+	}()
 	if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 		repo, err := git.PlainOpen(cloneDir)
 		if err != nil {
