@@ -14,6 +14,8 @@ import (
 
 // NOTE this file always must be in a root dir of project
 
+// #nosec
+//
 //go:embed server/frontend/dist
 var static embed.FS
 
