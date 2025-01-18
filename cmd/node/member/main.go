@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
@@ -23,8 +24,6 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 )
 
-var version = "0.0.1"
-
 type API struct {
 	*handlers.StaticController
 	*handlers.AuthController
@@ -38,7 +37,7 @@ func main() {
 
 	fmt.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
-	version = conf.Version.String()
+	log.Println("Warpnet Version:", warpnet.GetVersion())
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)

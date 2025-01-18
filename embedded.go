@@ -16,5 +16,6 @@ func GetConfigFile() []byte {
 var version []byte
 
 func GetVersion() string {
-	return string(version)
+	s := string(version)
+	return s
 }

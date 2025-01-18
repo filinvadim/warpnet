@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/logger"
@@ -13,14 +14,13 @@ import (
 	_ "go.uber.org/automaxprocs" // DO NOT remove
 )
 
-var version = "0.0.1"
-
 func main() {
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.Fatalf("fail loading config: %v", err)
 	}
-	version = conf.Version.String()
+
+	log.Println("Warpnet Version:", warpnet.GetVersion())
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
