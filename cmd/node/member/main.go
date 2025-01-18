@@ -3,15 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
-	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/logger"
-	handlers2 "github.com/filinvadim/warpnet/server/handlers"
+	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
 	"log"
 	"os"
@@ -21,17 +19,15 @@ import (
 
 	"syscall"
 
+	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/database/storage"
-	_ "go.uber.org/automaxprocs"
 )
 
 var version = "0.0.1"
 
-var _ = warpnet.CloneStatic()
-
 type API struct {
-	*handlers2.StaticController
-	*handlers2.AuthController
+	*handlers.StaticController
+	*handlers.AuthController
 }
 
 func main() {
@@ -39,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("fail loading config: %v", err)
 	}
-	
+
 	fmt.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	version = conf.Version.String()
@@ -90,8 +86,8 @@ func main() {
 		authRepo, userRepo,
 	}
 
-	authCtrl := handlers2.NewAuthController(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
-	staticCtrl := handlers2.NewStaticController(db.IsFirstRun(), warpnet.GetStaticFS())
+	authCtrl := handlers.NewAuthController(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
+	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
 	interfaceServer.RegisterHandlers(&API{
 		staticCtrl,

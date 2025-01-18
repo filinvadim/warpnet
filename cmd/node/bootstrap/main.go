@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/logger"
@@ -11,12 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "go.uber.org/automaxprocs"
+	_ "go.uber.org/automaxprocs" // DO NOT remove
 )
 
-var (
-	version = "0.0.1"
-)
+var version = "0.0.1"
 
 func main() {
 	conf, err := config.GetConfig()

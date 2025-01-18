@@ -1,0 +1,12 @@
+#!/bin/bash
+
+FILE="version"
+
+if [ ! -f "$FILE" ]; then
+    echo "Version file not found!"
+    exit 1
+fi
+
+CURRENT_VERSION=$(cat $FILE)
+
+git push origin "v$CURRENT_VERSION"
