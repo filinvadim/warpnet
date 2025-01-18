@@ -13,23 +13,24 @@ CURRENT_VERSION=$(cat $FILE)
 
 # Проверяем, что пушится
 while read local_ref local_sha remote_ref remote_sha; do
-    # Если пушится существующий тег, выходим из хука
-    if [[ "$remote_ref" == "refs/tags/v$CURRENT_VERSION" ]]; then
-        echo "Tag v$CURRENT_VERSION is already being pushed. Skipping hook."
-        exit 0
+    # Если пушится тег
+    if [[ "$remote_ref" == "refs/tags/"* ]]; then
+        TAG_NAME=$(basename "$remote_ref")
+
+        # Если тег совпадает с версией из файла, продолжаем пуш
+        if [[ "$TAG_NAME" == "v$CURRENT_VERSION" ]]; then
+            echo "Pushing existing tag v$CURRENT_VERSION..."
+            exit 0
+        fi
     fi
 done
 
 # Проверяем, существует ли тег с текущей версией локально
 if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-    echo "Tag v$CURRENT_VERSION already exists locally. Skipping creation."
+    echo "Tag v$CURRENT_VERSION already exists locally. Pushing it..."
+    git push origin "v$CURRENT_VERSION"
+    exit 0
 else
-    # Создаём новый тег
-    git tag -a "v$CURRENT_VERSION" -m "Release version $CURRENT_VERSION"
-    echo "Tag v$CURRENT_VERSION created."
+    echo "Tag v$CURRENT_VERSION does not exist locally. Skipping."
+    exit 1
 fi
-
-# Пушим тег
-git push origin "v$CURRENT_VERSION"
-
-echo "Tag v$CURRENT_VERSION pushed successfully."
