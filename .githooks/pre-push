@@ -9,6 +9,17 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
+# Читаем текущую версию
 CURRENT_VERSION=$(cat $FILE)
 
+# Проверяем, есть ли тег с текущей версией
+if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+    echo "Tag v$CURRENT_VERSION already exists. Skipping push."
+    exit 0
+fi
+
+# Создаём тег и пушим его
+git tag -a "v$CURRENT_VERSION" -m "Release version $CURRENT_VERSION"
 git push origin "v$CURRENT_VERSION"
+
+echo "Tag v$CURRENT_VERSION pushed successfully."
