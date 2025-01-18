@@ -46,7 +46,7 @@ func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {
 
 func GetConfig() (Config, error) {
 	var conf Config
-	f, err := os.Open("../config.yml")
+	f, err := os.Open("config.yml")
 	if err != nil {
 		return conf, err
 	}
