@@ -27,7 +27,7 @@ done
 
 # Проверяем, существует ли тег с текущей версией локально
 if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-    echo "Tag v$CURRENT_VERSION already exists locally. Pushing it..."
+    echo "Pushing tag v$CURRENT_VERSION ..."
     git push origin "v$CURRENT_VERSION"
     exit 0
 else
