@@ -23,13 +23,6 @@ func GetStaticFS() fs.FS {
 	return static
 }
 
-//go:embed config.yml
-var configFile []byte
-
-func GetConfigFile() []byte {
-	return configFile
-}
-
 func CloneStatic() error {
 	repoURL := "https://github.com/filinvadim/warpnet-frontend"
 	cloneDir := "./server/frontend"

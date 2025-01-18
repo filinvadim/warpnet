@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	_ "embed"
-	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/logger"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/signal"
@@ -21,11 +19,10 @@ var (
 )
 
 func main() {
-	var conf config.Config
-	if err := yaml.Unmarshal(warpnet.GetConfigFile(), &conf); err != nil {
-		log.Fatal("unmarshalling config: ", err)
+	conf, err := config.GetConfig()
+	if err != nil {
+		log.Fatalf("fail loading config: %v", err)
 	}
-
 	version = conf.Version.String()
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 

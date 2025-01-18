@@ -13,7 +13,6 @@ import (
 	"github.com/filinvadim/warpnet/logger"
 	handlers2 "github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/signal"
@@ -36,11 +35,11 @@ type API struct {
 }
 
 func main() {
-	var conf config.Config
-	if err := yaml.Unmarshal(warpnet.GetConfigFile(), &conf); err != nil {
-		log.Fatal("unmarshalling config: ", err)
+	conf, err := config.GetConfig()
+	if err != nil {
+		log.Fatalf("fail loading config: %v", err)
 	}
-
+	
 	fmt.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	version = conf.Version.String()

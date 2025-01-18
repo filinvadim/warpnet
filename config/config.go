@@ -3,6 +3,9 @@ package config
 import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"gopkg.in/yaml.v3"
+	"io"
+	"os"
 )
 
 type Config struct {
@@ -39,4 +42,22 @@ func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {
 		infos = append(infos, *ai)
 	}
 	return infos, nil
+}
+
+func GetConfig() (Config, error) {
+	var conf Config
+	f, err := os.Open("../config.yml")
+	if err != nil {
+		return conf, err
+	}
+	defer f.Close()
+
+	bt, err := io.ReadAll(f)
+	if err != nil {
+		return conf, err
+	}
+	if err := yaml.Unmarshal(bt, &conf); err != nil {
+		return Config{}, err
+	}
+	return conf, nil
 }
