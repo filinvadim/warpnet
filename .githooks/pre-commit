@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Pre-commit hook started..."
+
 FILE="version"
 
 if [ ! -f "$FILE" ]; then

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Pre-push hook started..."
+
 FILE="version"
 
 if [ ! -f "$FILE" ]; then
