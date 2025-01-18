@@ -27,7 +27,7 @@ func CloneStatic() error {
 	repoURL := "https://github.com/filinvadim/warpnet-frontend"
 	cloneDir := "./server/frontend"
 
-	_ = os.Mkdir(cloneDir, 0750)
+	_ = os.Mkdir(cloneDir+"/dist", 0750)
 
 	pass := os.Getenv("GITHUB_TOKEN")
 	if pass == "" {
@@ -47,6 +47,7 @@ func CloneStatic() error {
 	})
 	defer func() {
 		_ = os.RemoveAll(path.Join(cloneDir, ".git"))
+		_ = os.Remove(path.Join(cloneDir, ".gitignore"))
 	}()
 	if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 		repo, err := git.PlainOpen(cloneDir)
