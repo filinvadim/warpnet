@@ -12,60 +12,60 @@ servers:
     description: IPv6 TCP server
 
 paths:
-  /user/1.0.0:
-    options:
-      requestBody:
-        content:
-          '*/*':
-            schema:
-              anyOf:
-                - $ref: './event.yml#/components/schemas/GetUserEvent'
-                - $ref: './event.yml#/components/schemas/NewUserEvent'
-                - $ref: './event.yml#/components/schemas/GetAllUsersEvent'
-      responses:
-        200:
-          description: HTTP is not supported
-          content:
-            '*/*':
-              schema:
-                anyOf:
-                  - $ref: './dto.yml#/components/schemas/UsersResponse'
-                  - $ref: './domain.yml#/components/schemas/User'
+#  /user/1.0.0:
+#    options:
+#      requestBody:
+#        content:
+#          '*/*':
+#            schema:
+#              anyOf:
+#                - $ref: './event.yml#/components/schemas/GetUserEvent'
+#                - $ref: './event.yml#/components/schemas/NewUserEvent'
+#                - $ref: './event.yml#/components/schemas/GetAllUsersEvent'
+#      responses:
+#        200:
+#          description: HTTP is not supported
+#          content:
+#            '*/*':
+#              schema:
+#                anyOf:
+#                  - $ref: './dto.yml#/components/schemas/UsersResponse'
+#                  - $ref: './domain.yml#/components/schemas/User'
 
-  /tweet/1.0.0:
-    options:
-      requestBody:
-        content:
-          '*/*':
-            schema:
-              anyOf:
-                - $ref: './event.yml#/components/schemas/GetTweetEvent'
-                - $ref: './event.yml#/components/schemas/NewTweetEvent'
-                - $ref: './event.yml#/components/schemas/GetAllTweetsEvent'
-      responses:
-        200:
-          description: HTTP is not supported
-          content:
-            '*/*':
-              schema:
-                anyOf:
-                  - $ref: './dto.yml#/components/schemas/TweetsResponse'
-                  - $ref: './domain.yml#/components/schemas/Tweet'
+#  /tweet/1.0.0:
+#    options:
+#      requestBody:
+#        content:
+#          '*/*':
+#            schema:
+#              anyOf:
+#                - $ref: './event.yml#/components/schemas/GetTweetEvent'
+#                - $ref: './event.yml#/components/schemas/NewTweetEvent'
+#                - $ref: './event.yml#/components/schemas/GetAllTweetsEvent'
+#      responses:
+#        200:
+#          description: HTTP is not supported
+#          content:
+#            '*/*':
+#              schema:
+#                anyOf:
+#                  - $ref: './dto.yml#/components/schemas/TweetsResponse'
+#                  - $ref: './domain.yml#/components/schemas/Tweet'
 
-  /timeline/1.0.0:
-    options:
-      requestBody:
-        content:
-          '*/*':
-            schema:
-              $ref: './event.yml#/components/schemas/GetTimelineEvent'
-      responses:
-        200:
-          description: HTTP is not supported
-          content:
-            '*/*':
-              schema:
-                $ref: './dto.yml#/components/schemas/TweetsResponse'
+#  /timeline/1.0.0:
+#    options:
+#      requestBody:
+#        content:
+#          '*/*':
+#            schema:
+#              $ref: './event.yml#/components/schemas/GetTimelineEvent'
+#      responses:
+#        200:
+#          description: HTTP is not supported
+#          content:
+#            '*/*':
+#              schema:
+#                $ref: './dto.yml#/components/schemas/TweetsResponse'
 
   /node/1.0.0:
     options:
@@ -100,25 +100,25 @@ paths:
                   - $ref: './dto.yml#/components/schemas/ChatsResponse'
                   - $ref: './domain.yml#/components/schemas/Chat'
 
-  /reply/1.0.0:
-    options:
-      requestBody:
-        content:
-          '*/*':
-            schema:
-              anyOf:
-                - $ref: './event.yml#/components/schemas/NewReplyEvent'
-                - $ref: './event.yml#/components/schemas/GetReplyEvent'
-                - $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
-      responses:
-        200:
-          description: HTTP is not supported
-          content:
-            '*/*':
-              schema:
-                anyOf:
-                  - $ref: './dto.yml#/components/schemas/RepliesTreeResponse'
-                  - $ref: './domain.yml#/components/schemas/ReplyNode'
+#  /reply/1.0.0:
+#    options:
+#      requestBody:
+#        content:
+#          '*/*':
+#            schema:
+#              anyOf:
+#                - $ref: './event.yml#/components/schemas/NewReplyEvent'
+#                - $ref: './event.yml#/components/schemas/GetReplyEvent'
+#                - $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
+#      responses:
+#        200:
+#          description: HTTP is not supported
+#          content:
+#            '*/*':
+#              schema:
+#                anyOf:
+#                  - $ref: './dto.yml#/components/schemas/RepliesTreeResponse'
+#                  - $ref: './domain.yml#/components/schemas/ReplyNode'
 
   /message/1.0.0:
     options:

@@ -31,6 +31,8 @@ components:
             - $ref: '#/components/schemas/GetAllRepliesEvent'
             - $ref: '#/components/schemas/NewReplyEvent'
             - $ref: '#/components/schemas/GetReplyEvent'
+            - $ref: '#/components/schemas/LoginEvent'
+            - $ref: '#/components/schemas/LogoutEvent'
           discriminator:
             propertyName: event_type
       required:
@@ -288,3 +290,27 @@ components:
           required:
             - code
             - message
+
+    LoginEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            username:
+              type: string
+            password:
+              type: string
+          required:
+            - username
+            - password
+
+    LogoutEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          properties:
+            token:
+              type: string
+          required:
+            - token
+

@@ -25,12 +25,12 @@ type EncryptedUpgrader struct {
 func NewEncryptedUpgrader() *EncryptedUpgrader {
 	e, err := encrypting.NewDiffieHellmanEncrypter()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	return &EncryptedUpgrader{
 		upgrader: ws.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
+			CheckOrigin: func(r *http.Request) bool { // TODO
 				//origin := r.Header.Get("Origin")
 				//addr, err := url.Parse(origin)
 				//if err != nil {
@@ -71,7 +71,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 		if err != nil {
 			return err
 		}
-		log.Println("got encrypted message: ", string(message))
+
 		if messageType != ws.TextMessage {
 			_ = s.SendPlain("message type must be text")
 			continue

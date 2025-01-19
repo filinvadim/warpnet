@@ -27,12 +27,12 @@ import (
 	"go.uber.org/zap/zapcore"
 	"log"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
 const (
-	NetworkName    = "warpnet"
-	ProtocolPrefix = "/" + NetworkName
+	ProtocolPrefix = "/warpnet"
 )
 
 type PersistentLayer interface {
@@ -48,10 +48,11 @@ type NodeLogger interface {
 }
 
 type WarpNode struct {
-	node   types.P2PNode
-	mdns   types.WarpMDNS
-	relay  types.WarpRelayCloser
-	pubsub types.WarpGossiper
+	node     types.P2PNode
+	mdns     types.WarpMDNS
+	relay    types.WarpRelayCloser
+	pubsub   types.WarpGossiper
+	isClosed *atomic.Bool
 }
 
 func createNode(
@@ -86,8 +87,8 @@ func createNode(
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(NetworkName))), // TODO shuffle name. "warpnet" now
-		libp2p.UserAgent(NetworkName),
+		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))), // TODO shuffle name. "warpnet" now
+		libp2p.UserAgent(conf.Node.PSK),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.EnableNATService(),
@@ -103,7 +104,7 @@ func createNode(
 		return nil, err
 	}
 
-	mdnsService := mdns.NewMdnsService(node, NetworkName, NewDiscoveryNotifee(node))
+	mdnsService := mdns.NewMdnsService(node, conf.Node.PSK, NewDiscoveryNotifee(node))
 	relay, err := relayv2.New(node)
 	if err != nil {
 		return nil, err
@@ -115,10 +116,11 @@ func createNode(
 	}
 
 	n := &WarpNode{
-		node:   node,
-		mdns:   mdnsService,
-		relay:  relay,
-		pubsub: pubsub,
+		node:     node,
+		mdns:     mdnsService,
+		relay:    relay,
+		pubsub:   pubsub,
+		isClosed: new(atomic.Bool),
 	}
 
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -174,7 +176,6 @@ func NewRegularNode(
 	conf config.Config,
 	l NodeLogger,
 ) (_ *WarpNode, err error) {
-	//core := l.With([]logger.Field{{Key: "node", String: "member"}})
 	logging.SetPrimaryCore(l)
 
 	privKey := db.PrivateKey()
@@ -229,7 +230,7 @@ func (n *WarpNode) Addresses() (addrs []string) {
 	return addrs
 }
 
-func (n *WarpNode) Stop() error {
+func (n *WarpNode) Stop() {
 	log.Println("shutting down node...")
 	defer func() {
 		if r := recover(); r != nil {
@@ -245,8 +246,11 @@ func (n *WarpNode) Stop() error {
 	if n.pubsub != nil {
 		_ = n.pubsub.Close()
 	}
-
-	return n.node.Close()
+	if err := n.node.Close(); err != nil {
+		log.Printf("failed to close node: %v", err)
+	}
+	n.isClosed.Store(true)
+	return
 }
 
 func setupPrivateDHT(
@@ -267,11 +271,8 @@ func setupPrivateDHT(
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		if err := DHT.Bootstrap(ctx); err != nil {
-			log.Printf("failed to bootstrap dht: %v\n", err)
-		}
-	}()
+	go DHT.Bootstrap(ctx)
+
 	if err = <-DHT.RefreshRoutingTable(); err != nil {
 		log.Printf("failed to refresh kdht routing table: %v\n", err)
 	}

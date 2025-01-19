@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/logger"
+	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
 	"log"
@@ -26,7 +27,7 @@ import (
 
 type API struct {
 	*handlers.StaticController
-	*handlers.AuthController
+	*handlers.WSController
 }
 
 func main() {
@@ -47,14 +48,14 @@ func main() {
 
 	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 
-	db, err := storage.New(getAppPath(), false, conf.Database.DirName, l)
+	db, dbCloser, err := storage.New(getAppPath(), false, conf.Database.DirName, l)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
-	defer db.Close()
+	defer dbCloser()
 
-	nodeRepo := database.NewNodeRepo(db)
-	defer nodeRepo.Close()
+	nodeRepo, closer := database.NewNodeRepo(db)
+	defer closer()
 
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
@@ -63,10 +64,14 @@ func main() {
 	//tweetRepo := database.NewTweetRepo(db)
 	//replyRepo := database.NewRepliesRepo(db)
 
-	var nodeReadyChan = make(chan string, 1)
-	defer close(nodeReadyChan)
-	var authReadyChan = make(chan struct{})
-	defer close(authReadyChan)
+	var (
+		nodeReadyChan = make(chan string, 1)
+		authReadyChan = make(chan struct{})
+	)
+	defer func() {
+		close(nodeReadyChan)
+		close(authReadyChan)
+	}()
 
 	serverLogger := logger.NewUnifiedLogger(conf.Server.Logging.Level, true)
 	interfaceServer, err := server.NewInterfaceServer(conf, serverLogger)
@@ -85,12 +90,13 @@ func main() {
 		authRepo, userRepo,
 	}
 
-	authCtrl := handlers.NewAuthController(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
+	authService := auth.NewAuthService(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
+	wsCtrl := handlers.NewWSController(conf, authService)
 	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
 	interfaceServer.RegisterHandlers(&API{
 		staticCtrl,
-		authCtrl,
+		wsCtrl,
 	})
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()
@@ -114,11 +120,7 @@ func main() {
 	}
 	nodeReadyChan <- n.ID()
 
-	defer func() {
-		if err := n.Stop(); err != nil {
-			log.Fatalf("failed to stop node: %v", err)
-		}
-	}()
+	defer n.Stop()
 
 	<-interruptChan
 	log.Println("interrupted...")

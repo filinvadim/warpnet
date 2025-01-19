@@ -49,7 +49,7 @@ func New(
 	isInMemory bool,
 	dataFolder string,
 	logger badger.Logger,
-) (*DB, error) {
+) (*DB, func(), error) {
 	dbPath := filepath.Join(path, dataFolder)
 	opts := badger.
 		DefaultOptions(dbPath).
@@ -65,7 +65,7 @@ func New(
 
 	isDirEmpty, err := isDirectoryEmpty(dbPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	storage := &DB{
@@ -73,7 +73,7 @@ func New(
 		sequence: nil, opts: opts, dbPath: dbPath, isDirEmpty: isDirEmpty,
 	}
 
-	return storage, nil
+	return storage, storage.Close, nil
 }
 
 func isDirectoryEmpty(dirPath string) (bool, error) {

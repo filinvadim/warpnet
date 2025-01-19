@@ -132,6 +132,19 @@ type GetUserEvent struct {
 	UserId    string `json:"userId"`
 }
 
+// LoginEvent defines model for LoginEvent.
+type LoginEvent struct {
+	EventType string `json:"event_type"`
+	Password  string `json:"password"`
+	Username  string `json:"username"`
+}
+
+// LogoutEvent defines model for LogoutEvent.
+type LogoutEvent struct {
+	EventType string `json:"event_type"`
+	Token     string `json:"token"`
+}
+
 // NewChatEvent defines model for NewChatEvent.
 type NewChatEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
@@ -541,6 +554,62 @@ func (t *Event_Data) MergeGetReplyEvent(v GetReplyEvent) error {
 	return err
 }
 
+// AsLoginEvent returns the union data inside the Event_Data as a LoginEvent
+func (t Event_Data) AsLoginEvent() (LoginEvent, error) {
+	var body LoginEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLoginEvent overwrites any union data inside the Event_Data as the provided LoginEvent
+func (t *Event_Data) FromLoginEvent(v LoginEvent) error {
+	v.EventType = "LoginEvent"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLoginEvent performs a merge with any union data inside the Event_Data, using the provided LoginEvent
+func (t *Event_Data) MergeLoginEvent(v LoginEvent) error {
+	v.EventType = "LoginEvent"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsLogoutEvent returns the union data inside the Event_Data as a LogoutEvent
+func (t Event_Data) AsLogoutEvent() (LogoutEvent, error) {
+	var body LogoutEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLogoutEvent overwrites any union data inside the Event_Data as the provided LogoutEvent
+func (t *Event_Data) FromLogoutEvent(v LogoutEvent) error {
+	v.EventType = "LogoutEvent"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLogoutEvent performs a merge with any union data inside the Event_Data, using the provided LogoutEvent
+func (t *Event_Data) MergeLogoutEvent(v LogoutEvent) error {
+	v.EventType = "LogoutEvent"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t Event_Data) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"event_type"`
@@ -571,6 +640,10 @@ func (t Event_Data) ValueByDiscriminator() (interface{}, error) {
 		return t.AsGetTweetEvent()
 	case "GetUserEvent":
 		return t.AsGetUserEvent()
+	case "LoginEvent":
+		return t.AsLoginEvent()
+	case "LogoutEvent":
+		return t.AsLogoutEvent()
 	case "NewFollowEvent":
 		return t.AsNewFollowEvent()
 	case "NewReplyEvent":
@@ -599,25 +672,25 @@ func (t *Event_Data) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xZUW/bNhD+Kwa3R6ZJsWEPetuGrijQeUCRYg9FINDS2eYikRp5jmsE/u/DUXJEyZRN",
-	"GXKXhz7Flo/H7z5+95FUnlmmy0orUGhZ8sxstoZSuI+/CQvvnkAhfamMrsCgBPcT0OMUdxXQt/ovs2ik",
-	"WrH9njMD/26kgZwlX/zYB36I1Yt/IEO25+ydMdq8TCOK4q8lS748sx8NLFnCfrht8d024G5bZHveh5bp",
-	"3AclFcIKDM1UgrViFYHYpWjjj1E/EO4D5FzazMhSKoHaeFTt5qKkQV79e94DmwsUrmy1iyjbo4rqPhU6",
-	"h+39FgCjoz9biE/9hy4KvY3PrZYjBrwH/LUoHHobPeJellBIBfED4tl5DxjPTo2e4u2YAZ+gKiTYaEop",
-	"fhc9gR/9wEcpds8ZyhIsirKi0KU2pUCWkHThhn5i/Ew7teND/V/X//taHFZ7GhegfPRBIpTuw6lMuS6F",
-	"VCmBIEgNRmGM2NH3bGNsTVSvUM4KWUoM283GgkllHmE3Dms7IOw3NU9/1p40NVVhnBdVztnXm5W+aZ5u",
-	"pMJffg6WfK7UTktMU+lU1XBWCUM9YqixhsgzWmOUAA6Bx2lP8eM75Gujh6T8IaLyJu5UmZ6VXrtKadN6",
-	"owIf+kLrAoTqBNCAYMTorgjXTU40Zc0GBEKeCoy1cM6WRpep52GlVB9BrXDNkreBcNTRwT0NdCbqJOI+",
-	"8EGNNJb4jRxx4HE8URSp3D4b0xwNDQ0gN/0gEd4uPwkNUR53ZQP0Zhisu3v2u7D0kSfSw9TtKXISypHy",
-	"fRiW2AhP5S/JBolrT7WTgJ/E9Oew/W5+kebXu4lNwhaBA0vJBnanOWyv4LgXrJF3nY882ze42XBlU1uo",
-	"a8FIhM5LTmC7itdMhK17w/9mQryCgUUSQjMP8eHfJpNruFHsoaRrS8cbSpWPhNIzL+dSkQ7WmS70HiDQ",
-	"p8moq6pW2CjhjFtfsgT//7GvrdBLdmaTeGH1o3wM0OkcIB7+Bdubp4vDXCdQfoIXT3rdQO/DMCcUViEf",
-	"YfT7K7fKgfdXLlma6Y3qAqtvoZyIkuWmZMkdD7zHao7kgxcAR9horIe1DsA9pLwY8fC9gzOErzihjC5r",
-	"7FpohMTv6pZo7t2IRvf652YX62pTPAkUpkPmQiphdiFRLkT2uDJ6o/JUlo0TxwyTOsj5QhpcUxfEt8VF",
-	"22Tz7iZd7DpqPNZAT3DNQGNTRZoK6O1YY533QGOnkmo1Yqohi9CZQKlV8Eelcxhsgbq74gH4Ej/TDVtY",
-	"WNlb6I0p4o4SpJ+O4A9VeGtLqPsr5q9GVwZneoZQSLV0qs3BZkZWNaP1f/fsbKnNTMxySagXG4R8dr+V",
-	"iGBuyFNnoqoK2awCZyixoOx/C1PN5oBbbR4ZZ09gbJ307Zu7N3fEkq5AiUqyhP3kHlHv49q6s+5/AQAA",
-	"//+P3SyHkR0AAA==",
+	"H4sIAAAAAAAC/+xZwY7bNhD9FYPtkZvdoEUPurVFGgTYukCwQQ/BQqClsc1aIlWSWsVY+N+LoSSLkimb",
+	"MuQ0h5zWkobDN48zb0juK0lkXkgBwmgSvRKdbCFn9udvTMO7FxAGHwolC1CGg/0E+Do2+wLwqf5LtFFc",
+	"bMjhQImCf0uuICXRZ9f2mba2cvUPJIYcKHmnlFTHaViW/bUm0edX8qOCNYnID/cdvvsG3H2H7ECH0BKZ",
+	"uqC4MLABhTPloDXbBCC2Ljr7U9TPiLuFnHKdKJ5zwYxUDlX7JctxkBP/gQ7ApswwG7bYB4TtUIVxnzNd",
+	"QvVUAZhg608awl3/IbNMVuG+xXrCgPdgfs0yi14Hj3jiOWRcQPiAcHbegwlnp0aP9nrKgI9QZBx0MKVo",
+	"vw+eYIL1o9xwEWwqy5bDZzqpEA6UGJ6DNiwv0HQtVc4MibAi4A4/EXqhSrvxPlmpaf19y9okmkdc0B/+",
+	"4AZy++Ocp1TmjIsYQSCkBiNTiu3xOSmVrokaBEpJxnNu/CpWalAxTwNUzGLtBvhlrObpz1rq5qbKj/Oq",
+	"yCn5creRd83bkgvzy8/ekC+F2qu0eSKdKxpKCqawRhTW6xh5SkoTlACt4anbc/y4wvut0YOp/CEg8sbu",
+	"XJiOQt86Sq7juv+BC30lZQZM9AxwgNdiclX440YlmjNmBcxAGjMTKuGUrJXMY0fDci4eQWzMlkRvPeZG",
+	"BhsPcqA3Uc8RdYGP5kgjiV9JEUdehxOFlsL22ZDiaGhoANnpR4lwNg+z0BCkcTcWQGeG0bj7W8orQ5+4",
+	"0W2n7jans1Bu0N+H8RSboKn06GyUuG6zPAv4WUTf2dbOlMRaV1KNUxpei9aSdh5HAzhutufJCbkDcRlh",
+	"bebHtITqe0cJ7CiDU/MsbCE40OhspOUvobpBG7tijZyrl8ADU4ObjEc2d1+yuhaI0Ar0GWw3EfCZsPVv",
+	"Y75aIt6gKwQSgjOP8eEe0aNbqFHoTq8vS6ctpUgnQhmIl1WpQAXrTee7XPHUaTTp/C+FaTLhglpfswT/",
+	"/166i5C6Lf5skziy+sh3HjqtAoTDv6K9OXnRznUG5Uc4atK3DfTJD3PGxMr4DiZfCtpV9lwKWmdxIkvR",
+	"B1Yf7SkSxfMyJ9ED9VwONuec0VOVJWwy1natPXBbl1cjHj/MUWLgi5kxja4r7DrREIlb1R3R1DlmTq71",
+	"T00X6+cme2GGqR6ZKy6Y2vuScsWS3UbJUqQxzxslDhnGpZfzFVdmi1UQXhZXtcnmQixe7XvZeJoDg4Rr",
+	"BiodC8wpT76d5ljvcm3qVFxsJkw1JhEyYYZL4f0oZAqjJVBXVzgAN8UvVEMFK80HC12qLGwrgfnTS/g2",
+	"CmdtEfVwxdzV6KfBhZpBFFysbdamoBPFi5rR+j+xerGWasEWKUfUq9JAuniquDGg7lBTF6woMt6sAiWG",
+	"mwy9/81UsViCqaTaEUpeQOna6ds3D28ekCVZgGAFJxH5yb7C2jdbbfe6/wUAAP//ULranT0fAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

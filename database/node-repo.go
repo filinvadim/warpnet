@@ -54,13 +54,15 @@ type batch struct {
 	writeBatch *badger.WriteBatch
 }
 
-func NewNodeRepo(db NodeStorer) *NodeRepo {
+func NewNodeRepo(db NodeStorer) (*NodeRepo, func()) {
 	nr := &NodeRepo{
 		db:       db,
 		stopChan: make(chan struct{}),
 	}
 
-	return nr
+	return nr, func() {
+		_ = nr.Close()
+	}
 }
 
 func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {

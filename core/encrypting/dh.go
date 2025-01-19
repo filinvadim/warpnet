@@ -74,7 +74,7 @@ func (e *DiffieHellmanEncrypter) PublicKey() []byte {
 func (e *DiffieHellmanEncrypter) DecryptMessage(encryptedMessage []byte) ([]byte, error) {
 	parts := strings.SplitN(string(encryptedMessage), ":", 2)
 	if len(parts) != 2 {
-		return nil, errors.New("invalid message format")
+		return nil, fmt.Errorf("invalid message format: %s", encryptedMessage)
 	}
 	ciphertext, err := base64.StdEncoding.DecodeString(parts[0])
 	if err != nil {

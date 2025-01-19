@@ -5,7 +5,6 @@ go 1.23.5
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/filinvadim/warpnet-frontend v0.0.0-20250118065823-b6e6f1112081
 	github.com/getkin/kin-openapi v0.127.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -49,6 +48,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elastic/gosigar v0.14.3 // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/filinvadim/warpnet-frontend v0.0.11 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

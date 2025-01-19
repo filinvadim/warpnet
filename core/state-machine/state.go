@@ -1,7 +1,7 @@
-package secret_store
+package state_machine
 
 import (
-	consensus "github.com/filinvadim/warpnet/core/consensus"
+	"github.com/filinvadim/warpnet/core/consensus"
 	"sync"
 )
 

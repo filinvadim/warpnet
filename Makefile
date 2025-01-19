@@ -26,4 +26,6 @@ gosec:
 	~/go/bin/gosec ./...
 
 get-frontend:
-	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend@b6e6f1112081fb4962547dcc1d0801809427f454
+	rm -rf vendor/github.com/filinvadim/warpnet-frontend/dist
+	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend
+	go mod vendor

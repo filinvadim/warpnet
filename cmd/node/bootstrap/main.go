@@ -37,11 +37,7 @@ func main() {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}
 
-	defer func() {
-		if err := n.Stop(); err != nil {
-			log.Fatalf("failed to stop bootstrap node: %v", err)
-		}
-	}()
+	defer n.Stop()
 
 	<-interruptChan
 	log.Println("bootstrap node interrupted...")

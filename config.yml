@@ -2,12 +2,13 @@ version: 0.0.1
 node:
     seed_id: 2
     bootstrap:
-      - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWJAqBh1FFmFAo6wxSYKYYPuSAzEaoorPx2oiwyuAQxtZu"
+      - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo"
     listen_addrs:
       - "/ip4/0.0.0.0/tcp/4001"
       - "/ip6/::/tcp/4001"
     logging:
       level: info
+    psk: 'warpnet'
 database:
     dirName: "storage"
 server:

@@ -16,11 +16,11 @@ import (
 func setupTimelineTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttimeline"
 	l := logger.NewUnifiedLogger("debug", true)
-	db, _ := storage.New(path, true, "storage", l)
+	db, closer, _ := storage.New(path, true, "storage", l)
 	db.Run("", "")
 
 	t.Cleanup(func() {
-		db.Close()
+		closer()
 		os.RemoveAll(path)
 	})
 

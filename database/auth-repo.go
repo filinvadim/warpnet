@@ -70,7 +70,7 @@ func (repo *AuthRepo) Authenticate(username, password string) (token string, err
 		return "", err
 	}
 	repo.privateKey = privateKey
-	return token, nil
+	return repo.sessionToken, nil
 }
 
 func (repo *AuthRepo) SessionToken() string {

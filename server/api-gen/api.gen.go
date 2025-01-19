@@ -7,14 +7,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
 	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -22,195 +19,27 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
-// Error defines model for Error.
-type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// ErrorMessage defines model for ErrorMessage.
-type ErrorMessage struct {
-	Code        int    `json:"code"`
-	Message     string `json:"message"`
-	MessageType string `json:"message_type"`
-}
-
-// LoginMessage defines model for LoginMessage.
-type LoginMessage struct {
-	MessageType string `json:"message_type"`
-	Password    string `json:"password"`
-	Username    string `json:"username"`
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+	Code      int     `json:"code"`
+	Message   string  `json:"message"`
+	MessageId *string `json:"message_id,omitempty"`
 }
 
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
-	Token string            `json:"token"`
-	User  externalRef0.User `json:"user"`
+	MessageId string `json:"message_id"`
+	Token     string `json:"token"`
+	User      Owner  `json:"user"`
 }
 
-// LogoutMessage defines model for LogoutMessage.
-type LogoutMessage struct {
-	MessageType string `json:"message_type"`
-	Token       string `json:"token"`
-}
+// Owner defines model for Owner.
+type Owner = externalRef0.User
 
 // WebsocketMessage defines model for WebsocketMessage.
 type WebsocketMessage struct {
-	Timestamp *time.Time `json:"timestamp,omitempty"`
-	union     json.RawMessage
-}
-
-// AsLoginMessage returns the union data inside the WebsocketMessage as a LoginMessage
-func (t WebsocketMessage) AsLoginMessage() (LoginMessage, error) {
-	var body LoginMessage
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromLoginMessage overwrites any union data inside the WebsocketMessage as the provided LoginMessage
-func (t *WebsocketMessage) FromLoginMessage(v LoginMessage) error {
-	v.MessageType = "LoginMessage"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeLoginMessage performs a merge with any union data inside the WebsocketMessage, using the provided LoginMessage
-func (t *WebsocketMessage) MergeLoginMessage(v LoginMessage) error {
-	v.MessageType = "LoginMessage"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsLogoutMessage returns the union data inside the WebsocketMessage as a LogoutMessage
-func (t WebsocketMessage) AsLogoutMessage() (LogoutMessage, error) {
-	var body LogoutMessage
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromLogoutMessage overwrites any union data inside the WebsocketMessage as the provided LogoutMessage
-func (t *WebsocketMessage) FromLogoutMessage(v LogoutMessage) error {
-	v.MessageType = "LogoutMessage"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeLogoutMessage performs a merge with any union data inside the WebsocketMessage, using the provided LogoutMessage
-func (t *WebsocketMessage) MergeLogoutMessage(v LogoutMessage) error {
-	v.MessageType = "LogoutMessage"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsErrorMessage returns the union data inside the WebsocketMessage as a ErrorMessage
-func (t WebsocketMessage) AsErrorMessage() (ErrorMessage, error) {
-	var body ErrorMessage
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromErrorMessage overwrites any union data inside the WebsocketMessage as the provided ErrorMessage
-func (t *WebsocketMessage) FromErrorMessage(v ErrorMessage) error {
-	v.MessageType = "ErrorMessage"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeErrorMessage performs a merge with any union data inside the WebsocketMessage, using the provided ErrorMessage
-func (t *WebsocketMessage) MergeErrorMessage(v ErrorMessage) error {
-	v.MessageType = "ErrorMessage"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t WebsocketMessage) Discriminator() (string, error) {
-	var discriminator struct {
-		Discriminator string `json:"message_type"`
-	}
-	err := json.Unmarshal(t.union, &discriminator)
-	return discriminator.Discriminator, err
-}
-
-func (t WebsocketMessage) ValueByDiscriminator() (interface{}, error) {
-	discriminator, err := t.Discriminator()
-	if err != nil {
-		return nil, err
-	}
-	switch discriminator {
-	case "ErrorMessage":
-		return t.AsErrorMessage()
-	case "LoginMessage":
-		return t.AsLoginMessage()
-	case "LogoutMessage":
-		return t.AsLogoutMessage()
-	default:
-		return nil, errors.New("unknown discriminator value: " + discriminator)
-	}
-}
-
-func (t WebsocketMessage) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	object := make(map[string]json.RawMessage)
-	if t.union != nil {
-		err = json.Unmarshal(b, &object)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if t.Timestamp != nil {
-		object["timestamp"], err = json.Marshal(t.Timestamp)
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling 'timestamp': %w", err)
-		}
-	}
-	b, err = json.Marshal(object)
-	return b, err
-}
-
-func (t *WebsocketMessage) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	if err != nil {
-		return err
-	}
-	object := make(map[string]json.RawMessage)
-	err = json.Unmarshal(b, &object)
-	if err != nil {
-		return err
-	}
-
-	if raw, found := object["timestamp"]; found {
-		err = json.Unmarshal(raw, &t.Timestamp)
-		if err != nil {
-			return fmt.Errorf("error reading 'timestamp': %w", err)
-		}
-	}
-
-	return err
+	EventType string `json:"event_type"`
+	MessageId string `json:"message_id"`
 }
 
 // ServerInterface represents all server handlers.
@@ -302,21 +131,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

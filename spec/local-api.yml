@@ -48,114 +48,41 @@ paths:
         '500':
           description: Internal server error
 
-#  /v1/api/auth/login:
-#    post:
-#      tags:
-#        - Auth
-#      summary: Store credentials
-#      deprecated: true
-#      requestBody:
-#        required: true
-#        content:
-#          application/json:
-#            schema:
-#              $ref: '#/components/schemas/AuthRequest'
-#      responses:
-#        '200':
-#          description: Owner user details
-#          content:
-#            application/json:
-#              schema:
-#                $ref: './domain.yml#/components/schemas/User'
-#        '401':
-#          description: Auth failed
-#        '500':
-#          description: Internal handler error
-
-#  /v1/api/auth/logout:
-#    post:
-#      tags:
-#        - Auth
-#      parameters:
-#        - in: header
-#          name: X-SESSION-TOKEN
-#          required: true
-#          schema:
-#            type: string
-#      summary: Close service
-#      responses:
-#        '200':
-#          description: Success
-#        '500':
-#          description: Internal handler error
-
 components:
   schemas:
     WebsocketMessage:
-      discriminator:
-        propertyName: message_type
+      type: object
       properties:
-        timestamp:
+        event_type:
           type: string
-          format: date-time
-      anyOf:
-        - '$ref': '#/components/schemas/LoginMessage'
-        - '$ref': '#/components/schemas/LogoutMessage'
-        - '$ref': '#/components/schemas/ErrorMessage'
+        message_id:
+          type: string
+      required:
+        - message_id
+        - event_type
 
     LoginResponse:
       type: object
       properties:
+        message_id:
+          type: string
         token:
           type: string
         user:
-          $ref: './domain.yml#/components/schemas/User'
+          $ref: '#/components/schemas/Owner'
       required:
         - token
         - user
+        - message_id
 
-    LoginMessage:
+    Owner:
+      $ref: './domain.yml#/components/schemas/User'
+
+    ErrorResponse:
       type: object
       properties:
-        username:
+        message_id:
           type: string
-        password:
-          type: string
-        message_type:
-          type: string
-      required:
-        - username
-        - password
-        - message_type
-
-    LogoutMessage:
-      type: object
-      properties:
-        token:
-          type: string
-        message_type:
-          type: string
-      required:
-        - message_type
-        - token
-
-    ErrorMessage:
-      type: object
-      properties:
-        message_type:
-          type: string
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-        - code
-        - message
-        - message_type
-
-    Error:
-      type: object
-      properties:
         code:
           type: integer
         message:
