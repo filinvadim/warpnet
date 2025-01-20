@@ -1,6 +1,8 @@
 package node
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	go_crypto "crypto"
 	"fmt"
@@ -16,6 +18,8 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -24,6 +28,7 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
 	"log"
 	"strconv"
@@ -48,6 +53,7 @@ type NodeLogger interface {
 }
 
 type WarpNode struct {
+	ctx      context.Context
 	node     types.P2PNode
 	mdns     types.WarpMDNS
 	relay    types.WarpRelayCloser
@@ -116,6 +122,7 @@ func createNode(
 	}
 
 	n := &WarpNode{
+		ctx:      ctx,
 		node:     node,
 		mdns:     mdnsService,
 		relay:    relay,
@@ -213,6 +220,48 @@ func NewRegularNode(
 	return n, err
 }
 
+const serverNodeAddr = "/ip4/127.0.0.1/tcp/4001/p2p/"
+
+func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config) (_ *WarpNode, err error) {
+	libp2p.DefaultMuxers = nil
+	client, err := libp2p.New(
+		libp2p.NoListenAddrs,
+		libp2p.DisableMetrics(),
+		libp2p.DisableRelay(),
+		libp2p.RandomIdentity,
+		libp2p.Ping(false),
+		libp2p.ForceReachabilityPrivate(),
+		libp2p.DisableIdentifyAddressDiscovery(),
+		libp2p.Security(noise.ID, noise.New),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))),
+		libp2p.UserAgent(conf.Node.PSK),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating client node: %s", err)
+	}
+	serverAddr := serverNodeAddr + serverNodeId
+	maddr, err := ma.NewMultiaddr(serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("parsing server address: %s", err)
+	}
+
+	serverInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		return nil, fmt.Errorf("creating Address info: %s", err)
+	}
+
+	if err := client.Connect(context.Background(), *serverInfo); err != nil {
+		return nil, fmt.Errorf("connecting to server node %s: %v", serverInfo.ID, err)
+	}
+	n := &WarpNode{
+		ctx:      ctx,
+		node:     client,
+		isClosed: new(atomic.Bool),
+	}
+	return n, nil
+}
+
 func (n *WarpNode) ID() string {
 	if n == nil || n.node == nil {
 		return ""
@@ -279,28 +328,41 @@ func setupPrivateDHT(
 	return DHT, nil
 }
 
-func sendMessage(h types.P2PNode, peerID types.WarpPeerID, protocol types.WarpDiscriminator, message string) {
-	// Устанавливаем соединение
-	s, err := h.NewStream(context.Background(), peerID, protocol)
+// path = "/example/1.0.0"
+func (n *WarpNode) StreamSend(peerID types.WarpPeerID, path types.WarpDiscriminator, data []byte) ([]byte, error) {
+	stream, err := n.node.NewStream(n.ctx, peerID, path)
 	if err != nil {
-		log.Printf("Failed to create stream: %s", err)
-		return
+		return nil, fmt.Errorf("opening stream: %s", err)
 	}
-	defer s.Close()
+	defer closeStream(stream)
 
-	// Отправляем сообщение
-	_, err = s.Write([]byte(message))
-	if err != nil {
-		log.Printf("Failed to write to stream: %s", err)
-		return
-	}
+	var rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 
-	// Читаем ответ
-	buf := make([]byte, 1024)
-	n, err := s.Read(buf)
-	if err != nil {
-		log.Printf("Error reading from stream: %s", err)
-		return
+	if !bytes.HasSuffix(data, []byte("\n")) {
+		data = append(data, []byte("\n")...)
 	}
-	log.Printf("Response: %s", string(buf[:n]))
+	_, err = rw.Write(data)
+	if err != nil {
+		return nil, fmt.Errorf("writing to stream: %s", err)
+	}
+	defer flush(rw)
+
+	response, err := rw.ReadBytes('\n')
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %s", err)
+	}
+	fmt.Printf("Response from server: %s\n", response)
+	return response, nil
+}
+
+func closeStream(stream network.Stream) {
+	if err := stream.Close(); err != nil {
+		log.Printf("closing stream: %s", err)
+	}
+}
+
+func flush(rw *bufio.ReadWriter) {
+	if err := rw.Flush(); err != nil {
+		log.Printf("flush: %s", err)
+	}
 }

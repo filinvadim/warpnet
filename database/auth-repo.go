@@ -39,38 +39,42 @@ func NewAuthRepo(db AuthStorer) *AuthRepo {
 	return &AuthRepo{db: db, privateKey: nil}
 }
 
-func (repo *AuthRepo) Authenticate(username, password string) (token string, err error) {
+func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 	if repo == nil {
-		return "", ErrNilAuthRepo
+		return ErrNilAuthRepo
 	}
 	if repo.db == nil {
-		return "", storage.ErrNotRunning
-	}
-
-	n, err := rand.Int(rand.Reader, big.NewInt(127))
-	if err != nil {
-		return "", err
-	}
-	randChar := string(uint8(n.Uint64())) //#nosec
-	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
-	repo.sessionToken = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
-
-	seed := base64.StdEncoding.EncodeToString(
-		encrypting.ConvertToSHA256(
-			[]byte(username + "@" + password + "@" + "seed"),
-		),
-	)
-	privateKey, err := encrypting.GenerateKeyFromSeed([]byte(seed))
-	if err != nil {
-		return "", fmt.Errorf("generate key from seed: %w", err)
+		return storage.ErrNotRunning
 	}
 
 	err = repo.db.Run(username, password)
 	if err != nil {
-		return "", err
+		return err
 	}
-	repo.privateKey = privateKey
-	return repo.sessionToken, nil
+	repo.sessionToken, repo.privateKey, err = repo.generateSecrets(username, password)
+	return err
+}
+
+func (repo *AuthRepo) generateSecrets(username, password string) (token string, pk crypto.PrivateKey, err error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(127))
+	if err != nil {
+		return "", nil, err
+	}
+	randChar := string(uint8(n.Uint64())) //#nosec
+	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
+	token = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
+
+	seed := base64.StdEncoding.EncodeToString(
+		encrypting.ConvertToSHA256(
+			[]byte(username + "@" + password + "@" + "seed"), // no random - private key must be determined
+		),
+	)
+	privateKey, err := encrypting.GenerateKeyFromSeed([]byte(seed))
+	if err != nil {
+		return "", nil, fmt.Errorf("generate private key from seed: %w", err)
+	}
+
+	return token, privateKey, nil
 }
 
 func (repo *AuthRepo) SessionToken() string {
@@ -80,6 +84,9 @@ func (repo *AuthRepo) SessionToken() string {
 func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
 	if repo == nil {
 		return ErrNilAuthRepo
+	}
+	if repo.privateKey == nil {
+		panic("private key is nil")
 	}
 	return repo.privateKey
 }

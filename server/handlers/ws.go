@@ -3,11 +3,11 @@ package handlers
 import (
 	"context"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/node"
 	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/auth"
-	client "github.com/filinvadim/warpnet/server/node-client"
 	"github.com/filinvadim/warpnet/server/websocket"
 	"github.com/labstack/echo/v4"
 	"log"
@@ -21,7 +21,7 @@ type WSController struct {
 	ctx      context.Context
 	conf     config.Config
 
-	client *client.ClientNode
+	client *node.WarpNode
 }
 
 func NewWSController(
@@ -52,32 +52,37 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	var (
-		wsMsg    api.WebsocketMessage
+		wsMsg    api.BaseWSRequest
 		response any
 	)
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {
 		return nil, err
 	}
+	if wsMsg.MessageId == "" {
+		c.l.Warn("websocket request: missing message_id")
+	}
 
-	switch wsMsg.EventType {
-	case "LoginEvent": // TODO
-		var loginMsg event.LoginEvent
-		json.JSON.Unmarshal(msg, &loginMsg)
+	value, err := wsMsg.Data.ValueByDiscriminator()
+	if err != nil {
+		return nil, err
+	}
 
-		loginResp, err := c.auth.AuthLogin(c.l, loginMsg)
+	switch value.(type) {
+	case event.LoginEvent:
+		loginResp, err := c.auth.AuthLogin(c.l, value.(event.LoginEvent))
 		if err != nil {
 			return nil, err
 		}
-		c.upgrader.SetNewSalt(loginResp.Token)
+		c.upgrader.SetNewSalt(loginResp.Data.Token) // make conn more secure after successful auth
 		loginResp.MessageId = wsMsg.MessageId
 		response = loginResp
 
-		c.client, err = client.NewNodeClient(c.ctx, loginResp.User.NodeId, c.conf)
+		c.client, err = node.NewClientNode(c.ctx, loginResp.Data.User.NodeId, c.conf)
 		if err != nil {
 			log.Printf("create node client: %v", err)
 		}
-	case "LogoutEvent": // TODO
-		defer c.client.Close()
+	case event.LogoutEvent:
+		defer c.client.Stop()
 		defer func() {
 			if err := c.upgrader.Close(); err != nil {
 				c.l.Errorf("upgrader close: %v", err)
@@ -87,7 +92,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		return nil, err
 	default:
 		if !c.auth.IsAuthenticated() {
-			response = api.ErrorResponse{Code: http.StatusUnauthorized, Message: "not authenticated"}
+			response = api.ErrorResponse{Data: &api.ErrorData{Code: http.StatusUnauthorized, Message: "not authenticated"}}
 			break
 		}
 		// TODO

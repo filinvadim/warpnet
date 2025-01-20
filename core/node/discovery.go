@@ -10,6 +10,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,6 +41,9 @@ type Gossip struct {
 	tick     *time.Ticker
 	subs     []*pubsub.Subscription
 	topics   map[string]*pubsub.Topic
+
+	mx         *sync.RWMutex
+	knownPeers map[peer.ID]struct{}
 }
 
 func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
@@ -56,13 +60,15 @@ func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
 	}
 
 	g := &Gossip{
-		ctx:      ctx,
-		pubsub:   ps,
-		node:     h,
-		stopChan: make(chan struct{}),
-		tick:     time.NewTicker(time.Minute),
-		subs:     []*pubsub.Subscription{},
-		topics:   map[string]*pubsub.Topic{},
+		ctx:        ctx,
+		pubsub:     ps,
+		node:       h,
+		stopChan:   make(chan struct{}),
+		tick:       time.NewTicker(time.Minute),
+		subs:       []*pubsub.Subscription{},
+		topics:     map[string]*pubsub.Topic{},
+		mx:         &sync.RWMutex{},
+		knownPeers: map[peer.ID]struct{}{},
 	}
 	g.topics[topic.String()] = topic
 
@@ -140,10 +146,14 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 			if err != nil || peerInfo == nil {
 				return fmt.Errorf("failed to parse peer info: %w", err)
 			}
+			if _, ok := g.knownPeers[peerInfo.ID]; ok {
+				continue
+			}
 			if err := g.node.Connect(g.ctx, *peerInfo); err != nil {
 				return fmt.Errorf("failed to connect to peer: %w", err)
 			}
 			log.Printf("connected to peer: %s", discoveryMsg.PeerID)
+			g.knownPeers[peerInfo.ID] = struct{}{}
 		}
 	}
 }

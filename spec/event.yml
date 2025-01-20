@@ -8,43 +8,18 @@ paths: {}
 
 components:
   schemas:
-    Event:
-      type: object
-      discriminator:
-        propertyName: event_type
-      properties:
-        timestamp:
-          type: string
-          format: date-time
-        data:
-          anyOf:
-            - $ref: '#/components/schemas/ErrorEvent'
-            - $ref: '#/components/schemas/NewTweetEvent'
-            - $ref: '#/components/schemas/NewUserEvent'
-            - $ref: '#/components/schemas/NewFollowEvent'
-            - $ref: '#/components/schemas/NewUnfollowEvent'
-            - $ref: '#/components/schemas/GetAllTweetsEvent'
-            - $ref: '#/components/schemas/GetTimelineEvent'
-            - $ref: '#/components/schemas/GetTweetEvent'
-            - $ref: '#/components/schemas/GetUserEvent'
-            - $ref: '#/components/schemas/GetAllUsersEvent'
-            - $ref: '#/components/schemas/GetAllRepliesEvent'
-            - $ref: '#/components/schemas/NewReplyEvent'
-            - $ref: '#/components/schemas/GetReplyEvent'
-            - $ref: '#/components/schemas/LoginEvent'
-            - $ref: '#/components/schemas/LogoutEvent'
-          discriminator:
-            propertyName: event_type
-      required:
-        - timestamp
 
     BaseEvent:
       type: object
       properties:
+        timestamp:
+          type: string
+          format: date-time
         event_type:
           type: string
       required:
         - event_type
+        - timestamp
 
     NewMessageEvent:
       allOf:
@@ -313,4 +288,7 @@ components:
               type: string
           required:
             - token
+
+    Owner:
+      $ref: './domain.yml#/components/schemas/User'
 

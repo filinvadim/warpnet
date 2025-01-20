@@ -14,7 +14,8 @@ import (
 )
 
 type UserPersistencyLayer interface {
-	Authenticate(username, password string) (token string, err error)
+	Authenticate(username, password string) error
+	SessionToken() string
 	Create(user domain.User) (domain.User, error)
 	Owner() (domain.User, error)
 	CreateOwner(o domain.User) (err error)
@@ -54,11 +55,11 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	}
 	l.Infof("authenticating user %s", message.Username)
 
-	token, err := as.userPersistence.Authenticate(message.Username, message.Password)
-	if err != nil {
+	if err := as.userPersistence.Authenticate(message.Username, message.Password); err != nil {
 		l.Errorf("authentication failed: %v", err)
 		return resp, fmt.Errorf("authentication failed: %v", err)
 	}
+	token := as.userPersistence.SessionToken()
 
 	owner, err := as.userPersistence.Owner()
 	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
@@ -101,7 +102,13 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	}
 
 	as.isAuthenticated.Store(true)
-	return api.LoginResponse{"", token, owner}, nil
+
+	data := api.LoginData{
+		Token: token,
+		User:  owner,
+	}
+
+	return api.LoginResponse{Data: &data}, nil
 }
 
 func (as *AuthService) AuthLogout() error {

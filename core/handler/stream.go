@@ -72,18 +72,20 @@ func (d *NodeStreamHandler) RegisterHandlers(paths *openapi3.Paths) error {
 				return
 			}
 
-			log.Printf("Received message: %s", buf.String())
-			var ev event.Event
-			err = json.JSON.Unmarshal(buf.Bytes(), &ev)
-			if err != nil {
-				log.Printf("fail unmarshaling event: %s", err)
-				return
-			}
-			value, err := ev.Data.ValueByDiscriminator()
-			if err != nil {
-				log.Printf("fail getting discriminator value: %s", err)
-				return
-			}
+			var value interface{}
+
+			//log.Printf("Received message: %s", buf.String())
+			//var ev event.Event
+			//err = json.JSON.Unmarshal(buf.Bytes(), &ev)
+			//if err != nil {
+			//	log.Printf("fail unmarshaling event: %s", err)
+			//	return
+			//}
+			//value, err := ev.Data.ValueByDiscriminator()
+			//if err != nil {
+			//	log.Printf("fail getting discriminator value: %s", err)
+			//	return
+			//}
 
 			switch value.(type) {
 			//case event.NewUserEvent:

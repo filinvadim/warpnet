@@ -50,39 +50,80 @@ paths:
 
 components:
   schemas:
-    WebsocketMessage:
+    BaseWSRequest:
       type: object
       properties:
-        event_type:
+        timestamp:
           type: string
+          format: date-time
         message_id:
           type: string
+        data:
+          $ref: '#/components/schemas/Event'
       required:
         - message_id
-        - event_type
 
-    LoginResponse:
+    Event:
+      anyOf:
+        - $ref: '#/components/schemas/ErrorEvent'
+        - $ref: '#/components/schemas/NewTweetEvent'
+        - $ref: '#/components/schemas/NewUserEvent'
+        - $ref: '#/components/schemas/NewFollowEvent'
+        - $ref: '#/components/schemas/NewUnfollowEvent'
+        - $ref: '#/components/schemas/GetAllTweetsEvent'
+        - $ref: '#/components/schemas/GetTimelineEvent'
+        - $ref: '#/components/schemas/GetTweetEvent'
+        - $ref: '#/components/schemas/GetUserEvent'
+        - $ref: '#/components/schemas/GetAllUsersEvent'
+        - $ref: '#/components/schemas/GetAllRepliesEvent'
+        - $ref: '#/components/schemas/NewReplyEvent'
+        - $ref: '#/components/schemas/GetReplyEvent'
+        - $ref: '#/components/schemas/LoginEvent'
+        - $ref: '#/components/schemas/LogoutEvent'
+      discriminator:
+        propertyName: event_type
+
+    BaseWSResponse:
       type: object
       properties:
         message_id:
           type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - message_id
+
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseWSResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/LoginData'
+
+    LoginData:
+      type: object
+      properties:
         token:
           type: string
         user:
-          $ref: '#/components/schemas/Owner'
+          $ref: './event.yml#/components/schemas/Owner'
       required:
         - token
         - user
-        - message_id
-
-    Owner:
-      $ref: './domain.yml#/components/schemas/User'
 
     ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseWSResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ErrorData'
+
+    ErrorData:
       type: object
       properties:
-        message_id:
-          type: string
         code:
           type: integer
         message:
@@ -90,3 +131,69 @@ components:
       required:
         - code
         - message
+
+    NewMessageEvent:
+      $ref: './event.yml#/components/schemas/NewMessageEvent'
+
+    GetMessageEvent:
+      $ref: './event.yml#/components/schemas/GetMessageEvent'
+
+    GetAllMessagesEvent:
+      $ref: './event.yml#/components/schemas/GetAllMessagesEvent'
+
+    NewReplyEvent:
+      $ref: './event.yml#/components/schemas/NewReplyEvent'
+
+    GetReplyEvent:
+      $ref: './event.yml#/components/schemas/GetReplyEvent'
+
+    GetAllRepliesEvent:
+      $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
+
+    NewTweetEvent:
+      $ref: './event.yml#/components/schemas/NewTweetEvent'
+
+    GetTweetEvent:
+      $ref: './event.yml#/components/schemas/GetTweetEvent'
+
+    GetAllTweetsEvent:
+      $ref: './event.yml#/components/schemas/GetAllTweetsEvent'
+
+    GetTimelineEvent:
+      $ref: './event.yml#/components/schemas/GetTimelineEvent'
+
+    NewUserEvent:
+      $ref: './event.yml#/components/schemas/NewUserEvent'
+
+    GetUserEvent:
+      $ref: './event.yml#/components/schemas/GetUserEvent'
+
+    GetAllUsersEvent:
+      $ref: './event.yml#/components/schemas/GetAllUsersEvent'
+
+    NewChatEvent:
+      $ref: './event.yml#/components/schemas/NewChatEvent'
+
+    GetChatEvent:
+      $ref: './event.yml#/components/schemas/GetChatEvent'
+
+    GetAllChatsEvent:
+      $ref: './event.yml#/components/schemas/GetAllChatsEvent'
+
+    NewFollowEvent:
+      $ref: './event.yml#/components/schemas/NewFollowEvent'
+
+    NewUnfollowEvent:
+      $ref: './event.yml#/components/schemas/NewUnfollowEvent'
+
+    ErrorEvent:
+      $ref: './event.yml#/components/schemas/ErrorEvent'
+
+    LoginEvent:
+      $ref: './event.yml#/components/schemas/LoginEvent'
+
+    LogoutEvent:
+      $ref: './event.yml#/components/schemas/LogoutEvent'
+
+    BaseEvent:
+      $ref: './event.yml#/components/schemas/BaseEvent'

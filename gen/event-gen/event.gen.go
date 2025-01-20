@@ -7,8 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -17,30 +15,20 @@ import (
 
 	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/oapi-codegen/runtime"
 )
 
 // BaseEvent defines model for BaseEvent.
 type BaseEvent struct {
-	EventType string `json:"event_type"`
+	EventType string    `json:"event_type"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // ErrorEvent defines model for ErrorEvent.
 type ErrorEvent struct {
-	Code      int    `json:"code"`
-	EventType string `json:"event_type"`
-	Message   string `json:"message"`
-}
-
-// Event defines model for Event.
-type Event struct {
-	Data      *Event_Data `json:"data,omitempty"`
-	Timestamp time.Time   `json:"timestamp"`
-}
-
-// Event_Data defines model for Event.Data.
-type Event_Data struct {
-	union json.RawMessage
+	Code      int       `json:"code"`
+	EventType string    `json:"event_type"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // GetAllChatsEvent defines model for GetAllChatsEvent.
@@ -49,41 +37,46 @@ type GetAllChatsEvent struct {
 	Cursor    *string             `json:"cursor,omitempty"`
 	EventType string              `json:"event_type"`
 	Limit     *int                `json:"limit,omitempty"`
+	Timestamp time.Time           `json:"timestamp"`
 	UserId    string              `json:"user_id"`
 }
 
 // GetAllMessagesEvent defines model for GetAllMessagesEvent.
 type GetAllMessagesEvent struct {
-	ChatId    string  `json:"chat_id"`
-	Cursor    *string `json:"cursor,omitempty"`
-	EventType string  `json:"event_type"`
-	Limit     *uint64 `json:"limit,omitempty"`
+	ChatId    string    `json:"chat_id"`
+	Cursor    *string   `json:"cursor,omitempty"`
+	EventType string    `json:"event_type"`
+	Limit     *uint64   `json:"limit,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // GetAllRepliesEvent defines model for GetAllRepliesEvent.
 type GetAllRepliesEvent struct {
-	Cursor        *string `json:"cursor,omitempty"`
-	EventType     string  `json:"event_type"`
-	Limit         *uint64 `json:"limit,omitempty"`
-	ParentReplyId string  `json:"parent_reply_id"`
-	RootId        string  `json:"root_id"`
+	Cursor        *string   `json:"cursor,omitempty"`
+	EventType     string    `json:"event_type"`
+	Limit         *uint64   `json:"limit,omitempty"`
+	ParentReplyId string    `json:"parent_reply_id"`
+	RootId        string    `json:"root_id"`
+	Timestamp     time.Time `json:"timestamp"`
 }
 
 // GetAllTweetsEvent defines model for GetAllTweetsEvent.
 type GetAllTweetsEvent struct {
-	Cursor    *string `json:"cursor,omitempty"`
-	EventType string  `json:"event_type"`
-	Limit     *uint64 `json:"limit,omitempty"`
-	UserId    string  `json:"userId"`
+	Cursor    *string   `json:"cursor,omitempty"`
+	EventType string    `json:"event_type"`
+	Limit     *uint64   `json:"limit,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	UserId    string    `json:"userId"`
 }
 
 // GetAllUsersEvent defines model for GetAllUsersEvent.
 type GetAllUsersEvent struct {
-	Cursor      *string `json:"cursor,omitempty"`
-	EventType   string  `json:"event_type"`
-	IsFollowed  *bool   `json:"is_followed,omitempty"`
-	IsFollowing *bool   `json:"is_following,omitempty"`
-	Limit       *uint64 `json:"limit,omitempty"`
+	Cursor      *string   `json:"cursor,omitempty"`
+	EventType   string    `json:"event_type"`
+	IsFollowed  *bool     `json:"is_followed,omitempty"`
+	IsFollowing *bool     `json:"is_following,omitempty"`
+	Limit       *uint64   `json:"limit,omitempty"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // GetChatEvent defines model for GetChatEvent.
@@ -91,58 +84,66 @@ type GetChatEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
 	EventType  string    `json:"event_type"`
 	FromUserId string    `json:"from_user_id"`
+	Timestamp  time.Time `json:"timestamp"`
 	ToUserId   string    `json:"to_user_id"`
 }
 
 // GetMessageEvent defines model for GetMessageEvent.
 type GetMessageEvent struct {
-	ChatId    string  `json:"chat_id"`
-	EventType string  `json:"event_type"`
-	Id        string  `json:"id"`
-	UserId    string  `json:"user_id"`
-	Username  *string `json:"username,omitempty"`
+	ChatId    string    `json:"chat_id"`
+	EventType string    `json:"event_type"`
+	Id        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	UserId    string    `json:"user_id"`
+	Username  *string   `json:"username,omitempty"`
 }
 
 // GetReplyEvent defines model for GetReplyEvent.
 type GetReplyEvent struct {
-	EventType     string `json:"event_type"`
-	ParentReplyId string `json:"parent_reply_id"`
-	ReplyId       string `json:"reply_id"`
-	RootId        string `json:"root_id"`
+	EventType     string    `json:"event_type"`
+	ParentReplyId string    `json:"parent_reply_id"`
+	ReplyId       string    `json:"reply_id"`
+	RootId        string    `json:"root_id"`
+	Timestamp     time.Time `json:"timestamp"`
 }
 
 // GetTimelineEvent defines model for GetTimelineEvent.
 type GetTimelineEvent struct {
-	Cursor    *string `json:"cursor,omitempty"`
-	EventType string  `json:"event_type"`
-	Limit     *uint64 `json:"limit,omitempty"`
-	UserId    string  `json:"userId"`
+	Cursor    *string   `json:"cursor,omitempty"`
+	EventType string    `json:"event_type"`
+	Limit     *uint64   `json:"limit,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	UserId    string    `json:"userId"`
 }
 
 // GetTweetEvent defines model for GetTweetEvent.
 type GetTweetEvent struct {
-	EventType string `json:"event_type"`
-	TweetId   string `json:"tweetId"`
-	UserId    string `json:"userId"`
+	EventType string    `json:"event_type"`
+	Timestamp time.Time `json:"timestamp"`
+	TweetId   string    `json:"tweetId"`
+	UserId    string    `json:"userId"`
 }
 
 // GetUserEvent defines model for GetUserEvent.
 type GetUserEvent struct {
-	EventType string `json:"event_type"`
-	UserId    string `json:"userId"`
+	EventType string    `json:"event_type"`
+	Timestamp time.Time `json:"timestamp"`
+	UserId    string    `json:"userId"`
 }
 
 // LoginEvent defines model for LoginEvent.
 type LoginEvent struct {
-	EventType string `json:"event_type"`
-	Password  string `json:"password"`
-	Username  string `json:"username"`
+	EventType string    `json:"event_type"`
+	Password  string    `json:"password"`
+	Timestamp time.Time `json:"timestamp"`
+	Username  string    `json:"username"`
 }
 
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent struct {
-	EventType string `json:"event_type"`
-	Token     string `json:"token"`
+	EventType string    `json:"event_type"`
+	Timestamp time.Time `json:"timestamp"`
+	Token     string    `json:"token"`
 }
 
 // NewChatEvent defines model for NewChatEvent.
@@ -150,6 +151,7 @@ type NewChatEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
 	EventType  string    `json:"event_type"`
 	FromUserId string    `json:"from_user_id"`
+	Timestamp  time.Time `json:"timestamp"`
 	ToUserId   string    `json:"to_user_id"`
 }
 
@@ -157,6 +159,7 @@ type NewChatEvent struct {
 type NewFollowEvent struct {
 	EventType string       `json:"event_type"`
 	Request   *interface{} `json:"request,omitempty"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 // NewMessageEvent defines model for NewMessageEvent.
@@ -164,17 +167,20 @@ type NewMessageEvent struct {
 	CreatedAt *time.Time                `json:"created_at,omitempty"`
 	EventType string                    `json:"event_type"`
 	Message   *externalRef0.ChatMessage `json:"message,omitempty"`
+	Timestamp time.Time                 `json:"timestamp"`
 }
 
 // NewReplyEvent defines model for NewReplyEvent.
 type NewReplyEvent struct {
 	EventType string              `json:"event_type"`
+	Timestamp time.Time           `json:"timestamp"`
 	Tweet     *externalRef0.Tweet `json:"tweet,omitempty"`
 }
 
 // NewTweetEvent defines model for NewTweetEvent.
 type NewTweetEvent struct {
 	EventType string              `json:"event_type"`
+	Timestamp time.Time           `json:"timestamp"`
 	Tweet     *externalRef0.Tweet `json:"tweet,omitempty"`
 }
 
@@ -182,515 +188,40 @@ type NewTweetEvent struct {
 type NewUnfollowEvent struct {
 	EventType string       `json:"event_type"`
 	Request   *interface{} `json:"request,omitempty"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent struct {
 	EventType string             `json:"event_type"`
+	Timestamp time.Time          `json:"timestamp"`
 	User      *externalRef0.User `json:"user,omitempty"`
 }
 
-// AsErrorEvent returns the union data inside the Event_Data as a ErrorEvent
-func (t Event_Data) AsErrorEvent() (ErrorEvent, error) {
-	var body ErrorEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromErrorEvent overwrites any union data inside the Event_Data as the provided ErrorEvent
-func (t *Event_Data) FromErrorEvent(v ErrorEvent) error {
-	v.EventType = "ErrorEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeErrorEvent performs a merge with any union data inside the Event_Data, using the provided ErrorEvent
-func (t *Event_Data) MergeErrorEvent(v ErrorEvent) error {
-	v.EventType = "ErrorEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewTweetEvent returns the union data inside the Event_Data as a NewTweetEvent
-func (t Event_Data) AsNewTweetEvent() (NewTweetEvent, error) {
-	var body NewTweetEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewTweetEvent overwrites any union data inside the Event_Data as the provided NewTweetEvent
-func (t *Event_Data) FromNewTweetEvent(v NewTweetEvent) error {
-	v.EventType = "NewTweetEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewTweetEvent performs a merge with any union data inside the Event_Data, using the provided NewTweetEvent
-func (t *Event_Data) MergeNewTweetEvent(v NewTweetEvent) error {
-	v.EventType = "NewTweetEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewUserEvent returns the union data inside the Event_Data as a NewUserEvent
-func (t Event_Data) AsNewUserEvent() (NewUserEvent, error) {
-	var body NewUserEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewUserEvent overwrites any union data inside the Event_Data as the provided NewUserEvent
-func (t *Event_Data) FromNewUserEvent(v NewUserEvent) error {
-	v.EventType = "NewUserEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewUserEvent performs a merge with any union data inside the Event_Data, using the provided NewUserEvent
-func (t *Event_Data) MergeNewUserEvent(v NewUserEvent) error {
-	v.EventType = "NewUserEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewFollowEvent returns the union data inside the Event_Data as a NewFollowEvent
-func (t Event_Data) AsNewFollowEvent() (NewFollowEvent, error) {
-	var body NewFollowEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewFollowEvent overwrites any union data inside the Event_Data as the provided NewFollowEvent
-func (t *Event_Data) FromNewFollowEvent(v NewFollowEvent) error {
-	v.EventType = "NewFollowEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewFollowEvent performs a merge with any union data inside the Event_Data, using the provided NewFollowEvent
-func (t *Event_Data) MergeNewFollowEvent(v NewFollowEvent) error {
-	v.EventType = "NewFollowEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewUnfollowEvent returns the union data inside the Event_Data as a NewUnfollowEvent
-func (t Event_Data) AsNewUnfollowEvent() (NewUnfollowEvent, error) {
-	var body NewUnfollowEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewUnfollowEvent overwrites any union data inside the Event_Data as the provided NewUnfollowEvent
-func (t *Event_Data) FromNewUnfollowEvent(v NewUnfollowEvent) error {
-	v.EventType = "NewUnfollowEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewUnfollowEvent performs a merge with any union data inside the Event_Data, using the provided NewUnfollowEvent
-func (t *Event_Data) MergeNewUnfollowEvent(v NewUnfollowEvent) error {
-	v.EventType = "NewUnfollowEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetAllTweetsEvent returns the union data inside the Event_Data as a GetAllTweetsEvent
-func (t Event_Data) AsGetAllTweetsEvent() (GetAllTweetsEvent, error) {
-	var body GetAllTweetsEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetAllTweetsEvent overwrites any union data inside the Event_Data as the provided GetAllTweetsEvent
-func (t *Event_Data) FromGetAllTweetsEvent(v GetAllTweetsEvent) error {
-	v.EventType = "GetAllTweetsEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetAllTweetsEvent performs a merge with any union data inside the Event_Data, using the provided GetAllTweetsEvent
-func (t *Event_Data) MergeGetAllTweetsEvent(v GetAllTweetsEvent) error {
-	v.EventType = "GetAllTweetsEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetTimelineEvent returns the union data inside the Event_Data as a GetTimelineEvent
-func (t Event_Data) AsGetTimelineEvent() (GetTimelineEvent, error) {
-	var body GetTimelineEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetTimelineEvent overwrites any union data inside the Event_Data as the provided GetTimelineEvent
-func (t *Event_Data) FromGetTimelineEvent(v GetTimelineEvent) error {
-	v.EventType = "GetTimelineEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetTimelineEvent performs a merge with any union data inside the Event_Data, using the provided GetTimelineEvent
-func (t *Event_Data) MergeGetTimelineEvent(v GetTimelineEvent) error {
-	v.EventType = "GetTimelineEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetTweetEvent returns the union data inside the Event_Data as a GetTweetEvent
-func (t Event_Data) AsGetTweetEvent() (GetTweetEvent, error) {
-	var body GetTweetEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetTweetEvent overwrites any union data inside the Event_Data as the provided GetTweetEvent
-func (t *Event_Data) FromGetTweetEvent(v GetTweetEvent) error {
-	v.EventType = "GetTweetEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetTweetEvent performs a merge with any union data inside the Event_Data, using the provided GetTweetEvent
-func (t *Event_Data) MergeGetTweetEvent(v GetTweetEvent) error {
-	v.EventType = "GetTweetEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetUserEvent returns the union data inside the Event_Data as a GetUserEvent
-func (t Event_Data) AsGetUserEvent() (GetUserEvent, error) {
-	var body GetUserEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetUserEvent overwrites any union data inside the Event_Data as the provided GetUserEvent
-func (t *Event_Data) FromGetUserEvent(v GetUserEvent) error {
-	v.EventType = "GetUserEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetUserEvent performs a merge with any union data inside the Event_Data, using the provided GetUserEvent
-func (t *Event_Data) MergeGetUserEvent(v GetUserEvent) error {
-	v.EventType = "GetUserEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetAllUsersEvent returns the union data inside the Event_Data as a GetAllUsersEvent
-func (t Event_Data) AsGetAllUsersEvent() (GetAllUsersEvent, error) {
-	var body GetAllUsersEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetAllUsersEvent overwrites any union data inside the Event_Data as the provided GetAllUsersEvent
-func (t *Event_Data) FromGetAllUsersEvent(v GetAllUsersEvent) error {
-	v.EventType = "GetAllUsersEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetAllUsersEvent performs a merge with any union data inside the Event_Data, using the provided GetAllUsersEvent
-func (t *Event_Data) MergeGetAllUsersEvent(v GetAllUsersEvent) error {
-	v.EventType = "GetAllUsersEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetAllRepliesEvent returns the union data inside the Event_Data as a GetAllRepliesEvent
-func (t Event_Data) AsGetAllRepliesEvent() (GetAllRepliesEvent, error) {
-	var body GetAllRepliesEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetAllRepliesEvent overwrites any union data inside the Event_Data as the provided GetAllRepliesEvent
-func (t *Event_Data) FromGetAllRepliesEvent(v GetAllRepliesEvent) error {
-	v.EventType = "GetAllRepliesEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetAllRepliesEvent performs a merge with any union data inside the Event_Data, using the provided GetAllRepliesEvent
-func (t *Event_Data) MergeGetAllRepliesEvent(v GetAllRepliesEvent) error {
-	v.EventType = "GetAllRepliesEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsNewReplyEvent returns the union data inside the Event_Data as a NewReplyEvent
-func (t Event_Data) AsNewReplyEvent() (NewReplyEvent, error) {
-	var body NewReplyEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromNewReplyEvent overwrites any union data inside the Event_Data as the provided NewReplyEvent
-func (t *Event_Data) FromNewReplyEvent(v NewReplyEvent) error {
-	v.EventType = "NewReplyEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeNewReplyEvent performs a merge with any union data inside the Event_Data, using the provided NewReplyEvent
-func (t *Event_Data) MergeNewReplyEvent(v NewReplyEvent) error {
-	v.EventType = "NewReplyEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGetReplyEvent returns the union data inside the Event_Data as a GetReplyEvent
-func (t Event_Data) AsGetReplyEvent() (GetReplyEvent, error) {
-	var body GetReplyEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetReplyEvent overwrites any union data inside the Event_Data as the provided GetReplyEvent
-func (t *Event_Data) FromGetReplyEvent(v GetReplyEvent) error {
-	v.EventType = "GetReplyEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetReplyEvent performs a merge with any union data inside the Event_Data, using the provided GetReplyEvent
-func (t *Event_Data) MergeGetReplyEvent(v GetReplyEvent) error {
-	v.EventType = "GetReplyEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsLoginEvent returns the union data inside the Event_Data as a LoginEvent
-func (t Event_Data) AsLoginEvent() (LoginEvent, error) {
-	var body LoginEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromLoginEvent overwrites any union data inside the Event_Data as the provided LoginEvent
-func (t *Event_Data) FromLoginEvent(v LoginEvent) error {
-	v.EventType = "LoginEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeLoginEvent performs a merge with any union data inside the Event_Data, using the provided LoginEvent
-func (t *Event_Data) MergeLoginEvent(v LoginEvent) error {
-	v.EventType = "LoginEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsLogoutEvent returns the union data inside the Event_Data as a LogoutEvent
-func (t Event_Data) AsLogoutEvent() (LogoutEvent, error) {
-	var body LogoutEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromLogoutEvent overwrites any union data inside the Event_Data as the provided LogoutEvent
-func (t *Event_Data) FromLogoutEvent(v LogoutEvent) error {
-	v.EventType = "LogoutEvent"
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeLogoutEvent performs a merge with any union data inside the Event_Data, using the provided LogoutEvent
-func (t *Event_Data) MergeLogoutEvent(v LogoutEvent) error {
-	v.EventType = "LogoutEvent"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t Event_Data) Discriminator() (string, error) {
-	var discriminator struct {
-		Discriminator string `json:"event_type"`
-	}
-	err := json.Unmarshal(t.union, &discriminator)
-	return discriminator.Discriminator, err
-}
-
-func (t Event_Data) ValueByDiscriminator() (interface{}, error) {
-	discriminator, err := t.Discriminator()
-	if err != nil {
-		return nil, err
-	}
-	switch discriminator {
-	case "ErrorEvent":
-		return t.AsErrorEvent()
-	case "GetAllRepliesEvent":
-		return t.AsGetAllRepliesEvent()
-	case "GetAllTweetsEvent":
-		return t.AsGetAllTweetsEvent()
-	case "GetAllUsersEvent":
-		return t.AsGetAllUsersEvent()
-	case "GetReplyEvent":
-		return t.AsGetReplyEvent()
-	case "GetTimelineEvent":
-		return t.AsGetTimelineEvent()
-	case "GetTweetEvent":
-		return t.AsGetTweetEvent()
-	case "GetUserEvent":
-		return t.AsGetUserEvent()
-	case "LoginEvent":
-		return t.AsLoginEvent()
-	case "LogoutEvent":
-		return t.AsLogoutEvent()
-	case "NewFollowEvent":
-		return t.AsNewFollowEvent()
-	case "NewReplyEvent":
-		return t.AsNewReplyEvent()
-	case "NewTweetEvent":
-		return t.AsNewTweetEvent()
-	case "NewUnfollowEvent":
-		return t.AsNewUnfollowEvent()
-	case "NewUserEvent":
-		return t.AsNewUserEvent()
-	default:
-		return nil, errors.New("unknown discriminator value: " + discriminator)
-	}
-}
-
-func (t Event_Data) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *Event_Data) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
+// Owner defines model for Owner.
+type Owner = externalRef0.User
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"7pWtfV4adzL8PwAA///wXXm6Cx8AAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

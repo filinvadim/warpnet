@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet"
+	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/logger"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
@@ -18,11 +20,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-
 	"syscall"
-
-	frontend "github.com/filinvadim/warpnet-frontend"
-	"github.com/filinvadim/warpnet/database/storage"
 )
 
 type API struct {
