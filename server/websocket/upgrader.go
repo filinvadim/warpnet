@@ -78,27 +78,31 @@ func (s *EncryptedUpgrader) readLoop() error {
 		}
 
 		if !s.isAuthenticated {
+			log.Println("websocket received client public key")
 			pubKey, err := base64.StdEncoding.DecodeString(string(message))
 			if err != nil {
 				_ = s.SendPlain(err.Error())
 				return err
 			}
-			log.Println("websocket received public key message")
 			s.externalPubKey = pubKey
 
 			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, getCurrentDate()); err != nil {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
+			log.Println("websocket computed shared secret")
+
 			// send ours public key
 			encoded := base64.StdEncoding.EncodeToString(s.encrypter.PublicKey())
 			err = s.SendPlain(encoded)
 			if err != nil {
-				log.Printf("Websocket error encoding public key: %s", err)
+				log.Printf("websocket error sending public key: %s", err)
 				continue
 			}
+			log.Println("websocket sent server public key")
+
 			s.isAuthenticated = true
-			log.Println("websocket authenticated")
+			log.Println("websocket handshake complete")
 			continue
 		}
 
