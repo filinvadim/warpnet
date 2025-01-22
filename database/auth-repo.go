@@ -8,14 +8,17 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database/storage"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/json"
+	"github.com/google/uuid"
 	"math/big"
 	"time"
 )
 
 const (
-	AuthRepoName = "AUTH"
-	PassSubName  = "PASS" // TODO pass restore functionality
-	OwnerSubName = "owner"
+	AuthRepoName    = "AUTH"
+	PassSubName     = "PASS" // TODO pass restore functionality
+	DefaultOwnerKey = "OWNER"
 )
 
 var (
@@ -26,6 +29,8 @@ var (
 
 type AuthStorer interface {
 	Run(username, password string) (err error)
+	Set(key storage.DatabaseKey, value []byte) error
+	Get(key storage.DatabaseKey) ([]byte, error)
 }
 
 type AuthRepo struct {
@@ -89,4 +94,41 @@ func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
 		panic("private key is nil")
 	}
 	return repo.privateKey
+}
+
+func (repo *AuthRepo) GetOwner() (owner domainGen.Owner, err error) {
+	ownerKey := storage.NewPrefixBuilder(AuthRepoName).
+		AddRootID(DefaultOwnerKey).
+		Build()
+
+	data, err := repo.db.Get(ownerKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return owner, ErrUserNotFound
+	}
+	if err != nil {
+		return owner, err
+	}
+
+	err = json.JSON.Unmarshal(data, &owner)
+	return owner, err
+
+}
+
+func (repo *AuthRepo) SetOwner(o domainGen.Owner) (_ domainGen.Owner, err error) {
+	ownerKey := storage.NewPrefixBuilder(AuthRepoName).
+		AddRootID(DefaultOwnerKey).
+		Build()
+
+	if o.UserId == "" {
+		o.UserId = uuid.New().String()
+	}
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = time.Now()
+	}
+	data, err := json.JSON.Marshal(o)
+	if err != nil {
+		return o, err
+	}
+
+	return o, repo.db.Set(ownerKey, data)
 }

@@ -15,8 +15,6 @@ var ErrUserNotFound = errors.New("user not found")
 const (
 	UsersRepoName = "USERS"
 	defaultRootID = "users"
-
-	DefaultOwnerUserID = "OWNER"
 )
 
 type UserStorer interface {
@@ -148,7 +146,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 }
 
 func (repo *UserRepo) Owner() (domainGen.User, error) {
-	owner, err := repo.Get(DefaultOwnerUserID)
+	owner, err := repo.Get(DefaultOwnerKey)
 	if errors.Is(err, ErrUserNotFound) {
 		return domainGen.User{}, ErrUserNotFound
 	}
@@ -164,7 +162,7 @@ func (repo *UserRepo) CreateOwner(o domainGen.User) (err error) {
 	_, err = repo.Create(domainGen.User{
 		Birthdate: nil,
 		CreatedAt: o.CreatedAt,
-		Id:        DefaultOwnerUserID,
+		Id:        DefaultOwnerKey,
 		NodeId:    o.NodeId,
 		Username:  o.Username,
 	})

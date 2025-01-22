@@ -19,6 +19,8 @@ type UserPersistencyLayer interface {
 	Create(user domain.User) (domain.User, error)
 	Owner() (domain.User, error)
 	CreateOwner(o domain.User) (err error)
+	GetOwner() (domain.Owner, error)
+	SetOwner(domain.Owner) (domain.Owner, error)
 }
 
 type AuthService struct {

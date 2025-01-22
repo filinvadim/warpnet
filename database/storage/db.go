@@ -32,7 +32,7 @@ type DB struct {
 	isRunning *atomic.Bool
 	stopChan  chan struct{}
 
-	opts       badger.Options
+	storedOpts badger.Options
 	dbPath     string
 	isDirEmpty bool
 }
@@ -70,7 +70,7 @@ func New(
 
 	storage := &DB{
 		badger: nil, stopChan: make(chan struct{}), isRunning: new(atomic.Bool),
-		sequence: nil, opts: opts, dbPath: dbPath, isDirEmpty: isDirEmpty,
+		sequence: nil, storedOpts: opts, dbPath: dbPath, isDirEmpty: isDirEmpty,
 	}
 
 	return storage, storage.Close, nil
@@ -101,9 +101,12 @@ func (db *DB) Run(username, password string) (err error) {
 		return errors.New("database username or password is empty")
 	}
 	hashSum := encrypting.ConvertToSHA256([]byte(username + "@" + password))
-	db.opts.WithEncryptionKey(hashSum)
+	execOpts := db.storedOpts.WithEncryptionKey(hashSum)
 
-	db.badger, err = badger.Open(db.opts)
+	db.badger, err = badger.Open(execOpts)
+	if errors.Is(err, badger.ErrEncryptionKeyMismatch) {
+		return errors.New("auth failed: wrong username or password")
+	}
 	if err != nil {
 		return err
 	}

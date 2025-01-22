@@ -8,6 +8,30 @@ paths: {}
 
 components:
   schemas:
+    Owner:
+      type: object
+      properties:
+        user_id:
+          type: string
+        username:
+          type: string
+        node_id:
+          type: string
+        ipv4:
+          type: string
+        ipv6:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - username
+        - node_id
+        - ipv4
+        - ipv6
+        - created_at
+        
     User:
       type: object
       properties:
