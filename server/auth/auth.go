@@ -7,7 +7,7 @@ import (
 	domain "github.com/filinvadim/warpnet/gen/domain-gen"
 	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/server/api-gen"
-	"github.com/labstack/echo/v4"
+	l "log"
 	"os"
 	"sync/atomic"
 	"time"
@@ -48,34 +48,34 @@ func (as *AuthService) IsAuthenticated() bool {
 	return as.isAuthenticated.Load()
 }
 
-func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp api.LoginResponse, err error) {
+func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
-		l.Warn("already authenticated")
+		l.Println("already authenticated")
 		return resp, errors.New("already authenticated")
 	}
-	l.Infof("authenticating user %s", message.Username)
+	l.Printf("authenticating user %s", message.Username)
 
 	if err := as.userPersistence.Authenticate(message.Username, message.Password); err != nil {
-		l.Errorf("authentication failed: %v", err)
+		l.Printf("authentication failed: %v", err)
 		return resp, fmt.Errorf("authentication failed: %v", err)
 	}
 	token := as.userPersistence.SessionToken()
 
 	owner, err := as.userPersistence.GetOwner()
 	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
-		l.Errorf("owner fetching failed: %v", err)
+		l.Printf("owner fetching failed: %v", err)
 		return resp, err
 	}
 
 	var user domain.User
 	if errors.Is(err, database.ErrOwnerNotFound) {
-		l.Info("creating new owner")
+		l.Println("creating new owner")
 		owner, err = as.userPersistence.SetOwner(domain.Owner{
 			CreatedAt: time.Now(),
 			Username:  message.Username,
 		})
 		if err != nil {
-			l.Errorf("new owner creation failed: %v", err)
+			l.Printf("new owner creation failed: %v", err)
 			return resp, fmt.Errorf("create owner: %v", err)
 
 		}
@@ -91,7 +91,7 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	}
 
 	if owner.Username != message.Username {
-		l.Errorf("username mismatch: %s == %s", owner.Username, message.Username)
+		l.Printf("username mismatch: %s == %s", owner.Username, message.Username)
 		return resp, fmt.Errorf("user %s doesn't exist", message.Username)
 	}
 	as.authReady <- owner
@@ -100,7 +100,7 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	defer timer.Stop()
 	select {
 	case <-timer.C:
-		l.Errorf("node startup failed: timeout")
+		l.Printf("node startup failed: timeout")
 		return resp, errors.New("node starting is timed out")
 	case owner = <-as.nodeReady:
 		user.NodeId = owner.NodeId
@@ -108,10 +108,10 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 
 	// update
 	if _, err = as.userPersistence.SetOwner(owner); err != nil {
-		l.Errorf("owner update failed: %v", err)
+		l.Printf("owner update failed: %v", err)
 	}
 	if _, err = as.userPersistence.Create(user); err != nil {
-		l.Errorf("user update failed: %v", err)
+		l.Printf("user update failed: %v", err)
 	}
 
 	as.isAuthenticated.Store(true)

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/core/types"
@@ -18,7 +19,6 @@ import (
 type WSController struct {
 	upgrader *websocket.EncryptedUpgrader
 	auth     *auth.AuthService
-	l        echo.Logger
 	ctx      context.Context
 	conf     config.Config
 
@@ -31,7 +31,7 @@ func NewWSController(
 ) *WSController {
 
 	return &WSController{
-		websocket.NewEncryptedUpgrader(), auth, nil, nil, conf, nil,
+		websocket.NewEncryptedUpgrader(), auth, nil, conf, nil,
 	}
 }
 
@@ -40,7 +40,6 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 	c.upgrader.OnMessage(c.handle)
 
-	c.l = ctx.Logger()
 	c.ctx = ctx.Request().Context()
 
 	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request())
@@ -54,25 +53,37 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	var (
 		wsMsg    api.BaseWSRequest
-		response any
+		response api.BaseWSResponse
 	)
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {
 		return nil, err
 	}
 	if wsMsg.MessageId == "" {
-		c.l.Warn("websocket request: missing message_id")
+		log.Println("websocket request: missing message_id")
+		return nil, fmt.Errorf("websocket request: missing message_id")
 	}
 
 	switch wsMsg.Path {
 	case "/login/1.0.0":
-		ev, _ := wsMsg.Data.AsLoginEvent()
-		loginResp, err := c.auth.AuthLogin(c.l, ev)
+		ev, err := wsMsg.Data.AsLoginEvent()
 		if err != nil {
-			return nil, err
+			response = newErrorResp(err.Error())
+			break
+		}
+		loginResp, err := c.auth.AuthLogin(ev)
+		if err != nil {
+			response = newErrorResp(err.Error())
+			break
 		}
 		c.upgrader.SetNewSalt(loginResp.Data.Token) // make conn more secure after successful auth
 		loginResp.MessageId = wsMsg.MessageId
-		response = loginResp
+
+		loginRespBytes, err := json.JSON.Marshal(loginResp)
+		if err != nil {
+			response = newErrorResp(err.Error())
+			break
+		}
+		response.Data = loginRespBytes
 
 		c.client, err = node.NewClientNode(c.ctx, loginResp.Data.User.NodeId, c.conf)
 		if err != nil {
@@ -82,7 +93,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		defer c.client.Stop()
 		defer func() {
 			if err := c.upgrader.Close(); err != nil {
-				c.l.Errorf("upgrader close: %v", err)
+				log.Printf("upgrader close: %v", err)
 			}
 		}()
 		err = c.auth.AuthLogout()
@@ -94,7 +105,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 		if wsMsg.Data == nil {
-			response = newErrorResp("missing data")
+			response = newErrorResp(fmt.Sprintf("missing data: %s", msg))
 			break
 		}
 		data, err := (*wsMsg.Data).MarshalJSON()
@@ -103,7 +114,9 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 		if wsMsg.NodeId == "" || wsMsg.Path == "" {
-			response = newErrorResp("missing path or node ID")
+			response = newErrorResp(
+				fmt.Sprintf("missing path or node ID: %s", msg),
+			)
 			break
 		}
 		respData, err := c.client.StreamSend(
@@ -115,25 +128,27 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 
 		response = api.BaseWSResponse{
-			MessageId: wsMsg.MessageId,
-			NodeId:    wsMsg.NodeId,
-			Path:      wsMsg.Path,
-			Timestamp: time.Now(),
-			Data:      respData,
+			Data: respData,
 		}
 	}
-	if response == nil {
+	if response.Data == nil {
 		return nil, nil
 	}
+
+	response.MessageId = wsMsg.MessageId
+	response.NodeId = wsMsg.NodeId
+	response.Path = wsMsg.Path
+	response.Timestamp = time.Now()
 
 	return json.JSON.Marshal(response)
 }
 
-func newErrorResp(message string) any {
-	return api.ErrorResponse{
-		Data: api.ErrorData{
-			Code:    http.StatusInternalServerError,
-			Message: message,
-		},
+func newErrorResp(message string) api.BaseWSResponse {
+	errData, _ := json.JSON.Marshal(api.ErrorData{
+		Code:    http.StatusInternalServerError,
+		Message: message,
+	})
+	return api.BaseWSResponse{
+		Data: errData,
 	}
 }

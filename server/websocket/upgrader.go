@@ -73,7 +73,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 		}
 
 		if messageType != ws.TextMessage {
-			_ = s.SendPlain("message type must be text")
+			_ = s.SendPlain("message type must be a text")
 			continue
 		}
 
