@@ -65,7 +65,9 @@ func StreamGetTweetsHandler(repo *database.TweetRepo) func(s network.Stream) {
 	}
 }
 
-func StreamNewTweetHandler(repo *database.TweetRepo) func(s network.Stream) {
+func StreamNewTweetHandler(
+	tweetRepo *database.TweetRepo, timelineRepo *database.TimelineRepo,
+) func(s network.Stream) {
 	return func(s network.Stream) {
 		defer s.Close()
 
@@ -97,7 +99,7 @@ func StreamNewTweetHandler(repo *database.TweetRepo) func(s network.Stream) {
 			return
 		}
 
-		tweet, err := repo.Create(ev.Tweet.UserId, domain.Tweet{
+		tweet, err := tweetRepo.Create(ev.Tweet.UserId, domain.Tweet{
 			CreatedAt:     ev.Tweet.CreatedAt,
 			Id:            ev.Tweet.Id,
 			Likes:         ev.Tweet.Likes,
@@ -117,6 +119,9 @@ func StreamNewTweetHandler(repo *database.TweetRepo) func(s network.Stream) {
 
 		if tweet.Id != "" {
 			response = tweet
+			if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
+				log.Printf("fail adding tweet to timeline: %v", err)
+			}
 		}
 		bt, err := json.JSON.Marshal(response)
 		if err != nil {

@@ -8,7 +8,6 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -31,7 +30,7 @@ type BaseWSRequest struct {
 	MessageId string    `json:"message_id"`
 	NodeId    string    `json:"node_id"`
 	Path      string    `json:"path"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 // BaseWSResponse defines model for BaseWSResponse.
@@ -165,7 +164,6 @@ func (t Event) AsErrorEvent() (ErrorEvent, error) {
 
 // FromErrorEvent overwrites any union data inside the Event as the provided ErrorEvent
 func (t *Event) FromErrorEvent(v ErrorEvent) error {
-	v.EventType = "ErrorEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -173,7 +171,6 @@ func (t *Event) FromErrorEvent(v ErrorEvent) error {
 
 // MergeErrorEvent performs a merge with any union data inside the Event, using the provided ErrorEvent
 func (t *Event) MergeErrorEvent(v ErrorEvent) error {
-	v.EventType = "ErrorEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -193,7 +190,6 @@ func (t Event) AsNewTweetEvent() (NewTweetEvent, error) {
 
 // FromNewTweetEvent overwrites any union data inside the Event as the provided NewTweetEvent
 func (t *Event) FromNewTweetEvent(v NewTweetEvent) error {
-	v.EventType = "NewTweetEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -201,7 +197,6 @@ func (t *Event) FromNewTweetEvent(v NewTweetEvent) error {
 
 // MergeNewTweetEvent performs a merge with any union data inside the Event, using the provided NewTweetEvent
 func (t *Event) MergeNewTweetEvent(v NewTweetEvent) error {
-	v.EventType = "NewTweetEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -221,7 +216,6 @@ func (t Event) AsNewUserEvent() (NewUserEvent, error) {
 
 // FromNewUserEvent overwrites any union data inside the Event as the provided NewUserEvent
 func (t *Event) FromNewUserEvent(v NewUserEvent) error {
-	v.EventType = "NewUserEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -229,7 +223,6 @@ func (t *Event) FromNewUserEvent(v NewUserEvent) error {
 
 // MergeNewUserEvent performs a merge with any union data inside the Event, using the provided NewUserEvent
 func (t *Event) MergeNewUserEvent(v NewUserEvent) error {
-	v.EventType = "NewUserEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -249,7 +242,6 @@ func (t Event) AsNewFollowEvent() (NewFollowEvent, error) {
 
 // FromNewFollowEvent overwrites any union data inside the Event as the provided NewFollowEvent
 func (t *Event) FromNewFollowEvent(v NewFollowEvent) error {
-	v.EventType = "NewFollowEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -257,7 +249,6 @@ func (t *Event) FromNewFollowEvent(v NewFollowEvent) error {
 
 // MergeNewFollowEvent performs a merge with any union data inside the Event, using the provided NewFollowEvent
 func (t *Event) MergeNewFollowEvent(v NewFollowEvent) error {
-	v.EventType = "NewFollowEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -277,7 +268,6 @@ func (t Event) AsNewUnfollowEvent() (NewUnfollowEvent, error) {
 
 // FromNewUnfollowEvent overwrites any union data inside the Event as the provided NewUnfollowEvent
 func (t *Event) FromNewUnfollowEvent(v NewUnfollowEvent) error {
-	v.EventType = "NewUnfollowEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -285,7 +275,6 @@ func (t *Event) FromNewUnfollowEvent(v NewUnfollowEvent) error {
 
 // MergeNewUnfollowEvent performs a merge with any union data inside the Event, using the provided NewUnfollowEvent
 func (t *Event) MergeNewUnfollowEvent(v NewUnfollowEvent) error {
-	v.EventType = "NewUnfollowEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -305,7 +294,6 @@ func (t Event) AsGetAllTweetsEvent() (GetAllTweetsEvent, error) {
 
 // FromGetAllTweetsEvent overwrites any union data inside the Event as the provided GetAllTweetsEvent
 func (t *Event) FromGetAllTweetsEvent(v GetAllTweetsEvent) error {
-	v.EventType = "GetAllTweetsEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -313,7 +301,6 @@ func (t *Event) FromGetAllTweetsEvent(v GetAllTweetsEvent) error {
 
 // MergeGetAllTweetsEvent performs a merge with any union data inside the Event, using the provided GetAllTweetsEvent
 func (t *Event) MergeGetAllTweetsEvent(v GetAllTweetsEvent) error {
-	v.EventType = "GetAllTweetsEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -333,7 +320,6 @@ func (t Event) AsGetTimelineEvent() (GetTimelineEvent, error) {
 
 // FromGetTimelineEvent overwrites any union data inside the Event as the provided GetTimelineEvent
 func (t *Event) FromGetTimelineEvent(v GetTimelineEvent) error {
-	v.EventType = "GetTimelineEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -341,7 +327,6 @@ func (t *Event) FromGetTimelineEvent(v GetTimelineEvent) error {
 
 // MergeGetTimelineEvent performs a merge with any union data inside the Event, using the provided GetTimelineEvent
 func (t *Event) MergeGetTimelineEvent(v GetTimelineEvent) error {
-	v.EventType = "GetTimelineEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -361,7 +346,6 @@ func (t Event) AsGetTweetEvent() (GetTweetEvent, error) {
 
 // FromGetTweetEvent overwrites any union data inside the Event as the provided GetTweetEvent
 func (t *Event) FromGetTweetEvent(v GetTweetEvent) error {
-	v.EventType = "GetTweetEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -369,7 +353,6 @@ func (t *Event) FromGetTweetEvent(v GetTweetEvent) error {
 
 // MergeGetTweetEvent performs a merge with any union data inside the Event, using the provided GetTweetEvent
 func (t *Event) MergeGetTweetEvent(v GetTweetEvent) error {
-	v.EventType = "GetTweetEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -389,7 +372,6 @@ func (t Event) AsGetUserEvent() (GetUserEvent, error) {
 
 // FromGetUserEvent overwrites any union data inside the Event as the provided GetUserEvent
 func (t *Event) FromGetUserEvent(v GetUserEvent) error {
-	v.EventType = "GetUserEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -397,7 +379,6 @@ func (t *Event) FromGetUserEvent(v GetUserEvent) error {
 
 // MergeGetUserEvent performs a merge with any union data inside the Event, using the provided GetUserEvent
 func (t *Event) MergeGetUserEvent(v GetUserEvent) error {
-	v.EventType = "GetUserEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -417,7 +398,6 @@ func (t Event) AsGetAllUsersEvent() (GetAllUsersEvent, error) {
 
 // FromGetAllUsersEvent overwrites any union data inside the Event as the provided GetAllUsersEvent
 func (t *Event) FromGetAllUsersEvent(v GetAllUsersEvent) error {
-	v.EventType = "GetAllUsersEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -425,7 +405,6 @@ func (t *Event) FromGetAllUsersEvent(v GetAllUsersEvent) error {
 
 // MergeGetAllUsersEvent performs a merge with any union data inside the Event, using the provided GetAllUsersEvent
 func (t *Event) MergeGetAllUsersEvent(v GetAllUsersEvent) error {
-	v.EventType = "GetAllUsersEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -445,7 +424,6 @@ func (t Event) AsGetAllRepliesEvent() (GetAllRepliesEvent, error) {
 
 // FromGetAllRepliesEvent overwrites any union data inside the Event as the provided GetAllRepliesEvent
 func (t *Event) FromGetAllRepliesEvent(v GetAllRepliesEvent) error {
-	v.EventType = "GetAllRepliesEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -453,7 +431,6 @@ func (t *Event) FromGetAllRepliesEvent(v GetAllRepliesEvent) error {
 
 // MergeGetAllRepliesEvent performs a merge with any union data inside the Event, using the provided GetAllRepliesEvent
 func (t *Event) MergeGetAllRepliesEvent(v GetAllRepliesEvent) error {
-	v.EventType = "GetAllRepliesEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -473,7 +450,6 @@ func (t Event) AsNewReplyEvent() (NewReplyEvent, error) {
 
 // FromNewReplyEvent overwrites any union data inside the Event as the provided NewReplyEvent
 func (t *Event) FromNewReplyEvent(v NewReplyEvent) error {
-	v.EventType = "NewReplyEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -481,7 +457,6 @@ func (t *Event) FromNewReplyEvent(v NewReplyEvent) error {
 
 // MergeNewReplyEvent performs a merge with any union data inside the Event, using the provided NewReplyEvent
 func (t *Event) MergeNewReplyEvent(v NewReplyEvent) error {
-	v.EventType = "NewReplyEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -501,7 +476,6 @@ func (t Event) AsGetReplyEvent() (GetReplyEvent, error) {
 
 // FromGetReplyEvent overwrites any union data inside the Event as the provided GetReplyEvent
 func (t *Event) FromGetReplyEvent(v GetReplyEvent) error {
-	v.EventType = "GetReplyEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -509,7 +483,6 @@ func (t *Event) FromGetReplyEvent(v GetReplyEvent) error {
 
 // MergeGetReplyEvent performs a merge with any union data inside the Event, using the provided GetReplyEvent
 func (t *Event) MergeGetReplyEvent(v GetReplyEvent) error {
-	v.EventType = "GetReplyEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -529,7 +502,6 @@ func (t Event) AsLoginEvent() (LoginEvent, error) {
 
 // FromLoginEvent overwrites any union data inside the Event as the provided LoginEvent
 func (t *Event) FromLoginEvent(v LoginEvent) error {
-	v.EventType = "LoginEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -537,7 +509,6 @@ func (t *Event) FromLoginEvent(v LoginEvent) error {
 
 // MergeLoginEvent performs a merge with any union data inside the Event, using the provided LoginEvent
 func (t *Event) MergeLoginEvent(v LoginEvent) error {
-	v.EventType = "LoginEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -557,7 +528,6 @@ func (t Event) AsLogoutEvent() (LogoutEvent, error) {
 
 // FromLogoutEvent overwrites any union data inside the Event as the provided LogoutEvent
 func (t *Event) FromLogoutEvent(v LogoutEvent) error {
-	v.EventType = "LogoutEvent"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -565,7 +535,6 @@ func (t *Event) FromLogoutEvent(v LogoutEvent) error {
 
 // MergeLogoutEvent performs a merge with any union data inside the Event, using the provided LogoutEvent
 func (t *Event) MergeLogoutEvent(v LogoutEvent) error {
-	v.EventType = "LogoutEvent"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -574,55 +543,6 @@ func (t *Event) MergeLogoutEvent(v LogoutEvent) error {
 	merged, err := runtime.JSONMerge(t.union, b)
 	t.union = merged
 	return err
-}
-
-func (t Event) Discriminator() (string, error) {
-	var discriminator struct {
-		Discriminator string `json:"event_type"`
-	}
-	err := json.Unmarshal(t.union, &discriminator)
-	return discriminator.Discriminator, err
-}
-
-func (t Event) ValueByDiscriminator() (interface{}, error) {
-	discriminator, err := t.Discriminator()
-	if err != nil {
-		return nil, err
-	}
-	switch discriminator {
-	case "ErrorEvent":
-		return t.AsErrorEvent()
-	case "GetAllRepliesEvent":
-		return t.AsGetAllRepliesEvent()
-	case "GetAllTweetsEvent":
-		return t.AsGetAllTweetsEvent()
-	case "GetAllUsersEvent":
-		return t.AsGetAllUsersEvent()
-	case "GetReplyEvent":
-		return t.AsGetReplyEvent()
-	case "GetTimelineEvent":
-		return t.AsGetTimelineEvent()
-	case "GetTweetEvent":
-		return t.AsGetTweetEvent()
-	case "GetUserEvent":
-		return t.AsGetUserEvent()
-	case "LoginEvent":
-		return t.AsLoginEvent()
-	case "LogoutEvent":
-		return t.AsLogoutEvent()
-	case "NewFollowEvent":
-		return t.AsNewFollowEvent()
-	case "NewReplyEvent":
-		return t.AsNewReplyEvent()
-	case "NewTweetEvent":
-		return t.AsNewTweetEvent()
-	case "NewUnfollowEvent":
-		return t.AsNewUnfollowEvent()
-	case "NewUserEvent":
-		return t.AsNewUserEvent()
-	default:
-		return nil, errors.New("unknown discriminator value: " + discriminator)
-	}
 }
 
 func (t Event) MarshalJSON() ([]byte, error) {
@@ -724,37 +644,37 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"8fil2lP+DgAA//9ABOdsezgAAA==",
+	"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",
+	"AAD//+oNqaLYNwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

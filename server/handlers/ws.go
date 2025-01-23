@@ -5,7 +5,6 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/core/types"
-	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/auth"
@@ -64,14 +63,10 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		c.l.Warn("websocket request: missing message_id")
 	}
 
-	value, err := wsMsg.Data.ValueByDiscriminator()
-	if err != nil {
-		return nil, err
-	}
-
-	switch value.(type) {
-	case event.LoginEvent:
-		loginResp, err := c.auth.AuthLogin(c.l, value.(event.LoginEvent))
+	switch wsMsg.Path {
+	case "/login/1.0.0":
+		ev, _ := wsMsg.Data.AsLoginEvent()
+		loginResp, err := c.auth.AuthLogin(c.l, ev)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +78,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		if err != nil {
 			log.Printf("create node client: %v", err)
 		}
-	case event.LogoutEvent:
+	case "/logout/1.0.0":
 		defer c.client.Stop()
 		defer func() {
 			if err := c.upgrader.Close(); err != nil {

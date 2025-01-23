@@ -56,6 +56,7 @@ components:
         timestamp:
           type: string
           format: date-time
+          x-go-type-skip-optional-pointer: true
         message_id:
           type: string
         path:
@@ -69,7 +70,6 @@ components:
         - message_id
         - node_id
         - path
-        - timestamp
 
     Event:
       anyOf:
@@ -88,8 +88,6 @@ components:
         - $ref: '#/components/schemas/GetReplyEvent'
         - $ref: '#/components/schemas/LoginEvent'
         - $ref: '#/components/schemas/LogoutEvent'
-      discriminator:
-        propertyName: event_type
 
     BaseWSResponse:
       type: object

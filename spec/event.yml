@@ -11,11 +11,6 @@ components:
 
     BaseEvent:
       type: object
-      properties:
-        event_type:
-          type: string
-      required:
-        - event_type
 
     NewMessageEvent:
       allOf:

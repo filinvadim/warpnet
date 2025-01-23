@@ -215,7 +215,7 @@ func NewRegularNode(
 	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
 	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
-	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo))
+	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo, timelineRepo))
 	return n, err
 }
 
