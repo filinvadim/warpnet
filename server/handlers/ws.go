@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
@@ -75,8 +76,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(err.Error())
 			break
 		}
-		c.upgrader.SetNewSalt(loginResp.Data.Token) // make conn more secure after successful auth
-		loginResp.MessageId = wsMsg.MessageId
+		c.upgrader.SetNewSalt(loginResp.Token) // make conn more secure after successful auth
 
 		loginRespBytes, err := json.JSON.Marshal(loginResp)
 		if err != nil {
@@ -85,7 +85,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 		response.Data = loginRespBytes
 
-		c.client, err = node.NewClientNode(c.ctx, loginResp.Data.User.NodeId, c.conf)
+		c.client, err = node.NewClientNode(c.ctx, loginResp.Owner.NodeId, c.conf)
 		if err != nil {
 			log.Printf("create node client: %v", err)
 		}
@@ -140,7 +140,9 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	response.Path = wsMsg.Path
 	response.Timestamp = time.Now()
 
-	return json.JSON.Marshal(response)
+	var buffer bytes.Buffer
+	err = json.JSON.NewEncoder(&buffer).Encode(response)
+	return buffer.Bytes(), nil
 }
 
 func newErrorResp(message string) api.BaseWSResponse {

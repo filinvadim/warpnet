@@ -105,6 +105,7 @@ components:
         data:
           type: string
           format: byte
+          x-go-type: json.RawMessage
       required:
         - message_id
         - node_id
@@ -112,25 +113,16 @@ components:
         - timestamp
         - data
 
-
     LoginResponse:
-      allOf:
-        - $ref: '#/components/schemas/BaseWSResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/LoginData'
-
-    LoginData:
       type: object
       properties:
         token:
           type: string
-        user:
+        owner:
           $ref: './event.yml#/components/schemas/Owner'
       required:
         - token
-        - user
+        - owner
 
     ErrorResponse:
       allOf:

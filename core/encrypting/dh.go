@@ -78,11 +78,11 @@ func (e *DiffieHellmanEncrypter) DecryptMessage(encryptedMessage []byte) ([]byte
 	}
 	ciphertext, err := base64.StdEncoding.DecodeString(parts[0])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding text: %w", err)
 	}
 	nonce, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding nonce: %w", err)
 	}
 
 	// Check for replay attacks
@@ -98,15 +98,15 @@ func (e *DiffieHellmanEncrypter) DecryptMessage(encryptedMessage []byte) ([]byte
 
 	block, err := aes.NewCipher(e.aesKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new aes block: %w", err)
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new aesgcm cipher: %w", err)
 	}
 	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aesgcm decrypt: %w %x", err, ciphertext)
 	}
 
 	return plaintext, nil

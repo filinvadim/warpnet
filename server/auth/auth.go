@@ -82,7 +82,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 		user, err = as.userPersistence.Create(domain.User{
 			CreatedAt: owner.CreatedAt,
 			Id:        owner.UserId,
-			NodeId:    "",
+			NodeId:    "None",
 			Username:  owner.Username,
 		})
 		if err != nil {
@@ -116,12 +116,10 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 
 	as.isAuthenticated.Store(true)
 
-	data := api.LoginData{
+	return api.LoginResponse{
 		Token: token,
-		User:  owner,
-	}
-
-	return api.LoginResponse{Data: data}, nil
+		Owner: owner,
+	}, nil
 }
 
 func (as *AuthService) AuthLogout() error {

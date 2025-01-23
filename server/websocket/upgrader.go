@@ -118,7 +118,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 
 		response, err := s.readCallback(decryptedMessage)
 		if err != nil {
-			log.Printf("failed to process decrypted message: %v", err)
+			log.Printf("callback: %v", err)
 		}
 		if response == nil {
 			continue
