@@ -23,12 +23,12 @@ func NewDiscoveryNotifee(h host.Host) *discoveryNotifee {
 }
 
 func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
-	log.Printf("Found new peer: %s %v", pi.ID.String(), pi.Addrs)
+	log.Printf("found new peer: %s %v", pi.ID.String(), pi.Addrs)
 	if err := n.host.Connect(context.Background(), pi); err != nil {
-		log.Printf("Failed to connect to new peer: %s", err)
-	} else {
-		log.Printf("Connected to new peer: %s", pi.ID)
+		log.Printf("failed to connect to new peer: %s", err)
+		return
 	}
+	log.Printf("connected to new peer: %s", pi.ID)
 }
 
 const discoveryTopic = "peer-discovery"
@@ -39,10 +39,10 @@ type Gossip struct {
 	node     host.Host
 	stopChan chan struct{}
 	tick     *time.Ticker
-	subs     []*pubsub.Subscription
-	topics   map[string]*pubsub.Topic
 
 	mx         *sync.RWMutex
+	subs       []*pubsub.Subscription
+	topics     map[string]*pubsub.Topic
 	knownPeers map[peer.ID]struct{}
 }
 
@@ -53,7 +53,7 @@ func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
 		return nil, fmt.Errorf("failed to create PubSub: %s", err)
 	}
 
-	// Подключаемся к топику
+	// defaultly enabled topic
 	topic, err := ps.Join(discoveryTopic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to join discovery topic: %s", err)
@@ -86,6 +86,9 @@ func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
 }
 
 func (g *Gossip) Close() (err error) {
+	g.mx.Lock()
+	defer g.mx.Unlock()
+
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -116,7 +119,9 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 	if err != nil {
 		return fmt.Errorf("failed to subscribe to topic: %s", err)
 	}
+	g.mx.Lock()
 	g.subs = append(g.subs, sub)
+	g.mx.Unlock()
 
 	for {
 		msg, err := sub.Next(g.ctx)
@@ -146,14 +151,20 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 			if err != nil || peerInfo == nil {
 				return fmt.Errorf("failed to parse peer info: %w", err)
 			}
-			if _, ok := g.knownPeers[peerInfo.ID]; ok {
+
+			g.mx.RLock()
+			_, ok := g.knownPeers[peerInfo.ID]
+			g.mx.RUnlock()
+			if ok {
 				continue
 			}
 			if err := g.node.Connect(g.ctx, *peerInfo); err != nil {
 				return fmt.Errorf("failed to connect to peer: %w", err)
 			}
 			log.Printf("connected to peer: %s", discoveryMsg.PeerID)
+			g.mx.Lock()
 			g.knownPeers[peerInfo.ID] = struct{}{}
+			g.mx.Unlock()
 		}
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/core/node"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/logger"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
@@ -34,8 +35,7 @@ func main() {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	fmt.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
-
+	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 	log.Println("Warpnet Version:", warpnet.GetVersion())
 
 	var interruptChan = make(chan os.Signal, 1)
@@ -44,9 +44,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
-
-	db, dbCloser, err := storage.New(getAppPath(), false, conf.Database.DirName, l)
+	db, dbCloser, err := storage.New(getAppPath(), false, conf.Database.DirName)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
@@ -58,13 +56,13 @@ func main() {
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
 	//followRepo := database.NewFollowRepo(db)
-	//timelineRepo := database.NewTimelineRepo(db)
-	//tweetRepo := database.NewTweetRepo(db)
+	timelineRepo := database.NewTimelineRepo(db)
+	tweetRepo := database.NewTweetRepo(db)
 	//replyRepo := database.NewRepliesRepo(db)
 
 	var (
-		nodeReadyChan = make(chan string, 1)
-		authReadyChan = make(chan struct{})
+		nodeReadyChan = make(chan domain.Owner, 1)
+		authReadyChan = make(chan domain.Owner)
 	)
 	defer func() {
 		close(nodeReadyChan)
@@ -99,11 +97,12 @@ func main() {
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()
 
+	var owner domain.Owner
 	select {
 	case <-interruptChan:
 		log.Println("logged out")
 		return
-	case <-authReadyChan:
+	case owner = <-authReadyChan:
 		log.Println("authentication was successful")
 	}
 
@@ -111,12 +110,18 @@ func main() {
 		ctx,
 		persistentLayer{nodeRepo, authRepo},
 		conf,
-		l,
+		timelineRepo,
+		userRepo,
+		tweetRepo,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
-	nodeReadyChan <- n.ID()
+
+	owner.NodeId = n.ID()
+	owner.Ipv6 = n.IPv6()
+	owner.Ipv4 = n.IPv4()
+	nodeReadyChan <- owner
 
 	defer n.Stop()
 

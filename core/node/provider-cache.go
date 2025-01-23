@@ -50,6 +50,7 @@ func NewProviderCache(ctx context.Context, db PersistentLayer) (*ProviderCache, 
 }
 
 func (d *ProviderCache) dumpProviders() {
+	log.Println("providers cache is running")
 	tick := time.NewTicker(time.Minute * 10)
 	defer tick.Stop()
 	for {

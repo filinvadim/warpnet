@@ -12,14 +12,10 @@ components:
     BaseEvent:
       type: object
       properties:
-        timestamp:
-          type: string
-          format: date-time
         event_type:
           type: string
       required:
         - event_type
-        - timestamp
 
     NewMessageEvent:
       allOf:
@@ -290,5 +286,80 @@ components:
             - token
 
     Owner:
-      $ref: './domain.yml#/components/schemas/User'
+      $ref: './domain.yml#/components/schemas/Owner'
 
+    TweetsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        tweets:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Tweet'
+      required:
+        - cursor
+        - tweets
+        - user_id
+
+    RepliesTreeResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        replies:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/ReplyNode'
+      required:
+        - cursor
+        - replies
+
+    ChatsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        chats:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Chat'
+      required:
+        - cursor
+        - chats
+
+    MessagesResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        chat_id:
+          type: string
+        cursor:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/ChatMessage'
+      required:
+        - cursor
+        - messages
+
+    UsersResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/User'
+      required:
+        - cursor
+        - users

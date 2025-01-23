@@ -17,8 +17,9 @@ import (
 const discardRatio = 0.5
 
 var (
-	ErrNotRunning  = errors.New("DB is not running")
-	ErrKeyNotFound = badger.ErrKeyNotFound
+	ErrNotRunning    = errors.New("DB is not running")
+	ErrKeyNotFound   = badger.ErrKeyNotFound
+	ErrWrongPassword = errors.New("wrong username or password")
 )
 
 type (
@@ -48,7 +49,6 @@ func New(
 	path string,
 	isInMemory bool,
 	dataFolder string,
-	logger badger.Logger,
 ) (*DB, func(), error) {
 	dbPath := filepath.Join(path, dataFolder)
 	opts := badger.
@@ -57,8 +57,7 @@ func New(
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2).
-		WithLogger(logger)
-
+		WithLoggingLevel(badger.WARNING)
 	if isInMemory {
 		opts.WithInMemory(true)
 	}
@@ -105,7 +104,7 @@ func (db *DB) Run(username, password string) (err error) {
 
 	db.badger, err = badger.Open(execOpts)
 	if errors.Is(err, badger.ErrEncryptionKeyMismatch) {
-		return errors.New("auth failed: wrong username or password")
+		return ErrWrongPassword
 	}
 	if err != nil {
 		return err

@@ -17,8 +17,6 @@ type UserPersistencyLayer interface {
 	Authenticate(username, password string) error
 	SessionToken() string
 	Create(user domain.User) (domain.User, error)
-	Owner() (domain.User, error)
-	CreateOwner(o domain.User) (err error)
 	GetOwner() (domain.Owner, error)
 	SetOwner(domain.Owner) (domain.Owner, error)
 }
@@ -27,15 +25,15 @@ type AuthService struct {
 	isAuthenticated *atomic.Bool
 	userPersistence UserPersistencyLayer
 	interrupt       chan os.Signal
-	nodeReady       chan string
-	authReady       chan struct{}
+	nodeReady       chan domain.Owner
+	authReady       chan domain.Owner
 }
 
 func NewAuthService(
 	userPersistence UserPersistencyLayer,
 	interrupt chan os.Signal,
-	nodeReady chan string,
-	authReady chan struct{},
+	nodeReady chan domain.Owner,
+	authReady chan domain.Owner,
 ) *AuthService {
 	return &AuthService{
 		new(atomic.Bool),
@@ -63,14 +61,16 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	}
 	token := as.userPersistence.SessionToken()
 
-	owner, err := as.userPersistence.Owner()
-	if err != nil && !errors.Is(err, database.ErrUserNotFound) {
+	owner, err := as.userPersistence.GetOwner()
+	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
 		l.Errorf("owner fetching failed: %v", err)
 		return resp, err
 	}
-	if errors.Is(err, database.ErrUserNotFound) {
+
+	var user domain.User
+	if errors.Is(err, database.ErrOwnerNotFound) {
 		l.Info("creating new owner")
-		err := as.userPersistence.CreateOwner(domain.User{
+		owner, err = as.userPersistence.SetOwner(domain.Owner{
 			CreatedAt: time.Now(),
 			Username:  message.Username,
 		})
@@ -79,14 +79,22 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 			return resp, fmt.Errorf("create owner: %v", err)
 
 		}
-		owner, _ = as.userPersistence.Owner()
+		user, err = as.userPersistence.Create(domain.User{
+			CreatedAt: owner.CreatedAt,
+			Id:        owner.UserId,
+			NodeId:    "",
+			Username:  owner.Username,
+		})
+		if err != nil {
+			return resp, fmt.Errorf("new user creation failed: %v", err)
+		}
 	}
 
 	if owner.Username != message.Username {
 		l.Errorf("username mismatch: %s == %s", owner.Username, message.Username)
 		return resp, fmt.Errorf("user %s doesn't exist", message.Username)
 	}
-	as.authReady <- struct{}{}
+	as.authReady <- owner
 
 	timer := time.NewTimer(30 * time.Second)
 	defer timer.Stop()
@@ -94,13 +102,16 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 	case <-timer.C:
 		l.Errorf("node startup failed: timeout")
 		return resp, errors.New("node starting is timed out")
-	case nodeId := <-as.nodeReady:
-		owner.NodeId = nodeId
+	case owner = <-as.nodeReady:
+		user.NodeId = owner.NodeId
 	}
 
-	if err = as.userPersistence.CreateOwner(owner); err != nil {
+	// update
+	if _, err = as.userPersistence.SetOwner(owner); err != nil {
 		l.Errorf("owner update failed: %v", err)
-		return resp, fmt.Errorf("failed to update user: %v", err)
+	}
+	if _, err = as.userPersistence.Create(user); err != nil {
+		l.Errorf("user update failed: %v", err)
 	}
 
 	as.isAuthenticated.Store(true)
@@ -110,7 +121,7 @@ func (as *AuthService) AuthLogin(l echo.Logger, message event.LoginEvent) (resp 
 		User:  owner,
 	}
 
-	return api.LoginResponse{Data: &data}, nil
+	return api.LoginResponse{Data: data}, nil
 }
 
 func (as *AuthService) AuthLogout() error {

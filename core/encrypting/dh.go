@@ -44,7 +44,6 @@ func NewDiffieHellmanEncrypter() (*DiffieHellmanEncrypter, error) {
 
 // Encrypt a message using AES-GCM
 func (e *DiffieHellmanEncrypter) EncryptMessage(plaintext []byte) ([]byte, error) {
-	fmt.Println("===MESSAGE BEFORE ENCRYPTION:", string(plaintext))
 	block, err := aes.NewCipher(e.aesKey)
 	if err != nil {
 		return nil, err
@@ -63,7 +62,6 @@ func (e *DiffieHellmanEncrypter) EncryptMessage(plaintext []byte) ([]byte, error
 		"%s:%s",
 		base64.StdEncoding.EncodeToString(ciphertext),
 		base64.StdEncoding.EncodeToString(nonce))
-	fmt.Println("===MESSAGE AFTER ENCRYPTION:", string(payload))
 
 	return []byte(payload), nil
 }
@@ -74,8 +72,6 @@ func (e *DiffieHellmanEncrypter) PublicKey() []byte {
 
 // DecryptMessage a message using AES-GCM
 func (e *DiffieHellmanEncrypter) DecryptMessage(encryptedMessage []byte) ([]byte, error) {
-	fmt.Println("+++MESSAGE BEFORE DECRYPTION:", string(encryptedMessage))
-
 	parts := strings.SplitN(string(encryptedMessage), ":", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid client message format: %s", encryptedMessage)
@@ -112,7 +108,6 @@ func (e *DiffieHellmanEncrypter) DecryptMessage(encryptedMessage []byte) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("+++MESSAGE AFTER DECRYPTION:", string(plaintext))
 
 	return plaintext, nil
 }

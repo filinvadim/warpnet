@@ -44,7 +44,7 @@ func NewEncryptedUpgrader() *EncryptedUpgrader {
 		},
 		encrypter: e,
 		mx:        new(sync.Mutex),
-		salt:      []byte("warpnet"),
+		salt:      nil,
 	}
 }
 

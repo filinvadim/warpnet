@@ -118,13 +118,13 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	return err
 }
 
-func (repo *TweetRepo) List(rootID string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
-	if rootID == "" {
+func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+	if userId == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
 
 	prefix := storage.NewPrefixBuilder(TweetsNamespace).
-		AddRootID(rootID).
+		AddRootID(userId).
 		Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)

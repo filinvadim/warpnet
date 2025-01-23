@@ -1,10 +1,10 @@
 {
   "name": "warpnet-frontend",
-  "version": "0.0.48",
+  "version": "0.0.50",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service build"
+    "build": "vue-cli-service build"
   },
   "dependencies": {
     "@tailwindcss/postcss7-compat": "^2.0.2",

@@ -27,16 +27,24 @@ type BaseEvent = externalRef0.BaseEvent
 
 // BaseWSRequest defines model for BaseWSRequest.
 type BaseWSRequest struct {
-	Data      *Event     `json:"data,omitempty"`
-	MessageId string     `json:"message_id"`
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+	Data      *Event    `json:"data,omitempty"`
+	MessageId string    `json:"message_id"`
+	NodeId    string    `json:"node_id"`
+	Path      string    `json:"path"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // BaseWSResponse defines model for BaseWSResponse.
 type BaseWSResponse struct {
-	MessageId string     `json:"message_id"`
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+	Data      []byte    `json:"data"`
+	MessageId string    `json:"message_id"`
+	NodeId    string    `json:"node_id"`
+	Path      string    `json:"path"`
+	Timestamp time.Time `json:"timestamp"`
 }
+
+// ChatsResponse defines model for ChatsResponse.
+type ChatsResponse = externalRef0.ChatsResponse
 
 // ErrorData defines model for ErrorData.
 type ErrorData struct {
@@ -49,9 +57,11 @@ type ErrorEvent = externalRef0.ErrorEvent
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
-	Data      *ErrorData `json:"data,omitempty"`
-	MessageId string     `json:"message_id"`
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+	Data      ErrorData `json:"data"`
+	MessageId string    `json:"message_id"`
+	NodeId    string    `json:"node_id"`
+	Path      string    `json:"path"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // Event defines model for Event.
@@ -103,13 +113,18 @@ type LoginEvent = externalRef0.LoginEvent
 
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
-	Data      *LoginData `json:"data,omitempty"`
-	MessageId string     `json:"message_id"`
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+	Data      LoginData `json:"data"`
+	MessageId string    `json:"message_id"`
+	NodeId    string    `json:"node_id"`
+	Path      string    `json:"path"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent = externalRef0.LogoutEvent
+
+// MessagesResponse defines model for MessagesResponse.
+type MessagesResponse = externalRef0.MessagesResponse
 
 // NewChatEvent defines model for NewChatEvent.
 type NewChatEvent = externalRef0.NewChatEvent
@@ -131,6 +146,15 @@ type NewUnfollowEvent = externalRef0.NewUnfollowEvent
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent = externalRef0.NewUserEvent
+
+// RepliesTreeResponse defines model for RepliesTreeResponse.
+type RepliesTreeResponse = externalRef0.RepliesTreeResponse
+
+// TweetsResponse defines model for TweetsResponse.
+type TweetsResponse = externalRef0.TweetsResponse
+
+// UsersResponse defines model for UsersResponse.
+type UsersResponse = externalRef0.UsersResponse
 
 // AsErrorEvent returns the union data inside the Event as a ErrorEvent
 func (t Event) AsErrorEvent() (ErrorEvent, error) {
@@ -700,33 +724,37 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"OHxNefxvAAAA//8/WeWYLC0AAA==",
+	"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",
+	"8fil2lP+DgAA//9ABOdsezgAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

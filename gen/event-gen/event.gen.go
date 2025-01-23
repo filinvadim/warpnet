@@ -19,16 +19,21 @@ import (
 
 // BaseEvent defines model for BaseEvent.
 type BaseEvent struct {
-	EventType string    `json:"event_type"`
-	Timestamp time.Time `json:"timestamp"`
+	EventType string `json:"event_type"`
+}
+
+// ChatsResponse defines model for ChatsResponse.
+type ChatsResponse struct {
+	Chats  []externalRef0.Chat `json:"chats"`
+	Cursor string              `json:"cursor"`
+	UserId *string             `json:"user_id,omitempty"`
 }
 
 // ErrorEvent defines model for ErrorEvent.
 type ErrorEvent struct {
-	Code      int       `json:"code"`
-	EventType string    `json:"event_type"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
+	Code      int    `json:"code"`
+	EventType string `json:"event_type"`
+	Message   string `json:"message"`
 }
 
 // GetAllChatsEvent defines model for GetAllChatsEvent.
@@ -37,46 +42,41 @@ type GetAllChatsEvent struct {
 	Cursor    *string             `json:"cursor,omitempty"`
 	EventType string              `json:"event_type"`
 	Limit     *int                `json:"limit,omitempty"`
-	Timestamp time.Time           `json:"timestamp"`
 	UserId    string              `json:"user_id"`
 }
 
 // GetAllMessagesEvent defines model for GetAllMessagesEvent.
 type GetAllMessagesEvent struct {
-	ChatId    string    `json:"chat_id"`
-	Cursor    *string   `json:"cursor,omitempty"`
-	EventType string    `json:"event_type"`
-	Limit     *uint64   `json:"limit,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	ChatId    string  `json:"chat_id"`
+	Cursor    *string `json:"cursor,omitempty"`
+	EventType string  `json:"event_type"`
+	Limit     *uint64 `json:"limit,omitempty"`
 }
 
 // GetAllRepliesEvent defines model for GetAllRepliesEvent.
 type GetAllRepliesEvent struct {
-	Cursor        *string   `json:"cursor,omitempty"`
-	EventType     string    `json:"event_type"`
-	Limit         *uint64   `json:"limit,omitempty"`
-	ParentReplyId string    `json:"parent_reply_id"`
-	RootId        string    `json:"root_id"`
-	Timestamp     time.Time `json:"timestamp"`
+	Cursor        *string `json:"cursor,omitempty"`
+	EventType     string  `json:"event_type"`
+	Limit         *uint64 `json:"limit,omitempty"`
+	ParentReplyId string  `json:"parent_reply_id"`
+	RootId        string  `json:"root_id"`
 }
 
 // GetAllTweetsEvent defines model for GetAllTweetsEvent.
 type GetAllTweetsEvent struct {
-	Cursor    *string   `json:"cursor,omitempty"`
-	EventType string    `json:"event_type"`
-	Limit     *uint64   `json:"limit,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
-	UserId    string    `json:"userId"`
+	Cursor    *string `json:"cursor,omitempty"`
+	EventType string  `json:"event_type"`
+	Limit     *uint64 `json:"limit,omitempty"`
+	UserId    string  `json:"userId"`
 }
 
 // GetAllUsersEvent defines model for GetAllUsersEvent.
 type GetAllUsersEvent struct {
-	Cursor      *string   `json:"cursor,omitempty"`
-	EventType   string    `json:"event_type"`
-	IsFollowed  *bool     `json:"is_followed,omitempty"`
-	IsFollowing *bool     `json:"is_following,omitempty"`
-	Limit       *uint64   `json:"limit,omitempty"`
-	Timestamp   time.Time `json:"timestamp"`
+	Cursor      *string `json:"cursor,omitempty"`
+	EventType   string  `json:"event_type"`
+	IsFollowed  *bool   `json:"is_followed,omitempty"`
+	IsFollowing *bool   `json:"is_following,omitempty"`
+	Limit       *uint64 `json:"limit,omitempty"`
 }
 
 // GetChatEvent defines model for GetChatEvent.
@@ -84,66 +84,66 @@ type GetChatEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
 	EventType  string    `json:"event_type"`
 	FromUserId string    `json:"from_user_id"`
-	Timestamp  time.Time `json:"timestamp"`
 	ToUserId   string    `json:"to_user_id"`
 }
 
 // GetMessageEvent defines model for GetMessageEvent.
 type GetMessageEvent struct {
-	ChatId    string    `json:"chat_id"`
-	EventType string    `json:"event_type"`
-	Id        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	UserId    string    `json:"user_id"`
-	Username  *string   `json:"username,omitempty"`
+	ChatId    string  `json:"chat_id"`
+	EventType string  `json:"event_type"`
+	Id        string  `json:"id"`
+	UserId    string  `json:"user_id"`
+	Username  *string `json:"username,omitempty"`
 }
 
 // GetReplyEvent defines model for GetReplyEvent.
 type GetReplyEvent struct {
-	EventType     string    `json:"event_type"`
-	ParentReplyId string    `json:"parent_reply_id"`
-	ReplyId       string    `json:"reply_id"`
-	RootId        string    `json:"root_id"`
-	Timestamp     time.Time `json:"timestamp"`
+	EventType     string `json:"event_type"`
+	ParentReplyId string `json:"parent_reply_id"`
+	ReplyId       string `json:"reply_id"`
+	RootId        string `json:"root_id"`
 }
 
 // GetTimelineEvent defines model for GetTimelineEvent.
 type GetTimelineEvent struct {
-	Cursor    *string   `json:"cursor,omitempty"`
-	EventType string    `json:"event_type"`
-	Limit     *uint64   `json:"limit,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
-	UserId    string    `json:"userId"`
+	Cursor    *string `json:"cursor,omitempty"`
+	EventType string  `json:"event_type"`
+	Limit     *uint64 `json:"limit,omitempty"`
+	UserId    string  `json:"userId"`
 }
 
 // GetTweetEvent defines model for GetTweetEvent.
 type GetTweetEvent struct {
-	EventType string    `json:"event_type"`
-	Timestamp time.Time `json:"timestamp"`
-	TweetId   string    `json:"tweetId"`
-	UserId    string    `json:"userId"`
+	EventType string `json:"event_type"`
+	TweetId   string `json:"tweetId"`
+	UserId    string `json:"userId"`
 }
 
 // GetUserEvent defines model for GetUserEvent.
 type GetUserEvent struct {
-	EventType string    `json:"event_type"`
-	Timestamp time.Time `json:"timestamp"`
-	UserId    string    `json:"userId"`
+	EventType string `json:"event_type"`
+	UserId    string `json:"userId"`
 }
 
 // LoginEvent defines model for LoginEvent.
 type LoginEvent struct {
-	EventType string    `json:"event_type"`
-	Password  string    `json:"password"`
-	Timestamp time.Time `json:"timestamp"`
-	Username  string    `json:"username"`
+	EventType string `json:"event_type"`
+	Password  string `json:"password"`
+	Username  string `json:"username"`
 }
 
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent struct {
-	EventType string    `json:"event_type"`
-	Timestamp time.Time `json:"timestamp"`
-	Token     string    `json:"token"`
+	EventType string `json:"event_type"`
+	Token     string `json:"token"`
+}
+
+// MessagesResponse defines model for MessagesResponse.
+type MessagesResponse struct {
+	ChatId   *string                    `json:"chat_id,omitempty"`
+	Cursor   string                     `json:"cursor"`
+	Messages []externalRef0.ChatMessage `json:"messages"`
+	UserId   *string                    `json:"user_id,omitempty"`
 }
 
 // NewChatEvent defines model for NewChatEvent.
@@ -151,7 +151,6 @@ type NewChatEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
 	EventType  string    `json:"event_type"`
 	FromUserId string    `json:"from_user_id"`
-	Timestamp  time.Time `json:"timestamp"`
 	ToUserId   string    `json:"to_user_id"`
 }
 
@@ -159,7 +158,6 @@ type NewChatEvent struct {
 type NewFollowEvent struct {
 	EventType string       `json:"event_type"`
 	Request   *interface{} `json:"request,omitempty"`
-	Timestamp time.Time    `json:"timestamp"`
 }
 
 // NewMessageEvent defines model for NewMessageEvent.
@@ -167,20 +165,17 @@ type NewMessageEvent struct {
 	CreatedAt *time.Time                `json:"created_at,omitempty"`
 	EventType string                    `json:"event_type"`
 	Message   *externalRef0.ChatMessage `json:"message,omitempty"`
-	Timestamp time.Time                 `json:"timestamp"`
 }
 
 // NewReplyEvent defines model for NewReplyEvent.
 type NewReplyEvent struct {
 	EventType string              `json:"event_type"`
-	Timestamp time.Time           `json:"timestamp"`
 	Tweet     *externalRef0.Tweet `json:"tweet,omitempty"`
 }
 
 // NewTweetEvent defines model for NewTweetEvent.
 type NewTweetEvent struct {
 	EventType string              `json:"event_type"`
-	Timestamp time.Time           `json:"timestamp"`
 	Tweet     *externalRef0.Tweet `json:"tweet,omitempty"`
 }
 
@@ -188,40 +183,60 @@ type NewTweetEvent struct {
 type NewUnfollowEvent struct {
 	EventType string       `json:"event_type"`
 	Request   *interface{} `json:"request,omitempty"`
-	Timestamp time.Time    `json:"timestamp"`
 }
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent struct {
 	EventType string             `json:"event_type"`
-	Timestamp time.Time          `json:"timestamp"`
 	User      *externalRef0.User `json:"user,omitempty"`
 }
 
 // Owner defines model for Owner.
-type Owner = externalRef0.User
+type Owner = externalRef0.Owner
+
+// RepliesTreeResponse defines model for RepliesTreeResponse.
+type RepliesTreeResponse struct {
+	Cursor  string                   `json:"cursor"`
+	Replies []externalRef0.ReplyNode `json:"replies"`
+	UserId  *string                  `json:"user_id,omitempty"`
+}
+
+// TweetsResponse defines model for TweetsResponse.
+type TweetsResponse struct {
+	Cursor string               `json:"cursor"`
+	Tweets []externalRef0.Tweet `json:"tweets"`
+	UserId string               `json:"user_id"`
+}
+
+// UsersResponse defines model for UsersResponse.
+type UsersResponse struct {
+	Cursor string              `json:"cursor"`
+	Users  []externalRef0.User `json:"users"`
+}
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xYUW/bNhD+Kwa3R6VJsWEPftuGbiiQpkCRYA9FIdDS2b5ZIrXjKaoR5L8PpGRbsimb",
-	"cuU2D3myJZF33328+47kk0h0XmgFio2YPgmTLCGX7u8f0sC7R1BsHwrSBRAjuE9gX8e8LsA+1b/CMKFa",
-	"iOdIMOZgWOaF/TrXlEsWU5FKhiv7SUT7U54jQfBfiQSpmH5um28b+7Kdp2f/QsLW1TsiTVuUMss+zsX0",
-	"85P4mWAupuKn6114101s17vAnqP9yBKdtmNCxbAAsp5yMEYufAHvoXcmduMPUX95jsTfwL9n2Z9LyWZM",
-	"9Nae/YMMuftzzFKqc4kqtiDcqtUoJZFc2+ekJKPJu8AZ5sh+mkoDFGMaQJPDuptwjKcPNZdjU+XHeVbk",
-	"kfh6tdBXzdsSFf/2qzfkU6F+giLDcSMdK5pIFJJsZRIU2bqPPNKagxJgM/DQ7DF+7isAfqH02FR+HxB5",
-	"M+5YmA8G6DtFiSae6yzTFbShz7TOQKrOADvBO2JwVfjjtko0ZswEkiGNJYf2oUjMSedxS8NyVLegFrwU",
-	"07ee4ayDB+/lQMdRx1DUBt6bI40kfidF7HkdTpQdqWQOYcXR0NAAcu57ibCCuR6RhiCNu7AAtjz0xn2P",
-	"OWSovi0Djo081Nuta/tuRMrZ2nvfn2IDNDXaGuslzkrriOBHEf1bvUA1ahIbU2nqpzS8Ft3IaGexNwBd",
-	"jpoTegXqNMJ6mB/THVSvHSWwo9xB9Zfr8SOyZcGBscZ6Wv4dVBdoY2esUetsF3hganCL/sjG7ktO1wIR",
-	"OoE+gu0iAj4Stgc1/xGJeIGuEEiI9dzHx8dK1Xa61uWjZEmd/J6hkrT2JfdMJqsF6VKlMeZNlodMQ+3t",
-	"HjMkXtpqCi+vs2SzOZLEs3XnQuNQMPeuLZqJZGJV5h1/9fEj8lxadI43Q12hWgxw1bNpzHQiGbXyflQ6",
-	"hb7dpiu9IbG2u/+JXlTBzODeQpeUnby/cy3H5k/U3kFsomitrUW9v2Lt1eimwYk2Fon2hdb0Er079FzU",
-	"beKHG7AiHQjFR3Bgv++4O8Hah10fHHBbphU3unkin85Zgh9/8txF2EnnsFy8xZWHTle04fDP2Ay28mLj",
-	"6wjKT7Dt4C8b6L0f5oiJleEKBl+hu1X2NAhnLE50qdirzjkqzK1y3/iUurkV6L2DqKV/KNbNWnvgbkye",
-	"jbj/6iMSDF95xDQ6r7DrRLNI2lW9IzpqXcoMrvUH87pXe92rve7VAvZqFgWqucvaFExCWNSMCnegMpO5",
-	"pomcpGhRz0qGdHJfITPQldXUiSyKDJtViAQjZ9b6P5KKyR1wpWklIvEIZGqjb9/cvLmxLOkClCxQTMUv",
-	"7pWtfV4adzL8PwAA///wXXm6Cx8AAA==",
+	"H4sIAAAAAAAC/+xZTY/bNhD9KwbbIze7QYMcfGuLtAiwcYDAix6CQKCtsc1aIlWSsmIE/u8FKdqSLEqi",
+	"FHqTw57WK1Mzbx7ffJD+htY8zTgDpiSaf0NyvYOUmI9/EAnvDsCU/icTPAOhKJivQD+O1DED/V/5F0kl",
+	"KNui0wkjAf/lVECM5p/ra7/g81q++hfWCp0w+nNHlPwEMuNMQtvTWn+tP1AFqfnwq4ANmqNf7ivg9xb1",
+	"fcxTQlmkbWrb1hkRghz1/+tcSC4ckDHKJYiIxsPhWBvYInOF9E4ILi7MkST5uEHzz/3IK7JPuMUBj+s8",
+	"U6ZgC0J7SkFKsvXYBGOiWt9G/eWE0d+gfk8SsyEh0T/TDiY0pcpNk//mGqzVC308fSi5DE2VG+ekyDH6",
+	"erfld/ZpTpl6+8YZ8lConyBLaNhIQ0WDUUaELjACsuTYRZ7gXHkJ4LywbbaPn2UBoH5SerSU33tEbtf1",
+	"hfkkQTxTlFRGG54kvIA69BXnCRDWWKBfcK4YnRXuuHUlChmzAKIgjoixt+Ei1Z9QTBTcKZrqIt0iYyN4",
+	"GtVqWErZI7Ct2qH5a8dyxb0XX2mg4ahhCNeBd2rElsRnqogdj/2J0isZScEvOSwNFpBx30mELpjHgDR4",
+	"1bgbF8Cah864lzSFhLLvU0Dfyna9vbjWzwJSrrS9990SG1FT8cVYJ3G6tAYEH6ToP/ItZUFFLGXBRTel",
+	"/rloVuLKYmcAPA+qCb4HNoywXObGdJ4a+088E4ZAO9pPmrQtKNfAPf5cdAHiOhotoHhpqJ4NdQHFX2bE",
+	"CciWBgdSG+uYeBZQ3KCLT9ij2tF2rIo7Iwvdlk1Z90Ro+lMPtpv0r0DYntjmRwjxBk3RkxDtuYuPjwUr",
+	"7Xy/xml2eOMebbPDW+cXjMcQDQ++QUbdWqM9u7WQLcCBGoaRvTdYCoCeftfd00T5/tiWZtJ8weNADe2M",
+	"whVhOYlOCs4k6OjYbKqGiMsC6Lvtwsic+SfFp62ODq9MvOvouiIoXbhg168R57cYGXxPo83ZoU1SFo+E",
+	"csWFSUrPMaPhboC1D1X7HTGecqZsuR4YqSZVyx9+3q8ibFTHgSpoWX2kewedJgn94U+YQWu6OPvqQfnS",
+	"3by7W6vbOHKFJrEoj4zBGpi5hRk92DXueIwFXMHrje4ySP7cwl26YQYsNAndj59FTNY7dtEYi9Y8Z01g",
+	"5XU01kTRNE/R/AE7ftCyd3OdN4HTZovzXjtFV5qcjLj7AhIjBV9VQBlNqwel0DSSepWviMa1q9HRtf9J",
+	"uooqORBFRIPMFWVEHF2iXJH1fit4zuKIprYz+7xGuZPzFRVqp7PAPy0mjU32R5xodWyosa2BK8HZF4WM",
+	"mNaUQ29tjTV+EBrrirLtCFddJYKviaKcje5uNrv8AdQlPpANBawkvdroXCR+o6XWT0ezvOytRn29Y/Xd",
+	"aMpgIGc0Cso2RrUxyLWgWckoMud6OdtwMSOzmGrUq1xBPFsWVCkQd7qmzkiWJdTuAkaKqkRb/4eIbLYA",
+	"VXCxRxgdQMjS6OtXD68eNEs8A0YyiuboN/NI577aSXNB8X8AAAD//yFSaX4lIwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

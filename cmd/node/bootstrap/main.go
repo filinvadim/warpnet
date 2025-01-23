@@ -29,9 +29,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 	log.Println("starting bootstrap node...")
-
+	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
 	n, err := node.NewBootstrapNode(ctx, conf, l)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)

@@ -22,7 +22,6 @@ const (
 )
 
 var (
-	ErrWrongPassword = errors.New("wrong password")
 	ErrOwnerNotFound = errors.New("owner not found")
 	ErrNilAuthRepo   = errors.New("auth repo is nil")
 )
@@ -103,7 +102,7 @@ func (repo *AuthRepo) GetOwner() (owner domainGen.Owner, err error) {
 
 	data, err := repo.db.Get(ownerKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
-		return owner, ErrUserNotFound
+		return owner, ErrOwnerNotFound
 	}
 	if err != nil {
 		return owner, err

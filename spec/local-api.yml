@@ -58,10 +58,18 @@ components:
           format: date-time
         message_id:
           type: string
+        path:
+          type: string
+          example: /tweet/1.0.0
+        node_id:
+          type: string
         data:
           $ref: '#/components/schemas/Event'
       required:
         - message_id
+        - node_id
+        - path
+        - timestamp
 
     Event:
       anyOf:
@@ -91,8 +99,21 @@ components:
         timestamp:
           type: string
           format: date-time
+        path:
+          type: string
+          example: /tweet/1.0.0
+        node_id:
+          type: string
+        data:
+          type: string
+          format: byte
       required:
         - message_id
+        - node_id
+        - path
+        - timestamp
+        - data
+
 
     LoginResponse:
       allOf:
@@ -197,3 +218,19 @@ components:
 
     BaseEvent:
       $ref: './event.yml#/components/schemas/BaseEvent'
+
+#      RESPONSES
+    TweetsResponse:
+      $ref: './event.yml#/components/schemas/TweetsResponse'
+
+    RepliesTreeResponse:
+      $ref: './event.yml#/components/schemas/RepliesTreeResponse'
+
+    ChatsResponse:
+      $ref: './event.yml#/components/schemas/ChatsResponse'
+
+    MessagesResponse:
+      $ref: './event.yml#/components/schemas/MessagesResponse'
+
+    UsersResponse:
+      $ref: './event.yml#/components/schemas/UsersResponse'

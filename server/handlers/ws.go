@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
+	"github.com/filinvadim/warpnet/core/types"
 	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/api-gen"
@@ -12,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
+	"time"
 )
 
 type WSController struct {
@@ -90,16 +92,53 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}()
 		err = c.auth.AuthLogout()
 		return nil, err
+
 	default:
 		if !c.auth.IsAuthenticated() {
-			response = api.ErrorResponse{Data: &api.ErrorData{Code: http.StatusUnauthorized, Message: "not authenticated"}}
+			response = newErrorResp("not authenticated")
 			break
 		}
-		// TODO
+		if wsMsg.Data == nil {
+			response = newErrorResp("missing data")
+			break
+		}
+		data, err := (*wsMsg.Data).MarshalJSON()
+		if err != nil {
+			response = newErrorResp(err.Error())
+			break
+		}
+		if wsMsg.NodeId == "" || wsMsg.Path == "" {
+			response = newErrorResp("missing path or node ID")
+			break
+		}
+		respData, err := c.client.StreamSend(
+			types.WarpPeerID(wsMsg.NodeId), types.WarpDiscriminator(wsMsg.Path), data,
+		)
+		if err != nil {
+			response = newErrorResp(err.Error())
+			break
+		}
+
+		response = api.BaseWSResponse{
+			MessageId: wsMsg.MessageId,
+			NodeId:    wsMsg.NodeId,
+			Path:      wsMsg.Path,
+			Timestamp: time.Now(),
+			Data:      respData,
+		}
 	}
 	if response == nil {
 		return nil, nil
 	}
 
 	return json.JSON.Marshal(response)
+}
+
+func newErrorResp(message string) any {
+	return api.ErrorResponse{
+		Data: api.ErrorData{
+			Code:    http.StatusInternalServerError,
+			Message: message,
+		},
+	}
 }

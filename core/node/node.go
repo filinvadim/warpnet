@@ -9,15 +9,15 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/handler"
-	nodeGen "github.com/filinvadim/warpnet/core/node-gen"
 	"github.com/filinvadim/warpnet/core/types"
-	"github.com/filinvadim/warpnet/logger"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -31,7 +31,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
 	"log"
-	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -59,6 +59,8 @@ type WarpNode struct {
 	relay    types.WarpRelayCloser
 	pubsub   types.WarpGossiper
 	isClosed *atomic.Bool
+
+	ipv4, ipv6 string
 }
 
 func createNode(
@@ -130,13 +132,11 @@ func createNode(
 		isClosed: new(atomic.Bool),
 	}
 
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %v\n", n.ID(), n.Addresses())
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	n.parseAddresses(node)
 
-	logConf := logging.GetConfig()
-	logConf.Labels["node_id"] = n.ID()
-	logging.SetupLogging(logConf)
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s %s\n", n.ID(), n.IPv4(), n.IPv6())
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
 }
@@ -144,14 +144,9 @@ func createNode(
 func NewBootstrapNode(
 	ctx context.Context,
 	conf config.Config,
-	l logger.Core,
+	l NodeLogger,
 ) (_ *WarpNode, err error) {
 	logging.SetPrimaryCore(l)
-	seedId := []byte(strconv.Itoa(conf.Node.SeedID))
-	privKey, err := encrypting.GenerateKeyFromSeed(seedId)
-	if err != nil {
-		return nil, err
-	}
 
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
@@ -169,21 +164,27 @@ func NewBootstrapNode(
 		return nil, err
 	}
 
-	return createNode(
-		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
+	n, err := createNode(
+		ctx, nil, store, addrInfos, conf,
 		func(n types.P2PNode) (types.WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
 		},
 	)
+	logConf := logging.GetConfig()
+	logConf.Labels["node_id"] = n.ID()
+	logging.SetupLogging(logConf)
+
+	return n, err
 }
 
 func NewRegularNode(
 	ctx context.Context,
 	db PersistentLayer,
 	conf config.Config,
-	l NodeLogger,
+	timelineRepo *database.TimelineRepo,
+	userRepo *database.UserRepo,
+	tweetRepo *database.TweetRepo,
 ) (_ *WarpNode, err error) {
-	logging.SetPrimaryCore(l)
 
 	privKey := db.PrivateKey()
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
@@ -211,16 +212,14 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	sw, _ := nodeGen.GetSwagger()
-	h, err := handler.NewNodeStreamHandler(ctx, n.node, l, nil, nil, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	err = h.RegisterHandlers(sw.Paths)
+	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
+	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
+	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
+	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo))
 	return n, err
 }
 
-const serverNodeAddr = "/ip4/127.0.0.1/tcp/4001/p2p/"
+const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
 
 func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config) (_ *WarpNode, err error) {
 	libp2p.DefaultMuxers = nil
@@ -240,7 +239,7 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 	if err != nil {
 		return nil, fmt.Errorf("creating client node: %s", err)
 	}
-	serverAddr := serverNodeAddr + serverNodeId
+	serverAddr := serverNodeAddrDefault + serverNodeId
 	maddr, err := ma.NewMultiaddr(serverAddr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing server address: %s", err)
@@ -269,14 +268,32 @@ func (n *WarpNode) ID() string {
 	return n.node.ID().String()
 }
 
-func (n *WarpNode) Addresses() (addrs []string) {
-	if n == nil || n.node == nil {
-		return addrs
+func (n *WarpNode) parseAddresses(node host.Host) {
+	if n == nil {
+		return
 	}
-	for _, a := range n.node.Addrs() {
-		addrs = append(addrs, a.String())
+	for _, a := range node.Addrs() {
+		if strings.HasPrefix(a.String(), "/ip4/127.0.0.1") { // localhost is default
+			continue
+		}
+		if strings.HasPrefix(a.String(), "/ip6/::1") { // localhost is default
+			continue
+		}
+		if strings.HasPrefix(a.String(), "/ip4") {
+			n.ipv4 = a.String()
+		}
+		if strings.HasPrefix(a.String(), "/ip6") {
+			n.ipv6 = a.String()
+		}
 	}
-	return addrs
+}
+
+func (n *WarpNode) IPv4() string {
+	return n.ipv4
+}
+
+func (n *WarpNode) IPv6() string {
+	return n.ipv6
 }
 
 func (n *WarpNode) Stop() {
@@ -300,32 +317,6 @@ func (n *WarpNode) Stop() {
 	}
 	n.isClosed.Store(true)
 	return
-}
-
-func setupPrivateDHT(
-	ctx context.Context,
-	n types.P2PNode,
-	repo datastore.Batching,
-	providerStore providers.ProviderStore,
-	relays []types.WarpAddrInfo,
-) (*types.WarpDHT, error) {
-	DHT, err := dht.New(
-		ctx, n,
-		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(ProtocolPrefix),
-		dht.Datastore(repo),
-		dht.BootstrapPeers(relays...),
-		dht.ProviderStore(providerStore),
-	)
-	if err != nil {
-		return nil, err
-	}
-	go DHT.Bootstrap(ctx)
-
-	if err = <-DHT.RefreshRoutingTable(); err != nil {
-		log.Printf("failed to refresh kdht routing table: %v\n", err)
-	}
-	return DHT, nil
 }
 
 // path = "/example/1.0.0"
@@ -365,4 +356,30 @@ func flush(rw *bufio.ReadWriter) {
 	if err := rw.Flush(); err != nil {
 		log.Printf("flush: %s", err)
 	}
+}
+
+func setupPrivateDHT(
+	ctx context.Context,
+	n types.P2PNode,
+	repo datastore.Batching,
+	providerStore providers.ProviderStore,
+	relays []types.WarpAddrInfo,
+) (*types.WarpDHT, error) {
+	DHT, err := dht.New(
+		ctx, n,
+		dht.Mode(dht.ModeServer),
+		dht.ProtocolPrefix(ProtocolPrefix),
+		dht.Datastore(repo),
+		dht.BootstrapPeers(relays...),
+		dht.ProviderStore(providerStore),
+	)
+	if err != nil {
+		return nil, err
+	}
+	go DHT.Bootstrap(ctx)
+
+	if err = <-DHT.RefreshRoutingTable(); err != nil {
+		log.Printf("failed to refresh kdht routing table: %v\n", err)
+	}
+	return DHT, nil
 }
