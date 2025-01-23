@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	go_crypto "crypto"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
@@ -20,6 +21,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -30,6 +32,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
+	"io"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -135,7 +138,7 @@ func createNode(
 	n.parseAddresses(node)
 
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s %s\n", n.ID(), n.IPv4(), n.IPv6())
+	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s\n", n.ID(), n.node.Addrs())
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
@@ -212,6 +215,10 @@ func NewRegularNode(
 		return nil, err
 	}
 
+	n.node.SetStreamHandler("/ping/1.0.0", func(stream network.Stream) {
+		defer stream.Close()
+		log.Println("received ping")
+	})
 	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
 	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
@@ -222,7 +229,9 @@ func NewRegularNode(
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
 
 func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config) (_ *WarpNode, err error) {
-	libp2p.DefaultMuxers = nil
+	if serverNodeId == "" {
+		return nil, errors.New("server node ID is empty")
+	}
 	client, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.DisableMetrics(),
@@ -234,7 +243,7 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))),
-		libp2p.UserAgent(conf.Node.PSK),
+		libp2p.UserAgent(conf.Node.PSK+"-client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating client node: %s", err)
@@ -247,17 +256,28 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 
 	serverInfo, err := peer.AddrInfoFromP2pAddr(maddr)
 	if err != nil {
-		return nil, fmt.Errorf("creating Address info: %s", err)
+		return nil, fmt.Errorf("creating fddress info: %s", err)
 	}
 
-	if err := client.Connect(context.Background(), *serverInfo); err != nil {
-		return nil, fmt.Errorf("connecting to server node %s: %v", serverInfo.ID, err)
-	}
+	client.Peerstore().AddAddrs(serverInfo.ID, serverInfo.Addrs, peerstore.PermanentAddrTTL)
+
 	n := &WarpNode{
 		ctx:      ctx,
 		node:     client,
 		isClosed: new(atomic.Bool),
 	}
+
+	if len(client.Addrs()) != 0 {
+		return nil, errors.New("client node must have no addresses")
+	}
+	_, err = n.StreamSend(
+		serverNodeId, "/ping/1.0.0", []byte(""),
+	)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return n, err
+	}
+	log.Println("client node created:", n.node.ID())
+
 	return n, nil
 }
 
@@ -320,8 +340,22 @@ func (n *WarpNode) Stop() {
 }
 
 // path = "/example/1.0.0"
-func (n *WarpNode) StreamSend(peerID types.WarpPeerID, path types.WarpDiscriminator, data []byte) ([]byte, error) {
-	stream, err := n.node.NewStream(n.ctx, peerID, path)
+func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error) {
+	if n == nil || n.node == nil || peerID == "" {
+		return nil, errors.New("node improperly configured")
+	}
+
+	serverAddr := serverNodeAddrDefault + peerID
+	maddr, err := ma.NewMultiaddr(serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("parsing server address: %s", err)
+	}
+
+	serverInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		return nil, fmt.Errorf("creating address info: %s", err)
+	}
+	stream, err := n.node.NewStream(context.Background(), serverInfo.ID, path)
 	if err != nil {
 		return nil, fmt.Errorf("opening stream: %s", err)
 	}
@@ -342,7 +376,7 @@ func (n *WarpNode) StreamSend(peerID types.WarpPeerID, path types.WarpDiscrimina
 	if err != nil {
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
-	fmt.Printf("Response from server: %s\n", response)
+	fmt.Printf("response from server: %s\n", response)
 	return response, nil
 }
 

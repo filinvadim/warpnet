@@ -12,7 +12,6 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/logger"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
@@ -69,8 +68,7 @@ func main() {
 		close(authReadyChan)
 	}()
 
-	serverLogger := logger.NewUnifiedLogger(conf.Server.Logging.Level, true)
-	interfaceServer, err := server.NewInterfaceServer(conf, serverLogger)
+	interfaceServer, err := server.NewInterfaceServer(conf)
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run public server: %v", err)
 	}

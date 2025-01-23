@@ -45,7 +45,7 @@ type interfaceServer struct {
 	port string
 }
 
-func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error) {
+func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
@@ -54,7 +54,6 @@ func NewInterfaceServer(conf config.Config, l echo.Logger) (PublicServer, error)
 
 	e := echo.New()
 	e.HideBanner = true
-	e.Logger = l
 
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
 		AllowOrigins:  []string{"*"}, // TODO

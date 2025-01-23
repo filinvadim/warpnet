@@ -32,7 +32,8 @@ func NewWSController(
 ) *WSController {
 
 	return &WSController{
-		websocket.NewEncryptedUpgrader(), auth, nil, conf, nil,
+		websocket.NewEncryptedUpgrader(), auth, nil,
+		conf, nil,
 	}
 }
 
@@ -120,7 +121,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 		respData, err := c.client.StreamSend(
-			types.WarpPeerID(wsMsg.NodeId), types.WarpDiscriminator(wsMsg.Path), data,
+			wsMsg.NodeId, types.WarpDiscriminator(wsMsg.Path), data,
 		)
 		if err != nil {
 			response = newErrorResp(err.Error())
