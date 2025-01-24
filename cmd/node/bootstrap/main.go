@@ -5,7 +5,6 @@ import (
 	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node"
-	"github.com/filinvadim/warpnet/logger"
 	"log"
 	"os"
 	"os/signal"
@@ -30,8 +29,8 @@ func main() {
 	defer cancel()
 
 	log.Println("starting bootstrap node...")
-	l := logger.NewUnifiedLogger(conf.Node.Logging.Level, true)
-	n, err := node.NewBootstrapNode(ctx, conf, l)
+
+	n, err := node.NewBootstrapNode(ctx, conf)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

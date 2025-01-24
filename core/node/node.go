@@ -147,10 +147,7 @@ func createNode(
 func NewBootstrapNode(
 	ctx context.Context,
 	conf config.Config,
-	l NodeLogger,
 ) (_ *WarpNode, err error) {
-	logging.SetPrimaryCore(l)
-
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
