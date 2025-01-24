@@ -90,16 +90,16 @@ type User struct {
 	Avatar          *openapi_types.File `json:"avatar,omitempty"`
 	BackgroundImage *openapi_types.File `json:"background_image,omitempty"`
 	Bio             string              `json:"bio"`
-	Birthdate       *time.Time          `json:"birthdate,omitempty"`
+	Birthdate       time.Time           `json:"birthdate"`
 	CreatedAt       time.Time           `json:"created_at"`
 	FollowedBy      []string            `json:"followed_by"`
 	FollowersNum    int64               `json:"followers_num"`
 	Following       []string            `json:"following"`
-	FollowingNum    *int64              `json:"following_num,omitempty"`
+	FollowingNum    int64               `json:"following_num"`
 	Id              string              `json:"id"`
 	Location        *string             `json:"location,omitempty"`
 	NodeId          string              `json:"node_id"`
-	TweetsNum       *int64              `json:"tweets_num,omitempty"`
+	TweetsNum       int64               `json:"tweets_num"`
 	Username        string              `json:"username"`
 	Website         *string             `json:"website,omitempty"`
 }
@@ -107,18 +107,18 @@ type User struct {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xWT4+bTgz9KtH8fkf2n1rtgeuqt+1WqlL1UFVoYJzEDfOnxiSNVvnu1QAbIBkWEuXQ",
-	"UxAZ28/vPXt4FZnVzhowXIj4VRTZCrSsHp9Wkv2vI+uAGKF6mxFIBpXU/y0saf8klGS4YdQgIsE7ByIW",
-	"BROapdhHYkFWJ2UBlKDyUScHBl6zfTeqdOpMKPtIEPwukUCJ+IcvewSuVzPqNtsr9/OQ2aa/IGOPxtP1",
-	"GYpCLiHA2kryUBuZNQym6kGjeQaz5JWIHwI8XsL9EHctryNF/UkjNQTSHNHZ4a1pN6opfuuwk6zXTIjO",
-	"T0SWAkRa1UWChmEJ5AN0y/37MKsU7flQ8WdcB0TkLQBPJ23KyUEGD7VC8L5sDdB1RhPd5mN4JN3mMfiH",
-	"sQqScVddxUcdu7yVbSA3AEdt9BVcvntpTHM8k5grAuOfkUFXL/8nWIhY/HfXrsW7Zifetbn2h0qSSO5E",
-	"1YDLd2MZ5l7Vk37r0KgFFG6kssQ/7Mp5GN8Vl1aO6zrnJLmqIQ4oVWVJMluaPiI0/OiNpdGgLrWI76PA",
-	"mnGSwAzucqpVKs7wVC1r0FF1rouhkrWDQBn+8BUdc9l4157ySLp3RMtw28I5N8e3IrQc5UaypB6LKRpJ",
-	"u5D/Upmtl2RLoxLUzaUyJQxtkOwUiVfe8NMn4KLPLJvndgsqSXc9/52Kf+S0JpCKxHgzBYx2aq46xie8",
-	"oBSa5RmlhraBzSSjNWffUs1YTQfQ9fbIGGwhLfBI6JLyaZ+i3j8Dl95BW4/6WLGuGn0bjAyLR4FmUblW",
-	"QZERuppR8XRYVbOFpZmcKfTI05JBzeZbZAa68Zt0Jp3LsVEiEoyc+wrfJbnZC/DW0lpEYgNU1Ikfbu9v",
-	"7z1T1oGRDkUsPlSv/ODzyrtov/8bAAD//zZmHyyWDAAA",
+	"H4sIAAAAAAAC/8xWy47bOgz9lUD3Lj0vtJiFt4PuplOgSNFFURiyxSRsrEdpOmkwyL8Xsj3xI/LECbLo",
+	"yoIskoeHh5ReRWa1swYMFyJ+FUW2Ai2r5dNKsv86sg6IEardjEAyqKT+t7Ck/UooyXDDqEFEgncORCwK",
+	"JjRLsY/EgqxOygIoQeWtjg6MbLN916p06kwo+0gQ/C6RQIn4hw87ANeLGXWT7YX7efBs01+QsUfj6foM",
+	"RSGXEGBtJXksjcwaBlPloNE8g1nySsQPAR4v4X6Mu5bXE0H9SSM1BNwM6Ozw1qQb1RS/Zdhx1ksmROcn",
+	"IksBIq3qIkHDsATyBrrl/n2YlYv2fCj4M64DReQtAE8nbcrJUQYPsULwvmwN0HVaE93mY7gl3eYx+MNY",
+	"BclpVV1FRx25vIVtIDcAT8roK7h899KIZtiTmCsC49fIoKvN/wkWIhb/3bVj8a6ZiXetr/0hkiSSO1El",
+	"4PLdKQ9zX9WjfGvTqAUUTqSSxD+synkY3xWHVo7r2uekclVNHKhU5SXJbGn6iNDwoxeWRoO61CK+jwJj",
+	"xkkCMzrLqa5ScYam6rIGFVX7uhgqWTsKlOEPX1Exl7V3rSmPpHtHtAy3KZxzc3wrQsNRbiRL6rGYopG0",
+	"C+kvldl6SbY0KkHdXCpTzNAGyU6ReOUFP70DLnpm2Ty3W1BJuuvp77j4A6U1hlQkxospILRjcdU23uEF",
+	"odAszwg1Ng1sJhmtOfuWatpqOoCutk+0wRbSAgeFLimf9hT1+hm59Pq8DUvWLUdfB4M3bCf1riyP28jj",
+	"Q7Oo9KygyAhdzbV4Ogyx2cLSTM4U+pzSkkHN5ltkBrrxM3YmncuxqVEkGDn3Eb5LcrMX4K2ltYjEBqio",
+	"HT/c3t/eew6tAyMdilh8qLb8SOCV19d+/zcAAP//PTKMrrAMAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

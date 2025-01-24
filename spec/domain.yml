@@ -83,11 +83,13 @@ components:
         - bio
         - username
         - node_id
-        - followed_num
+        - following_num
         - followers_num
         - following
         - followed_by
         - created_at
+        - tweets_num
+        - birthdate
 
     Tweet:
       type: object
