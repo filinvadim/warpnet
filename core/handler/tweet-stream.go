@@ -49,25 +49,22 @@ func StreamNewTweetHandler(
 			if err != nil {
 				return nil, err
 			}
-			if ev.Tweet == nil {
-				return nil, errors.New("tweet is nil")
-			}
-			if ev.Tweet.UserId == "" {
+			if ev.UserId == "" {
 				return nil, errors.New("empty user id")
 			}
 
-			tweet, err := tweetRepo.Create(ev.Tweet.UserId, domain.Tweet{
-				CreatedAt:     ev.Tweet.CreatedAt,
-				Id:            ev.Tweet.Id,
-				Likes:         ev.Tweet.Likes,
-				LikesCount:    ev.Tweet.LikesCount,
-				ParentId:      ev.Tweet.ParentId,
-				Retweets:      ev.Tweet.Retweets,
-				RetweetsCount: ev.Tweet.RetweetsCount,
-				RootId:        ev.Tweet.RootId,
-				Text:          ev.Tweet.Text,
-				UserId:        ev.Tweet.UserId,
-				Username:      ev.Tweet.Username,
+			tweet, err := tweetRepo.Create(ev.UserId, domain.Tweet{
+				CreatedAt:     ev.CreatedAt,
+				Id:            ev.Id,
+				Likes:         ev.Likes,
+				LikesCount:    ev.LikesCount,
+				ParentId:      ev.ParentId,
+				Retweets:      ev.Retweets,
+				RetweetsCount: ev.RetweetsCount,
+				RootId:        ev.RootId,
+				Text:          ev.Text,
+				UserId:        ev.UserId,
+				Username:      ev.Username,
 			})
 			if err != nil {
 				return nil, err
