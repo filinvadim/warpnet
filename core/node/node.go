@@ -218,6 +218,7 @@ func NewRegularNode(
 	n.node.SetStreamHandler("/ping/1.0.0", func(stream network.Stream) {
 		defer stream.Close()
 		log.Println("received ping")
+		stream.Write([]byte("pong"))
 	})
 	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
@@ -270,14 +271,15 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 	if len(client.Addrs()) != 0 {
 		return nil, errors.New("client node must have no addresses")
 	}
-	_, err = n.StreamSend(
-		serverNodeId, "/ping/1.0.0", []byte(""),
+	response, err := n.StreamSend(
+		serverNodeId, "/ping/1.0.0", []byte("ping"),
 	)
+	log.Printf("response from server: %s\n", response)
+
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
 	log.Println("client node created:", n.node.ID())
-
 	return n, nil
 }
 
@@ -339,10 +341,9 @@ func (n *WarpNode) Stop() {
 	return
 }
 
-// path = "/example/1.0.0"
 func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error) {
-	if n == nil || n.node == nil || peerID == "" {
-		return nil, errors.New("node improperly configured")
+	if n == nil || n.node == nil || peerID == "" || path == "" {
+		return nil, errors.New("send: parameters improperly configured")
 	}
 
 	serverAddr := serverNodeAddrDefault + peerID
@@ -362,22 +363,22 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 	defer closeStream(stream)
 
 	var rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-
-	if !bytes.HasSuffix(data, []byte("\n")) {
-		data = append(data, []byte("\n")...)
-	}
+	fmt.Println("client sent data:", path, string(data))
 	_, err = rw.Write(data)
 	if err != nil {
 		return nil, fmt.Errorf("writing to stream: %s", err)
 	}
-	defer flush(rw)
+	flush(rw)
+	closeWrite(stream)
 
-	response, err := rw.ReadBytes('\n')
+	buf := bytes.NewBuffer(nil)
+	_, err = buf.ReadFrom(rw)
 	if err != nil {
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
-	fmt.Printf("response from server: %s\n", response)
-	return response, nil
+	fmt.Println("client received response:", path, buf.String())
+
+	return buf.Bytes(), nil
 }
 
 func closeStream(stream network.Stream) {
@@ -389,6 +390,12 @@ func closeStream(stream network.Stream) {
 func flush(rw *bufio.ReadWriter) {
 	if err := rw.Flush(); err != nil {
 		log.Printf("flush: %s", err)
+	}
+}
+
+func closeWrite(s network.Stream) {
+	if err := s.CloseWrite(); err != nil {
+		log.Printf("close write: %s", err)
 	}
 }
 

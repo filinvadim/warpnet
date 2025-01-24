@@ -112,12 +112,12 @@ components:
         - $ref: '#/components/schemas/BaseEvent'
         - type: object
           properties:
-            userId:
+            user_id:
               type: string
             tweetId:
               type: string
           required:
-            - userId
+            - user_id
             - tweetId
 
     GetAllTweetsEvent:
@@ -125,7 +125,7 @@ components:
         - $ref: '#/components/schemas/BaseEvent'
         - type: object
           properties:
-            userId:
+            user_id:
               type: string
             limit:
               type: integer
@@ -133,7 +133,7 @@ components:
             cursor:
               type: string
           required:
-            - userId
+            - user_id
 
     GetTimelineEvent:
       allOf:
@@ -153,10 +153,10 @@ components:
         - $ref: '#/components/schemas/BaseEvent'
         - type: object
           properties:
-            userId:
+            user_id:
               type: string
           required:
-            - userId
+            - user_id
 
     GetAllUsersEvent:
       allOf:

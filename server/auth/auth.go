@@ -7,6 +7,7 @@ import (
 	domain "github.com/filinvadim/warpnet/gen/domain-gen"
 	event "github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/server/api-gen"
+	"github.com/google/uuid"
 	l "log"
 	"os"
 	"sync/atomic"
@@ -69,10 +70,12 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 
 	var user domain.User
 	if errors.Is(err, database.ErrOwnerNotFound) {
-		l.Println("creating new owner")
+		id := uuid.New().String()
+		l.Println("creating new owner:", id)
 		owner, err = as.userPersistence.SetOwner(domain.Owner{
 			CreatedAt: time.Now(),
 			Username:  message.Username,
+			UserId:    id,
 		})
 		if err != nil {
 			l.Printf("new owner creation failed: %v", err)
@@ -81,7 +84,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 		}
 		user, err = as.userPersistence.Create(domain.User{
 			CreatedAt: owner.CreatedAt,
-			Id:        owner.UserId,
+			Id:        id,
 			NodeId:    "None",
 			Username:  owner.Username,
 		})
@@ -107,7 +110,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 	}
 
 	// update
-	if _, err = as.userPersistence.SetOwner(owner); err != nil {
+	if owner, err = as.userPersistence.SetOwner(owner); err != nil {
 		l.Printf("owner update failed: %v", err)
 	}
 	if _, err = as.userPersistence.Create(user); err != nil {

@@ -9,7 +9,7 @@ tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
 
 prune:
-	rm -rf $HOME/.badgerdb && rm -rf $HOME/.badgerdb
+	rm -rf /Users/vadim/.badgerdb && rm -rf /home/vadim/.badgerdb
 
 check-heap:
 	go build -gcflags="-m" main.go

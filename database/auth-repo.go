@@ -10,7 +10,6 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
 	"math/big"
 	"time"
 )
@@ -118,9 +117,6 @@ func (repo *AuthRepo) SetOwner(o domainGen.Owner) (_ domainGen.Owner, err error)
 		AddRootID(DefaultOwnerKey).
 		Build()
 
-	if o.UserId == "" {
-		o.UserId = uuid.New().String()
-	}
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = time.Now()
 	}
