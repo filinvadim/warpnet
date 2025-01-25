@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -73,6 +74,7 @@ func NewMemberDiscovery(
 }
 
 func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
+	fmt.Println("discovery: found new peer:", pi.ID.String())
 	ctx := context.Background() // TODO
 	if pi.ID == "" {
 		log.Printf("discovery: peer %s has no ID", pi.ID.String())
@@ -92,7 +94,7 @@ func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
 
 	existedPeer := n.node.Peerstore().PeerInfo(pi.ID)
 	if existedPeer.ID != "" {
-		log.Printf("discovery: found existing peer: %s, skipping...", existedPeer.ID)
+		return
 	}
 
 	log.Printf("discovery: found new peer: %s %v", pi.ID.String(), pi.Addrs)

@@ -16,8 +16,6 @@ type PeerInfoStorer interface {
 	types.P2PNode
 }
 
-const discoveryTopic = "peer-discovery"
-
 type Gossip struct {
 	ctx       context.Context
 	pubsub    *pubsub.PubSub
@@ -77,6 +75,8 @@ func (g *Gossip) Close() (err error) {
 	return
 }
 
+const discoveryTopic = "peer-discovery"
+
 func (g *Gossip) runDiscovery() error {
 	topic, err := g.pubsub.Join(discoveryTopic)
 	if err != nil {
@@ -116,7 +116,6 @@ func (g *Gossip) runDiscovery() error {
 		}
 		existedPeer := g.node.Peerstore().PeerInfo(discoveryMsg.ID)
 		if existedPeer.ID != "" {
-			log.Println("pubsub discovery: peer has already been registered", discoveryMsg.ID)
 			continue
 		}
 		peerInfo := types.PeerAddrInfo{
@@ -169,7 +168,6 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
 				log.Printf("pubsub discovery: failed to publish message: %v", err)
 				return fmt.Errorf("pubsub discovery: failed to publish peer info: %w", err)
 			}
-			log.Printf("pubsub discovery: published peer info to topic: %s", topic.String())
 		}
 	}
 }
