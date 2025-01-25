@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/jbenet/goprocess"
@@ -22,6 +23,8 @@ import (
 const (
 	NodesNamespace        = "NODES"
 	ProvidersSubNamespace = "PROVIDERS"
+	BlocklistSubNamespace = "BLOCKLIST"
+	InfoSubNamespace      = "INFO"
 )
 
 var (
@@ -701,4 +704,84 @@ func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
 	}
 
 	return providersMap, nil
+}
+
+func (d *NodeRepo) Blocklist(ctx context.Context, peerId peer.ID) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return errors.New("empty peer ID")
+	}
+	blocklistKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(BlocklistSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	return d.Put(ctx, ds.NewKey(blocklistKey.String()), []byte(peerId.String()))
+}
+
+func (d *NodeRepo) IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error) {
+	if d == nil {
+		return false, ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return false, nil
+	}
+	blocklistKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(BlocklistSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	return d.Has(ctx, ds.NewKey(blocklistKey.String()))
+}
+
+func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err error) {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return errors.New("empty peer ID")
+	}
+	blocklistKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(BlocklistSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	return d.Delete(ctx, ds.NewKey(blocklistKey.String()))
+}
+
+func (d *NodeRepo) AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return errors.New("empty peer ID")
+	}
+	infoKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(InfoSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	bt, err := json.JSON.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	return d.Put(ctx, ds.NewKey(infoKey.String()), bt)
+}
+
+func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId peer.ID) (err error) {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return errors.New("empty peer ID")
+	}
+	infoKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(InfoSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	return d.Delete(ctx, ds.NewKey(infoKey.String()))
 }

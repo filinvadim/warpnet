@@ -2,201 +2,123 @@ package node
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"log"
-	"strings"
-	"sync"
-	"time"
 )
 
-type discoveryNotifee struct {
-	host host.Host
+type DiscoveryInfoStorer interface {
+	Peerstore() peerstore.Peerstore
+	Node() host.Host
+	StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error)
 }
 
-func NewDiscoveryNotifee(h host.Host) *discoveryNotifee {
-	return &discoveryNotifee{h}
+type bootstrapDiscoveryHandler struct {
+	node DiscoveryInfoStorer
 }
 
-func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
+func NewBootstrapDiscovery(h DiscoveryInfoStorer) *bootstrapDiscoveryHandler {
+	return &bootstrapDiscoveryHandler{h}
+}
+
+func (n *bootstrapDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
 	log.Printf("found new peer: %s %v", pi.ID.String(), pi.Addrs)
-	if err := n.host.Connect(context.Background(), pi); err != nil {
+	if err := n.node.Node().Connect(context.Background(), pi); err != nil {
 		log.Printf("failed to connect to new peer: %s", err)
 		return
 	}
 	log.Printf("connected to new peer: %s", pi.ID)
 }
 
-const discoveryTopic = "peer-discovery"
-
-type Gossip struct {
-	ctx      context.Context
-	pubsub   *pubsub.PubSub
-	node     host.Host
-	stopChan chan struct{}
-	tick     *time.Ticker
-
-	mx         *sync.RWMutex
-	subs       []*pubsub.Subscription
-	topics     map[string]*pubsub.Topic
-	knownPeers map[peer.ID]struct{}
+type NodeStorer interface {
+	GetOwner() (owner domain.Owner, err error)
+	AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error
+	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
+	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
+	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
+	Blocklist(ctx context.Context, peerId peer.ID) error
 }
 
-func NewPubSub(ctx context.Context, h host.Host) (*Gossip, error) {
-	// Настраиваем PubSub
-	ps, err := pubsub.NewGossipSub(ctx, h)
+type memberDiscoveryHandler struct {
+	node     DiscoveryInfoStorer
+	userRepo *database.UserRepo
+	nodeRepo NodeStorer
+}
+
+func NewMemberDiscovery(
+	n DiscoveryInfoStorer,
+	userRepo *database.UserRepo,
+	nodeRepo NodeStorer,
+) *memberDiscoveryHandler {
+	return &memberDiscoveryHandler{n, userRepo, nodeRepo}
+}
+
+func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
+	ctx := context.Background() // TODO
+	if pi.ID == "" {
+		log.Printf("discovery: peer %s has no ID", pi.ID.String())
+		return
+	}
+	ok, err := n.nodeRepo.IsBlocklisted(ctx, pi.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create PubSub: %s", err)
+		log.Printf("discovery: failed to check blocklist: %s", err)
+	}
+	if ok {
+		log.Printf("discovery: found blocklisted peer: %s", pi.ID.String())
+		return
 	}
 
-	// defaultly enabled topic
-	topic, err := ps.Join(discoveryTopic)
+	existedPeer := n.node.Peerstore().PeerInfo(pi.ID)
+	if existedPeer.ID != "" {
+		log.Printf("discovery: found existing peer: %s, skipping...", existedPeer.ID)
+	}
+
+	log.Printf("discovery: found new peer: %s %v", pi.ID.String(), pi.Addrs)
+
+	if err := n.node.Node().Connect(context.Background(), pi); err != nil {
+		log.Printf("discovery: failed to connect to new peer: %s", err)
+		return
+	}
+	log.Printf("discovery: connected to new peer: %s", pi.ID)
+
+	infoResp, err := n.node.StreamSend(pi.ID.String(), "/info/1.0.0", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to join discovery topic: %s", err)
+		log.Printf("discovery: failed to get info from new peer: %s", err)
+		return
 	}
 
-	g := &Gossip{
-		ctx:        ctx,
-		pubsub:     ps,
-		node:       h,
-		stopChan:   make(chan struct{}),
-		tick:       time.NewTicker(time.Minute),
-		subs:       []*pubsub.Subscription{},
-		topics:     map[string]*pubsub.Topic{},
-		mx:         &sync.RWMutex{},
-		knownPeers: map[peer.ID]struct{}{},
-	}
-	g.topics[topic.String()] = topic
-
-	go func() {
-		if err := g.subscribeToDiscovery(topic); err != nil {
-			log.Printf("failed to subscribe to discovery topic: %v", err)
-		}
-	}()
-	go func() {
-		if err := g.publishPeerInfo(topic); err != nil {
-			log.Printf("failed to publish peer info to discovery topic: %v", err)
-		}
-	}()
-	return g, nil
-}
-
-func (g *Gossip) Close() (err error) {
-	g.mx.Lock()
-	defer g.mx.Unlock()
-
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-	}()
-
-	for _, sub := range g.subs {
-		sub.Cancel()
-	}
-	for _, topic := range g.topics {
-		if err = topic.Close(); err != nil {
-			return err
-		}
-	}
-	g.tick.Stop()
-	close(g.stopChan)
-	g.pubsub = nil
-	return
-}
-
-type DiscoveryMessage struct {
-	PeerID string   `json:"peer_id"`
-	Addrs  []string `json:"addrs"`
-}
-
-func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
-	sub, err := topic.Subscribe()
+	var info types.NodeInfo
+	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe to topic: %s", err)
+		log.Printf("discovery: failed to unmarshal info from new peer: %s", err)
+		return
 	}
-	g.mx.Lock()
-	g.subs = append(g.subs, sub)
-	g.mx.Unlock()
 
-	for {
-		msg, err := sub.Next(g.ctx)
-		if err != nil {
-			return fmt.Errorf("subscription error: %v", err)
-		}
-
-		var discoveryMsg DiscoveryMessage
-		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-			return fmt.Errorf("failed to decode discovery message: %w", err)
-		}
-
-		for _, addr := range discoveryMsg.Addrs {
-			if addr == "" {
-				log.Println("discovery message address is empty", addr)
-				continue
-			}
-			if strings.Contains(addr, "/p2p-circuit") {
-				continue
-			}
-			if discoveryMsg.PeerID == g.node.ID().String() {
-				continue
-			}
-
-			addr = fmt.Sprintf("%s/p2p/%s", addr, discoveryMsg.PeerID)
-			peerInfo, err := peer.AddrInfoFromString(addr)
-			if err != nil || peerInfo == nil {
-				return fmt.Errorf("failed to parse peer info: %w", err)
-			}
-
-			g.mx.RLock()
-			_, ok := g.knownPeers[peerInfo.ID]
-			g.mx.RUnlock()
-			if ok {
-				continue
-			}
-			if err := g.node.Connect(g.ctx, *peerInfo); err != nil {
-				return fmt.Errorf("failed to connect to peer: %w", err)
-			}
-			log.Printf("connected to peer: %s", discoveryMsg.PeerID)
-			g.mx.Lock()
-			g.knownPeers[peerInfo.ID] = struct{}{}
-			g.mx.Unlock()
-		}
+	if err = n.nodeRepo.AddInfo(ctx, pi.ID, info); err != nil {
+		log.Printf("discovery: failed to store info of new peer: %s", err)
 	}
-}
 
-func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
-	for {
-		select {
-		case <-g.ctx.Done():
-			return g.ctx.Err()
-		case <-g.stopChan:
-			return nil
-		case <-g.tick.C:
-			msg := DiscoveryMessage{
-				PeerID: g.node.ID().String(),
-				Addrs:  convertAddrs(g.node.Addrs()),
-			}
-			data, err := json.Marshal(msg)
-			if err != nil {
-				return err
-			}
-			err = topic.Publish(g.ctx, data)
-			if err != nil {
-				return fmt.Errorf("failed to publish peer info: %w", err)
-			}
-		}
+	bt, _ := json.JSON.Marshal(event.GetUserEvent{info.Owner.UserId})
+	userResp, err := n.node.StreamSend(pi.ID.String(), "/user/1.0.0", bt)
+	if err != nil {
+		log.Printf("discovery: failed to get info from new peer: %s", err)
+		return
 	}
-}
 
-func convertAddrs(maddrs []multiaddr.Multiaddr) []string {
-	var addrs []string
-	for _, maddr := range maddrs {
-		addrs = append(addrs, maddr.String())
+	var user domain.User
+	err = json.JSON.Unmarshal(userResp, &user)
+	if err != nil {
+		log.Printf("discovery: failed to unmarshal user from new peer: %s", err)
+		return
 	}
-	return addrs
+	_, err = n.userRepo.Create(user)
+	if err != nil {
+		log.Printf("discovery: failed to create user from new peer: %s", err)
+	}
 }

@@ -7,11 +7,13 @@ import (
 	go_crypto "crypto"
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
+	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -47,7 +49,13 @@ type PersistentLayer interface {
 	datastore.Batching
 	providers.ProviderStore
 	PrivateKey() go_crypto.PrivateKey
-	ListProviders() (_ map[string][]types.WarpAddrInfo, err error)
+	ListProviders() (_ map[string][]types.PeerAddrInfo, err error)
+	GetOwner() (owner domainGen.Owner, err error)
+	AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error
+	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
+	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
+	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
+	Blocklist(ctx context.Context, peerId peer.ID) error
 }
 
 type NodeLogger interface {
@@ -70,7 +78,7 @@ func createNode(
 	ctx context.Context,
 	privKey types.WarpPrivateKey,
 	store types.WarpPeerstore,
-	addrInfos []types.WarpAddrInfo,
+	addrInfos []types.PeerAddrInfo,
 	conf config.Config,
 	routingFn func(node types.P2PNode) (types.WarpPeerRouting, error),
 ) (*WarpNode, error) {
@@ -115,13 +123,7 @@ func createNode(
 		return nil, err
 	}
 
-	mdnsService := mdns.NewMdnsService(node, conf.Node.PSK, NewDiscoveryNotifee(node))
 	relay, err := relayv2.New(node)
-	if err != nil {
-		return nil, err
-	}
-
-	pubsub, err := NewPubSub(ctx, node)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +131,7 @@ func createNode(
 	n := &WarpNode{
 		ctx:      ctx,
 		node:     node,
-		mdns:     mdnsService,
 		relay:    relay,
-		pubsub:   pubsub,
 		isClosed: new(atomic.Bool),
 	}
 
@@ -165,16 +165,36 @@ func NewBootstrapNode(
 	}
 
 	n, err := createNode(
-		ctx, nil, store, addrInfos, conf,
+		ctx,
+		nil,
+		store,
+		addrInfos,
+		conf,
 		func(n types.P2PNode) (types.WarpPeerRouting, error) {
 			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	n.pubsub, err = NewPubSub(ctx, n.Node(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	n.mdns = mdns.NewMdnsService(n.node, conf.Node.PSK, NewBootstrapDiscovery(n))
+	go func() {
+		if err := n.mdns.Start(); err != nil {
+			log.Println("mdns failed to start", err)
+		}
+	}()
+
 	logConf := logging.GetConfig()
 	logConf.Labels["node_id"] = n.ID()
 	logging.SetupLogging(logConf)
 
-	return n, err
+	return n, nil
 }
 
 func NewRegularNode(
@@ -184,6 +204,7 @@ func NewRegularNode(
 	timelineRepo *database.TimelineRepo,
 	userRepo *database.UserRepo,
 	tweetRepo *database.TweetRepo,
+	version *semver.Version,
 ) (_ *WarpNode, err error) {
 
 	privKey := db.PrivateKey()
@@ -212,6 +233,21 @@ func NewRegularNode(
 		return nil, err
 	}
 
+	owner, _ := db.GetOwner()
+	discoveryHandler := NewMemberDiscovery(n, userRepo, db)
+	n.pubsub, err = NewPubSub(ctx, n.Node(), discoveryHandler)
+	if err != nil {
+		return nil, err
+	}
+	n.mdns = mdns.NewMdnsService(n.node, conf.Node.PSK, discoveryHandler)
+	go func() {
+		if err := n.mdns.Start(); err != nil {
+			log.Println("mdns failed to start", err)
+			return
+		}
+		log.Println("mdns service started")
+	}()
+
 	n.node.SetStreamHandler("/ping/1.0.0", func(stream network.Stream) {
 		defer stream.Close()
 		log.Println("received ping")
@@ -221,6 +257,7 @@ func NewRegularNode(
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
 	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
 	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo, timelineRepo))
+	n.node.SetStreamHandler("/info/1.0.0", handler.StreamGetInfoHandler(n.Node(), owner, version))
 	return n, err
 }
 
@@ -287,6 +324,20 @@ func (n *WarpNode) ID() string {
 	return n.node.ID().String()
 }
 
+func (n *WarpNode) Node() host.Host {
+	if n == nil || n.node == nil {
+		return nil
+	}
+	return n.node
+}
+
+func (n *WarpNode) Peerstore() types.WarpPeerstore {
+	if n == nil || n.node == nil {
+		return nil
+	}
+	return n.node.Peerstore()
+}
+
 func (n *WarpNode) parseAddresses(node host.Host) {
 	if n == nil {
 		return
@@ -343,6 +394,9 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 		return nil, errors.New("send: parameters improperly configured")
 	}
 
+	ctx, cancelF := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelF()
+
 	serverAddr := serverNodeAddrDefault + peerID
 	maddr, err := ma.NewMultiaddr(serverAddr)
 	if err != nil {
@@ -353,27 +407,29 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 	if err != nil {
 		return nil, fmt.Errorf("creating address info: %s", err)
 	}
-	stream, err := n.node.NewStream(context.Background(), serverInfo.ID, path)
+	stream, err := n.node.NewStream(ctx, serverInfo.ID, path)
 	if err != nil {
 		return nil, fmt.Errorf("opening stream: %s", err)
 	}
 	defer closeStream(stream)
 
 	var rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	fmt.Println("client sent data:", path, string(data))
-	_, err = rw.Write(data)
-	if err != nil {
-		return nil, fmt.Errorf("writing to stream: %s", err)
+	if data != nil {
+		fmt.Printf("client sent to %s data with size %d\n", path, len(data))
+		_, err = rw.Write(data)
+		if err != nil {
+			return nil, fmt.Errorf("writing to stream: %s", err)
+		}
+		flush(rw)
+		closeWrite(stream)
 	}
-	flush(rw)
-	closeWrite(stream)
 
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(rw)
 	if err != nil {
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
-	fmt.Println("client received response:", path, buf.String())
+	fmt.Printf("client received response from %s, size %d\n", path, buf.Len())
 
 	return buf.Bytes(), nil
 }
@@ -401,7 +457,7 @@ func setupPrivateDHT(
 	n types.P2PNode,
 	repo datastore.Batching,
 	providerStore providers.ProviderStore,
-	relays []types.WarpAddrInfo,
+	relays []types.PeerAddrInfo,
 ) (*types.WarpDHT, error) {
 	DHT, err := dht.New(
 		ctx, n,

@@ -25,9 +25,7 @@ func ReadStream(s network.Stream, fn streamHandler) {
 		log.Printf("error reading from stream: %v", err)
 		return
 	}
-
-	fmt.Printf("full message received: %s\n", data)
-
+	
 	response, err := fn(data)
 	if err != nil {
 		msg := fmt.Sprintf("error handling %s message: %v\n", s.Protocol(), err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
@@ -20,6 +21,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -34,8 +36,14 @@ func main() {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
+	version := warpnet.GetVersion()
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
-	log.Println("Warpnet Version:", warpnet.GetVersion())
+	log.Println("Warpnet Version:", version)
+
+	semVersion, err := semver.NewVersion(strings.TrimSpace(version))
+	if err != nil {
+		log.Fatalf("fail parsing semantic version: %v %s", err, version)
+	}
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -111,6 +119,7 @@ func main() {
 		timelineRepo,
 		userRepo,
 		tweetRepo,
+		semVersion,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
