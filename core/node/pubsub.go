@@ -9,6 +9,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"log"
 	"sync"
+	"time"
 )
 
 type PeerInfoStorer interface {
@@ -57,8 +58,9 @@ func NewPubSub(ctx context.Context, h PeerInfoStorer, discovery types.WarpDiscov
 			log.Printf("failed to subscribe to discovery topic: %v", err)
 		}
 	}()
+	go g.publishPeerInfo(topic)
 
-	return g, g.publishPeerInfo(topic)
+	return g, nil
 }
 
 func (g *Gossip) Close() (err error) {
@@ -87,7 +89,7 @@ func (g *Gossip) Close() (err error) {
 func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 	sub, err := topic.Subscribe()
 	if err != nil {
-		return fmt.Errorf("failed to subscribe to topic: %s", err)
+		return fmt.Errorf("pubsub discovery: failed to subscribe to topic: %s", err)
 	}
 	g.mx.Lock()
 	g.subs = append(g.subs, sub)
@@ -96,19 +98,24 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 	for {
 		msg, err := sub.Next(g.ctx)
 		if err != nil {
-			return fmt.Errorf("subscription error: %v", err)
+			return fmt.Errorf("pubsub discovery: subscription error: %v", err)
 		}
+		fmt.Printf("pubsub discovery: got message: %s\n", msg.GetData())
 
 		var discoveryMsg types.WarpAddrInfo
 		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-			return fmt.Errorf("failed to decode discovery message: %w %s", err, msg.Data)
+			return fmt.Errorf("pubsub discovery: failed to decode discovery message: %w %s", err, msg.Data)
 		}
 		if discoveryMsg.ID == "" {
-			log.Println("discovery message has no ID", string(msg.Data))
+			log.Println("pubsub discovery: message has no ID", string(msg.Data))
+			continue
+		}
+		if discoveryMsg.ID == g.node.ID() {
 			continue
 		}
 		existedPeer := g.node.Peerstore().PeerInfo(discoveryMsg.ID)
 		if existedPeer.ID != "" {
+			log.Println("pubsub discovery: peer has already been registered", discoveryMsg.ID)
 			continue
 		}
 		peerInfo := types.PeerAddrInfo{
@@ -122,40 +129,46 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 		}
 
 		if g.discovery == nil { // just bootstrap
+			log.Println("pubsub discovery: no discovery handler")
 			if err := g.node.Connect(g.ctx, peerInfo); err != nil {
-				return fmt.Errorf("failed to connect to peer: %w", err)
+				return fmt.Errorf("pubsub discovery: failed to connect to peer: %w", err)
 			}
-			log.Printf("connected to peer: %s", discoveryMsg.ID)
+			log.Printf("pubsub discovery: connected to peer: %s", discoveryMsg.ID)
 			return nil
 		}
 		g.discovery.HandlePeerFound(peerInfo) // add new user
-
-		// publish again
-		for _, t := range g.topics {
-			if err := g.publishPeerInfo(t); err != nil {
-				log.Println(err)
-			}
-		}
 	}
 }
 
 func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
-	addrs := make([]string, 0, len(g.node.Addrs()))
-	for _, addr := range g.node.Addrs() {
-		addrs = append(addrs, addr.String())
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-g.ctx.Done():
+			return g.ctx.Err()
+		case <-ticker.C:
+			addrs := make([]string, 0, len(g.node.Addrs()))
+			for _, addr := range g.node.Addrs() {
+				addrs = append(addrs, addr.String())
+			}
+			msg := types.WarpAddrInfo{
+				ID:    g.node.ID(),
+				Addrs: addrs,
+			}
+			data, err := json.Marshal(msg)
+			if err != nil {
+				log.Printf("pubsub discovery: failed to marchal message: %v", err)
+				return err
+			}
+			err = topic.Publish(g.ctx, data)
+			if err != nil {
+				log.Printf("pubsub discovery: failed to publish message: %v", err)
+				return fmt.Errorf("pubsub discovery: failed to publish peer info: %w", err)
+			}
+			log.Printf("pubsub discovery: published peer info to topic: %s", topic.String())
+			return nil
+		}
 	}
-	msg := types.WarpAddrInfo{
-		ID:    g.node.ID(),
-		Addrs: addrs,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	err = topic.Publish(g.ctx, data)
-	if err != nil {
-		return fmt.Errorf("failed to publish peer info: %w", err)
-	}
-	log.Printf("published peer info: %s, to topic: %s", data, topic.String())
-	return nil
 }

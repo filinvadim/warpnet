@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -13,7 +14,20 @@ import (
 	"log"
 )
 
+// В libp2p, mDNS (Multicast DNS) — это механизм для локального обнаружения пиров (нод) в одной сети без использования централизованного сервера или предварительной настройки. Он позволяет нодам в одной локальной сети автоматически находить друг друга.
+//  Как работает mDNS в libp2p
+//
+//    Broadcast запросы:
+//    Нода отправляет multicast-запросы в локальную сеть на определённый адрес и порт, чтобы объявить своё присутствие и запросить присутствие других нод.
+//
+//    Ответы:
+//    Ноды, которые получают запрос, отправляют свои адреса обратно в сеть. Таким образом, все ноды узнают друг о друге.
+//
+//    Обновление peerstore:
+//    После обнаружения других нод их адреса автоматически добавляются в peerstore для дальнейшего использования.
+
 type DiscoveryInfoStorer interface {
+	ID() string
 	Peerstore() peerstore.Peerstore
 	Node() host.Host
 	StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error)
@@ -60,9 +74,13 @@ func NewMemberDiscovery(
 }
 
 func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
+	fmt.Println("handle peer found")
 	ctx := context.Background() // TODO
 	if pi.ID == "" {
 		log.Printf("discovery: peer %s has no ID", pi.ID.String())
+		return
+	}
+	if pi.ID.String() == n.node.ID() {
 		return
 	}
 	ok, err := n.nodeRepo.IsBlocklisted(ctx, pi.ID)
