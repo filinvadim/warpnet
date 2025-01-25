@@ -170,7 +170,6 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
 				return fmt.Errorf("pubsub discovery: failed to publish peer info: %w", err)
 			}
 			log.Printf("pubsub discovery: published peer info to topic: %s", topic.String())
-			return nil
 		}
 	}
 }

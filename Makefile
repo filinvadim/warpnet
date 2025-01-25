@@ -27,3 +27,6 @@ get-frontend:
 	rm -rf vendor/github.com/filinvadim/warpnet-frontend/dist
 	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend
 	go mod vendor
+
+ssh:
+	ssh root@207.154.221.44
