@@ -148,7 +148,7 @@ func NewBootstrapNode(
 	ctx context.Context,
 	conf config.Config,
 ) (_ *WarpNode, err error) {
-	pk, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
+	pk, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap")) // TODO
 	if err != nil {
 		return nil, err
 	}
