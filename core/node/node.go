@@ -148,6 +148,10 @@ func NewBootstrapNode(
 	ctx context.Context,
 	conf config.Config,
 ) (_ *WarpNode, err error) {
+	pk, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap"))
+	if err != nil {
+		return nil, err
+	}
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
@@ -166,7 +170,7 @@ func NewBootstrapNode(
 
 	n, err := createNode(
 		ctx,
-		nil,
+		pk.(types.WarpPrivateKey),
 		store,
 		addrInfos,
 		conf,

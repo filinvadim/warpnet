@@ -30,16 +30,9 @@ type Gossip struct {
 }
 
 func NewPubSub(ctx context.Context, h PeerInfoStorer, discovery types.WarpDiscoveryHandler) (*Gossip, error) {
-	// Настраиваем PubSub
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PubSub: %s", err)
-	}
-
-	// defaultly enabled topic
-	topic, err := ps.Join(discoveryTopic)
-	if err != nil {
-		return nil, fmt.Errorf("failed to join discovery topic: %s", err)
 	}
 
 	g := &Gossip{
@@ -51,14 +44,12 @@ func NewPubSub(ctx context.Context, h PeerInfoStorer, discovery types.WarpDiscov
 		topics:    map[string]*pubsub.Topic{},
 		mx:        &sync.RWMutex{},
 	}
-	g.topics[topic.String()] = topic
 
 	go func() {
-		if err := g.subscribeToDiscovery(topic); err != nil {
+		if err := g.runDiscovery(); err != nil {
 			log.Printf("failed to subscribe to discovery topic: %v", err)
 		}
 	}()
-	go g.publishPeerInfo(topic)
 
 	return g, nil
 }
@@ -86,7 +77,12 @@ func (g *Gossip) Close() (err error) {
 	return
 }
 
-func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
+func (g *Gossip) runDiscovery() error {
+	topic, err := g.pubsub.Join(discoveryTopic)
+	if err != nil {
+		return err
+	}
+
 	sub, err := topic.Subscribe()
 	if err != nil {
 		return fmt.Errorf("pubsub discovery: failed to subscribe to topic: %s", err)
@@ -95,12 +91,17 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 	g.subs = append(g.subs, sub)
 	g.mx.Unlock()
 
+	go func() {
+		if err := g.publishPeerInfo(topic); err != nil {
+			log.Println(err)
+		}
+	}()
+
 	for {
 		msg, err := sub.Next(g.ctx)
 		if err != nil {
 			return fmt.Errorf("pubsub discovery: subscription error: %v", err)
 		}
-		fmt.Printf("pubsub discovery: got message: %s\n", msg.GetData())
 
 		var discoveryMsg types.WarpAddrInfo
 		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
@@ -138,6 +139,7 @@ func (g *Gossip) subscribeToDiscovery(topic *pubsub.Topic) error {
 		}
 		g.discovery.HandlePeerFound(peerInfo) // add new user
 	}
+
 }
 
 func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) error {
