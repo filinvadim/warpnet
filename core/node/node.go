@@ -60,7 +60,7 @@ type NodeLogger interface {
 }
 
 type MDNSServicer interface {
-	Start(types.P2PNode)
+	Start(node *WarpNode)
 	Close()
 }
 type WarpNode struct {
@@ -197,10 +197,10 @@ func NewBootstrapNode(
 	}
 
 	mdns := NewMulticastDNS(ctx, nil)
-	mdns.Start(n.Node())
+	mdns.Start(n)
 	n.mdns = mdns
 
-	pubsub, err := NewPubSub(ctx, n.Node(), nil)
+	pubsub, err := NewPubSub(ctx, n, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -253,12 +253,12 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	discoveryHandler.JoinNode(n)
+	discoveryHandler.Enable(n)
 
-	mdns.Start(n.Node())
+	mdns.Start(n)
 	n.mdns = mdns
 
-	pubsub, err := NewPubSub(ctx, n.Node(), discoveryHandler.HandlePeerFound)
+	pubsub, err := NewPubSub(ctx, n, discoveryHandler.HandlePeerFound)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func NewRegularNode(
 func Pong(stream network.Stream) {
 	defer stream.Close()
 	log.Println("received ping")
-	stream.Write([]byte("pong"))
+	_, _ = stream.Write([]byte("pong"))
 }
 
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
@@ -413,12 +413,9 @@ func (n *WarpNode) Stop() {
 }
 
 func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error) {
-	if n == nil || n.node == nil || peerID == "" || path == "" {
-		return nil, errors.New("send: parameters improperly configured")
+	if n == nil {
+		return nil, nil
 	}
-
-	ctx, cancelF := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelF()
 
 	serverAddr := serverNodeAddrDefault + peerID
 	maddr, err := ma.NewMultiaddr(serverAddr)
@@ -430,7 +427,19 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 	if err != nil {
 		return nil, fmt.Errorf("creating address info: %s", err)
 	}
-	stream, err := n.node.NewStream(ctx, serverInfo.ID, path)
+
+	return send(n.node, serverInfo, path, data)
+}
+
+func send(n types.P2PNode, serverInfo *types.PeerAddrInfo, path types.WarpDiscriminator, data []byte) ([]byte, error) {
+	if n == nil || serverInfo == nil || path == "" {
+		return nil, errors.New("send: parameters improperly configured")
+	}
+
+	ctx, cancelF := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelF()
+
+	stream, err := n.NewStream(ctx, serverInfo.ID, path)
 	if err != nil {
 		return nil, fmt.Errorf("opening stream: %s", err)
 	}
@@ -440,11 +449,11 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 	if data != nil {
 		fmt.Printf("client sent to %s data with size %d\n", path, len(data))
 		_, err = rw.Write(data)
+		flush(rw)
+		closeWrite(stream)
 		if err != nil {
 			return nil, fmt.Errorf("writing to stream: %s", err)
 		}
-		flush(rw)
-		closeWrite(stream)
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -473,12 +482,4 @@ func closeWrite(s network.Stream) {
 	if err := s.CloseWrite(); err != nil {
 		log.Printf("close write: %s", err)
 	}
-}
-
-func ShortenID(id types.WarpPeerID) string {
-	pid := id.String()
-	if len(pid) <= 10 {
-		return pid
-	}
-	return fmt.Sprintf("%s*%s", pid[:2], pid[len(pid)-6:])
 }

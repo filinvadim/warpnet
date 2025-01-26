@@ -68,16 +68,16 @@ func NewMulticastDNS(ctx context.Context, discoveryHandler DiscoveryHandler) *Mu
 	return &MulticastDNS{nil, service, new(atomic.Bool)}
 }
 
-func (m *MulticastDNS) Start(n types.P2PNode) {
+func (m *MulticastDNS) Start(n *WarpNode) {
 	if m == nil {
 		return
 	}
 	if m.isRunning.Load() {
 		return
 	}
-	m.service.JoinNode(n)
+	m.service.JoinNode(n.Node())
 
-	m.mdns = mdns.NewMdnsService(n, mdnsServiceName, m.service)
+	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 	go func() {
 		if err := m.mdns.Start(); err != nil {
 			log.Println("mdns failed to start", err)

@@ -13,8 +13,15 @@ import (
 	"time"
 )
 
+type NodeWrapper interface {
+	Node() types.P2PNode
+}
+
 type PeerInfoStorer interface {
-	types.P2PNode
+	ID() types.WarpPeerID
+	Peerstore() types.WarpPeerstore
+	Connect(context.Context, types.PeerAddrInfo) error
+	Addrs() []multiaddr.Multiaddr
 }
 
 type Gossip struct {
@@ -30,8 +37,8 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, h PeerInfoStorer, discoveryHandler DiscoveryHandler) (*Gossip, error) {
-	ps, err := pubsub.NewGossipSub(ctx, h)
+func NewPubSub(ctx context.Context, h NodeWrapper, discoveryHandler DiscoveryHandler) (*Gossip, error) {
+	ps, err := pubsub.NewGossipSub(ctx, h.Node())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PubSub: %s", err)
 	}
@@ -39,7 +46,7 @@ func NewPubSub(ctx context.Context, h PeerInfoStorer, discoveryHandler Discovery
 	g := &Gossip{
 		ctx:              ctx,
 		pubsub:           ps,
-		node:             h,
+		node:             h.Node(),
 		discoveryHandler: discoveryHandler,
 
 		mx:     &sync.RWMutex{},

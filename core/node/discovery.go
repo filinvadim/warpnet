@@ -64,7 +64,7 @@ func NewDiscoveryService(
 	return &discoveryService{ctx, nil, userRepo, nodeRepo, new(sync.Mutex)}
 }
 
-func (s *discoveryService) JoinNode(n DiscoveryInfoStorer) {
+func (s *discoveryService) Enable(n DiscoveryInfoStorer) {
 	if s == nil {
 		return
 	}
