@@ -15,15 +15,12 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
@@ -62,10 +59,14 @@ type NodeLogger interface {
 	Info(args ...interface{})
 }
 
+type MDNSServicer interface {
+	Start(types.P2PNode)
+	Close()
+}
 type WarpNode struct {
 	ctx      context.Context
 	node     types.P2PNode
-	mdns     types.WarpMDNS
+	mdns     MDNSServicer
 	relay    types.WarpRelayCloser
 	pubsub   types.WarpGossiper
 	isClosed *atomic.Bool
@@ -73,7 +74,7 @@ type WarpNode struct {
 	ipv4, ipv6 string
 }
 
-func createNode(
+func setupNode(
 	ctx context.Context,
 	privKey types.WarpPrivateKey,
 	store types.WarpPeerstore,
@@ -106,7 +107,7 @@ func createNode(
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
 		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))), // TODO shuffle name. "warpnet" now
-		libp2p.UserAgent(conf.Node.PSK),
+		libp2p.UserAgent("warpnet"),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.EnableNATService(),
@@ -134,10 +135,10 @@ func createNode(
 		isClosed: new(atomic.Bool),
 	}
 
-	n.parseAddresses(node)
+	n.ipv4, n.ipv6 = n.parseAddresses(node)
 
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s\n", n.ID(), n.node.Addrs())
+	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s %s\n", n.ID(), n.ipv4, n.ipv6)
 	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	return n, nil
@@ -147,55 +148,64 @@ func NewBootstrapNode(
 	ctx context.Context,
 	conf config.Config,
 ) (_ *WarpNode, err error) {
-	pk, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap")) // TODO
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap")) // TODO
 	if err != nil {
 		return nil, err
 	}
+
+	warpPrivKey := privKey.(types.WarpPrivateKey)
+	id, err := peer.IDFromPrivateKey(warpPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
 	store, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
 	}
-
 	mapStore := datastore.NewMapDatastore()
-	providersCache, err := providers.NewProviderManager("bootstrap", store, mapStore)
+	providersCache, err := providers.NewProviderManager(id, store, mapStore)
 	if err != nil {
 		return nil, err
 	}
 
-	addrInfos, err := conf.Node.AddrInfos()
+	bootstrapAddrs, err := conf.Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
 
-	n, err := createNode(
-		ctx,
-		pk.(types.WarpPrivateKey),
-		store,
-		addrInfos,
-		conf,
-		func(n types.P2PNode) (types.WarpPeerRouting, error) {
-			return setupPrivateDHT(ctx, n, mapStore, providersCache, addrInfos)
+	hTable := NewDHTable(
+		ctx, mapStore, providersCache, bootstrapAddrs,
+		func(info peer.AddrInfo) {
+			log.Println("dht: node added", info.ID)
 		},
+		func(info peer.AddrInfo) {
+			log.Println("dht: node removed", info.ID)
+		},
+	)
+
+	n, err := setupNode(
+		ctx,
+		warpPrivKey,
+		store,
+		bootstrapAddrs,
+		conf,
+		hTable.Start,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	n.pubsub, err = NewPubSub(ctx, n.Node(), nil)
+	mdns := NewMulticastDNS(ctx, nil)
+	mdns.Start(n.Node())
+	n.mdns = mdns
+
+	pubsub, err := NewPubSub(ctx, n.Node(), nil)
 	if err != nil {
 		return nil, err
 	}
-
-	n.mdns = mdns.NewMdnsService(n.node, conf.Node.PSK, NewBootstrapDiscovery(n))
-	go func() {
-		if err := n.mdns.Start(); err != nil {
-			log.Println("mdns failed to start", err)
-		}
-	}()
-
-	logConf := logging.GetConfig()
-	logConf.Labels["node_id"] = n.ID()
-	logging.SetupLogging(logConf)
+	n.pubsub = pubsub
+	go pubsub.RunDiscovery()
 
 	return n, nil
 }
@@ -210,7 +220,7 @@ func NewRegularNode(
 	version *semver.Version,
 ) (_ *WarpNode, err error) {
 	//logging.SetLogLevel("*", "INFO")
-	privKey := db.PrivateKey()
+	privKey := db.PrivateKey().(types.WarpPrivateKey)
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	if err != nil {
 		return nil, err
@@ -221,47 +231,53 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	addrInfos, err := conf.Node.AddrInfos()
+	bootstrapAddrs, err := conf.Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
 
-	n, err := createNode(
-		ctx, privKey.(crypto.PrivKey), store, addrInfos, conf,
-		func(n types.P2PNode) (types.WarpPeerRouting, error) {
-			return setupPrivateDHT(ctx, n, db, providersCache, addrInfos)
+	discoveryHandler := NewDiscoveryService(ctx, userRepo, db)
+
+	hTable := NewDHTable(
+		ctx, db, providersCache, bootstrapAddrs,
+		discoveryHandler.HandlePeerFound,
+		func(info peer.AddrInfo) {
+			log.Println("dht: node removed", info.ID)
 		},
 	)
+
+	mdns := NewMulticastDNS(ctx, discoveryHandler.HandlePeerFound)
+
+	n, err := setupNode(ctx, privKey, store, bootstrapAddrs, conf, hTable.Start)
 	if err != nil {
 		return nil, err
 	}
 
-	owner, _ := db.GetOwner()
-	discoveryHandler := NewMemberDiscovery(n, userRepo, db)
-	n.pubsub, err = NewPubSub(ctx, n.Node(), discoveryHandler)
+	discoveryHandler.JoinNode(n)
+
+	mdns.Start(n.Node())
+	n.mdns = mdns
+
+	pubsub, err := NewPubSub(ctx, n.Node(), discoveryHandler.HandlePeerFound)
 	if err != nil {
 		return nil, err
 	}
-	n.mdns = mdns.NewMdnsService(n.node, conf.Node.PSK, discoveryHandler)
-	go func() {
-		if err := n.mdns.Start(); err != nil {
-			log.Println("mdns failed to start", err)
-			return
-		}
-		log.Println("mdns service started")
-	}()
+	go pubsub.RunDiscovery()
+	n.pubsub = pubsub
 
-	n.node.SetStreamHandler("/ping/1.0.0", func(stream network.Stream) {
-		defer stream.Close()
-		log.Println("received ping")
-		stream.Write([]byte("pong"))
-	})
+	n.node.SetStreamHandler("/ping/1.0.0", Pong)
 	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
 	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
 	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo, timelineRepo))
-	n.node.SetStreamHandler("/info/1.0.0", handler.StreamGetInfoHandler(n.Node(), owner, version))
+	n.node.SetStreamHandler("/info/1.0.0", handler.StreamGetInfoHandler(n.Node(), db, version))
 	return n, err
+}
+
+func Pong(stream network.Stream) {
+	defer stream.Close()
+	log.Println("received ping")
+	stream.Write([]byte("pong"))
 }
 
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
@@ -311,11 +327,11 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 	response, err := n.StreamSend(
 		serverNodeId, "/ping/1.0.0", []byte("ping"),
 	)
-	log.Printf("response from server: %s\n", response)
-
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
+	log.Printf("client-server nodes ping-%s complete\n", response)
+
 	log.Println("client node created:", n.node.ID())
 	return n, nil
 }
@@ -341,10 +357,13 @@ func (n *WarpNode) Peerstore() types.WarpPeerstore {
 	return n.node.Peerstore()
 }
 
-func (n *WarpNode) parseAddresses(node host.Host) {
+func (n *WarpNode) parseAddresses(node host.Host) (string, string) {
 	if n == nil {
-		return
+		return "", ""
 	}
+	var (
+		ipv4, ipv6 string
+	)
 	for _, a := range node.Addrs() {
 		if strings.HasPrefix(a.String(), "/ip4/127.0.0.1") { // localhost is default
 			continue
@@ -353,12 +372,13 @@ func (n *WarpNode) parseAddresses(node host.Host) {
 			continue
 		}
 		if strings.HasPrefix(a.String(), "/ip4") {
-			n.ipv4 = a.String()
+			ipv4 = a.String()
 		}
 		if strings.HasPrefix(a.String(), "/ip6") {
-			n.ipv6 = a.String()
+			ipv6 = a.String()
 		}
 	}
+	return ipv4, ipv6
 }
 
 func (n *WarpNode) IPv4() string {
@@ -377,7 +397,7 @@ func (n *WarpNode) Stop() {
 		}
 	}()
 	if n.mdns != nil {
-		_ = n.mdns.Close()
+		n.mdns.Close()
 	}
 	if n.relay != nil {
 		_ = n.relay.Close()
@@ -453,4 +473,12 @@ func closeWrite(s network.Stream) {
 	if err := s.CloseWrite(); err != nil {
 		log.Printf("close write: %s", err)
 	}
+}
+
+func ShortenID(id types.WarpPeerID) string {
+	pid := id.String()
+	if len(pid) <= 10 {
+		return pid
+	}
+	return fmt.Sprintf("%s*%s", pid[:2], pid[len(pid)-6:])
 }

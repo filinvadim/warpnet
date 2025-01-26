@@ -9,16 +9,20 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 )
 
-type NodeInfoStorer interface {
+type NodeServicer interface {
 	ID() types.WarpPeerID
 	Peerstore() peerstore.Peerstore
 	Addrs() []types.WarpAddress
 	Network() network.Network
 }
 
+type AuthStorer interface {
+	GetOwner() (domain.Owner, error)
+}
+
 func StreamGetInfoHandler(
-	node NodeInfoStorer,
-	owner domain.Owner,
+	node NodeServicer,
+	db AuthStorer,
 	version *semver.Version,
 ) func(s network.Stream) {
 	return func(s network.Stream) {
@@ -35,6 +39,8 @@ func StreamGetInfoHandler(
 			for _, a := range peerInfo.Addrs {
 				plainAddrs = append(plainAddrs, a.String())
 			}
+
+			owner, _ := db.GetOwner()
 
 			var nodeInfo = types.NodeInfo{
 				Addrs:     addrs,

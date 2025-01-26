@@ -2,9 +2,7 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/types"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -12,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"log"
+	"sync"
 )
 
 // В libp2p, mDNS (Multicast DNS) — это механизм для локального обнаружения пиров (нод) в одной сети без использования централизованного сервера или предварительной настройки. Он позволяет нодам в одной локальной сети автоматически находить друг друга.
@@ -26,28 +25,13 @@ import (
 //    Обновление peerstore:
 //    После обнаружения других нод их адреса автоматически добавляются в peerstore для дальнейшего использования.
 
+type DiscoveryHandler func(peer.AddrInfo)
+
 type DiscoveryInfoStorer interface {
 	ID() string
 	Peerstore() peerstore.Peerstore
 	Node() host.Host
 	StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error)
-}
-
-type bootstrapDiscoveryHandler struct {
-	node DiscoveryInfoStorer
-}
-
-func NewBootstrapDiscovery(h DiscoveryInfoStorer) *bootstrapDiscoveryHandler {
-	return &bootstrapDiscoveryHandler{h}
-}
-
-func (n *bootstrapDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
-	log.Printf("found new peer: %s %v", pi.ID.String(), pi.Addrs)
-	if err := n.node.Node().Connect(context.Background(), pi); err != nil {
-		log.Printf("failed to connect to new peer: %s", err)
-		return
-	}
-	log.Printf("connected to new peer: %s", pi.ID)
 }
 
 type NodeStorer interface {
@@ -59,31 +43,52 @@ type NodeStorer interface {
 	Blocklist(ctx context.Context, peerId peer.ID) error
 }
 
-type memberDiscoveryHandler struct {
+type UserStorer interface {
+	Create(user domain.User) (domain.User, error)
+}
+
+type discoveryService struct {
+	ctx      context.Context
 	node     DiscoveryInfoStorer
-	userRepo *database.UserRepo
+	userRepo UserStorer
 	nodeRepo NodeStorer
+
+	mx *sync.Mutex
 }
 
-func NewMemberDiscovery(
-	n DiscoveryInfoStorer,
-	userRepo *database.UserRepo,
+func NewDiscoveryService(
+	ctx context.Context,
+	userRepo UserStorer,
 	nodeRepo NodeStorer,
-) *memberDiscoveryHandler {
-	return &memberDiscoveryHandler{n, userRepo, nodeRepo}
+) *discoveryService {
+	return &discoveryService{ctx, nil, userRepo, nodeRepo, new(sync.Mutex)}
 }
 
-func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
-	fmt.Println("discovery: found new peer:", pi.ID.String())
-	ctx := context.Background() // TODO
+func (s *discoveryService) JoinNode(n DiscoveryInfoStorer) {
+	if s == nil {
+		return
+	}
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.node = n
+}
+
+func (s *discoveryService) HandlePeerFound(pi peer.AddrInfo) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
+		log.Println("discovery service is not initialized")
+		return
+	}
 	if pi.ID == "" {
 		log.Printf("discovery: peer %s has no ID", pi.ID.String())
 		return
 	}
-	if pi.ID.String() == n.node.ID() {
+	if pi.ID.String() == s.node.ID() {
 		return
 	}
-	ok, err := n.nodeRepo.IsBlocklisted(ctx, pi.ID)
+	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
 	if err != nil {
 		log.Printf("discovery: failed to check blocklist: %s", err)
 	}
@@ -91,21 +96,22 @@ func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
 		log.Printf("discovery: found blocklisted peer: %s", pi.ID.String())
 		return
 	}
+	log.Println("discovery: found new peer:", pi.ID.String())
 
-	existedPeer := n.node.Peerstore().PeerInfo(pi.ID)
+	existedPeer := s.node.Peerstore().PeerInfo(pi.ID)
 	if existedPeer.ID != "" {
 		return
 	}
 
 	log.Printf("discovery: found new peer: %s %v", pi.ID.String(), pi.Addrs)
 
-	if err := n.node.Node().Connect(context.Background(), pi); err != nil {
+	if err := s.node.Node().Connect(context.Background(), pi); err != nil {
 		log.Printf("discovery: failed to connect to new peer: %s", err)
 		return
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)
 
-	infoResp, err := n.node.StreamSend(pi.ID.String(), "/info/1.0.0", nil)
+	infoResp, err := s.node.StreamSend(pi.ID.String(), "/info/1.0.0", nil)
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -118,12 +124,12 @@ func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
 		return
 	}
 
-	if err = n.nodeRepo.AddInfo(ctx, pi.ID, info); err != nil {
+	if err = s.nodeRepo.AddInfo(s.ctx, pi.ID, info); err != nil {
 		log.Printf("discovery: failed to store info of new peer: %s", err)
 	}
 
-	bt, _ := json.JSON.Marshal(event.GetUserEvent{info.Owner.UserId})
-	userResp, err := n.node.StreamSend(pi.ID.String(), "/user/1.0.0", bt)
+	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.Owner.UserId})
+	userResp, err := s.node.StreamSend(pi.ID.String(), "/user/1.0.0", bt)
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -135,7 +141,7 @@ func (n *memberDiscoveryHandler) HandlePeerFound(pi peer.AddrInfo) {
 		log.Printf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
-	_, err = n.userRepo.Create(user)
+	_, err = s.userRepo.Create(user)
 	if err != nil {
 		log.Printf("discovery: failed to create user from new peer: %s", err)
 	}

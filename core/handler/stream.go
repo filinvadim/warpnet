@@ -13,11 +13,11 @@ type streamHandler func([]byte) (any, error)
 
 func ReadStream(s network.Stream, fn streamHandler) {
 	defer func() {
-		log.Printf("stream closed for peer: %s", s.Conn().RemotePeer())
+		log.Printf("stream closed: %s %s", s.Protocol(), s.Conn().RemotePeer())
 		s.Close()
 	}()
 
-	log.Println("server stream opened", s.Protocol(), s.Conn().RemotePeer())
+	log.Println("server stream opened:", s.Protocol(), s.Conn().RemotePeer())
 
 	reader := bufio.NewReader(s)
 	data, err := io.ReadAll(reader)
@@ -25,7 +25,7 @@ func ReadStream(s network.Stream, fn streamHandler) {
 		log.Printf("error reading from stream: %v", err)
 		return
 	}
-	
+
 	response, err := fn(data)
 	if err != nil {
 		msg := fmt.Sprintf("error handling %s message: %v\n", s.Protocol(), err)

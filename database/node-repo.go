@@ -215,7 +215,7 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 			Bytes()
 		_, err := tx.Get(prefix)
 		switch {
-		case errors.Is(err, badger.ErrKeyNotFound):
+		case errors.Is(err, badger.ErrKeyNotFound) || errors.Is(err, ds.ErrNotFound):
 			return nil
 		case err == nil:
 			return nil
@@ -732,8 +732,15 @@ func (d *NodeRepo) IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, err
 		AddSubPrefix(BlocklistSubNamespace).
 		AddRootID(peerId.String()).
 		Build()
+	_, err := d.Get(ctx, ds.NewKey(blocklistKey.String()))
 
-	return d.Has(ctx, ds.NewKey(blocklistKey.String()))
+	if errors.Is(err, storage.ErrKeyNotFound) || errors.Is(err, ds.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err error) {
@@ -748,7 +755,11 @@ func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err err
 		AddRootID(peerId.String()).
 		Build()
 
-	return d.Delete(ctx, ds.NewKey(blocklistKey.String()))
+	err = d.Delete(ctx, ds.NewKey(blocklistKey.String()))
+	if errors.Is(err, storage.ErrKeyNotFound) || errors.Is(err, ds.ErrNotFound) {
+		return nil
+	}
+	return err
 }
 
 func (d *NodeRepo) AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error {

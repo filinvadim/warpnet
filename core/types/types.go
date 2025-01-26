@@ -35,11 +35,10 @@ type WarpAddrInfo struct {
 }
 
 type (
-	PeerAddrInfo         = peer.AddrInfo
-	WarpStreamStats      = network.Stats
-	WarpDiscoveryHandler = mdns.Notifee
-	WarpPeerRouting      = routing.PeerRouting
-	P2PNode              = host.Host
+	PeerAddrInfo    = peer.AddrInfo
+	WarpStreamStats = network.Stats
+	WarpPeerRouting = routing.PeerRouting
+	P2PNode         = host.Host
 
 	WarpPeerstore     = peerstore.Peerstore
 	WarpPrivateKey    crypto.PrivKey
