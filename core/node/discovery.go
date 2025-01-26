@@ -8,6 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"log"
@@ -29,9 +30,10 @@ import (
 type DiscoveryHandler func(peer.AddrInfo)
 
 type DiscoveryInfoStorer interface {
-	ID() string
+	ID() types.WarpPeerID
 	Peerstore() peerstore.Peerstore
 	Node() host.Host
+	Connect(p types.PeerAddrInfo) error
 	StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error)
 }
 
@@ -74,6 +76,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 		return
 	}
 	log.Println("discovery service started")
+	printPeers(n)
 	defer log.Println("discovery service stopped")
 
 	s.node = n
@@ -89,6 +92,20 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 			}
 			s.handle(info)
 		}
+	}
+}
+
+func printPeers(n DiscoveryInfoStorer) {
+	defer func() {
+		if r := recover(); r != nil { // could panic
+			log.Println("discovery: print peers: recovered from panic:", r)
+		}
+	}()
+	for _, id := range n.Node().Peerstore().Peers() {
+		if n.ID() == id {
+			continue
+		}
+		fmt.Printf("\033[1mknown peer: %s \033[0m\n", id.String())
 	}
 }
 
@@ -124,7 +141,7 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 		log.Printf("discovery: peer %s has no ID", pi.ID.String())
 		return
 	}
-	if pi.ID.String() == s.node.ID() {
+	if pi.ID == s.node.ID() {
 		return
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
@@ -136,16 +153,15 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 		return
 	}
 
-	fmt.Printf("\033[1mdiscovery: found new peer: %s \033[0m\n", pi.ID.String())
-
-	existedPeer := s.node.Peerstore().PeerInfo(pi.ID)
-	if existedPeer.ID != "" {
-		log.Println("discovery: peer existed already:", existedPeer.ID)
+	peerState := s.node.Node().Network().Connectedness(pi.ID)
+	if peerState == network.Connected || peerState == network.Limited {
 		return
 	}
+	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.ID.String(), peerState)
 
-	if err := s.node.Node().Connect(context.Background(), pi); err != nil {
-		log.Printf("discovery: failed to connect to new peer: %s", err)
+	if err := s.node.Connect(pi); err != nil {
+		log.Printf("discovery: failed to connect to new peer: %s, removing...", err)
+		s.node.Peerstore().RemovePeer(pi.ID) // try add it again
 		return
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)

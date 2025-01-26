@@ -14,7 +14,7 @@ import (
 const mdnsServiceName = "warpnet"
 
 type NodeConnector interface {
-	Connect(context.Context, peer.AddrInfo) error
+	Connect(peer.AddrInfo) error
 }
 
 type MulticastDNS struct {
@@ -51,7 +51,7 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.discoveryHandler == nil {
-		if err := m.node.Connect(m.ctx, p); err != nil {
+		if err := m.node.Connect(p); err != nil {
 			log.Println("mdns: failed to connect to peer", p.ID, err)
 		}
 		log.Println("mdns: connected to peer:", p.ID)
@@ -78,8 +78,8 @@ func (m *MulticastDNS) Start(n *WarpNode) {
 		return
 	}
 	m.isRunning.Store(true)
-	
-	m.service.joinNode(n.Node())
+
+	m.service.joinNode(n)
 
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 

@@ -13,6 +13,8 @@ import (
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/retrier"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 
 	//"github.com/filinvadim/warpnet/database"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
@@ -34,7 +36,9 @@ import (
 )
 
 const (
+	ServiceName    = "warpnet"
 	ProtocolPrefix = "/warpnet"
+	defaultTimeout = 60 * time.Second
 )
 
 type PersistentLayer interface {
@@ -69,7 +73,10 @@ type WarpNode struct {
 	pubsub    types.WarpGossiper
 	isClosed  *atomic.Bool
 
-	ipv4, ipv6 string
+	ipv4, ipv6   string
+	clientPeerID types.WarpPeerID
+
+	retrier retrier.Retrier
 }
 
 func setupNode(
@@ -85,7 +92,7 @@ func setupNode(
 	manager, err := connmgr.NewConnManager(
 		100,
 		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Minute),
+		connmgr.WithGracePeriod(time.Hour),
 	)
 	if err != nil {
 		return nil, err
@@ -96,16 +103,19 @@ func setupNode(
 		return nil, err
 	}
 
+	basichost.DefaultNegotiationTimeout = defaultTimeout
+
 	node, err := libp2p.New(
+		libp2p.WithDialTimeout(defaultTimeout),
 		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
-		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(defaultTimeout)),
 		libp2p.Identity(privKey),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
 		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))), // TODO shuffle name. "warpnet" now
-		libp2p.UserAgent("warpnet"),
+		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.EnableNATService(),
@@ -131,6 +141,7 @@ func setupNode(
 		node:     node,
 		relay:    relay,
 		isClosed: new(atomic.Bool),
+		retrier:  retrier.New(time.Second * 5),
 	}
 
 	n.ipv4, n.ipv6 = n.parseAddresses(node)
@@ -263,18 +274,13 @@ func NewRegularNode(
 	go pubsub.RunDiscovery()
 	n.pubsub = pubsub
 
-	n.node.SetStreamHandler("/ping/1.0.0", Pong)
+	n.node.SetStreamHandler("/ping/1.0.0", n.Pong)
 	n.node.SetStreamHandler("/timeline/1.0.0", handler.StreamTimelineHandler(timelineRepo))
 	n.node.SetStreamHandler("/user/1.0.0", handler.StreamGetUserHandler(userRepo))
 	n.node.SetStreamHandler("/tweets/1.0.0", handler.StreamGetTweetsHandler(tweetRepo))
 	n.node.SetStreamHandler("/tweet/1.0.0", handler.StreamNewTweetHandler(tweetRepo, timelineRepo))
 	n.node.SetStreamHandler("/info/1.0.0", handler.StreamGetInfoHandler(n.Node(), db, version))
 	return n, err
-}
-
-func Pong(stream types.WarpStream) {
-	_, _ = stream.Write([]byte("pong"))
-	_ = stream.Close()
 }
 
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
@@ -333,11 +339,35 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 	return n, nil
 }
 
-func (n *WarpNode) ID() string {
+func (n *WarpNode) Pong(stream types.WarpStream) {
+	n.clientPeerID = stream.Conn().RemotePeer() // TODO
+	_, _ = stream.Write([]byte("pong"))
+	_ = stream.Close()
+}
+
+func (n *WarpNode) Connect(p types.PeerAddrInfo) error {
+	if n == nil || n.node == nil {
+		return nil
+	}
+	now := time.Now()
+	err := n.retrier.Try(
+		func() (bool, error) {
+			if err := n.node.Connect(n.ctx, p); err != nil {
+				log.Println("node connect error:", err)
+				return false, nil
+			}
+			return true, nil
+		},
+		now.Add(time.Minute*2),
+	)
+	return err
+}
+
+func (n *WarpNode) ID() types.WarpPeerID {
 	if n == nil || n.node == nil {
 		return ""
 	}
-	return n.node.ID().String()
+	return n.node.ID()
 }
 
 func (n *WarpNode) Node() types.P2PNode {
@@ -377,7 +407,9 @@ func (n *WarpNode) parseAddresses(node types.P2PNode) (string, string) {
 	}
 	return ipv4, ipv6
 }
-
+func (n *WarpNode) Addrs() []string {
+	return []string{n.ipv4, n.ipv6}
+}
 func (n *WarpNode) IPv4() string {
 	return n.ipv4
 }
@@ -433,10 +465,7 @@ func send(n types.P2PNode, serverInfo *types.PeerAddrInfo, path types.WarpDiscri
 		return nil, errors.New("stream: parameters improperly configured")
 	}
 
-	ctx, cancelF := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelF()
-
-	stream, err := n.NewStream(ctx, serverInfo.ID, path)
+	stream, err := n.NewStream(context.Background(), serverInfo.ID, path)
 	if err != nil {
 		return nil, fmt.Errorf("stream: opening: %s", err)
 	}

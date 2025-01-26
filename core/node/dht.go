@@ -53,7 +53,7 @@ func (d *DistributedHashTable) Start(n types.P2PNode) (_ types.WarpPeerRouting, 
 		dht.Datastore(d.batchingRepo),
 		dht.BootstrapPeers(d.relays...),
 		dht.ProviderStore(d.providerStore),
-		dht.RoutingTableLatencyTolerance(time.Hour*24), // if one day node is not responding
+		dht.RoutingTableLatencyTolerance(time.Minute*5), // if one day node is not responding
 	)
 	if err != nil {
 		log.Printf("new dht: %v\n", err)

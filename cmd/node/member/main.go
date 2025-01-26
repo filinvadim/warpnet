@@ -125,7 +125,7 @@ func main() {
 		log.Fatalf("failed to init node: %v", err)
 	}
 
-	owner.NodeId = n.ID()
+	owner.NodeId = n.ID().String()
 	owner.Ipv6 = n.IPv6()
 	owner.Ipv4 = n.IPv4()
 	nodeReadyChan <- owner

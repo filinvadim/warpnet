@@ -15,15 +15,11 @@ import (
 	"time"
 )
 
-type NodeWrapper interface {
-	Node() types.P2PNode
-}
-
 type PeerInfoStorer interface {
+	Node() types.P2PNode
+	Connect(types.PeerAddrInfo) error
 	ID() types.WarpPeerID
-	Peerstore() types.WarpPeerstore
-	Connect(context.Context, types.PeerAddrInfo) error
-	Addrs() []multiaddr.Multiaddr
+	Addrs() []string
 }
 
 type Gossip struct {
@@ -39,7 +35,7 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, h NodeWrapper, discoveryHandler DiscoveryHandler) (*Gossip, error) {
+func NewPubSub(ctx context.Context, h PeerInfoStorer, discoveryHandler DiscoveryHandler) (*Gossip, error) {
 	ps, err := pubsub.NewGossipSub(ctx, h.Node())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PubSub: %s", err)
@@ -48,7 +44,7 @@ func NewPubSub(ctx context.Context, h NodeWrapper, discoveryHandler DiscoveryHan
 	g := &Gossip{
 		ctx:              ctx,
 		pubsub:           ps,
-		node:             h.Node(),
+		node:             h,
 		discoveryHandler: discoveryHandler,
 
 		mx:     &sync.RWMutex{},
@@ -62,8 +58,6 @@ func NewPubSub(ctx context.Context, h NodeWrapper, discoveryHandler DiscoveryHan
 }
 
 func (g *Gossip) Close() (err error) {
-	g.mx.Lock()
-	defer g.mx.Unlock()
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -72,13 +66,22 @@ func (g *Gossip) Close() (err error) {
 	if !g.isRunning.Load() {
 		return
 	}
+
+	g.mx.RLock()
+	defer g.mx.RUnlock()
+
 	for _, sub := range g.subs {
 		sub.Cancel()
 	}
+
+	var errs []error
 	for _, topic := range g.topics {
 		if err = topic.Close(); err != nil {
-			return err
+			errs = append(errs, err)
 		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	g.pubsub = nil
@@ -135,13 +138,9 @@ func (g *Gossip) RunDiscovery() {
 			continue
 		}
 		if discoveryMsg.ID == g.node.ID() {
-			log.Println("pubsub discovery: discovery message has the same ID as owner", discoveryMsg.ID)
 			continue
 		}
-		existedPeer := g.node.Peerstore().PeerInfo(discoveryMsg.ID)
-		if existedPeer.ID != "" {
-			continue
-		}
+
 		peerInfo := types.PeerAddrInfo{
 			ID:    discoveryMsg.ID,
 			Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
@@ -154,7 +153,7 @@ func (g *Gossip) RunDiscovery() {
 
 		if g.discoveryHandler == nil { // just bootstrap
 			log.Println("pubsub: no discovery handler")
-			if err := g.node.Connect(g.ctx, peerInfo); err != nil {
+			if err := g.node.Connect(peerInfo); err != nil {
 				log.Printf("pubsub discovery: failed to connect to peer: %v", err)
 				continue
 			}
@@ -168,9 +167,11 @@ func (g *Gossip) RunDiscovery() {
 func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
+	defer log.Println("pubsub: publisher stopped")
 
 	for {
 		if !g.isRunning.Load() {
+
 			return
 		}
 		select {
@@ -180,10 +181,11 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
 		case <-ticker.C:
 			addrs := make([]string, 0, len(g.node.Addrs()))
 			for _, addr := range g.node.Addrs() {
-				addrs = append(addrs, addr.String())
+				addrs = append(addrs, addr)
 			}
+
 			msg := types.WarpAddrInfo{
-				ID:    g.node.ID(),
+				ID:    types.WarpPeerID(g.node.ID()),
 				Addrs: addrs,
 			}
 			data, err := json.Marshal(msg)
@@ -195,7 +197,6 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
 			if err != nil {
 				log.Printf("pubsub discovery: failed to publish message: %v", err)
 			}
-			fmt.Println("pubsub discovery: published message", string(data))
 		}
 	}
 }

@@ -20,11 +20,12 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 )
 
+// slash is required because of: invalid datastore key: NODES:/peers/keys/AASAQAISEAXNRKHMX2O3AA26JM7NGIWUPOGIITJ2UHHXGX4OWIEKPNAW6YCSK/priv
 const (
-	NodesNamespace        = "NODES"
-	ProvidersSubNamespace = "PROVIDERS"
-	BlocklistSubNamespace = "BLOCKLIST"
-	InfoSubNamespace      = "INFO"
+	NodesNamespace        = "/NODES"
+	ProvidersSubNamespace = "/PROVIDERS"
+	BlocklistSubNamespace = "/BLOCKLIST"
+	InfoSubNamespace      = "/INFO"
 )
 
 var (
