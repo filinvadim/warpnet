@@ -131,7 +131,11 @@ func setupNode(
 		return nil, err
 	}
 
-	relay, err := relayv2.New(node)
+	relay, err := relayv2.New(
+		node,
+		relayv2.WithResources(relayv2.DefaultResources()),
+		relayv2.WithInfiniteLimits(),
+	)
 	if err != nil {
 		return nil, err
 	}
