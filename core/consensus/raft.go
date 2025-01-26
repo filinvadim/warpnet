@@ -53,9 +53,9 @@ func NewRaft(
 	}
 
 	state := map[string]string{}
-	consensus := libp2praft.NewConsensus(&state)
+	cons := libp2praft.NewConsensus(&state)
 	// Получаем FSM через Consensus
-	fsm := consensus.FSM()
+	fsm := cons.FSM()
 
 	// Создаём узел Raft
 	raftNode, err := raft.NewRaft(

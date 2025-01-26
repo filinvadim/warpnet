@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -10,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"log"
-	"sync"
+	"strings"
 )
 
 // В libp2p, mDNS (Multicast DNS) — это механизм для локального обнаружения пиров (нод) в одной сети без использования централизованного сервера или предварительной настройки. Он позволяет нодам в одной локальной сети автоматически находить друг друга.
@@ -53,7 +54,8 @@ type discoveryService struct {
 	userRepo UserStorer
 	nodeRepo NodeStorer
 
-	mx *sync.Mutex
+	discoveryChan chan types.PeerAddrInfo
+	stopChan      chan struct{}
 }
 
 func NewDiscoveryService(
@@ -61,22 +63,59 @@ func NewDiscoveryService(
 	userRepo UserStorer,
 	nodeRepo NodeStorer,
 ) *discoveryService {
-	return &discoveryService{ctx, nil, userRepo, nodeRepo, new(sync.Mutex)}
+	return &discoveryService{
+		ctx, nil, userRepo, nodeRepo,
+		make(chan types.PeerAddrInfo, 100), make(chan struct{}),
+	}
 }
 
-func (s *discoveryService) Enable(n DiscoveryInfoStorer) {
+func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	if s == nil {
 		return
 	}
-	s.mx.Lock()
-	defer s.mx.Unlock()
+	log.Println("discovery service started")
+	defer log.Println("discovery service stopped")
+
 	s.node = n
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-s.stopChan:
+		case info, ok := <-s.discoveryChan:
+			if !ok {
+				return
+			}
+			s.handle(info)
+		}
+	}
 }
 
-func (s *discoveryService) HandlePeerFound(pi peer.AddrInfo) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
+func (s *discoveryService) Close() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("discovery: close recovered from panic:", r)
+		}
+	}()
+	close(s.stopChan)
+}
 
+func (s *discoveryService) HandlePeerFound(pi types.PeerAddrInfo) {
+	if s == nil {
+		return
+	}
+	if s.discoveryChan == nil {
+		log.Println("discovery channel is nil")
+		return
+	}
+	if len(s.discoveryChan) == cap(s.discoveryChan) {
+		<-s.discoveryChan // drop old data
+	}
+	s.discoveryChan <- pi
+}
+
+func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
 		log.Println("discovery service is not initialized")
 		return
@@ -96,14 +135,13 @@ func (s *discoveryService) HandlePeerFound(pi peer.AddrInfo) {
 		log.Printf("discovery: found blocklisted peer: %s", pi.ID.String())
 		return
 	}
-	log.Println("discovery: found new peer:", pi.ID.String())
+
+	fmt.Printf("\033[1mdiscovery: found new peer: %s \033[0m\n", pi.ID.String())
 
 	existedPeer := s.node.Peerstore().PeerInfo(pi.ID)
 	if existedPeer.ID != "" {
 		return
 	}
-
-	log.Printf("discovery: found new peer: %s %v", pi.ID.String(), pi.Addrs)
 
 	if err := s.node.Node().Connect(context.Background(), pi); err != nil {
 		log.Printf("discovery: failed to connect to new peer: %s", err)
@@ -130,6 +168,9 @@ func (s *discoveryService) HandlePeerFound(pi peer.AddrInfo) {
 
 	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.Owner.UserId})
 	userResp, err := s.node.StreamSend(pi.ID.String(), "/user/1.0.0", bt)
+	if isBootstrapError(err) {
+		return
+	}
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -145,4 +186,15 @@ func (s *discoveryService) HandlePeerFound(pi peer.AddrInfo) {
 	if err != nil {
 		log.Printf("discovery: failed to create user from new peer: %s", err)
 	}
+}
+
+func isBootstrapError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if strings.Contains(err.Error(), "protocols not supported") {
+		// bootstrap node doesn't support requesting
+		return true
+	}
+	return false
 }

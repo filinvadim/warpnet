@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
+	"time"
 )
 
 // TODO: track this: dht	go-libp2p-kad-dht/dht.go:523
@@ -52,6 +53,7 @@ func (d *DistributedHashTable) Start(n types.P2PNode) (_ types.WarpPeerRouting, 
 		dht.Datastore(d.batchingRepo),
 		dht.BootstrapPeers(d.relays...),
 		dht.ProviderStore(d.providerStore),
+		dht.RoutingTableLatencyTolerance(time.Hour*24), // if one day node is not responding
 	)
 	if err != nil {
 		log.Printf("new dht: %v\n", err)

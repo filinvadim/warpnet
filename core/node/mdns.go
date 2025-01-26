@@ -30,7 +30,7 @@ type mdnsDiscoveryService struct {
 	mx               *sync.Mutex
 }
 
-func (m *mdnsDiscoveryService) JoinNode(n NodeConnector) {
+func (m *mdnsDiscoveryService) joinNode(n NodeConnector) {
 	if m == nil {
 		return
 	}
@@ -75,16 +75,15 @@ func (m *MulticastDNS) Start(n *WarpNode) {
 	if m.isRunning.Load() {
 		return
 	}
-	m.service.JoinNode(n.Node())
+	m.service.joinNode(n.Node())
 
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
-	go func() {
-		if err := m.mdns.Start(); err != nil {
-			log.Println("mdns failed to start", err)
-			return
-		}
-		log.Println("mdns service started")
-	}()
+
+	if err := m.mdns.Start(); err != nil {
+		log.Println("mdns failed to start", err)
+		return
+	}
+	log.Println("mdns service started")
 }
 
 func (m *MulticastDNS) Close() {

@@ -63,13 +63,20 @@ type MDNSServicer interface {
 	Start(node *WarpNode)
 	Close()
 }
+
+type DiscoveryServicer interface {
+	Run(n DiscoveryInfoStorer)
+	Close()
+}
+
 type WarpNode struct {
-	ctx      context.Context
-	node     types.P2PNode
-	mdns     MDNSServicer
-	relay    types.WarpRelayCloser
-	pubsub   types.WarpGossiper
-	isClosed *atomic.Bool
+	ctx       context.Context
+	node      types.P2PNode
+	mdns      MDNSServicer
+	discovery DiscoveryServicer
+	relay     types.WarpRelayCloser
+	pubsub    types.WarpGossiper
+	isClosed  *atomic.Bool
 
 	ipv4, ipv6 string
 }
@@ -197,7 +204,7 @@ func NewBootstrapNode(
 	}
 
 	mdns := NewMulticastDNS(ctx, nil)
-	mdns.Start(n)
+	go mdns.Start(n)
 	n.mdns = mdns
 
 	pubsub, err := NewPubSub(ctx, n, nil)
@@ -236,29 +243,30 @@ func NewRegularNode(
 		return nil, err
 	}
 
-	discoveryHandler := NewDiscoveryService(ctx, userRepo, db)
+	discService := NewDiscoveryService(ctx, userRepo, db)
 
 	hTable := NewDHTable(
 		ctx, db, providersCache, bootstrapAddrs,
-		discoveryHandler.HandlePeerFound,
+		discService.HandlePeerFound,
 		func(info peer.AddrInfo) {
 			log.Println("dht: node removed", info.ID)
 		},
 	)
 
-	mdns := NewMulticastDNS(ctx, discoveryHandler.HandlePeerFound)
+	mdns := NewMulticastDNS(ctx, discService.HandlePeerFound)
 
 	n, err := setupNode(ctx, privKey, store, bootstrapAddrs, conf, hTable.Start)
 	if err != nil {
 		return nil, err
 	}
 
-	discoveryHandler.Enable(n)
+	go discService.Run(n)
+	n.discovery = discService
 
-	mdns.Start(n)
+	go mdns.Start(n)
 	n.mdns = mdns
 
-	pubsub, err := NewPubSub(ctx, n, discoveryHandler.HandlePeerFound)
+	pubsub, err := NewPubSub(ctx, n, discService.HandlePeerFound)
 	if err != nil {
 		return nil, err
 	}
@@ -275,9 +283,8 @@ func NewRegularNode(
 }
 
 func Pong(stream network.Stream) {
-	defer stream.Close()
-	log.Println("received ping")
 	_, _ = stream.Write([]byte("pong"))
+	_ = stream.Close()
 }
 
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"

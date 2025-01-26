@@ -3,11 +3,13 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/types"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -112,6 +114,10 @@ func (g *Gossip) RunDiscovery() {
 
 	for {
 		msg, err := sub.Next(g.ctx)
+		if isContextCancelledError(err) {
+			log.Printf("pubsub discovery stopped by context")
+			return
+		}
 		if err != nil {
 			log.Printf("pubsub discovery: subscription error: %v", err)
 			return
@@ -189,4 +195,18 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
 			}
 		}
 	}
+}
+
+func isContextCancelledError(err error) bool {
+	switch {
+	case err == nil:
+		return false
+	case err == context.Canceled:
+		return true
+	case errors.Is(err, context.Canceled):
+		return true
+	case strings.Contains(err.Error(), "context canceled"):
+		return true
+	}
+	return false
 }
