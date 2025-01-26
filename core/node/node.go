@@ -13,14 +13,12 @@ import (
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/database"
+
+	//"github.com/filinvadim/warpnet/database"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
@@ -28,8 +26,6 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"log"
 	"strings"
@@ -42,21 +38,16 @@ const (
 )
 
 type PersistentLayer interface {
-	datastore.Batching
+	types.WarpBatching
 	providers.ProviderStore
 	PrivateKey() go_crypto.PrivateKey
 	ListProviders() (_ map[string][]types.PeerAddrInfo, err error)
 	GetOwner() (owner domainGen.Owner, err error)
 	AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error
-	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
-	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
-	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
-	Blocklist(ctx context.Context, peerId peer.ID) error
-}
-
-type NodeLogger interface {
-	zapcore.Core
-	Info(args ...interface{})
+	RemoveInfo(ctx context.Context, peerId types.WarpPeerID) (err error)
+	BlocklistRemove(ctx context.Context, peerId types.WarpPeerID) (err error)
+	IsBlocklisted(ctx context.Context, peerId types.WarpPeerID) (bool, error)
+	Blocklist(ctx context.Context, peerId types.WarpPeerID) error
 }
 
 type MDNSServicer interface {
@@ -144,9 +135,8 @@ func setupNode(
 
 	n.ipv4, n.ipv6 = n.parseAddresses(node)
 
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	log.Printf("NODE STARTED WITH ID %s AND ADDRESSES %s %s\n", n.ID(), n.ipv4, n.ipv6)
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %s\033[0m\n", n.ID(), n.ipv4, n.ipv6)
+	println()
 
 	return n, nil
 }
@@ -161,7 +151,7 @@ func NewBootstrapNode(
 	}
 
 	warpPrivKey := privKey.(types.WarpPrivateKey)
-	id, err := peer.IDFromPrivateKey(warpPrivKey)
+	id, err := types.IDFromPrivateKey(warpPrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -183,10 +173,10 @@ func NewBootstrapNode(
 
 	hTable := NewDHTable(
 		ctx, mapStore, providersCache, bootstrapAddrs,
-		func(info peer.AddrInfo) {
+		func(info types.PeerAddrInfo) {
 			log.Println("dht: node added", info.ID)
 		},
-		func(info peer.AddrInfo) {
+		func(info types.PeerAddrInfo) {
 			log.Println("dht: node removed", info.ID)
 		},
 	)
@@ -226,7 +216,6 @@ func NewRegularNode(
 	tweetRepo *database.TweetRepo,
 	version *semver.Version,
 ) (_ *WarpNode, err error) {
-	//logging.SetLogLevel("*", "INFO")
 	privKey := db.PrivateKey().(types.WarpPrivateKey)
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	if err != nil {
@@ -248,7 +237,7 @@ func NewRegularNode(
 	hTable := NewDHTable(
 		ctx, db, providersCache, bootstrapAddrs,
 		discService.HandlePeerFound,
-		func(info peer.AddrInfo) {
+		func(info types.PeerAddrInfo) {
 			log.Println("dht: node removed", info.ID)
 		},
 	)
@@ -282,7 +271,7 @@ func NewRegularNode(
 	return n, err
 }
 
-func Pong(stream network.Stream) {
+func Pong(stream types.WarpStream) {
 	_, _ = stream.Write([]byte("pong"))
 	_ = stream.Close()
 }
@@ -291,7 +280,7 @@ const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
 
 func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config) (_ *WarpNode, err error) {
 	if serverNodeId == "" {
-		return nil, errors.New("server node ID is empty")
+		return nil, errors.New("client node: server node ID is empty")
 	}
 	client, err := libp2p.New(
 		libp2p.NoListenAddrs,
@@ -307,20 +296,20 @@ func NewClientNode(ctx context.Context, serverNodeId string, conf config.Config)
 		libp2p.UserAgent(conf.Node.PSK+"-client"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating client node: %s", err)
+		return nil, fmt.Errorf("client node: creating %s", err)
 	}
 	serverAddr := serverNodeAddrDefault + serverNodeId
-	maddr, err := ma.NewMultiaddr(serverAddr)
+	maddr, err := types.NewMultiaddr(serverAddr)
 	if err != nil {
-		return nil, fmt.Errorf("parsing server address: %s", err)
+		return nil, fmt.Errorf("client node: parsing server address: %s", err)
 	}
 
-	serverInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+	serverInfo, err := types.AddrInfoFromP2pAddr(maddr)
 	if err != nil {
-		return nil, fmt.Errorf("creating fddress info: %s", err)
+		return nil, fmt.Errorf("client node: creating address info: %s", err)
 	}
 
-	client.Peerstore().AddAddrs(serverInfo.ID, serverInfo.Addrs, peerstore.PermanentAddrTTL)
+	client.Peerstore().AddAddrs(serverInfo.ID, serverInfo.Addrs, types.PermanentAddrTTL)
 
 	n := &WarpNode{
 		ctx:      ctx,
@@ -350,7 +339,7 @@ func (n *WarpNode) ID() string {
 	return n.node.ID().String()
 }
 
-func (n *WarpNode) Node() host.Host {
+func (n *WarpNode) Node() types.P2PNode {
 	if n == nil || n.node == nil {
 		return nil
 	}
@@ -364,7 +353,7 @@ func (n *WarpNode) Peerstore() types.WarpPeerstore {
 	return n.node.Peerstore()
 }
 
-func (n *WarpNode) parseAddresses(node host.Host) (string, string) {
+func (n *WarpNode) parseAddresses(node types.P2PNode) (string, string) {
 	if n == nil {
 		return "", ""
 	}
@@ -425,14 +414,14 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 	}
 
 	serverAddr := serverNodeAddrDefault + peerID
-	maddr, err := ma.NewMultiaddr(serverAddr)
+	maddr, err := types.NewMultiaddr(serverAddr)
 	if err != nil {
-		return nil, fmt.Errorf("parsing server address: %s", err)
+		return nil, fmt.Errorf("stream: parsing server address: %s", err)
 	}
 
-	serverInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+	serverInfo, err := types.AddrInfoFromP2pAddr(maddr)
 	if err != nil {
-		return nil, fmt.Errorf("creating address info: %s", err)
+		return nil, fmt.Errorf("stream: creating address info: %s", err)
 	}
 
 	return send(n.node, serverInfo, path, data)
@@ -440,7 +429,7 @@ func (n *WarpNode) StreamSend(peerID string, path types.WarpDiscriminator, data 
 
 func send(n types.P2PNode, serverInfo *types.PeerAddrInfo, path types.WarpDiscriminator, data []byte) ([]byte, error) {
 	if n == nil || serverInfo == nil || path == "" {
-		return nil, errors.New("send: parameters improperly configured")
+		return nil, errors.New("stream: parameters improperly configured")
 	}
 
 	ctx, cancelF := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
@@ -448,18 +437,18 @@ func send(n types.P2PNode, serverInfo *types.PeerAddrInfo, path types.WarpDiscri
 
 	stream, err := n.NewStream(ctx, serverInfo.ID, path)
 	if err != nil {
-		return nil, fmt.Errorf("opening stream: %s", err)
+		return nil, fmt.Errorf("stream: opening: %s", err)
 	}
 	defer closeStream(stream)
 
 	var rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 	if data != nil {
-		fmt.Printf("client sent to %s data with size %d\n", path, len(data))
+		log.Printf("stream: sent to %s data with size %d\n", path, len(data))
 		_, err = rw.Write(data)
 		flush(rw)
 		closeWrite(stream)
 		if err != nil {
-			return nil, fmt.Errorf("writing to stream: %s", err)
+			return nil, fmt.Errorf("stream: writing: %s", err)
 		}
 	}
 
@@ -468,12 +457,12 @@ func send(n types.P2PNode, serverInfo *types.PeerAddrInfo, path types.WarpDiscri
 	if err != nil {
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
-	fmt.Printf("client received response from %s, size %d\n", path, buf.Len())
+	log.Printf("stream: received response from %s, size %d\n", path, buf.Len())
 
 	return buf.Bytes(), nil
 }
 
-func closeStream(stream network.Stream) {
+func closeStream(stream types.WarpStream) {
 	if err := stream.Close(); err != nil {
 		log.Printf("closing stream: %s", err)
 	}
@@ -485,7 +474,7 @@ func flush(rw *bufio.ReadWriter) {
 	}
 }
 
-func closeWrite(s network.Stream) {
+func closeWrite(s types.WarpStream) {
 	if err := s.CloseWrite(); err != nil {
 		log.Printf("close write: %s", err)
 	}

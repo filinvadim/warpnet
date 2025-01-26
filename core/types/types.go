@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -15,6 +16,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"time"
 )
+
+const PermanentAddrTTL = peerstore.PermanentAddrTTL
 
 type (
 	WarpRelayCloser interface {
@@ -35,6 +38,8 @@ type WarpAddrInfo struct {
 }
 
 type (
+	WarpStream      = network.Stream
+	WarpBatching    = datastore.Batching
 	PeerAddrInfo    = peer.AddrInfo
 	WarpStreamStats = network.Stats
 	WarpPeerRouting = routing.PeerRouting
@@ -58,4 +63,16 @@ type NodeInfo struct {
 	Owner        domain.Owner        `json:"owner"`
 	Version      *semver.Version     `json:"version"`
 	StreamStats  network.Stats       `json:"stream_stats"`
+}
+
+func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {
+	return multiaddr.NewMultiaddr(s)
+}
+
+func IDFromPrivateKey(sk crypto.PrivKey) (WarpPeerID, error) {
+	return peer.IDFromPublicKey(sk.GetPublic())
+}
+
+func AddrInfoFromP2pAddr(m multiaddr.Multiaddr) (*PeerAddrInfo, error) {
+	return peer.AddrInfoFromP2pAddr(m)
 }
