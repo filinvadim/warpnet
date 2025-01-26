@@ -95,6 +95,8 @@ func (g *Gossip) RunDiscovery() {
 	if g.isRunning.Load() {
 		return
 	}
+	g.isRunning.Store(true)
+
 	topic, err := g.pubsub.Join(discoveryTopic)
 	if err != nil {
 		log.Printf("failed to join discovery topic: %s", err)
@@ -133,6 +135,7 @@ func (g *Gossip) RunDiscovery() {
 			continue
 		}
 		if discoveryMsg.ID == g.node.ID() {
+			log.Println("pubsub discovery: discovery message has the same ID as owner", discoveryMsg.ID)
 			continue
 		}
 		existedPeer := g.node.Peerstore().PeerInfo(discoveryMsg.ID)
@@ -160,7 +163,6 @@ func (g *Gossip) RunDiscovery() {
 		}
 		g.discoveryHandler(peerInfo) // add new user
 	}
-
 }
 
 func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
@@ -193,6 +195,7 @@ func (g *Gossip) publishPeerInfo(topic *pubsub.Topic) {
 			if err != nil {
 				log.Printf("pubsub discovery: failed to publish message: %v", err)
 			}
+			fmt.Println("pubsub discovery: published message", string(data))
 		}
 	}
 }

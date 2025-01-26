@@ -140,6 +140,7 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 
 	existedPeer := s.node.Peerstore().PeerInfo(pi.ID)
 	if existedPeer.ID != "" {
+		log.Println("discovery: peer existed already:", existedPeer.ID)
 		return
 	}
 

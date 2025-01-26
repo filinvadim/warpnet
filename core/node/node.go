@@ -135,6 +135,7 @@ func setupNode(
 
 	n.ipv4, n.ipv6 = n.parseAddresses(node)
 
+	println()
 	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %s\033[0m\n", n.ID(), n.ipv4, n.ipv6)
 	println()
 
