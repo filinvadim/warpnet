@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/ipfs/go-datastore"
+	log2 "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -89,6 +90,8 @@ func setupBootstrapNode(
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 	version *semver.Version,
 ) (*WarpBootstrapNode, error) {
+	log2.SetLogLevel("*", "INFO")
+
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
 	manager, err := connmgr.NewConnManager(

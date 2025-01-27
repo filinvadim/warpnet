@@ -147,7 +147,6 @@ func main() {
 	authInfo.Identity.Owner.Ipv6 = n.IPv6()
 	authInfo.Identity.Owner.Ipv4 = n.IPv4()
 	authInfo.Version = version
-	nodeReadyChan <- authInfo
 
 	mw := middleware.NewWarpMiddleware()
 	n.SetStreamHandler(stream.PairPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
@@ -158,6 +157,7 @@ func main() {
 	n.SetStreamHandler(stream.TweetsPublic, handler.StreamGetTweetsHandler(mw, tweetRepo))
 	n.SetStreamHandler(stream.InfoPublic, handler.StreamGetInfoHandler(mw, n))
 
+	nodeReadyChan <- authInfo
 	<-interruptChan
 	log.Println("interrupted...")
 }

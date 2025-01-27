@@ -104,6 +104,8 @@ func (g *Gossip) RunDiscovery(n PeerInfoStorer) {
 	}
 	g.isRunning.Store(true)
 
+	log.Println("started pubsub discovery service")
+
 	discTopic, err := g.pubsub.Join(discoveryTopic)
 	if err != nil {
 		log.Printf("failed to join discovery topic: %s", err)
@@ -122,68 +124,56 @@ func (g *Gossip) RunDiscovery(n PeerInfoStorer) {
 	go g.publishPeerInfo(discTopic)
 
 	for {
-		g.mx.RLock()
-		subscriptions := g.subs
-		g.mx.RUnlock()
-
-		for _, sub := range subscriptions {
-			ctx, cancelF := context.WithTimeout(g.ctx, time.Second*5)
-			msg, err := sub.Next(ctx)
-			if errors.Is(err, context.DeadlineExceeded) {
-				cancelF()
-				continue
-			}
-			cancelF()
-
-			if isContextCancelledError(err) {
-				log.Printf("pubsub discovery stopped by context")
-				return
-			}
-			if err != nil {
-				log.Printf("pubsub discovery: subscription error: %v", err)
-				return
-			}
-
-			var discoveryMsg warpnet.WarpAddrInfo
-			if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-				log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
-				continue
-			}
-			if discoveryMsg.ID == "" {
-				log.Println("pubsub discovery: message has no ID", string(msg.Data))
-				continue
-			}
-			if discoveryMsg.ID == g.node.ID() {
-				continue
-			}
-
-			peerInfo := warpnet.PeerAddrInfo{
-				ID:    discoveryMsg.ID,
-				Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
-			}
-
-			for _, addr := range discoveryMsg.Addrs {
-				ma, _ := multiaddr.NewMultiaddr(addr)
-				peerInfo.Addrs = append(peerInfo.Addrs, ma)
-			}
-
-			if g.discoveryHandler == nil { // just bootstrap
-				log.Println("pubsub: no discovery handler")
-				if err := g.node.Connect(peerInfo); err != nil {
-					log.Printf("pubsub discovery: failed to connect to peer: %v", err)
-					continue
-				}
-				log.Printf("pubsub: connected to peer: %s", discoveryMsg.ID)
-				continue
-			}
-			g.discoveryHandler(peerInfo) // add new user
+		msg, err := discoverySub.Next(g.ctx)
+		if isContextCancelledError(err) {
+			log.Printf("pubsub discovery stopped by context")
+			return
 		}
+		if err != nil {
+			log.Printf("pubsub discovery: subscription error: %v", err)
+			return
+		}
+
+		var discoveryMsg warpnet.WarpAddrInfo
+		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+			log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+			continue
+		}
+		if discoveryMsg.ID == "" {
+			log.Println("pubsub discovery: message has no ID", string(msg.Data))
+			continue
+		}
+		if discoveryMsg.ID == g.node.ID() {
+			continue
+		}
+
+		peerInfo := warpnet.PeerAddrInfo{
+			ID:    discoveryMsg.ID,
+			Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
+		}
+
+		for _, addr := range discoveryMsg.Addrs {
+			ma, _ := multiaddr.NewMultiaddr(addr)
+			peerInfo.Addrs = append(peerInfo.Addrs, ma)
+		}
+
+		if g.discoveryHandler == nil { // just bootstrap
+			log.Println("pubsub: no discovery handler")
+			if err := g.node.Connect(peerInfo); err != nil {
+				log.Printf("pubsub discovery: failed to connect to peer: %v", err)
+				continue
+			}
+			log.Printf("pubsub: connected to peer: %s", discoveryMsg.ID)
+			continue
+		}
+		g.discoveryHandler(peerInfo) // add new user
 	}
 }
 
 func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
+	log.Println("pubsub: publisher started")
 	defer log.Println("pubsub: publisher stopped")
 
 	for {
@@ -198,6 +188,9 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 		case <-ticker.C:
 			addrs := make([]string, 0, len(g.node.Addrs()))
 			for _, addr := range g.node.Addrs() {
+				if addr == "" {
+					continue
+				}
 				addrs = append(addrs, addr)
 			}
 

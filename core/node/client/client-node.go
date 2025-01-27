@@ -7,7 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/stream"
-	warpnet "github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
@@ -53,7 +53,7 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("client node: creating %s", err)
+		return nil, fmt.Errorf("client node: init %s", err)
 	}
 	serverAddr := serverNodeAddrDefault + serverNodeId
 	maddr, err := warpnet.NewMultiaddr(serverAddr)
@@ -105,11 +105,13 @@ func (n *WarpClientNode) GenericStream(nodeId string, path warpnet.WarpRoute, da
 	if n == nil {
 		return nil, errors.New("client node must not be nil")
 	}
-	id, err := peer.IDFromBytes([]byte(nodeId))
+
+	addrInfo, err := peer.AddrInfoFromString(serverNodeAddrDefault + nodeId)
 	if err != nil {
 		return nil, err
 	}
-	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, data)
+
+	return n.streamer.Send(addrInfo, path, data)
 }
 
 func (n *WarpClientNode) Stop() {

@@ -110,6 +110,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 		return resp, errors.New("node starting is timed out")
 	case nodeInfo := <-as.nodeReady:
 		user.NodeId = nodeInfo.Identity.Owner.NodeId
+		owner.NodeId = nodeInfo.Identity.Owner.NodeId
 	}
 
 	// update

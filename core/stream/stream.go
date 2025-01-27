@@ -47,7 +47,7 @@ func send(
 
 	stream, err := n.NewStream(ctx, serverInfo.ID, r.ProtocolID())
 	if err != nil {
-		return nil, fmt.Errorf("stream: opening: %s", err)
+		return nil, fmt.Errorf("stream: new: %s", err)
 	}
 	defer closeStream(stream)
 

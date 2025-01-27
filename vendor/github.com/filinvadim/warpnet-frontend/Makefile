@@ -1,5 +1,4 @@
 rebuild:
-	npm config set timeout 60000
 	rm -rf node_modules
 	rm -rf dist
 	npm cache clean --force
