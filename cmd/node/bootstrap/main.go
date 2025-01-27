@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
@@ -21,8 +20,7 @@ func main() {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	v := warpnet.GetVersion()
-	log.Println("Warpnet Version:", v)
+	log.Println("Warpnet Version:", conf.Version)
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)

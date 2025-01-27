@@ -2,14 +2,14 @@
 
 echo "Pre-commit hook started..."
 
-FILE="version"
+FILE="config.yml"
 
 if [ ! -f "$FILE" ]; then
-    echo "Version file not found!"
+    echo "config file not found!"
     exit 1
 fi
 
-CURRENT_VERSION=$(cat $FILE)
+CURRENT_VERSION=$(grep -m 1 '^version:' "$FILE" | awk '{print $2}')
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 PATCH=$((PATCH + 1))
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"

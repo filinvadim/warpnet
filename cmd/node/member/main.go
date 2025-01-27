@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
-	"github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
@@ -27,7 +25,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 )
 
@@ -42,14 +39,8 @@ func main() {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	version := warpnet.GetVersion()
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
-	log.Println("Warpnet Version:", version)
-
-	semVersion, err := semver.NewVersion(strings.TrimSpace(version))
-	if err != nil {
-		log.Fatalf("fail parsing semantic version: %v %s", err, version)
-	}
+	log.Println("Warpnet Version:", conf.Version)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -132,7 +123,7 @@ func main() {
 		persLayer,
 		conf,
 		discService,
-		semVersion,
+		conf.Version,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
@@ -146,7 +137,7 @@ func main() {
 	authInfo.Identity.Owner.NodeId = n.ID().String()
 	authInfo.Identity.Owner.Ipv6 = n.IPv6()
 	authInfo.Identity.Owner.Ipv4 = n.IPv4()
-	authInfo.Version = version
+	authInfo.Version = conf.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
 	n.SetStreamHandler(stream.PairPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
