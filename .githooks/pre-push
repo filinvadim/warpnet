@@ -2,14 +2,14 @@
 
 echo "Pre-push hook started..."
 
-FILE="version"
+FILE="config.yml"
 
 if [ ! -f "$FILE" ]; then
     echo "Version file not found!"
     exit 1
 fi
 
-CURRENT_VERSION=$(cat $FILE)
+CURRENT_VERSION=$(grep -m 1 '^version:' "$FILE" | awk '{print $2}')
 
 # Проверяем, что пушится
 while read local_ref local_sha remote_ref remote_sha; do
