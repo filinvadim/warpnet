@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/node"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/node/client"
+	warpnet "github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
+
+	//"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/auth"
@@ -17,13 +20,18 @@ import (
 	"time"
 )
 
+type GenericStreamer interface {
+	GenericStream(string, warpnet.WarpRoute, []byte) ([]byte, error)
+	Stop()
+}
+
 type WSController struct {
 	upgrader *websocket.EncryptedUpgrader
 	auth     *auth.AuthService
 	ctx      context.Context
 	conf     config.Config
 
-	client *node.WarpNode
+	client GenericStreamer
 }
 
 func NewWSController(
@@ -66,7 +74,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	}
 
 	switch wsMsg.Path {
-	case "/login/1.0.0":
+	case string(api.Privatelogin100):
 		ev, err := wsMsg.Data.AsLoginEvent()
 		if err != nil {
 			response = newErrorResp(err.Error())
@@ -86,11 +94,15 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 		response.Data = loginRespBytes
 
-		c.client, err = node.NewClientNode(c.ctx, loginResp.Owner.NodeId, c.conf)
+		clientInfo := domain.AuthNodeInfo{
+			Identity: domain.Identity(loginResp),
+			Version:  c.conf.Version.String(),
+		}
+		c.client, err = client.NewClientNode(c.ctx, clientInfo, c.conf)
 		if err != nil {
 			log.Printf("create node client: %v", err)
 		}
-	case "/logout/1.0.0":
+	case string(api.Privatelogout100):
 		defer c.client.Stop()
 		defer func() {
 			if err := c.upgrader.Close(); err != nil {
@@ -109,6 +121,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(fmt.Sprintf("missing data: %s", msg))
 			break
 		}
+		// TODO check version
 		data, err := (*wsMsg.Data).MarshalJSON()
 		if err != nil {
 			response = newErrorResp(err.Error())
@@ -120,9 +133,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			)
 			break
 		}
-		respData, err := c.client.StreamSend(
-			wsMsg.NodeId, types.WarpDiscriminator(wsMsg.Path), data,
-		)
+		respData, err := c.client.GenericStream(wsMsg.NodeId, warpnet.WarpRoute(wsMsg.Path), data)
 		if err != nil {
 			response = newErrorResp(err.Error())
 			break
@@ -140,6 +151,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	response.NodeId = wsMsg.NodeId
 	response.Path = wsMsg.Path
 	response.Timestamp = time.Now()
+	response.Version = c.conf.Version.String()
 
 	var buffer bytes.Buffer
 	err = json.JSON.NewEncoder(&buffer).Encode(response)

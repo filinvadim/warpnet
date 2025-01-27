@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	ConsensusLogsNamespace   = "LOGS:"
-	ConsensusConfigNamespace = "CONFIGS:"
+	ConsensusLogsNamespace   = "/LOGS/"
+	ConsensusConfigNamespace = "/CONFIGS/"
 )
 
 var (

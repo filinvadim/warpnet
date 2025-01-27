@@ -1,9 +1,10 @@
-package node
+package mdns
 
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"log"
@@ -15,10 +16,11 @@ const mdnsServiceName = "warpnet"
 
 type NodeConnector interface {
 	Connect(peer.AddrInfo) error
+	Node() warpnet.P2PNode
 }
 
 type MulticastDNS struct {
-	mdns    types.WarpMDNS
+	mdns    warpnet.WarpMDNS
 	service *mdnsDiscoveryService
 
 	isRunning *atomic.Bool
@@ -26,7 +28,7 @@ type MulticastDNS struct {
 
 type mdnsDiscoveryService struct {
 	ctx              context.Context
-	discoveryHandler DiscoveryHandler
+	discoveryHandler discovery.DiscoveryHandler
 	node             NodeConnector
 	mx               *sync.Mutex
 }
@@ -60,7 +62,7 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	m.discoveryHandler(p)
 }
 
-func NewMulticastDNS(ctx context.Context, discoveryHandler DiscoveryHandler) *MulticastDNS {
+func NewMulticastDNS(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *MulticastDNS {
 	service := &mdnsDiscoveryService{
 		ctx:              ctx,
 		discoveryHandler: discoveryHandler,
@@ -70,7 +72,7 @@ func NewMulticastDNS(ctx context.Context, discoveryHandler DiscoveryHandler) *Mu
 	return &MulticastDNS{nil, service, new(atomic.Bool)}
 }
 
-func (m *MulticastDNS) Start(n *WarpNode) {
+func (m *MulticastDNS) Start(n NodeConnector) {
 	if m == nil {
 		return
 	}

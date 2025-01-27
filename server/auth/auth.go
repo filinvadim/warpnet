@@ -26,15 +26,15 @@ type AuthService struct {
 	isAuthenticated *atomic.Bool
 	userPersistence UserPersistencyLayer
 	interrupt       chan os.Signal
-	nodeReady       chan domain.Owner
-	authReady       chan domain.Owner
+	nodeReady       chan domain.AuthNodeInfo
+	authReady       chan domain.AuthNodeInfo
 }
 
 func NewAuthService(
 	userPersistence UserPersistencyLayer,
 	interrupt chan os.Signal,
-	nodeReady chan domain.Owner,
-	authReady chan domain.Owner,
+	nodeReady chan domain.AuthNodeInfo,
+	authReady chan domain.AuthNodeInfo,
 ) *AuthService {
 	return &AuthService{
 		new(atomic.Bool),
@@ -97,7 +97,10 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 		l.Printf("username mismatch: %s == %s", owner.Username, message.Username)
 		return resp, fmt.Errorf("user %s doesn't exist", message.Username)
 	}
-	as.authReady <- owner
+	as.authReady <- domain.AuthNodeInfo{
+		Identity: domain.Identity{Owner: owner, Token: token},
+		Version:  "",
+	}
 
 	timer := time.NewTimer(30 * time.Second)
 	defer timer.Stop()
@@ -105,8 +108,8 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 	case <-timer.C:
 		l.Printf("node startup failed: timeout")
 		return resp, errors.New("node starting is timed out")
-	case owner = <-as.nodeReady:
-		user.NodeId = owner.NodeId
+	case nodeInfo := <-as.nodeReady:
+		user.NodeId = nodeInfo.Identity.Owner.NodeId
 	}
 
 	// update

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ChatNamespace       = "CHATS"
+	ChatNamespace       = "/CHATS"
 	MessageSubNamespace = "MESSAGES"
 )
 

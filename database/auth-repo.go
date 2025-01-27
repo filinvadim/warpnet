@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	AuthRepoName    = "AUTH"
+	AuthRepoName    = "/AUTH"
 	PassSubName     = "PASS" // TODO pass restore functionality
 	DefaultOwnerKey = "OWNER"
 )

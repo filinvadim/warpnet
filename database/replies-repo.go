@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	RepliesNamespace = "REPLY"
+	RepliesNamespace = "/REPLY"
 )
 
 type ReplyStorer interface {

@@ -50,9 +50,19 @@ paths:
 
 components:
   schemas:
+    LoginPath:
+      type: string
+      enum: [/private/login/1.0.0]
+
+    LogoutPath:
+      type: string
+      enum: [ /private/logout/1.0.0 ]
+
     BaseWSRequest:
       type: object
       properties:
+        version:
+          type: string
         timestamp:
           type: string
           format: date-time
@@ -61,7 +71,7 @@ components:
           type: string
         path:
           type: string
-          example: /tweet/1.0.0
+          example: /private/login/1.0.0
         node_id:
           type: string
         data:
@@ -70,6 +80,7 @@ components:
         - message_id
         - node_id
         - path
+        - version
 
     Event:
       anyOf:
@@ -92,6 +103,8 @@ components:
     BaseWSResponse:
       type: object
       properties:
+        version:
+          type: string
         message_id:
           type: string
         timestamp:
@@ -99,7 +112,7 @@ components:
           format: date-time
         path:
           type: string
-          example: /tweet/1.0.0
+          example: /private/login/1.0.0
         node_id:
           type: string
         data:
@@ -112,6 +125,7 @@ components:
         - path
         - timestamp
         - data
+        - version
 
     LoginResponse:
       type: object

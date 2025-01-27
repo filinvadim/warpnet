@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/node"
+	"github.com/filinvadim/warpnet/core/mdns"
+	"github.com/filinvadim/warpnet/core/node/bootstrap"
+	"github.com/filinvadim/warpnet/core/pubsub"
 	"log"
 	"os"
 	"os/signal"
@@ -19,7 +21,8 @@ func main() {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	log.Println("Warpnet Version:", warpnet.GetVersion())
+	v := warpnet.GetVersion()
+	log.Println("Warpnet Version:", v)
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
@@ -30,12 +33,19 @@ func main() {
 
 	log.Println("starting bootstrap node...")
 
-	n, err := node.NewBootstrapNode(ctx, conf)
+	mdnsService := mdns.NewMulticastDNS(ctx, nil)
+	defer mdnsService.Close()
+	pubsubService := pubsub.NewPubSub(ctx, nil)
+	defer pubsubService.Close()
+
+	n, err := bootstrap.NewBootstrapNode(ctx, conf)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}
-
 	defer n.Stop()
+
+	go mdnsService.Start(n)
+	go pubsubService.RunDiscovery(n)
 
 	<-interruptChan
 	log.Println("bootstrap node interrupted...")

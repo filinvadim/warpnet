@@ -13,7 +13,7 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 const (
-	UsersRepoName = "USERS"
+	UsersRepoName = "/USERS"
 	defaultRootID = "users"
 )
 

@@ -9,7 +9,13 @@ import (
 	"github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/node"
+	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/handler"
+	"github.com/filinvadim/warpnet/core/mdns"
+	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/node/member"
+	"github.com/filinvadim/warpnet/core/pubsub"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -68,8 +74,8 @@ func main() {
 	//replyRepo := database.NewRepliesRepo(db)
 
 	var (
-		nodeReadyChan = make(chan domain.Owner, 1)
-		authReadyChan = make(chan domain.Owner)
+		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
+		authReadyChan = make(chan domain.AuthNodeInfo)
 	)
 	defer func() {
 		close(nodeReadyChan)
@@ -103,34 +109,54 @@ func main() {
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()
 
-	var owner domain.Owner
+	var authInfo domain.AuthNodeInfo
 	select {
 	case <-interruptChan:
 		log.Println("logged out")
 		return
-	case owner = <-authReadyChan:
+	case authInfo = <-authReadyChan:
 		log.Println("authentication was successful")
 	}
 
-	n, err := node.NewRegularNode(
+	persLayer := persistentLayer{nodeRepo, authRepo}
+
+	discService := discovery.NewDiscoveryService(ctx, userRepo, persLayer)
+	defer discService.Close()
+	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
+	defer mdnsService.Close()
+	pubsubService := pubsub.NewPubSub(ctx, discService.HandlePeerFound)
+	defer pubsubService.Close()
+
+	n, err := member.NewMemberNode(
 		ctx,
-		persistentLayer{nodeRepo, authRepo},
+		persLayer,
 		conf,
-		timelineRepo,
-		userRepo,
-		tweetRepo,
+		discService,
 		semVersion,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
-
-	owner.NodeId = n.ID().String()
-	owner.Ipv6 = n.IPv6()
-	owner.Ipv4 = n.IPv4()
-	nodeReadyChan <- owner
-
 	defer n.Stop()
+
+	go discService.Run(n)
+	go mdnsService.Start(n)
+	go pubsubService.RunDiscovery(n)
+
+	authInfo.Identity.Owner.NodeId = n.ID().String()
+	authInfo.Identity.Owner.Ipv6 = n.IPv6()
+	authInfo.Identity.Owner.Ipv4 = n.IPv4()
+	authInfo.Version = version
+	nodeReadyChan <- authInfo
+
+	mw := middleware.NewWarpMiddleware()
+	n.SetStreamHandler(stream.PairPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
+	n.SetStreamHandler(stream.TimelinePrivate, handler.StreamTimelineHandler(mw, timelineRepo))
+	n.SetStreamHandler(stream.TweetPrivate, handler.StreamNewTweetHandler(mw, tweetRepo, timelineRepo))
+
+	n.SetStreamHandler(stream.UserPublic, handler.StreamGetUserHandler(mw, userRepo))
+	n.SetStreamHandler(stream.TweetsPublic, handler.StreamGetTweetsHandler(mw, tweetRepo))
+	n.SetStreamHandler(stream.InfoPublic, handler.StreamGetInfoHandler(mw, n))
 
 	<-interruptChan
 	log.Println("interrupted...")

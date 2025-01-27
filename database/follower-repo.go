@@ -4,7 +4,7 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 )
 
-const FollowRepoName = "FOLLOWS"
+const FollowRepoName = "/FOLLOWS"
 
 // FollowRepo handles reader/writer relationships
 type FollowRepo struct {

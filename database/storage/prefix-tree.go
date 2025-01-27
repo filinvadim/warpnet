@@ -12,6 +12,7 @@ const (
 	FixedKey      = "fixed"
 	FixedRangeKey = "fixed"
 	NoneRangeKey  = "none"
+	delimeter     = "/"
 )
 
 type (
@@ -30,6 +31,9 @@ type PrefixBuilder struct {
 
 // NewPrefixBuilder creates a new PrefixBuilder instance
 func NewPrefixBuilder(mandatoryNamespace string) Namespace {
+	if !strings.HasPrefix(mandatoryNamespace, "/") {
+		panic("namespace must start with /")
+	}
 	if mandatoryNamespace == "" {
 		panic("namespace must not be empty")
 	}
@@ -40,7 +44,7 @@ func (ns Namespace) AddSubPrefix(p string) Namespace {
 	if p == "" {
 		panic("sub prefix must not be empty")
 	}
-	return Namespace(fmt.Sprintf("%s:%s", ns, p))
+	return Namespace(fmt.Sprintf("%s%s%s", ns, delimeter, p))
 }
 
 func (ns Namespace) Build() DatabaseKey {
@@ -51,7 +55,7 @@ func (ns Namespace) AddRootID(mandatoryPrefix string) ParentLayer {
 	if mandatoryPrefix == "" {
 		panic("root prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s:%s", ns, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", ns, delimeter, mandatoryPrefix)
 	return ParentLayer(key)
 }
 
@@ -68,17 +72,17 @@ func (l ParentLayer) AddRange(mandatoryPrefix RangePrefix) RangeLayer {
 	if mandatoryPrefix != FixedRangeKey && mandatoryPrefix != NoneRangeKey {
 		_, err := strconv.ParseInt(string(mandatoryPrefix), 10, 64)
 		if err != nil {
-			panic(fmt.Sprintf("invalid range prefix: %s", mandatoryPrefix))
+			panic(fmt.Sprintf("invalid range prefix %s", mandatoryPrefix))
 		}
 	}
 
-	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
 	return RangeLayer(key)
 }
 
 func (l ParentLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
 	key := string(l)
-	key = fmt.Sprintf("%s:%019d", key, math.MaxInt64-tm.Unix())
+	key = fmt.Sprintf("%s%s%019d", key, delimeter, math.MaxInt64-tm.Unix())
 	return RangeLayer(key)
 }
 func (l RangeLayer) Build() DatabaseKey {
@@ -89,7 +93,7 @@ func (l RangeLayer) AddParentId(mandatoryPrefix string) IdLayer {
 	if mandatoryPrefix == "" {
 		panic("id prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
 	return IdLayer(key)
 }
 
@@ -97,7 +101,7 @@ func (l IdLayer) AddId(mandatoryPrefix string) IdLayer {
 	if mandatoryPrefix == "" {
 		panic("id prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s:%s", l, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
 	return IdLayer(key)
 }
 
@@ -120,7 +124,7 @@ func (k DatabaseKey) Bytes() []byte {
 }
 func (k DatabaseKey) DropId() string {
 	key := string(k)
-	lastColon := strings.LastIndex(key, ":")
+	lastColon := strings.LastIndex(key, delimeter)
 	if lastColon == -1 {
 		// Если двоеточия нет, возвращаем оригинальную строку
 		return key
@@ -136,7 +140,7 @@ func (pb *PrefixBuilder) AddWriterId(writerId string) *PrefixBuilder {
 	//	return pb
 	//}
 	//
-	//pb.key = fmt.Sprintf("%s:writer:%s", pb.key, writerId)
+	//pb.key = fmt.Sprintf("%s/writer/%s", pb.key, writerId)
 	return pb
 }
 
@@ -146,6 +150,6 @@ func (pb *PrefixBuilder) AddReaderId(readerId string) *PrefixBuilder {
 	//	return pb
 	//}
 	//
-	//pb.key = fmt.Sprintf("%s:reader:%s", pb.key, readerId)
+	//pb.key = fmt.Sprintf("%s/reader/%s", pb.key, readerId)
 	return pb
 }

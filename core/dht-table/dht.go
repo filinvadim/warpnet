@@ -1,8 +1,9 @@
-package node
+package dht_table
 
 import (
 	"context"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -10,6 +11,8 @@ import (
 	"log"
 	"time"
 )
+
+const ProtocolPrefix = "/warpnet"
 
 // TODO: track this: dht	go-libp2p-kad-dht/dht.go:523
 //failed to bootstrap	{"peer": "12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo",
@@ -22,18 +25,18 @@ type DistributedHashTable struct {
 	ctx           context.Context
 	batchingRepo  datastore.Batching
 	providerStore providers.ProviderStore
-	relays        []types.PeerAddrInfo
-	addF          DiscoveryHandler
-	removeF       DiscoveryHandler
+	relays        []warpnet.PeerAddrInfo
+	addF          discovery.DiscoveryHandler
+	removeF       discovery.DiscoveryHandler
 }
 
 func NewDHTable(
 	ctx context.Context,
 	batchingRepo datastore.Batching,
 	providerStore providers.ProviderStore,
-	relays []types.PeerAddrInfo,
-	addF DiscoveryHandler,
-	removeF DiscoveryHandler,
+	relays []warpnet.PeerAddrInfo,
+	addF discovery.DiscoveryHandler,
+	removeF discovery.DiscoveryHandler,
 ) *DistributedHashTable {
 	return &DistributedHashTable{
 		ctx:           ctx,
@@ -45,7 +48,7 @@ func NewDHTable(
 	}
 }
 
-func (d *DistributedHashTable) Start(n types.P2PNode) (_ types.WarpPeerRouting, err error) {
+func (d *DistributedHashTable) Start(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),

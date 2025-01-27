@@ -11,7 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 )
 
-const TimelineRepoName = "TIMELINE"
+const TimelineRepoName = "/TIMELINE"
 
 type TimelineStorer interface {
 	Set(key storage.DatabaseKey, value []byte) error

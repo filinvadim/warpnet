@@ -8,6 +8,28 @@ paths: {}
 
 components:
   schemas:
+    AuthNodeInfo:
+      type: object
+      properties:
+        identity:
+          $ref: '#/components/schemas/Identity'
+        version:
+          type: string
+      required:
+        - identity
+        - version
+
+    Identity:
+      type: object
+      properties:
+        token:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Owner'
+      required:
+        - token
+        - owner
+
     Owner:
       type: object
       properties:

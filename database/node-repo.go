@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/jbenet/goprocess"
@@ -23,9 +23,9 @@ import (
 // slash is required because of: invalid datastore key: NODES:/peers/keys/AASAQAISEAXNRKHMX2O3AA26JM7NGIWUPOGIITJ2UHHXGX4OWIEKPNAW6YCSK/priv
 const (
 	NodesNamespace        = "/NODES"
-	ProvidersSubNamespace = "/PROVIDERS"
-	BlocklistSubNamespace = "/BLOCKLIST"
-	InfoSubNamespace      = "/INFO"
+	ProvidersSubNamespace = "PROVIDERS"
+	BlocklistSubNamespace = "BLOCKLIST"
+	InfoSubNamespace      = "INFO"
 )
 
 var (
@@ -763,7 +763,7 @@ func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err err
 	return err
 }
 
-func (d *NodeRepo) AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error {
+func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error {
 	if d == nil {
 		return ErrNilNodeRepo
 	}

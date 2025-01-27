@@ -8,10 +8,10 @@ import (
 )
 
 type Config struct {
-	Version  semver.Version `yaml:"version"`
-	Node     Node           `yaml:"node"`
-	Database Database       `yaml:"database"`
-	Server   Server         `yaml:"server"`
+	Version  *semver.Version `yaml:"version"`
+	Node     Node            `yaml:"node"`
+	Database Database        `yaml:"database"`
+	Server   Server          `yaml:"server"`
 }
 type Node struct {
 	SeedID      int      `yaml:"seed_id"`

@@ -1,9 +1,9 @@
-package node
+package member
 
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
 	"slices"
@@ -12,7 +12,7 @@ import (
 )
 
 type addrEntry struct {
-	addr   types.PeerAddrInfo
+	addr   warpnet.PeerAddrInfo
 	readAt time.Time
 }
 

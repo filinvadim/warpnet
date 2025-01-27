@@ -1,13 +1,13 @@
-package node
+package discovery
 
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/types"
+	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -27,19 +27,18 @@ import (
 //    Обновление peerstore:
 //    После обнаружения других нод их адреса автоматически добавляются в peerstore для дальнейшего использования.
 
-type DiscoveryHandler func(peer.AddrInfo)
+type DiscoveryHandler func(warpnet.PeerAddrInfo)
 
 type DiscoveryInfoStorer interface {
-	ID() types.WarpPeerID
+	ID() warpnet.WarpPeerID
 	Peerstore() peerstore.Peerstore
-	Node() host.Host
-	Connect(p types.PeerAddrInfo) error
-	StreamSend(peerID string, path types.WarpDiscriminator, data []byte) ([]byte, error)
+	Network() warpnet.WarpNetwork
+	Connect(p warpnet.PeerAddrInfo) error
+	GenericStream(nodeId string, path warpnet.WarpRoute, data []byte) ([]byte, error)
 }
 
 type NodeStorer interface {
-	GetOwner() (owner domain.Owner, err error)
-	AddInfo(ctx context.Context, peerId types.WarpPeerID, info types.NodeInfo) error
+	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
@@ -56,7 +55,7 @@ type discoveryService struct {
 	userRepo UserStorer
 	nodeRepo NodeStorer
 
-	discoveryChan chan types.PeerAddrInfo
+	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
 }
 
@@ -67,7 +66,7 @@ func NewDiscoveryService(
 ) *discoveryService {
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo,
-		make(chan types.PeerAddrInfo, 100), make(chan struct{}),
+		make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }
 
@@ -101,7 +100,7 @@ func printPeers(n DiscoveryInfoStorer) {
 			log.Println("discovery: print peers: recovered from panic:", r)
 		}
 	}()
-	for _, id := range n.Node().Peerstore().Peers() {
+	for _, id := range n.Peerstore().Peers() {
 		if n.ID() == id {
 			continue
 		}
@@ -118,7 +117,7 @@ func (s *discoveryService) Close() {
 	close(s.stopChan)
 }
 
-func (s *discoveryService) HandlePeerFound(pi types.PeerAddrInfo) {
+func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	if s == nil {
 		return
 	}
@@ -132,7 +131,7 @@ func (s *discoveryService) HandlePeerFound(pi types.PeerAddrInfo) {
 	s.discoveryChan <- pi
 }
 
-func (s *discoveryService) handle(pi types.PeerAddrInfo) {
+func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
 		log.Println("discovery service is not initialized")
 		return
@@ -153,7 +152,7 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 		return
 	}
 
-	peerState := s.node.Node().Network().Connectedness(pi.ID)
+	peerState := s.node.Network().Connectedness(pi.ID)
 	if peerState == network.Connected || peerState == network.Limited {
 		return
 	}
@@ -166,13 +165,13 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)
 
-	infoResp, err := s.node.StreamSend(pi.ID.String(), "/info/1.0.0", nil)
+	infoResp, err := s.node.GenericStream(pi.ID.String(), stream.InfoPublic, nil)
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
 
-	var info types.NodeInfo
+	var info warpnet.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
 		log.Printf("discovery: failed to unmarshal info from new peer: %s", err)
@@ -183,8 +182,8 @@ func (s *discoveryService) handle(pi types.PeerAddrInfo) {
 		log.Printf("discovery: failed to store info of new peer: %s", err)
 	}
 
-	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.Owner.UserId})
-	userResp, err := s.node.StreamSend(pi.ID.String(), "/user/1.0.0", bt)
+	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.OwnerId})
+	userResp, err := s.node.GenericStream(pi.ID.String(), stream.UserPublic, bt)
 	if isBootstrapError(err) {
 		return
 	}

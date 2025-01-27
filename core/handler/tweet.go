@@ -2,18 +2,26 @@ package handler
 
 import (
 	"errors"
-	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/core/middleware"
+	warpnet "github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 )
 
-func StreamGetTweetsHandler(repo *database.TweetRepo) func(s network.Stream) {
-	return func(s network.Stream) {
-		ReadStream(s, func(buf []byte) (any, error) {
+type TweetsStorer interface {
+	List(string, *uint64, *string) ([]domain.Tweet, string, error)
+	Create(_ string, tweet domain.Tweet) (domain.Tweet, error)
+}
 
+type TimelineUpdater interface {
+	AddTweetToTimeline(userID string, tweet domain.Tweet) error
+}
+
+func StreamGetTweetsHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) func(s warpnet.WarpStream) {
+	return func(s warpnet.WarpStream) {
+		getTweetsF := func(buf []byte) (any, error) {
 			var ev event.GetAllTweetsEvent
 			err := json.JSON.Unmarshal(buf, &ev)
 			if err != nil {
@@ -35,15 +43,23 @@ func StreamGetTweetsHandler(repo *database.TweetRepo) func(s network.Stream) {
 				}, nil
 			}
 			return nil, nil
-		})
+		}
+		mr.UnwrapStream(s, getTweetsF)
 	}
 }
 
 func StreamNewTweetHandler(
-	tweetRepo *database.TweetRepo, timelineRepo *database.TimelineRepo,
-) func(s network.Stream) {
-	return func(s network.Stream) {
-		ReadStream(s, func(buf []byte) (any, error) {
+	mr middleware.MiddlewareResolver,
+	tweetRepo TweetsStorer,
+	timelineRepo TimelineUpdater,
+) func(s warpnet.WarpStream) {
+	return func(s warpnet.WarpStream) {
+		if err := mr.Authenticate(s); err != nil {
+			log.Println("tweet handler:", err)
+			return
+		}
+
+		createF := func(buf []byte) (any, error) {
 			var ev event.NewTweetEvent
 			err := json.JSON.Unmarshal(buf, &ev)
 			if err != nil {
@@ -70,13 +86,14 @@ func StreamNewTweetHandler(
 				return nil, err
 			}
 
-			if tweet.Id != "" {
-				if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
-					log.Printf("fail adding tweet to timeline: %v", err)
-				}
-				return tweet, nil
+			if tweet.Id == "" {
+				return tweet, errors.New("tweet handler: empty tweet id")
 			}
-			return nil, err
-		})
+			if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
+				log.Printf("fail adding tweet to timeline: %v", err)
+			}
+			return tweet, nil
+		}
+		mr.UnwrapStream(s, createF)
 	}
 }

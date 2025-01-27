@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	TweetsNamespace = "TWEETS"
+	TweetsNamespace = "/TWEETS"
 )
 
 type TweetsStorer interface {
