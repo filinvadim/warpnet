@@ -3,9 +3,15 @@ package main
 import (
 	"context"
 	"github.com/filinvadim/warpnet/config"
+	dht "github.com/filinvadim/warpnet/core/dhash-table"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
 	"github.com/filinvadim/warpnet/core/pubsub"
+	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	"log"
 	"os"
 	"os/signal"
@@ -29,14 +35,46 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Println("starting bootstrap node...")
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap")) // TODO
+	if err != nil {
+		log.Fatalf("fail generating key: %v", err)
+	}
+	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
+	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
+	if err != nil {
+		log.Fatalf("fail getting ID: %v", err)
+	}
 
 	mdnsService := mdns.NewMulticastDNS(ctx, nil)
 	defer mdnsService.Close()
 	pubsubService := pubsub.NewPubSub(ctx, nil)
 	defer pubsubService.Close()
 
-	n, err := bootstrap.NewBootstrapNode(ctx, conf)
+	memoryStore, err := pstoremem.NewPeerstore()
+	if err != nil {
+		log.Fatalf("fail creating memory peerstore: %v", err)
+	}
+	defer memoryStore.Close()
+
+	mapStore := datastore.NewMapDatastore()
+	defer mapStore.Close()
+
+	providersCache, err := providers.NewProviderManager(id, memoryStore, mapStore)
+	if err != nil {
+		log.Fatalf("fail creating providers cache: %v", err)
+	}
+	defer providersCache.Close()
+
+	dHashTable := dht.NewDHTable(
+		ctx, mapStore, providersCache, conf,
+		dht.DefaultNodeAddedCallback,
+		dht.DefaultNodeRemovedCallback,
+	)
+	defer dHashTable.Close()
+
+	n, err := bootstrap.NewBootstrapNode(
+		ctx, warpPrivKey, memoryStore, conf, dHashTable.StartRouting,
+	)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

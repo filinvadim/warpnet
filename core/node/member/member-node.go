@@ -6,21 +6,16 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/dht-table"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/p2p"
 	warpnet "github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -71,19 +66,13 @@ type WarpNode struct {
 
 func NewMemberNode(
 	ctx context.Context,
+	privKey warpnet.WarpPrivateKey,
 	db PersistentLayer,
 	conf config.Config,
-	discService DiscoveryServicer,
+	routingFn routingFunc,
 	version *semver.Version,
 ) (_ *WarpNode, err error) {
-
-	privKey := db.PrivateKey().(warpnet.WarpPrivateKey)
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
-	}
-
-	providersCache, err := NewProviderCache(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -93,15 +82,7 @@ func NewMemberNode(
 		return nil, err
 	}
 
-	hTable := dht_table.NewDHTable(
-		ctx, db, providersCache, bootstrapAddrs,
-		discService.HandlePeerFound,
-		func(info warpnet.PeerAddrInfo) {
-			log.Println("dht: node removed", info.ID)
-		},
-	)
-
-	n, err := setupMemberNode(ctx, privKey, store, bootstrapAddrs, conf, hTable.Start, version)
+	n, err := setupMemberNode(ctx, privKey, store, bootstrapAddrs, conf, routingFn, version)
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +93,15 @@ func NewMemberNode(
 	return n, err
 }
 
+type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
+
 func setupMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
-	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
+	routingFn routingFunc,
 	version *semver.Version,
 ) (*WarpNode, error) {
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
@@ -139,31 +122,19 @@ func setupMemberNode(
 
 	basichost.DefaultNegotiationTimeout = p2p.DefaultTimeout
 
-	node, err := libp2p.New(
-		libp2p.WithDialTimeout(p2p.DefaultTimeout),
-		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
-		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(p2p.DefaultTimeout)),
-		libp2p.Identity(privKey),
-		libp2p.Ping(true),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableAutoNATv2(),
-		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))), // TODO shuffle name. "warpnet" now
-		libp2p.UserAgent(p2p.ServiceName),
-		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(store),
-		libp2p.EnableNATService(),
-		libp2p.NATPortMap(),
-		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
-		libp2p.ResourceManager(rm),
-		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
-		libp2p.ConnectionManager(manager),
-		libp2p.Routing(routingFn),
+	node, err := p2p.NewP2PNode(
+		privKey,
+		store,
+		addrInfos,
+		conf,
+		routingFn,
+		rm,
+		manager,
 	)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("gere")
 
 	relay, err := relayv2.New(
 		node,
@@ -172,6 +143,7 @@ func setupMemberNode(
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("hereeeee")
 
 	n := &WarpNode{
 		ctx:      ctx,
@@ -198,6 +170,7 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
+			fmt.Println("connect attempt")
 			if err := n.node.Connect(n.ctx, p); err != nil {
 				log.Println("node connect error:", err)
 				return false, nil

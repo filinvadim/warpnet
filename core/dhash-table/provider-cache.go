@@ -1,15 +1,23 @@
-package member
+package dhash_table
 
 import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"io"
 	"log"
 	"slices"
 	"sync"
 	"time"
 )
+
+type ProviderCacheStorer interface {
+	ListProviders() (_ map[string][]peer.AddrInfo, err error)
+	AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error
+	GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo, error)
+	io.Closer
+}
 
 type addrEntry struct {
 	addr   warpnet.PeerAddrInfo
@@ -18,13 +26,13 @@ type addrEntry struct {
 
 type ProviderCache struct {
 	ctx      context.Context
-	db       PersistentLayer
+	db       ProviderStorer
 	mutex    *sync.RWMutex
 	m        map[string][]addrEntry
 	stopChan chan struct{}
 }
 
-func NewProviderCache(ctx context.Context, db PersistentLayer) (*ProviderCache, error) {
+func NewProviderCache(ctx context.Context, db ProviderCacheStorer) (*ProviderCache, error) {
 	pc := &ProviderCache{
 		ctx:      ctx,
 		db:       db,

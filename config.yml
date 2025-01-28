@@ -1,4 +1,4 @@
-version: 0.1.41
+version: 0.1.42
 node:
     bootstrap:
       - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee"
@@ -15,4 +15,3 @@ server:
   port: 4002
   logging:
     level: info
-    format: '{"time":"${time_datetime_only}","method":"${method}","host":"${host}","uri":"${uri}","status":${status},"error":"${error}}'

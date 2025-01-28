@@ -5,16 +5,10 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/dht-table"
-	"github.com/filinvadim/warpnet/core/encrypting"
-	node2 "github.com/filinvadim/warpnet/core/p2p"
+	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/ipfs/go-datastore"
-	log2 "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
@@ -30,53 +24,28 @@ type WarpBootstrapNode struct {
 	version *semver.Version
 }
 
+type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
+
 func NewBootstrapNode(
 	ctx context.Context,
+	privKey warpnet.WarpPrivateKey,
+	memoryStore warpnet.WarpPeerstore,
 	conf config.Config,
+	routingF routingFunc,
 ) (_ *WarpBootstrapNode, err error) {
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte("bootstrap")) // TODO
-	if err != nil {
-		return nil, err
-	}
-
-	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
-	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
-	if err != nil {
-		return nil, err
-	}
-
-	store, err := pstoremem.NewPeerstore()
-	if err != nil {
-		return nil, err
-	}
-	mapStore := datastore.NewMapDatastore()
-	providersCache, err := providers.NewProviderManager(id, store, mapStore)
-	if err != nil {
-		return nil, err
-	}
 
 	bootstrapAddrs, err := conf.Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
 
-	hTable := dht_table.NewDHTable(
-		ctx, mapStore, providersCache, bootstrapAddrs,
-		func(info warpnet.PeerAddrInfo) {
-			log.Println("dht: node added", info.ID)
-		},
-		func(info warpnet.PeerAddrInfo) {
-			log.Println("dht: node removed", info.ID)
-		},
-	)
-
 	return setupBootstrapNode(
 		ctx,
-		warpPrivKey,
-		store,
+		privKey,
+		memoryStore,
 		bootstrapAddrs,
 		conf,
-		hTable.Start,
+		routingF,
 		conf.Version,
 	)
 }
@@ -90,8 +59,6 @@ func setupBootstrapNode(
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 	version *semver.Version,
 ) (*WarpBootstrapNode, error) {
-	log2.SetLogLevel("*", "INFO")
-
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
 	manager, err := connmgr.NewConnManager(
@@ -110,7 +77,7 @@ func setupBootstrapNode(
 
 	basichost.DefaultNegotiationTimeout = 360 * time.Second
 
-	node, err := node2.NewP2PNode(
+	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
 		addrInfos,

@@ -1,13 +1,15 @@
-package dht_table
+package dhash_table
 
 import (
 	"context"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"io"
 	"log"
 	"time"
 )
@@ -21,42 +23,62 @@ const ProtocolPrefix = "/warpnet"
 //peer id mismatch: expected 12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo,
 //but remote key matches 12D3KooWSmiUppeMgcxGgPzJheaDfQvGuUpa9JzciDfpMea2epG3"}
 
+type RoutingStorer interface {
+	warpnet.WarpBatching
+}
+
+type ProviderStorer interface {
+	AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error
+	GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo, error)
+	io.Closer
+}
+
 type DistributedHashTable struct {
 	ctx           context.Context
-	batchingRepo  datastore.Batching
+	db            datastore.Batching
 	providerStore providers.ProviderStore
-	relays        []warpnet.PeerAddrInfo
+	boostrapNodes []warpnet.PeerAddrInfo
 	addF          discovery.DiscoveryHandler
 	removeF       discovery.DiscoveryHandler
+	dht           *dht.IpfsDHT
+}
+
+func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
+	log.Println("dht: node removed", info.ID)
+}
+
+func DefaultNodeAddedCallback(info warpnet.PeerAddrInfo) {
+	log.Println("dht: node added", info.ID)
 }
 
 func NewDHTable(
 	ctx context.Context,
-	batchingRepo datastore.Batching,
-	providerStore providers.ProviderStore,
-	relays []warpnet.PeerAddrInfo,
+	db RoutingStorer,
+	providerStore ProviderStorer,
+	conf config.Config,
 	addF discovery.DiscoveryHandler,
 	removeF discovery.DiscoveryHandler,
 ) *DistributedHashTable {
+	bootstrapAddrs, _ := conf.Node.AddrInfos()
 	return &DistributedHashTable{
 		ctx:           ctx,
-		batchingRepo:  batchingRepo,
+		db:            db,
 		providerStore: providerStore,
-		relays:        relays,
+		boostrapNodes: bootstrapAddrs,
 		addF:          addF,
 		removeF:       removeF,
 	}
 }
 
-func (d *DistributedHashTable) Start(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
+func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
 		dht.ProtocolPrefix(ProtocolPrefix),
-		dht.Datastore(d.batchingRepo),
-		dht.BootstrapPeers(d.relays...),
+		dht.Datastore(d.db),
+		dht.BootstrapPeers(d.boostrapNodes...),
 		dht.ProviderStore(d.providerStore),
-		dht.RoutingTableLatencyTolerance(time.Minute*5), // if one day node is not responding
+		dht.RoutingTableLatencyTolerance(time.Minute*5),
 	)
 	if err != nil {
 		log.Printf("new dht: %v\n", err)
@@ -73,13 +95,26 @@ func (d *DistributedHashTable) Start(n warpnet.P2PNode) (_ warpnet.WarpPeerRouti
 		}
 	}
 
+	d.dht = dhTable
+
 	go func() {
 		if err := dhTable.Bootstrap(d.ctx); err != nil {
-			log.Printf("DHT bootstrap: %s", err)
+			log.Printf("dht: bootstrap: %s", err)
 		}
 	}()
 
 	<-dhTable.RefreshRoutingTable()
 
+	log.Println("dht: routing started")
+
 	return dhTable, nil
+}
+
+func (d *DistributedHashTable) Close() {
+	if d == nil || d.dht == nil {
+		return
+	}
+	if err := d.dht.Close(); err != nil {
+		log.Printf("dht: table close: %v\n", err)
+	}
 }

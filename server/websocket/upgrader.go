@@ -138,6 +138,9 @@ func (s *EncryptedUpgrader) SendPlain(msg string) error {
 	return s.conn.WriteMessage(ws.TextMessage, []byte(msg))
 }
 func (s *EncryptedUpgrader) SetNewSalt(salt string) {
+	if salt == "" {
+		return
+	}
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	s.salt = []byte(salt)

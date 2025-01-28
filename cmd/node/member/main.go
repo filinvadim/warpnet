@@ -7,6 +7,7 @@ import (
 	"fmt"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
+	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"
@@ -14,6 +15,7 @@ import (
 	"github.com/filinvadim/warpnet/core/node/member"
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -108,7 +110,7 @@ func main() {
 	case authInfo = <-authReadyChan:
 		log.Println("authentication was successful")
 	}
-
+	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
 	persLayer := persistentLayer{nodeRepo, authRepo}
 
 	discService := discovery.NewDiscoveryService(ctx, userRepo, persLayer)
@@ -117,12 +119,25 @@ func main() {
 	defer mdnsService.Close()
 	pubsubService := pubsub.NewPubSub(ctx, discService.HandlePeerFound)
 	defer pubsubService.Close()
+	providerStore, err := dht.NewProviderCache(ctx, persLayer)
+	if err != nil {
+		log.Fatalf("failed to init providers: %v", err)
+	}
+	defer providerStore.Close()
+
+	dHashTable := dht.NewDHTable(
+		ctx, persLayer, providerStore, conf,
+		discService.HandlePeerFound,
+		dht.DefaultNodeRemovedCallback,
+	)
+	defer dHashTable.Close()
 
 	n, err := member.NewMemberNode(
 		ctx,
+		privKey,
 		persLayer,
 		conf,
-		discService,
+		dHashTable.StartRouting,
 		conf.Version,
 	)
 	if err != nil {
