@@ -5,7 +5,7 @@ go 1.23.5
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/filinvadim/warpnet-frontend v0.0.72
+	github.com/filinvadim/warpnet-frontend v0.0.84
 	github.com/getkin/kin-openapi v0.127.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -13,10 +13,10 @@ require (
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/jbenet/goprocess v0.1.4
 	github.com/json-iterator/go v1.1.12
-	github.com/labstack/echo/v4 v4.12.0
-	github.com/libp2p/go-libp2p v0.38.1
+	github.com/labstack/echo/v4 v4.13.3
+	github.com/libp2p/go-libp2p v0.38.2
 	github.com/libp2p/go-libp2p-consensus v0.0.1
-	github.com/libp2p/go-libp2p-kad-dht v0.28.1
+	github.com/libp2p/go-libp2p-kad-dht v0.28.2
 	github.com/libp2p/go-libp2p-pubsub v0.12.0
 	github.com/libp2p/go-libp2p-raft v0.5.0
 	github.com/monnand/dhkx v0.0.0-20180522003156-9e5b033f1ac4
@@ -25,7 +25,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/automaxprocs v1.5.3
+	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -56,7 +56,6 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -173,7 +172,7 @@ require (
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/protobuf v1.36.0 // indirect

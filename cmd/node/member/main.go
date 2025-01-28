@@ -64,7 +64,7 @@ func main() {
 	//followRepo := database.NewFollowRepo(db)
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
-	//replyRepo := database.NewRepliesRepo(db)
+	replyRepo := database.NewRepliesRepo(db)
 
 	var (
 		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
@@ -155,13 +155,20 @@ func main() {
 	authInfo.Version = conf.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
-	n.SetStreamHandler(stream.PairPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
-	n.SetStreamHandler(stream.TimelinePrivate, handler.StreamTimelineHandler(mw, timelineRepo))
-	n.SetStreamHandler(stream.TweetPrivate, handler.StreamNewTweetHandler(mw, tweetRepo, timelineRepo))
+	n.SetStreamHandler(stream.PairPostPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
+	n.SetStreamHandler(stream.TimelineGetPrivate, handler.StreamTimelineHandler(mw, timelineRepo))
+	n.SetStreamHandler(stream.TweetPostPrivate, handler.StreamNewTweetHandler(mw, tweetRepo, timelineRepo))
+	n.SetStreamHandler(stream.TweetDeletePrivate, handler.StreamDeleteTweetHandler(mw, tweetRepo))
+	n.SetStreamHandler(stream.ReplyPostPrivate, handler.StreamNewReplyHandler(mw, replyRepo))
+	n.SetStreamHandler(stream.ReplyDeletePrivate, handler.StreamDeleteReplyHandler(mw, replyRepo))
 
-	n.SetStreamHandler(stream.UserPublic, handler.StreamGetUserHandler(mw, userRepo))
-	n.SetStreamHandler(stream.TweetsPublic, handler.StreamGetTweetsHandler(mw, tweetRepo))
-	n.SetStreamHandler(stream.InfoPublic, handler.StreamGetInfoHandler(mw, n))
+	n.SetStreamHandler(stream.UserGetPublic, handler.StreamGetUserHandler(mw, userRepo))
+	n.SetStreamHandler(stream.UsersGetPublic, handler.StreamGetUsersHandler(mw, userRepo))
+	n.SetStreamHandler(stream.TweetsGetPublic, handler.StreamGetTweetsHandler(mw, tweetRepo))
+	n.SetStreamHandler(stream.InfoGetPublic, handler.StreamGetInfoHandler(mw, n))
+	n.SetStreamHandler(stream.TweetGetPublic, handler.StreamGetTweetHandler(mw, tweetRepo))
+	n.SetStreamHandler(stream.ReplyGetPublic, handler.StreamGetReplyHandler(mw, replyRepo))
+	n.SetStreamHandler(stream.RepliesGetPublic, handler.StreamGetRepliesHandler(mw, replyRepo))
 
 	nodeReadyChan <- authInfo
 	<-interruptChan

@@ -81,6 +81,9 @@ components:
             - parent_reply_id
             - reply_id
 
+    DeleteReplyEvent:
+      $ref: '#/components/schemas/GetReplyEvent'
+
     GetAllRepliesEvent:
       allOf:
         - $ref: '#/components/schemas/BaseEvent'
@@ -122,6 +125,9 @@ components:
           required:
             - user_id
             - tweetId
+
+    DeleteTweetEvent:
+      $ref: '#/components/schemas/GetTweetEvent'
 
     GetAllTweetsEvent:
       allOf:

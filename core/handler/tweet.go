@@ -11,8 +11,10 @@ import (
 )
 
 type TweetsStorer interface {
+	Get(userID, tweetID string) (tweet domain.Tweet, err error)
 	List(string, *uint64, *string) ([]domain.Tweet, string, error)
 	Create(_ string, tweet domain.Tweet) (domain.Tweet, error)
+	Delete(userID, tweetID string) error
 }
 
 type TimelineUpdater interface {
@@ -48,6 +50,27 @@ func StreamGetTweetsHandler(mr middleware.MiddlewareResolver, repo TweetsStorer)
 	}
 }
 
+func StreamGetTweetHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) func(s warpnet.WarpStream) {
+	return func(s warpnet.WarpStream) {
+		getTweetF := func(buf []byte) (any, error) {
+			var ev event.GetTweetEvent
+			err := json.JSON.Unmarshal(buf, &ev)
+			if err != nil {
+				return nil, err
+			}
+			if ev.UserId == "" {
+				return nil, errors.New("empty user id")
+			}
+			if ev.TweetId == "" {
+				return nil, errors.New("empty tweet id")
+			}
+
+			return repo.Get(ev.UserId, ev.TweetId)
+		}
+		mr.UnwrapStream(s, getTweetF)
+	}
+}
+
 func StreamNewTweetHandler(
 	mr middleware.MiddlewareResolver,
 	tweetRepo TweetsStorer,
@@ -55,7 +78,7 @@ func StreamNewTweetHandler(
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		if err := mr.Authenticate(s); err != nil {
-			log.Println("tweet handler:", err)
+			log.Println("new tweet handler:", err)
 			return
 		}
 
@@ -95,5 +118,30 @@ func StreamNewTweetHandler(
 			return tweet, nil
 		}
 		mr.UnwrapStream(s, createF)
+	}
+}
+
+func StreamDeleteTweetHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) func(s warpnet.WarpStream) {
+	return func(s warpnet.WarpStream) {
+		if err := mr.Authenticate(s); err != nil {
+			log.Println("delete tweet handler:", err)
+			return
+		}
+		delTweetF := func(buf []byte) (any, error) {
+			var ev event.DeleteTweetEvent
+			err := json.JSON.Unmarshal(buf, &ev)
+			if err != nil {
+				return nil, err
+			}
+			if ev.UserId == "" {
+				return nil, errors.New("empty user id")
+			}
+			if ev.TweetId == "" {
+				return nil, errors.New("empty tweet id")
+			}
+
+			return nil, repo.Delete(ev.UserId, ev.TweetId)
+		}
+		mr.UnwrapStream(s, delTweetF)
 	}
 }

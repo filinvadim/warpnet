@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
+	"github.com/filinvadim/warpnet/core/stream"
 	warpnet "github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/retrier"
@@ -29,7 +30,7 @@ type PersistentLayer interface {
 	SessionToken() string
 	PrivateKey() go_crypto.PrivateKey
 	ListProviders() (_ map[string][]warpnet.PeerAddrInfo, err error)
-	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
+	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
 	BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
 	IsBlocklisted(ctx context.Context, peerId warpnet.WarpPeerID) (bool, error)
@@ -46,7 +47,7 @@ type DiscoveryServicer interface {
 }
 
 type Streamer interface {
-	Send(peerAddr *warpnet.PeerAddrInfo, r warpnet.WarpRoute, data []byte) ([]byte, error)
+	Send(peerAddr *warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type WarpNode struct {
@@ -134,7 +135,6 @@ func setupMemberNode(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("gere")
 
 	relay, err := relayv2.New(
 		node,
@@ -143,7 +143,6 @@ func setupMemberNode(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("hereeeee")
 
 	n := &WarpNode{
 		ctx:      ctx,
@@ -182,11 +181,11 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	return err
 }
 
-func (n *WarpNode) SetStreamHandler(route warpnet.WarpRoute, handler warpnet.WarpStreamHandler) {
+func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
-func (n *WarpNode) NodeInfo(s warpnet.WarpStream) warpnet.NodeInfo {
+func (n *WarpNode) NodeInfo(s warpnet.WarpStream) p2p.NodeInfo {
 	reg := n.Node()
 	id := reg.ID()
 	addrs := reg.Peerstore().Addrs(id)
@@ -201,9 +200,9 @@ func (n *WarpNode) NodeInfo(s warpnet.WarpStream) warpnet.NodeInfo {
 		plainAddrs = append(plainAddrs, a.String())
 	}
 
-	return warpnet.NodeInfo{
+	return p2p.NodeInfo{
 		Addrs:     addrs,
-		Protocols: warpnet.FromPrIDToRoutes(protocols),
+		Protocols: stream.FromPrIDToRoutes(protocols),
 		Latency:   latency,
 		PeerInfo: warpnet.WarpAddrInfo{
 			ID:    peerInfo.ID,
@@ -256,7 +255,7 @@ func (n *WarpNode) IPv6() string {
 	return n.ipv6
 }
 
-func (n *WarpNode) GenericStream(nodeId string, path warpnet.WarpRoute, data []byte) ([]byte, error) {
+func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
 	id, err := warpnet.IDFromBytes([]byte(nodeId))
 	if err != nil {
 		return nil, err

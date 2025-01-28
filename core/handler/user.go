@@ -11,6 +11,7 @@ import (
 
 type UserFetcher interface {
 	Get(userID string) (user domain.User, err error)
+	List(limit *uint64, cursor *string) ([]domain.User, string, error)
 }
 
 func StreamGetUserHandler(mr middleware.MiddlewareResolver, repo UserFetcher) func(s warpnet.WarpStream) {
@@ -36,5 +37,28 @@ func StreamGetUserHandler(mr middleware.MiddlewareResolver, repo UserFetcher) fu
 			return nil, nil
 		}
 		mr.UnwrapStream(s, getUserF)
+	}
+}
+
+func StreamGetUsersHandler(mr middleware.MiddlewareResolver, repo UserFetcher) func(s warpnet.WarpStream) {
+	return func(s warpnet.WarpStream) {
+		getUsersF := func(buf []byte) (any, error) {
+			var ev event.GetAllUsersEvent
+			err := json.JSON.Unmarshal(buf, &ev)
+			if err != nil {
+				return nil, err
+			}
+
+			users, cursor, err := repo.List(ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
+
+			return event.UsersResponse{
+				Cursor: cursor,
+				Users:  users,
+			}, nil
+		}
+		mr.UnwrapStream(s, getUsersF)
 	}
 }

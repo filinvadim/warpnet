@@ -30,3 +30,6 @@ get-frontend:
 
 ssh:
 	ssh root@207.154.221.44
+
+gen-md:
+	./embedmd -w README.md

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
@@ -763,7 +764,7 @@ func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err err
 	return err
 }
 
-func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error {
+func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error {
 	if d == nil {
 		return ErrNilNodeRepo
 	}

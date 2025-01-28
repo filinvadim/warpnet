@@ -2,11 +2,12 @@ package handler
 
 import (
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 )
 
 type NodeInformer interface {
-	NodeInfo(s warpnet.WarpStream) warpnet.NodeInfo
+	NodeInfo(s warpnet.WarpStream) p2p.NodeInfo
 }
 
 func StreamGetInfoHandler(mr middleware.MiddlewareResolver, i NodeInformer) func(s warpnet.WarpStream) {

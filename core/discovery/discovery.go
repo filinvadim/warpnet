@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -34,11 +35,11 @@ type DiscoveryInfoStorer interface {
 	Peerstore() peerstore.Peerstore
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
-	GenericStream(nodeId string, path warpnet.WarpRoute, data []byte) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type NodeStorer interface {
-	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
+	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
@@ -165,13 +166,13 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)
 
-	infoResp, err := s.node.GenericStream(pi.ID.String(), stream.InfoPublic, nil)
+	infoResp, err := s.node.GenericStream(pi.ID.String(), stream.InfoGetPublic, nil)
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
 
-	var info warpnet.NodeInfo
+	var info p2p.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
 		log.Printf("discovery: failed to unmarshal info from new peer: %s", err)
@@ -183,7 +184,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.OwnerId})
-	userResp, err := s.node.GenericStream(pi.ID.String(), stream.UserPublic, bt)
+	userResp, err := s.node.GenericStream(pi.ID.String(), stream.UserGetPublic, bt)
 	if isBootstrapError(err) {
 		return
 	}

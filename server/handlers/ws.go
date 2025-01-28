@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/client"
-	warpnet "github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 
-	//"github.com/filinvadim/warpnet/core/types"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/auth"
@@ -21,7 +20,7 @@ import (
 )
 
 type GenericStreamer interface {
-	GenericStream(string, warpnet.WarpRoute, []byte) ([]byte, error)
+	GenericStream(string, stream.WarpRoute, []byte) ([]byte, error)
 	Stop()
 }
 
@@ -74,7 +73,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	}
 
 	switch wsMsg.Path {
-	case string(api.Privatelogin100):
+	case stream.LoginPostPrivate.String():
 		ev, err := wsMsg.Data.AsLoginEvent()
 		if err != nil {
 			response = newErrorResp(err.Error())
@@ -102,7 +101,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		if err != nil {
 			log.Printf("create node client: %v", err)
 		}
-	case string(api.Privatelogout100):
+	case stream.LogoutPostPrivate.String():
 		defer c.client.Stop()
 		defer func() {
 			if err := c.upgrader.Close(); err != nil {
@@ -133,7 +132,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			)
 			break
 		}
-		respData, err := c.client.GenericStream(wsMsg.NodeId, warpnet.WarpRoute(wsMsg.Path), data)
+		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), data)
 		if err != nil {
 			response = newErrorResp(err.Error())
 			break

@@ -86,6 +86,16 @@ func (repo *ReplyRepo) GetReply(rootID, parentID, replyID string) (tweet domainG
 	return tweet, nil
 }
 
+func (repo *ReplyRepo) DeleteReply(rootID, parentID, replyID string) error {
+	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
+		AddRootID(rootID).
+		AddRange(storage.NoneRangeKey).
+		AddParentId(parentID).
+		AddId(replyID).
+		Build()
+	return repo.db.Delete(treeKey)
+}
+
 func (repo *ReplyRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
 	if rootID == "" {
 		return nil, "", errors.New("ID cannot be blank")

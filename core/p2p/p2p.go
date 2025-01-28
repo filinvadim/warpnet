@@ -3,6 +3,7 @@ package p2p
 import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/encrypting"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -12,6 +13,18 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"time"
 )
+
+type NodeInfo struct {
+	Addrs        []warpnet.WarpAddress `json:"addrs"`
+	Protocols    []stream.WarpRoute    `json:"protocols"`
+	Latency      time.Duration         `json:"latency"`
+	PeerInfo     warpnet.WarpAddrInfo  `json:"peer"`
+	NetworkState string                `json:"network_state"`
+	ListenAddrs  []warpnet.WarpAddress `json:"listen_addrs"`
+	Version      string                `json:"version"`
+	StreamStats  network.Stats         `json:"stream_stats"`
+	OwnerId      string                `json:"owner_id"`
+}
 
 const (
 	DefaultTimeout = 60 * time.Second

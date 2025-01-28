@@ -50,14 +50,6 @@ paths:
 
 components:
   schemas:
-    LoginPath:
-      type: string
-      enum: [/private/login/1.0.0]
-
-    LogoutPath:
-      type: string
-      enum: [ /private/logout/1.0.0 ]
-
     BaseWSRequest:
       type: object
       properties:

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	"io"
@@ -34,7 +35,7 @@ func (p *WarpMiddleware) Authenticate(s warpnet.WarpStream) error {
 	if p.clientPeerID == "" {
 		return errors.New("no client peer ID")
 	}
-	route := warpnet.FromPrIDToRoute(s.Protocol())
+	route := stream.FromPrIDToRoute(s.Protocol())
 	if !route.IsPrivate() {
 		return nil
 	}

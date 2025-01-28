@@ -23,7 +23,7 @@ import (
 const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
 
 type ClientStreamer interface {
-	Send(peerAddr *warpnet.PeerAddrInfo, r warpnet.WarpRoute, data []byte) ([]byte, error)
+	Send(peerAddr *warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type WarpClientNode struct {
@@ -97,11 +97,11 @@ func (n *WarpClientNode) pairNodes(nodeId string, clientInfo domain.AuthNodeInfo
 	if err != nil {
 		return err
 	}
-	_, err = n.GenericStream(nodeId, stream.PairPrivate, bt)
+	_, err = n.GenericStream(nodeId, stream.PairPostPrivate, bt)
 	return err
 }
 
-func (n *WarpClientNode) GenericStream(nodeId string, path warpnet.WarpRoute, data []byte) ([]byte, error) {
+func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
 	if n == nil {
 		return nil, errors.New("client node must not be nil")
 	}
