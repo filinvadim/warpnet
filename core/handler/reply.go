@@ -12,7 +12,7 @@ import (
 )
 
 type ReplyBroadcaster interface {
-	PublishOwnerUpdate(owner domain.Owner, msg api.api) (err error)
+	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
 	SubscribeUserUpdate(user domain.User) (err error)
 	UnsubscribeUserUpdate(user domain.User) (err error)
 }

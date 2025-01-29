@@ -175,7 +175,7 @@ func (g *Gossip) Close() (err error) {
 }
 
 // PublishOwnerUpdate - publish for followers
-func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.api) (err error) {
+func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error) {
 	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, owner.UserId, owner.Username)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]

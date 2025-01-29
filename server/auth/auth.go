@@ -49,7 +49,7 @@ func (as *AuthService) IsAuthenticated() bool {
 	return as.isAuthenticated.Load()
 }
 
-func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.api, err error) {
+func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
 		l.Println("already authenticated")
 		return resp, errors.New("already authenticated")

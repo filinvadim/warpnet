@@ -61,7 +61,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	var (
-		wsMsg    api.api
+		wsMsg    api.Message
 		response api.Response
 	)
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {
