@@ -106,14 +106,18 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.Mode(dht.ModeServer),
 		dht.ProtocolPrefix(protocolPrefix),
 		dht.Datastore(d.db),
+		dht.MaxRecordAge(time.Hour*24*365),
+		dht.RoutingTableRefreshPeriod(time.Hour*24),
+		dht.RoutingTableRefreshQueryTimeout(time.Hour*24),
 		dht.BootstrapPeers(d.boostrapNodes...),
 		dht.ProviderStore(d.providerStore),
-		dht.RoutingTableLatencyTolerance(time.Minute*5),
+		dht.RoutingTableLatencyTolerance(time.Hour*24),
 	)
 	if err != nil {
 		log.Printf("new dht: %v\n", err)
 		return nil, err
 	}
+
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
 			d.addF(peer.AddrInfo{ID: id})

@@ -70,14 +70,14 @@ func (d *ProviderCache) dumpProviders() {
 			for key, values := range d.m {
 				for i, v := range values {
 					newValues := values
-					if v.readAt.Before(now.Add(-time.Hour*24)) && i < len(newValues)-1 {
+					if v.readAt.Before(now.Add(-time.Hour*24*365)) && i < len(newValues)-1 {
 						slices.Delete(newValues, i, i+1)
 						delete(d.m, key)
 						d.m[key] = newValues
 						continue
 					}
 					if err := d.db.AddProvider(d.ctx, []byte(key), v.addr); err != nil {
-						log.Printf("error adding provider %s to cache: %v", key, err)
+						log.Printf("error adding provider %s to db: %v", key, err)
 					}
 				}
 			}
