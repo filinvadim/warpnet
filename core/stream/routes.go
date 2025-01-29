@@ -5,7 +5,9 @@ import (
 	"strings"
 )
 
-const ( // START
+// package api;type WarpRoute string
+
+const (
 	LoginPostPrivate  WarpRoute = "/private/post/login/1.0.0"
 	LogoutPostPrivate WarpRoute = "/private/post/logout/1.0.0"
 
@@ -25,10 +27,7 @@ const ( // START
 	InfoGetPublic    WarpRoute = "/public/get/info/1.0.0"
 ) // END
 
-type (
-	WarpRoute  string
-	WarpRoutes []WarpRoute
-)
+type WarpRoute string
 
 func (r WarpRoute) ProtocolID() protocol.ID {
 	return protocol.ID(r)
@@ -41,6 +40,8 @@ func (r WarpRoute) String() string {
 func (r WarpRoute) IsPrivate() bool {
 	return strings.Contains(string(r), "private")
 }
+
+type WarpRoutes []WarpRoute
 
 func (rs WarpRoutes) FromRoutesToPrIDs() []protocol.ID {
 	prIDs := make([]protocol.ID, 0, len(rs))

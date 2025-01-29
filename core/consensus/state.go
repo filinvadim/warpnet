@@ -1,7 +1,6 @@
-package state_machine
+package consensus
 
 import (
-	"github.com/filinvadim/warpnet/core/consensus"
 	"sync"
 )
 
@@ -9,11 +8,11 @@ type SecretStorer interface{}
 
 type store struct {
 	mx        *sync.RWMutex
-	state     consensus.State
-	consensus consensus.Consensus
+	state     State
+	consensus Consensus
 }
 
-func NewSecretStore(consensus consensus.Consensus) SecretStorer {
+func NewSecretStore(consensus Consensus) SecretStorer {
 	return &store{
 		mx:        new(sync.RWMutex),
 		state:     make(map[string]string),

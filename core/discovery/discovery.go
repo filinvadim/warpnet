@@ -60,6 +60,7 @@ type discoveryService struct {
 	stopChan      chan struct{}
 }
 
+//goland:noinspection ALL
 func NewDiscoveryService(
 	ctx context.Context,
 	userRepo UserStorer,

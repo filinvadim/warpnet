@@ -23,9 +23,11 @@ go run cmd/node/member/main.go
 ```
 
 ## Warpnet API
-[embedmd]:#(core/stream/routes.go go /const/ /END/)
+[embedmd]:#(core/stream/routes.go go /package api/ /END/)
 ```go
-const ( // START
+package api;type WarpRoute string
+
+const (
 	LoginPostPrivate  WarpRoute = "/private/post/login/1.0.0"
 	LogoutPostPrivate WarpRoute = "/private/post/logout/1.0.0"
 

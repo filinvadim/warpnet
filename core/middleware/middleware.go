@@ -52,7 +52,7 @@ func (p *WarpMiddleware) Authenticate(s warpnet.WarpStream) error {
 func (p *WarpMiddleware) UnwrapStream(s warpnet.WarpStream, fn StreamPoolHandler) {
 	defer func() {
 		log.Printf("middleware closed: %s %s", s.Protocol(), s.Conn().RemotePeer())
-		s.Close()
+		_ = s.Close()
 	}()
 
 	log.Println("middleware: server stream opened:", s.Protocol(), s.Conn().RemotePeer())

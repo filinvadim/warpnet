@@ -104,7 +104,7 @@ func setupBootstrapNode(
 	}
 
 	println()
-	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %s %v\033[0m\n", n.node.ID(), n.node.Addrs())
+	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.node.ID(), n.node.Addrs())
 	println()
 
 	return n, nil
