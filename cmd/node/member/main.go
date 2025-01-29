@@ -147,7 +147,7 @@ func main() {
 
 	go discService.Run(n)
 	go mdnsService.Start(n)
-	go pubsubService.RunDiscovery(n)
+	go pubsubService.Run(n)
 
 	authInfo.Identity.Owner.NodeId = n.ID().String()
 	authInfo.Identity.Owner.Ipv6 = n.IPv6()

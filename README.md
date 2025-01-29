@@ -1,4 +1,26 @@
-# warpnet
+# WARPNET
+## General principles
+- warpnet must be independent of any 3rd party services
+- warpnet must be independent of any 3rd party technologies
+- warpnet must be represented as a single executable file
+- warpnet must be a multiplatform service
+- warpnet must be a singleton node that running on machine, but it could have as many aliases as needed
+- warpnet member node must be managed only by nodes consensus
+- warpnet business node could have centralized management
+- warpnet node must store private data only at host machine
+
+## Requirements
+    - golang >=1.23
+
+## How to run
+- bootstrap node
+```bash 
+go run cmd/node/bootstrap/main.go
+```
+- member node
+```bash 
+go run cmd/node/member/main.go
+```
 
 [embedmd]:#(core/stream/routes.go go /const/ /END/)
 ```go

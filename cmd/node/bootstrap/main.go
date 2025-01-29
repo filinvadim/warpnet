@@ -81,7 +81,7 @@ func main() {
 	defer n.Stop()
 
 	go mdnsService.Start(n)
-	go pubsubService.RunDiscovery(n)
+	go pubsubService.Run(n)
 
 	<-interruptChan
 	log.Println("bootstrap node interrupted...")

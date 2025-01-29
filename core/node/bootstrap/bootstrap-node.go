@@ -6,12 +6,13 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
+	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+
 	"log"
 	"time"
 )
@@ -89,10 +90,7 @@ func setupBootstrapNode(
 	if err != nil {
 		return nil, err
 	}
-	relay, err := relayv2.New(
-		node,
-		relayv2.WithInfiniteLimits(),
-	)
+	nodeRelay, err := relay.NewRelay(node)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +98,7 @@ func setupBootstrapNode(
 	n := &WarpBootstrapNode{
 		ctx:     ctx,
 		node:    node,
-		relay:   relay,
+		relay:   nodeRelay,
 		retrier: retrier.New(time.Second * 5),
 		version: version,
 	}

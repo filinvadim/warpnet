@@ -11,11 +11,3 @@ var configFile []byte
 func GetConfigFile() []byte {
 	return configFile
 }
-
-//go:embed version
-var version []byte
-
-func GetVersion() string {
-	s := string(version)
-	return s
-}

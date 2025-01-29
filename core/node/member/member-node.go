@@ -7,8 +7,9 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
+	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
-	warpnet "github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -16,7 +17,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -136,10 +136,7 @@ func setupMemberNode(
 		return nil, err
 	}
 
-	relay, err := relayv2.New(
-		node,
-		relayv2.WithInfiniteLimits(),
-	)
+	nodeRelay, err := relay.NewRelay(node)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +144,7 @@ func setupMemberNode(
 	n := &WarpNode{
 		ctx:      ctx,
 		node:     node,
-		relay:    relay,
+		relay:    nodeRelay,
 		isClosed: new(atomic.Bool),
 		retrier:  retrier.New(time.Second * 5),
 		version:  version,

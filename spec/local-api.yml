@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  title: Warp net front face
+  title: Warpnet
   version: 1.0.0
-  description: Extrenal API for a distributed Twitter-like application
+  description: External API for a distributed Twitter-like application
 servers:
   - url: http://localhost:4002
     description: Interface address
@@ -50,7 +50,7 @@ paths:
 
 components:
   schemas:
-    BaseWSRequest:
+    Message:
       type: object
       properties:
         version:
@@ -92,7 +92,7 @@ components:
         - $ref: '#/components/schemas/LoginEvent'
         - $ref: '#/components/schemas/LogoutEvent'
 
-    BaseWSResponse:
+    Response:
       type: object
       properties:
         version:
@@ -132,7 +132,7 @@ components:
 
     ErrorResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseWSResponse'
+        - $ref: '#/components/schemas/Response'
         - type: object
           properties:
             data:

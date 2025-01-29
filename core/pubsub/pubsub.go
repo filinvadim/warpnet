@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	node2 "github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/server/api-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
@@ -14,6 +16,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+)
+
+const (
+	pubSubDiscoveryTopic  = "peer-discovery"
+	userUpdateTopicPrefix = "user-update"
 )
 
 type PeerInfoStorer interface {
@@ -27,7 +34,7 @@ type Gossip struct {
 	ctx              context.Context
 	pubsub           *pubsub.PubSub
 	node             PeerInfoStorer
-	discoveryHandler node2.DiscoveryHandler
+	discoveryHandler discovery.DiscoveryHandler
 
 	mx     *sync.RWMutex
 	subs   []*pubsub.Subscription
@@ -36,7 +43,7 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, discoveryHandler node2.DiscoveryHandler) *Gossip {
+func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *Gossip {
 	g := &Gossip{
 		ctx:              ctx,
 		pubsub:           nil,
@@ -51,6 +58,83 @@ func NewPubSub(ctx context.Context, discoveryHandler node2.DiscoveryHandler) *Go
 	}
 
 	return g
+}
+
+func (g *Gossip) Run(n PeerInfoStorer) {
+	if g.isRunning.Load() {
+		return
+	}
+	if err := g.run(n); err != nil {
+		log.Fatalf("failed to create Gossip sub: %s", err)
+	}
+	for {
+		g.mx.RLock()
+		subscriptions := g.subs
+		g.mx.RUnlock()
+
+		for _, sub := range subscriptions {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			msg, err := sub.Next(ctx)
+			if errors.Is(err, context.DeadlineExceeded) {
+				cancel()
+				continue
+			}
+			cancel()
+			if err != nil && !errors.Is(err, context.Canceled) {
+				log.Printf("pubsub discovery: subscription error: %v", err)
+				return
+			}
+
+			if msg.Topic == nil {
+				continue
+			}
+			switch *msg.Topic {
+			case pubSubDiscoveryTopic:
+				g.handlePubSubDiscovery(msg)
+			default:
+				if strings.HasPrefix(*msg.Topic, userUpdateTopicPrefix) {
+					// TODO
+				}
+			}
+		}
+	}
+}
+
+func (g *Gossip) run(n PeerInfoStorer) error {
+	if g == nil {
+		panic("discovery service not initialized properly")
+	}
+
+	var err error
+	g.pubsub, err = pubsub.NewGossipSub(g.ctx, n.Node())
+	if err != nil {
+
+	}
+	g.node = n
+	g.isRunning.Store(true)
+	log.Println("started pubsub service")
+
+	discTopic, err := g.pubsub.Join(pubSubDiscoveryTopic)
+	if err != nil {
+		log.Printf("failed to join discovery topic: %s", err)
+		return err
+	}
+
+	if _, err = discTopic.Relay(); err != nil {
+		log.Printf("failed to relay discovery topic: %s", err)
+	}
+
+	discoverySub, err := discTopic.Subscribe()
+	if err != nil {
+		log.Printf("pubsub discovery: failed to subscribe to topic: %s", err)
+		return err
+	}
+	g.mx.Lock()
+	g.subs = append(g.subs, discoverySub)
+	g.mx.Unlock()
+
+	go g.publishPeerInfo(discTopic)
+	return nil
 }
 
 func (g *Gossip) Close() (err error) {
@@ -85,89 +169,115 @@ func (g *Gossip) Close() (err error) {
 	return
 }
 
-const discoveryTopic = "peer-discovery"
-
-func (g *Gossip) RunDiscovery(n PeerInfoStorer) {
-	if g == nil {
-		panic("discovery service not initialized properly")
+// PublishOwnerUpdate - publish for followers
+func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error) {
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, owner.UserId, owner.Username)
+	g.mx.RLock()
+	topic, ok := g.topics[topicName]
+	g.mx.RUnlock()
+	if !ok {
+		topic, err = g.pubsub.Join(topicName)
+		if err != nil {
+			return err
+		}
 	}
 
-	var err error
-	g.pubsub, err = pubsub.NewGossipSub(g.ctx, n.Node())
-	if err != nil {
-		log.Fatalf("failed to create Gossip sub: %s", err)
-	}
-	g.node = n
-
-	if g.isRunning.Load() {
-		return
-	}
-	g.isRunning.Store(true)
-
-	log.Println("started pubsub discovery service")
-
-	discTopic, err := g.pubsub.Join(discoveryTopic)
-	if err != nil {
-		log.Printf("failed to join discovery topic: %s", err)
-		return
-	}
-
-	discoverySub, err := discTopic.Subscribe()
-	if err != nil {
-		log.Printf("pubsub discovery: failed to subscribe to topic: %s", err)
-		return
-	}
 	g.mx.Lock()
-	g.subs = append(g.subs, discoverySub)
+	g.topics[topicName] = topic
 	g.mx.Unlock()
 
-	go g.publishPeerInfo(discTopic)
-
-	for {
-		msg, err := discoverySub.Next(g.ctx)
-		if isContextCancelledError(err) {
-			log.Printf("pubsub discovery stopped by context")
-			return
-		}
-		if err != nil {
-			log.Printf("pubsub discovery: subscription error: %v", err)
-			return
-		}
-
-		var discoveryMsg warpnet.WarpAddrInfo
-		if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-			log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
-			continue
-		}
-		if discoveryMsg.ID == "" {
-			log.Println("pubsub discovery: message has no ID", string(msg.Data))
-			continue
-		}
-		if discoveryMsg.ID == g.node.ID() {
-			continue
-		}
-
-		peerInfo := warpnet.PeerAddrInfo{
-			ID:    discoveryMsg.ID,
-			Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
-		}
-
-		for _, addr := range discoveryMsg.Addrs {
-			ma, _ := multiaddr.NewMultiaddr(addr)
-			peerInfo.Addrs = append(peerInfo.Addrs, ma)
-		}
-
-		if g.discoveryHandler == nil { // just bootstrap
-			log.Println("pubsub: no discovery handler")
-			if err := g.node.Connect(peerInfo); err != nil {
-				log.Printf("pubsub discovery: failed to connect to peer: %v", err)
-				continue
-			}
-			log.Printf("pubsub: connected to peer: %s", discoveryMsg.ID)
-			continue
-		}
-		g.discoveryHandler(peerInfo) // add new user
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("pubsub discovery: failed to marchal message: %v", err)
+		return err
 	}
+	err = topic.Publish(g.ctx, data)
+	if err != nil {
+		log.Printf("pubsub discovery: failed to publish message: %v", err)
+		return err
+	}
+	return
+}
+
+// SubscribeUserUpdate - follow someone
+func (g *Gossip) SubscribeUserUpdate(user domain.User) (err error) {
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, user.Id, user.Username)
+	g.mx.RLock()
+	topic, ok := g.topics[topicName]
+	g.mx.RUnlock()
+	if !ok {
+		topic, err = g.pubsub.Join(topicName)
+		if err != nil {
+			return err
+		}
+	}
+
+	g.mx.Lock()
+	g.topics[topicName] = topic
+	g.mx.Unlock()
+
+	sub, err := topic.Subscribe()
+	if err != nil {
+		return err
+	}
+	g.mx.Lock()
+	g.subs = append(g.subs, sub)
+	g.mx.Unlock()
+	return nil
+}
+
+// UnsubscribeUserUpdate - unfollow someone
+func (g *Gossip) UnsubscribeUserUpdate(user domain.User) (err error) {
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, user.Id, user.Username)
+	g.mx.RLock()
+	topic, ok := g.topics[topicName]
+	g.mx.RUnlock()
+	if !ok {
+		return nil
+	}
+
+	err = topic.Close()
+
+	g.mx.Lock()
+	delete(g.topics, topicName)
+	g.mx.Unlock()
+	return err
+}
+
+func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
+	var discoveryMsg warpnet.WarpAddrInfo
+	if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+		log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+		return
+	}
+	if discoveryMsg.ID == "" {
+		log.Println("pubsub discovery: message has no ID", string(msg.Data))
+		return
+	}
+	if discoveryMsg.ID == g.node.ID() {
+		return
+	}
+
+	peerInfo := warpnet.PeerAddrInfo{
+		ID:    discoveryMsg.ID,
+		Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
+	}
+
+	for _, addr := range discoveryMsg.Addrs {
+		ma, _ := multiaddr.NewMultiaddr(addr)
+		peerInfo.Addrs = append(peerInfo.Addrs, ma)
+	}
+
+	if g.discoveryHandler == nil { // just bootstrap
+		log.Println("pubsub: no discovery handler")
+		if err := g.node.Connect(peerInfo); err != nil {
+			log.Printf("pubsub discovery: failed to connect to peer: %v", err)
+			return
+		}
+		log.Printf("pubsub: connected to peer: %s", discoveryMsg.ID)
+		return
+	}
+	g.discoveryHandler(peerInfo) // add new user
 }
 
 func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
@@ -209,19 +319,4 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 			}
 		}
 	}
-}
-
-func isContextCancelledError(err error) bool {
-	switch {
-	case err == nil:
-		return false
-	//goland:noinspection ALL
-	case err == context.Canceled:
-		return true
-	case errors.Is(err, context.Canceled):
-		return true
-	case strings.Contains(err.Error(), "context canceled"):
-		return true
-	}
-	return false
 }

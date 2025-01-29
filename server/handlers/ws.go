@@ -61,8 +61,8 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	var (
-		wsMsg    api.BaseWSRequest
-		response api.BaseWSResponse
+		wsMsg    api.Message
+		response api.Response
 	)
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 
-		response = api.BaseWSResponse{
+		response = api.Response{
 			Data: respData,
 		}
 	}
@@ -157,12 +157,12 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	return buffer.Bytes(), nil
 }
 
-func newErrorResp(message string) api.BaseWSResponse {
+func newErrorResp(message string) api.Response {
 	errData, _ := json.JSON.Marshal(api.ErrorData{
 		Code:    http.StatusInternalServerError,
 		Message: message,
 	})
-	return api.BaseWSResponse{
+	return api.Response{
 		Data: errData,
 	}
 }
