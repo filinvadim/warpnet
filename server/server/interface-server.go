@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	api_gen "github.com/filinvadim/warpnet/server/api-gen"
+	api_gen "github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"

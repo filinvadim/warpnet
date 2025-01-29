@@ -3,7 +3,7 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	api "github.com/filinvadim/warpnet/server/api-gen"
+	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/fs"

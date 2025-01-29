@@ -4,15 +4,15 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/filinvadim/warpnet/server/api-gen"
 	"log"
 )
 
 type TweetBroadcaster interface {
-	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
+	PublishOwnerUpdate(owner domain.Owner, msg api.api) (err error)
 	SubscribeUserUpdate(user domain.User) (err error)
 	UnsubscribeUserUpdate(user domain.User) (err error)
 }

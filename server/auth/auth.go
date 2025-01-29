@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/gen/api-gen"
 	domain "github.com/filinvadim/warpnet/gen/domain-gen"
 	event "github.com/filinvadim/warpnet/gen/event-gen"
-	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/google/uuid"
 	l "log"
 	"os"
@@ -49,7 +49,7 @@ func (as *AuthService) IsAuthenticated() bool {
 	return as.isAuthenticated.Load()
 }
 
-func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginResponse, err error) {
+func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.api, err error) {
 	if as.isAuthenticated.Load() {
 		l.Println("already authenticated")
 		return resp, errors.New("already authenticated")

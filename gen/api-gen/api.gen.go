@@ -98,8 +98,8 @@ type LogoutEvent = externalRef0.LogoutEvent
 
 // Message defines model for Message.
 type Message struct {
-	Data      *Event    `json:"data,omitempty"`
-	MessageId string    `json:"message_id"`
+	Data      *Event `json:"data,omitempty"`
+	MessageId string `json:"message_id"`
 	NodeId    string    `json:"node_id"`
 	Path      string    `json:"path"`
 	Timestamp time.Time `json:"timestamp,omitempty"`

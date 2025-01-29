@@ -7,10 +7,10 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/client"
 	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 
 	"github.com/filinvadim/warpnet/json"
-	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/websocket"
 	"github.com/labstack/echo/v4"
@@ -61,7 +61,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	var (
-		wsMsg    api.Message
+		wsMsg    api.api
 		response api.Response
 	)
 	if err := json.JSON.Unmarshal(msg, &wsMsg); err != nil {

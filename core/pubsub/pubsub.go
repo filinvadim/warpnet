@@ -8,8 +8,8 @@ import (
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/server/api-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
@@ -175,7 +175,7 @@ func (g *Gossip) Close() (err error) {
 }
 
 // PublishOwnerUpdate - publish for followers
-func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error) {
+func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.api) (err error) {
 	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, owner.UserId, owner.Username)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
