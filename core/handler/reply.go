@@ -7,8 +7,15 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/server/api-gen"
 	"log"
 )
+
+type ReplyBroadcaster interface {
+	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
+	SubscribeUserUpdate(user domain.User) (err error)
+	UnsubscribeUserUpdate(user domain.User) (err error)
+}
 
 type ReplyStorer interface {
 	GetReply(rootID, parentID, replyID string) (tweet domain.Tweet, err error)
@@ -17,7 +24,9 @@ type ReplyStorer interface {
 	DeleteReply(rootID, parentID, replyID string) error
 }
 
-func StreamGetRepliesHandler(mr middleware.MiddlewareResolver, repo ReplyStorer) func(s warpnet.WarpStream) {
+func StreamGetRepliesHandler(
+	mr middleware.MiddlewareResolver, repo ReplyStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		getAllF := func(buf []byte) (any, error) {
 			var ev event.GetAllRepliesEvent
@@ -68,6 +77,7 @@ func StreamGetReplyHandler(mr middleware.MiddlewareResolver, repo ReplyStorer) f
 
 func StreamNewReplyHandler(
 	mr middleware.MiddlewareResolver,
+	broadcaster ReplyBroadcaster,
 	repo ReplyStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
@@ -104,7 +114,9 @@ func StreamNewReplyHandler(
 	}
 }
 
-func StreamDeleteReplyHandler(mr middleware.MiddlewareResolver, repo ReplyStorer) func(s warpnet.WarpStream) {
+func StreamDeleteReplyHandler(
+	mr middleware.MiddlewareResolver, broadcaster ReplyBroadcaster, repo ReplyStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		if err := mr.Authenticate(s); err != nil {
 			log.Println("delete tweet handler:", err)

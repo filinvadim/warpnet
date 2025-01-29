@@ -3,12 +3,19 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
-	warpnet "github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/server/api-gen"
 	"log"
 )
+
+type TweetBroadcaster interface {
+	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
+	SubscribeUserUpdate(user domain.User) (err error)
+	UnsubscribeUserUpdate(user domain.User) (err error)
+}
 
 type TweetsStorer interface {
 	Get(userID, tweetID string) (tweet domain.Tweet, err error)
@@ -21,7 +28,9 @@ type TimelineUpdater interface {
 	AddTweetToTimeline(userID string, tweet domain.Tweet) error
 }
 
-func StreamGetTweetsHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) func(s warpnet.WarpStream) {
+func StreamGetTweetsHandler(
+	mr middleware.MiddlewareResolver, repo TweetsStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		getTweetsF := func(buf []byte) (any, error) {
 			var ev event.GetAllTweetsEvent
@@ -73,6 +82,7 @@ func StreamGetTweetHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) 
 
 func StreamNewTweetHandler(
 	mr middleware.MiddlewareResolver,
+	broadcaster TweetBroadcaster,
 	tweetRepo TweetsStorer,
 	timelineRepo TimelineUpdater,
 ) func(s warpnet.WarpStream) {
@@ -121,7 +131,9 @@ func StreamNewTweetHandler(
 	}
 }
 
-func StreamDeleteTweetHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) func(s warpnet.WarpStream) {
+func StreamDeleteTweetHandler(
+	mr middleware.MiddlewareResolver, broadcaster TweetBroadcaster, repo TweetsStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		if err := mr.Authenticate(s); err != nil {
 			log.Println("delete tweet handler:", err)

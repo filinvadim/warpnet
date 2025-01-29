@@ -157,10 +157,12 @@ func main() {
 	mw := middleware.NewWarpMiddleware()
 	n.SetStreamHandler(stream.PairPostPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
 	n.SetStreamHandler(stream.TimelineGetPrivate, handler.StreamTimelineHandler(mw, timelineRepo))
-	n.SetStreamHandler(stream.TweetPostPrivate, handler.StreamNewTweetHandler(mw, tweetRepo, timelineRepo))
-	n.SetStreamHandler(stream.TweetDeletePrivate, handler.StreamDeleteTweetHandler(mw, tweetRepo))
-	n.SetStreamHandler(stream.ReplyPostPrivate, handler.StreamNewReplyHandler(mw, replyRepo))
-	n.SetStreamHandler(stream.ReplyDeletePrivate, handler.StreamDeleteReplyHandler(mw, replyRepo))
+	n.SetStreamHandler(
+		stream.TweetPostPrivate, handler.StreamNewTweetHandler(mw, pubsubService, tweetRepo, timelineRepo),
+	)
+	n.SetStreamHandler(stream.TweetDeletePrivate, handler.StreamDeleteTweetHandler(mw, pubsubService, tweetRepo))
+	n.SetStreamHandler(stream.ReplyPostPrivate, handler.StreamNewReplyHandler(mw, pubsubService, replyRepo))
+	n.SetStreamHandler(stream.ReplyDeletePrivate, handler.StreamDeleteReplyHandler(mw, pubsubService, replyRepo))
 
 	n.SetStreamHandler(stream.UserGetPublic, handler.StreamGetUserHandler(mw, userRepo))
 	n.SetStreamHandler(stream.UsersGetPublic, handler.StreamGetUsersHandler(mw, userRepo))

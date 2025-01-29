@@ -41,6 +41,26 @@ func (r WarpRoute) IsPrivate() bool {
 	return strings.Contains(string(r), "private")
 }
 
+func (r WarpRoute) IsGet() bool {
+	return strings.Contains(string(r), "get")
+}
+
+func IsValidRoute(route string) bool { // TODO
+	if !strings.HasPrefix(route, "/") {
+		return false
+	}
+	if !(strings.Contains(route, "get") ||
+		strings.Contains(route, "delete") ||
+		strings.Contains(route, "post")) {
+		return false
+	}
+	if !(strings.Contains(route, "private") ||
+		strings.Contains(route, "public")) {
+		return false
+	}
+	return true
+}
+
 type WarpRoutes []WarpRoute
 
 func (rs WarpRoutes) FromRoutesToPrIDs() []protocol.ID {

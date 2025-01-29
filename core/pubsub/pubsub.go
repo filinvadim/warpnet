@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/server/api-gen"
@@ -19,7 +20,10 @@ import (
 )
 
 const (
-	pubSubDiscoveryTopic  = "peer-discovery"
+	pubSubDiscoveryTopic = "peer-discovery"
+)
+
+const (
 	userUpdateTopicPrefix = "user-update"
 )
 
@@ -28,6 +32,7 @@ type PeerInfoStorer interface {
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
+	GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type Gossip struct {
@@ -93,7 +98,7 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 				g.handlePubSubDiscovery(msg)
 			default:
 				if strings.HasPrefix(*msg.Topic, userUpdateTopicPrefix) {
-					// TODO
+					g.handleUserUpdate(msg)
 				}
 			}
 		}
@@ -241,6 +246,37 @@ func (g *Gossip) UnsubscribeUserUpdate(user domain.User) (err error) {
 	g.mx.Lock()
 	delete(g.topics, topicName)
 	g.mx.Unlock()
+	return err
+}
+
+func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
+	var simulatedMessage api.Message
+	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
+		log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+		return err
+	}
+	if simulatedMessage.NodeId == "" {
+
+		return fmt.Errorf("pubsub user update: message has no node ID: %s", string(msg.Data))
+	}
+	if simulatedMessage.Path == "" {
+		log.Println("pubsub user update: message has no path", string(msg.Data))
+		return fmt.Errorf("pubsub user update: message has no path: %s", string(msg.Data))
+	}
+	if simulatedMessage.Data == nil {
+		return nil
+	}
+	if stream.IsValidRoute(simulatedMessage.Path) {
+		return fmt.Errorf("pubsub user update: message has invalid path: %s", string(msg.Data))
+	}
+	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
+		return nil
+	}
+	_, err := g.node.GenericStream(
+		simulatedMessage.NodeId,
+		stream.WarpRoute(simulatedMessage.Path),
+		msg.Data,
+	)
 	return err
 }
 
