@@ -39,6 +39,20 @@ type ErrorEvent struct {
 	Message string `json:"message"`
 }
 
+// FolloweesResponse defines model for FolloweesResponse.
+type FolloweesResponse struct {
+	Cursor    string                   `json:"cursor"`
+	Followees []externalRef0.Following `json:"followees"`
+	Follower  string                   `json:"follower"`
+}
+
+// FollowersResponse defines model for FollowersResponse.
+type FollowersResponse struct {
+	Cursor    string                   `json:"cursor"`
+	Followee  string                   `json:"followee"`
+	Followers []externalRef0.Following `json:"followers"`
+}
+
 // GetAllChatsEvent defines model for GetAllChatsEvent.
 type GetAllChatsEvent struct {
 	Chats  []externalRef0.Chat `json:"chats"`
@@ -84,6 +98,16 @@ type GetChatEvent struct {
 	ToUserId   string    `json:"to_user_id"`
 }
 
+// GetFolloweesEvent defines model for GetFolloweesEvent.
+type GetFolloweesEvent = GetFollowersEvent
+
+// GetFollowersEvent defines model for GetFollowersEvent.
+type GetFollowersEvent struct {
+	Cursor *string `json:"cursor,omitempty"`
+	Limit  *uint64 `json:"limit,omitempty"`
+	UserId string  `json:"user_id"`
+}
+
 // GetMessageEvent defines model for GetMessageEvent.
 type GetMessageEvent struct {
 	ChatId   string  `json:"chat_id"`
@@ -97,6 +121,7 @@ type GetReplyEvent struct {
 	ParentReplyId string `json:"parent_reply_id"`
 	ReplyId       string `json:"reply_id"`
 	RootId        string `json:"root_id"`
+	UserId        string `json:"user_id"`
 }
 
 // GetTimelineEvent defines model for GetTimelineEvent.
@@ -148,7 +173,11 @@ type NewChatEvent struct {
 
 // NewFollowEvent defines model for NewFollowEvent.
 type NewFollowEvent struct {
-	Request *interface{} `json:"request,omitempty"`
+	// Followee to user
+	Followee string `json:"followee"`
+
+	// Follower from user
+	Follower string `json:"follower"`
 }
 
 // NewMessageEvent defines model for NewMessageEvent.
@@ -159,7 +188,17 @@ type NewMessageEvent struct {
 
 // NewReplyEvent defines model for NewReplyEvent.
 type NewReplyEvent struct {
-	Tweet *externalRef0.Tweet `json:"tweet,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	Id            string     `json:"id"`
+	Likes         *[]Like    `json:"likes,omitempty"`
+	LikesCount    *int64     `json:"likes_count,omitempty"`
+	ParentId      string     `json:"parent_id"`
+	Retweets      *[]Retweet `json:"retweets,omitempty"`
+	RetweetsCount *int64     `json:"retweets_count,omitempty"`
+	RootId        string     `json:"root_id"`
+	Text          string     `json:"text"`
+	UserId        string     `json:"user_id"`
+	Username      string     `json:"username"`
 }
 
 // NewTweetEvent defines model for NewTweetEvent.
@@ -179,7 +218,11 @@ type NewTweetEvent struct {
 
 // NewUnfollowEvent defines model for NewUnfollowEvent.
 type NewUnfollowEvent struct {
-	Request *interface{} `json:"request,omitempty"`
+	// Followee to user
+	Followee string `json:"followee"`
+
+	// Follower from user
+	Follower string `json:"follower"`
 }
 
 // NewUserEvent defines model for NewUserEvent.
@@ -216,27 +259,28 @@ type UsersResponse struct {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xZTW/bOBD9KwZ3j0yTYosefNuPbrBA6gJFgj0UhUBLY5tridSSI6tGkf++IEXbkkV9",
-	"WkmzaG9ORM28eZx5M6S+klAmqRQgUJP5V6LDDSTM/vyNaXi3A4HmD9ynQOZELv+BEMkjJb9vGOqPoFMp",
-	"NJgVqZIpKORgXw7NY/ODIyT2x88KVmROfro+Obx23q4jmTAuAmPT2HbOmFJsb/4OM6WlKsHQqLhYm0eZ",
-	"BhXwyPPskRIF/2ZcQUTmnw42qEP2mdZD+gNiQPgIabw/xs3i+MOKzD+14z9R9UjPmUiZAoGBMmb9SA3Q",
-	"todSYq8QDwtpzWfJQz3wz8fQ73MAnDB0NPb+ii7buMNCejTnD+GdUlJNCD6UEZTQcYGwBmWgJ6A1W0OP",
-	"nDMmTuv9uG8Bf41jW05Ton+m+ot5wtFPU//StFhPL7Tx9L7gcmqqmmpvROSUfLlayyv334wLfPvGG3JX",
-	"qEaI+LSRThUN7adqlwtXGz9WrV4oPYPVrS3QBw3qmeLkOljJOJY5lLEvpYyBicoC84J3xeC68MdttGjK",
-	"mBUwhChg1t5KqsT8IhFDuEKeGJmukbFSMglKO5lwcQdijRsyf+1ZjrL34rMkqDiqGKJl4I054kTxmTSR",
-	"dzb0DqLMSsESGNL7D4Cs+0YivsvZ7RbwnicQc3FZBrStrCvu0fX/eWa8BTTiOiH8iYT/jm89hyobTP8a",
-	"G6FEZ8T5AVJyJ9dcTFpnWudSNe96f7mwK+nJYgO/ci2zSdNWbkF0IyyW+TEdRtv2Q/WISdWdP0YdBxwo",
-	"36lg+NH7CMSXUwvIf/T8nj1/AfmfdgqbkC0DDrQx1jCULSB/gkFjxB6Vzt9Ds7gxsqknByufPRHaFtqC",
-	"7fIW2x+Ec/kgVt8iv56gGffcA+O5aQs+5KKwc3nq8nT3xj9Up7u33gdCRhDwofPQuCG71D8Pbh1kB7BD",
-	"mihxdxb3CqCljTW3KlW8P7RT2epdyGiiPnVA4Y/wWNovdDgrpvRR9Fu7g9l30jEF8w5A210gJfY+ZFR8",
-	"xurg8AppOI+uKYLChQ92+ZJ1/hSzSt+TenVoqZOURgOhnHFhU7TnfFNx18Ha+1PfHzAXS4GuoXRU5Sg9",
-	"/+Z3IacIK/rdodOO1Rd+zHQof/Tf3v231g89tcLjSBVn1clarL2hGjztVu6/rAV6gtca3UtvwZVQp0nc",
-	"qOG7xHb4tGSr3rOL1lgQykxUgRVX9dQQxZMsIfMb6vnc5+4tG29Jx80Wh732Jl1hcjTi5stZShC+4IRp",
-	"NE4PikQzSMoqfyKalq6NB2v/g/aJKtsxZKpC5pILpva+pFyycLtWMhNRwBPXmfu8xqWX8yVXuDFV0L8s",
-	"Ro1N7gNXsNxXsrGeA2cJ515UOhAmpzz5Vs+xyseyoa64WA9w1SQRMmTIpRjc3Vx19QdQTvGOashhqfnZ",
-	"Rmcq7jdamvxpaJZV3s63rLwd1Tw4m0lLoZfTsl5NBh8XK5vPEehQ8bTgmtg7CT1bSTVjs4ibeJYZQjS7",
-	"zzkiqCujtjOWpjF3+0MJcoyN9b+ZSmcLwFyqLaFkB0oXRl+/unl1Y/iTKQiWcjInv9h/GVXAjbaXK/8F",
-	"AAD//3OTMnjTJQAA",
+	"H4sIAAAAAAAC/+xZS2/cNhD+Kwu2Rzp20CAH3fpIgwKOAwQ2egiCBVeaXbOWSHVIeWME+98LUtTqRT1X",
+	"dtzAN+2KnPlmOI+Po28klEkqBQitSPCNqPAWEmYff2MK3t2D0OaHfkiBBERu/oFQkwMlv98yrT6BSqVQ",
+	"YFakKFNAzcFuDs1r88A1JPbhZ4QtCchP56XCc6ftPJIJ42JtZBrZThlDZA/md5ihkliBoTRysTOvMgW4",
+	"5pHn3YEShH8zjhCR4HMhgzpkX2jbpD8gBg2fII0fjnazOP64JcHnfvylqw606YmUIQi9RiPWj9QA7Xsp",
+	"pe56N9r8Qght4aloL+W13fPl6KDrPYBe0EHayPvrRPuKhfQozm/CO0SJC4IPZQQVdFxo2AEa6AkoxXYw",
+	"IjKNiHK9H/efMo7lHqAv5bqzZFvsnpqRuVonpZmWTipOSL4SSGW7LxedvXiavX0vcUlnDNiLFXvBa+97",
+	"0L/GsS2qS0bnE1XhmCdc+9NgfIG2WIdKUO6nD3muLO2qrio7w3JKvp7t5Jn7N+NCv33jNXnIVNOO+LKW",
+	"LmUNHdfbOtvX6BbV5x/bjZ6peyZ3rz5DbxTgE9nJ1doVqyr2jZQxMFFbYDZ4V0zOC7/dphYtaTMC0xCt",
+	"mZW3lZiYJxIxDWeaJ6YNt9sFymRdOcmEi0sQO31Lgtee5VqOXtwIgpqimiBaBd4ZI0eK8KMnw5Eb/OiG",
+	"ujb3RF1u+IoxEPpmpWAJTGHrBSCrvtMRL3eyPu9c8wRiLk6Lk76V7U57VP1/vgu+B22a6oLwF0r9S37n",
+	"ue9YY8Zn4owO1HCcHyAll3LHxaLZqNReYvepjy8qdiUtJXb4V+5ktmjYyjsQwwjzZX5MxZWmf6Q244bi",
+	"5gqzroEOlO82OH3wdgTii6kr2L9wvZFc7wr2OQV6tILfHng4vY/ASGYcU2W0NjWQD10ePZ1ijIBi2+VR",
+	"5enNc7LKG7H9TpHzCJ125PkbzV0H/3EvcjmnByVP79/4eXV6/9b7QsgIppPIeTy70hwLtQ6yAzhQdyhx",
+	"g6hrBJg1k8V8/9Q2ZPPySkYLNaEChd9CS3ueMfPKKfgs91u5k73vqscSnncA+u4zlNgh1yz7jNTJ5uWl",
+	"YewwP1fhg12dnAePQUTGXtbrjKTtpDSaCKXhCxuiI8lLTd2A1z6UHX0C6ZVCu4YykJWz6vl3H4eUFtbq",
+	"90CdbnXglk+rX8ciUCHyVHMpSEC0XNnGSru/mrU3mXDo2NZkvYXigY9/zoRnfg12KF8oxGgK0WrpnnTn",
+	"cYT5XXoxlmBnadMaXnNSZyXQEl6vdc+dRdRMXSZwo47J+d10wmez3nOKVtg6lJmoA8vn7tQ4iidZQoIL",
+	"6vkM7SasnbPeefSoOGtv0OUiZyPuGzFr+KoXDKN59SAPNIOk2qhKR9PKgHty+7pRvqLK7plmWHPmhguG",
+	"D76g3LDwbocyE9GaJ45cjNnGpdfnG4761mTB+LSYxfyKj1trYULDEzbtUDl+i52wpytlZcjyvj6x27ho",
+	"Hw+gGnID0bmHjeINx2cYj2Or5jw7mlfdb03fN8hsxcBqMLRj2KDgYivbTMkOM9RqK3HFVhE3qDeZhmh1",
+	"vedaA56ZGrdiaRpzdwqUaK5jI/1vhunqCvRe4h2h5B5Q5UJfv7p4dWG8JFMQLOUkIL/Yv0wu6luTN4fD",
+	"fwEAAP//54WB9+cpAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

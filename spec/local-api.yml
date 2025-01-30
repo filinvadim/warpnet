@@ -79,6 +79,8 @@ components:
         - $ref: '#/components/schemas/ErrorEvent'
         - $ref: '#/components/schemas/NewTweetEvent'
         - $ref: '#/components/schemas/NewUserEvent'
+        - $ref: '#/components/schemas/DeleteTweetEvent'
+        - $ref: '#/components/schemas/DeleteReplyEvent'
         - $ref: '#/components/schemas/NewFollowEvent'
         - $ref: '#/components/schemas/NewUnfollowEvent'
         - $ref: '#/components/schemas/GetAllTweetsEvent'
@@ -164,11 +166,17 @@ components:
     GetReplyEvent:
       $ref: './event.yml#/components/schemas/GetReplyEvent'
 
+    DeleteReplyEvent:
+      $ref: './event.yml#/components/schemas/DeleteReplyEvent'
+
     GetAllRepliesEvent:
       $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
 
     NewTweetEvent:
       $ref: './event.yml#/components/schemas/NewTweetEvent'
+
+    DeleteTweetEvent:
+      $ref: './event.yml#/components/schemas/DeleteTweetEvent'
 
     GetTweetEvent:
       $ref: './event.yml#/components/schemas/GetTweetEvent'

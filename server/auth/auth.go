@@ -102,6 +102,8 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp api.LoginRespon
 		Version:  "",
 	}
 
+	l.Println("OWNER USER ID:", owner.UserId)
+
 	timer := time.NewTimer(30 * time.Second)
 	defer timer.Stop()
 	select {

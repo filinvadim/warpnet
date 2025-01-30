@@ -59,7 +59,7 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		Build()
 
 	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = repo.db.Set(fixedKey, data); err != nil {
+		if err = repo.db.Set(fixedKey, sortableKey.Bytes()); err != nil {
 			return err
 		}
 		return repo.db.Set(sortableKey, data)
@@ -77,7 +77,15 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
-	data, err := repo.db.Get(fixedKey)
+	sortableKeyBytes, err := repo.db.Get(fixedKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return user, ErrUserNotFound
+	}
+	if err != nil {
+		return user, err
+	}
+
+	data, err := repo.db.Get(storage.DatabaseKey(sortableKeyBytes))
 	if errors.Is(err, storage.ErrKeyNotFound) {
 		return user, ErrUserNotFound
 	}
@@ -95,28 +103,23 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 
 // Delete removes a user by their ID
 func (repo *UserRepo) Delete(userID string) error {
-	if userID == "" {
-		return ErrUserNotFound
-	}
-	u, err := repo.Get(userID)
-	if err != nil {
-		return err
-	}
-	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(defaultRootID).
-		AddReversedTimestamp(u.CreatedAt).
-		AddParentId(u.Id).
-		Build()
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddRootID(defaultRootID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
+	sortableKeyBytes, err := repo.db.Get(fixedKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return ErrUserNotFound
+	}
+	if err != nil {
+		return err
+	}
 	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}
-		return repo.db.Delete(sortableKey)
+		return repo.db.Delete(storage.DatabaseKey(sortableKeyBytes))
 	})
 	return err
 }

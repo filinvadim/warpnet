@@ -89,14 +89,6 @@ components:
         birthdate:
           type: string
           format: date-time
-        followed_by:
-          type: array
-          items:
-            type: string
-        following:
-          type: array
-          items:
-            type: string
         created_at:
           type: string
           format: date-time
@@ -107,8 +99,6 @@ components:
         - node_id
         - following_num
         - followers_num
-        - following
-        - followed_by
         - created_at
         - tweets_num
         - birthdate
@@ -258,5 +248,17 @@ components:
         - children
 
 
+    Following:
+      type: object
+      properties:
+        followee:
+          type: string
+          description: to user
+        follower:
+          type: string
+          description: from user
+      required:
+        - followee
+        - follower
 
 

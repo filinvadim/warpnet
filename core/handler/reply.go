@@ -3,18 +3,22 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"log"
+	"time"
 )
 
+type OwnerReplyStorer interface {
+	GetOwner() (domain.Owner, error)
+}
+
 type ReplyBroadcaster interface {
-	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
-	SubscribeUserUpdate(user domain.User) (err error)
-	UnsubscribeUserUpdate(user domain.User) (err error)
+	PublishOwnerUpdate(ownerId string, msg api.Message) (err error)
 }
 
 type ReplyStorer interface {
@@ -56,7 +60,7 @@ func StreamGetRepliesHandler(
 
 func StreamGetReplyHandler(mr middleware.MiddlewareResolver, repo ReplyStorer) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
-		getTweetF := func(buf []byte) (any, error) {
+		getReplyF := func(buf []byte) (any, error) {
 			var ev event.GetReplyEvent
 			err := json.JSON.Unmarshal(buf, &ev)
 			if err != nil {
@@ -71,13 +75,14 @@ func StreamGetReplyHandler(mr middleware.MiddlewareResolver, repo ReplyStorer) f
 
 			return repo.GetReply(ev.RootId, ev.ParentReplyId, ev.ReplyId)
 		}
-		mr.UnwrapStream(s, getTweetF)
+		mr.UnwrapStream(s, getReplyF)
 	}
 }
 
 func StreamNewReplyHandler(
 	mr middleware.MiddlewareResolver,
 	broadcaster ReplyBroadcaster,
+	authRepo OwnerReplyStorer,
 	repo ReplyStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
@@ -92,37 +97,71 @@ func StreamNewReplyHandler(
 			if err != nil {
 				return nil, err
 			}
-			if ev.Tweet == nil {
+			if ev.Text == "" {
 				return nil, errors.New("empty reply body")
 			}
 
-			return repo.AddReply(domain.Tweet{
-				CreatedAt:     ev.Tweet.CreatedAt,
-				Id:            ev.Tweet.Id,
-				Likes:         ev.Tweet.Likes,
-				LikesCount:    ev.Tweet.LikesCount,
-				ParentId:      ev.Tweet.ParentId,
-				Retweets:      ev.Tweet.Retweets,
-				RetweetsCount: ev.Tweet.RetweetsCount,
-				RootId:        ev.Tweet.RootId,
-				Text:          ev.Tweet.Text,
-				UserId:        ev.Tweet.UserId,
-				Username:      ev.Tweet.Username,
+			reply, err := repo.AddReply(domain.Tweet{
+				CreatedAt:     ev.CreatedAt,
+				Id:            ev.Id,
+				Likes:         ev.Likes,
+				LikesCount:    ev.LikesCount,
+				ParentId:      ev.ParentId,
+				Retweets:      ev.Retweets,
+				RetweetsCount: ev.RetweetsCount,
+				RootId:        ev.RootId,
+				Text:          ev.Text,
+				UserId:        ev.UserId,
+				Username:      ev.Username,
 			})
+			if err != nil {
+				return nil, err
+			}
+			if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+				respReplyEvent := event.NewReplyEvent{
+					CreatedAt:     reply.CreatedAt,
+					Id:            reply.Id,
+					Likes:         reply.Likes,
+					LikesCount:    reply.LikesCount,
+					ParentId:      reply.ParentId,
+					Retweets:      reply.Retweets,
+					RetweetsCount: reply.RetweetsCount,
+					RootId:        reply.RootId,
+					Text:          reply.Text,
+					UserId:        reply.UserId,
+					Username:      reply.Username,
+				}
+				respEvent := &api.Event{}
+				_ = respEvent.FromNewReplyEvent(respReplyEvent)
+				msg := api.Message{
+					Data:      respEvent,
+					NodeId:    owner.NodeId,
+					Path:      stream.ReplyPostPrivate.String(),
+					Timestamp: time.Now(),
+				}
+				if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
+					log.Println("broadcaster publish owner reply update:", err)
+				}
+			}
+
+			return reply, nil
 		}
 		mr.UnwrapStream(s, addF)
 	}
 }
 
 func StreamDeleteReplyHandler(
-	mr middleware.MiddlewareResolver, broadcaster ReplyBroadcaster, repo ReplyStorer,
+	mr middleware.MiddlewareResolver,
+	broadcaster ReplyBroadcaster,
+	authRepo OwnerReplyStorer,
+	repo ReplyStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		if err := mr.Authenticate(s); err != nil {
 			log.Println("delete tweet handler:", err)
 			return
 		}
-		delTweetF := func(buf []byte) (any, error) {
+		delReplyF := func(buf []byte) (any, error) {
 			var ev event.DeleteReplyEvent
 			err := json.JSON.Unmarshal(buf, &ev)
 			if err != nil {
@@ -138,8 +177,30 @@ func StreamDeleteReplyHandler(
 				return nil, errors.New("empty parent id")
 			}
 
-			return nil, repo.DeleteReply(ev.RootId, ev.ParentReplyId, ev.ReplyId)
+			if err = repo.DeleteReply(ev.RootId, ev.ParentReplyId, ev.ReplyId); err != nil {
+				return nil, err
+			}
+			if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+				respReplyEvent := event.DeleteReplyEvent{
+					UserId:        ev.UserId,
+					ReplyId:       ev.ReplyId,
+					ParentReplyId: ev.ParentReplyId,
+					RootId:        ev.RootId,
+				}
+				respEvent := &api.Event{}
+				_ = respEvent.FromDeleteReplyEvent(respReplyEvent)
+				msg := api.Message{
+					Data:      respEvent,
+					NodeId:    owner.NodeId,
+					Path:      stream.ReplyDeletePrivate.String(),
+					Timestamp: time.Now(),
+				}
+				if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
+					log.Println("broadcaster publish owner reply update:", err)
+				}
+			}
+			return nil, nil
 		}
-		mr.UnwrapStream(s, delTweetF)
+		mr.UnwrapStream(s, delReplyF)
 	}
 }

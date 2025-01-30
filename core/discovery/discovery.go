@@ -138,6 +138,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Println("discovery service is not initialized")
 		return
 	}
+
 	if pi.ID == "" {
 		log.Printf("discovery: peer %s has no ID", pi.ID.String())
 		return

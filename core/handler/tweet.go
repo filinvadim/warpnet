@@ -3,18 +3,22 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"log"
+	"time"
 )
 
+type OwnerTweetStorer interface {
+	GetOwner() (domain.Owner, error)
+}
+
 type TweetBroadcaster interface {
-	PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error)
-	SubscribeUserUpdate(user domain.User) (err error)
-	UnsubscribeUserUpdate(user domain.User) (err error)
+	PublishOwnerUpdate(ownerId string, msg api.Message) (err error)
 }
 
 type TweetsStorer interface {
@@ -83,10 +87,12 @@ func StreamGetTweetHandler(mr middleware.MiddlewareResolver, repo TweetsStorer) 
 func StreamNewTweetHandler(
 	mr middleware.MiddlewareResolver,
 	broadcaster TweetBroadcaster,
+	authRepo OwnerTweetStorer,
 	tweetRepo TweetsStorer,
 	timelineRepo TimelineUpdater,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
+
 		if err := mr.Authenticate(s); err != nil {
 			log.Println("new tweet handler:", err)
 			return
@@ -125,6 +131,33 @@ func StreamNewTweetHandler(
 			if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
 				log.Printf("fail adding tweet to timeline: %v", err)
 			}
+			if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+				respTweetEvent := event.NewTweetEvent{
+					CreatedAt:     tweet.CreatedAt,
+					Id:            tweet.Id,
+					Likes:         tweet.Likes,
+					LikesCount:    tweet.LikesCount,
+					ParentId:      tweet.ParentId,
+					Retweets:      tweet.Retweets,
+					RetweetsCount: tweet.RetweetsCount,
+					RootId:        tweet.RootId,
+					Text:          tweet.Text,
+					UserId:        tweet.UserId,
+					Username:      tweet.Username,
+				}
+				respEvent := &api.Event{}
+				_ = respEvent.FromNewTweetEvent(respTweetEvent)
+				msg := api.Message{
+					Data:      respEvent,
+					NodeId:    owner.NodeId,
+					Path:      stream.TweetPostPrivate.String(),
+					Timestamp: time.Now(),
+				}
+				if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
+					log.Println("broadcaster publish owner tweet update:", err)
+				}
+			}
+
 			return tweet, nil
 		}
 		mr.UnwrapStream(s, createF)
@@ -132,7 +165,10 @@ func StreamNewTweetHandler(
 }
 
 func StreamDeleteTweetHandler(
-	mr middleware.MiddlewareResolver, broadcaster TweetBroadcaster, repo TweetsStorer,
+	mr middleware.MiddlewareResolver,
+	broadcaster TweetBroadcaster,
+	authRepo OwnerTweetStorer,
+	repo TweetsStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		if err := mr.Authenticate(s); err != nil {
@@ -152,7 +188,27 @@ func StreamDeleteTweetHandler(
 				return nil, errors.New("empty tweet id")
 			}
 
-			return nil, repo.Delete(ev.UserId, ev.TweetId)
+			if err := repo.Delete(ev.UserId, ev.TweetId); err != nil {
+				return nil, err
+			}
+			if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+				respTweetEvent := event.DeleteTweetEvent{
+					UserId:  ev.UserId,
+					TweetId: ev.TweetId,
+				}
+				respEvent := &api.Event{}
+				_ = respEvent.FromDeleteTweetEvent(respTweetEvent)
+				msg := api.Message{
+					Data:      respEvent,
+					NodeId:    owner.NodeId,
+					Path:      stream.TweetDeletePrivate.String(),
+					Timestamp: time.Now(),
+				}
+				if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
+					log.Println("broadcaster publish owner tweet update:", err)
+				}
+			}
+			return nil, nil
 		}
 		mr.UnwrapStream(s, delTweetF)
 	}

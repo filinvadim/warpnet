@@ -9,7 +9,6 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/api-gen"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
@@ -175,8 +174,8 @@ func (g *Gossip) Close() (err error) {
 }
 
 // PublishOwnerUpdate - publish for followers
-func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err error) {
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, owner.UserId, owner.Username)
+func (g *Gossip) PublishOwnerUpdate(ownerId string, msg api.Message) (err error) {
+	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, ownerId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -205,8 +204,8 @@ func (g *Gossip) PublishOwnerUpdate(owner domain.Owner, msg api.Message) (err er
 }
 
 // SubscribeUserUpdate - follow someone
-func (g *Gossip) SubscribeUserUpdate(user domain.User) (err error) {
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, user.Id, user.Username)
+func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
+	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -225,6 +224,7 @@ func (g *Gossip) SubscribeUserUpdate(user domain.User) (err error) {
 	if err != nil {
 		return err
 	}
+
 	g.mx.Lock()
 	g.subs = append(g.subs, sub)
 	g.mx.Unlock()
@@ -232,8 +232,8 @@ func (g *Gossip) SubscribeUserUpdate(user domain.User) (err error) {
 }
 
 // UnsubscribeUserUpdate - unfollow someone
-func (g *Gossip) UnsubscribeUserUpdate(user domain.User) (err error) {
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, user.Id, user.Username)
+func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
+	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()

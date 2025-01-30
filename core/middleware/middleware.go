@@ -41,7 +41,7 @@ func (p *WarpMiddleware) Authenticate(s warpnet.WarpStream) error {
 	}
 	idMatch := p.clientPeerID == s.Conn().RemotePeer()
 	if !idMatch {
-		log.Printf("middleware: token or peer ID mismatch for %s %s", s.Protocol(), s.Conn().RemotePeer())
+		log.Printf("middleware: peer ID mismatch for %s %s", s.Protocol(), s.Conn().RemotePeer())
 		return errors.New("middleware: peer ID mismatch")
 	}
 

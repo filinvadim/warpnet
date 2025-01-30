@@ -3,8 +3,8 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
-	warpnet "github.com/filinvadim/warpnet/core/warpnet"
-	domain "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 )

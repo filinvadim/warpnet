@@ -132,6 +132,8 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			)
 			break
 		}
+
+		log.Println("WS incoming message:", string(data))
 		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), data)
 		if err != nil {
 			response = newErrorResp(err.Error())

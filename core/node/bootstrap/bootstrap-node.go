@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/relay"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
@@ -140,6 +141,11 @@ func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
 	}
 
 	return n.node.Connect(n.ctx, p)
+}
+
+func (n *WarpBootstrapNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
+	// just a stub
+	return nil, nil
 }
 
 func (n *WarpBootstrapNode) Stop() {

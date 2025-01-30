@@ -64,7 +64,7 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 	}
 
 	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
-		if err = repo.db.Set(fixedKey, data); err != nil {
+		if err = repo.db.Set(fixedKey, sortableKey.Bytes()); err != nil {
 			return err
 		}
 		return repo.db.Set(sortableKey, data)
@@ -80,7 +80,12 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain_gen.Tweet, err 
 		AddRange(storage.FixedRangeKey).
 		AddParentId(tweetID).
 		Build()
-	data, err := repo.db.Get(fixedKey)
+	sortableKeyBytes, err := repo.db.Get(fixedKey)
+	if err != nil {
+		return tweet, err
+	}
+
+	data, err := repo.db.Get(storage.DatabaseKey(sortableKeyBytes))
 	if err != nil {
 		return tweet, err
 	}
@@ -95,25 +100,20 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain_gen.Tweet, err 
 
 // Delete removes a tweet by its ID
 func (repo *TweetRepo) Delete(userID, tweetID string) error {
-	t, err := repo.Get(userID, tweetID)
-	if err != nil {
-		return err
-	}
 	fixedKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(tweetID).
 		Build()
-	sortableKey := storage.NewPrefixBuilder(TweetsNamespace).
-		AddRootID(userID).
-		AddReversedTimestamp(t.CreatedAt).
-		AddParentId(tweetID).
-		Build()
+	sortableKeyBytes, err := repo.db.Get(fixedKey)
+	if err != nil {
+		return err
+	}
 	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
 		if err = repo.db.Delete(fixedKey); err != nil {
 			return err
 		}
-		return repo.db.Delete(sortableKey)
+		return repo.db.Delete(storage.DatabaseKey(sortableKeyBytes))
 	})
 	return err
 }

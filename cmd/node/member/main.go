@@ -61,7 +61,7 @@ func main() {
 
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
-	//followRepo := database.NewFollowRepo(db)
+	followRepo := database.NewFollowRepo(db)
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
@@ -158,11 +158,23 @@ func main() {
 	n.SetStreamHandler(stream.PairPostPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
 	n.SetStreamHandler(stream.TimelineGetPrivate, handler.StreamTimelineHandler(mw, timelineRepo))
 	n.SetStreamHandler(
-		stream.TweetPostPrivate, handler.StreamNewTweetHandler(mw, pubsubService, tweetRepo, timelineRepo),
+		stream.TweetPostPrivate,
+		handler.StreamNewTweetHandler(mw, pubsubService, authRepo, tweetRepo, timelineRepo),
 	)
-	n.SetStreamHandler(stream.TweetDeletePrivate, handler.StreamDeleteTweetHandler(mw, pubsubService, tweetRepo))
-	n.SetStreamHandler(stream.ReplyPostPrivate, handler.StreamNewReplyHandler(mw, pubsubService, replyRepo))
-	n.SetStreamHandler(stream.ReplyDeletePrivate, handler.StreamDeleteReplyHandler(mw, pubsubService, replyRepo))
+	n.SetStreamHandler(
+		stream.TweetDeletePrivate,
+		handler.StreamDeleteTweetHandler(mw, pubsubService, authRepo, tweetRepo),
+	)
+	n.SetStreamHandler(
+		stream.ReplyPostPrivate,
+		handler.StreamNewReplyHandler(mw, pubsubService, authRepo, replyRepo),
+	)
+	n.SetStreamHandler(
+		stream.ReplyDeletePrivate,
+		handler.StreamDeleteReplyHandler(mw, pubsubService, authRepo, replyRepo),
+	)
+	n.SetStreamHandler(stream.FollowPostPrivate, handler.StreamFollowHandler(mw, pubsubService, followRepo))
+	n.SetStreamHandler(stream.UnfollowPostPrivate, handler.StreamUnfollowHandler(mw, pubsubService, followRepo))
 
 	n.SetStreamHandler(stream.UserGetPublic, handler.StreamGetUserHandler(mw, userRepo))
 	n.SetStreamHandler(stream.UsersGetPublic, handler.StreamGetUsersHandler(mw, userRepo))
@@ -171,6 +183,8 @@ func main() {
 	n.SetStreamHandler(stream.TweetGetPublic, handler.StreamGetTweetHandler(mw, tweetRepo))
 	n.SetStreamHandler(stream.ReplyGetPublic, handler.StreamGetReplyHandler(mw, replyRepo))
 	n.SetStreamHandler(stream.RepliesGetPublic, handler.StreamGetRepliesHandler(mw, replyRepo))
+	n.SetStreamHandler(stream.FollowersGetPublic, handler.StreamGetFollowersHandler(mw, followRepo))
+	n.SetStreamHandler(stream.FolloweesGetPublic, handler.StreamGetFolloweesHandler(mw, followRepo))
 
 	nodeReadyChan <- authInfo
 	<-interruptChan
