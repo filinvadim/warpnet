@@ -13,6 +13,7 @@ import (
 type UserStorer interface {
 	Get(userID string) (user domain.User, err error)
 	List(limit *uint64, cursor *string) ([]domain.User, string, error)
+	Create(user domain.User) (domain.User, error)
 }
 
 type FollowingBroadcaster interface {
@@ -30,6 +31,7 @@ type FollowingStorer interface {
 func StreamFollowHandler(
 	mr middleware.MiddlewareResolver,
 	broadcaster FollowingBroadcaster,
+	userRepo UserStorer,
 	repo FollowingStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
@@ -39,7 +41,6 @@ func StreamFollowHandler(
 		}
 
 		followF := func(buf []byte) (any, error) {
-
 			var ev event.NewFollowEvent
 			err := json.JSON.Unmarshal(buf, &ev)
 			if err != nil {
@@ -57,7 +58,17 @@ func StreamFollowHandler(
 				_ = broadcaster.UnsubscribeUserUpdate(ev.Followee)
 				return nil, err
 			}
-			return nil, err
+
+			if err := updateFollowingsNum(
+				userRepo, ev.Followee, ev.Follower,
+				func(existingNum int64) (newNum int64) {
+					return existingNum + 1
+				},
+			); err != nil {
+				log.Printf("error incrementing followers num: %v", err)
+			}
+
+			return nil, nil
 		}
 		mr.UnwrapStream(s, followF)
 	}
@@ -66,6 +77,7 @@ func StreamFollowHandler(
 func StreamUnfollowHandler(
 	mr middleware.MiddlewareResolver,
 	broadcaster FollowingBroadcaster,
+	userRepo UserStorer,
 	repo FollowingStorer,
 ) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
@@ -88,13 +100,28 @@ func StreamUnfollowHandler(
 			}
 
 			err = repo.Unfollow(ev.Follower, ev.Followee)
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+			if err := updateFollowingsNum(
+				userRepo, ev.Followee, ev.Follower,
+				func(existingNum int64) (newNum int64) {
+					return existingNum - 1
+				},
+			); err != nil {
+				log.Printf("error decrementing followers num: %v", err)
+			}
+			return nil, nil
 		}
 		mr.UnwrapStream(s, unfollowF)
 	}
 }
 
-func StreamGetFollowersHandler(mr middleware.MiddlewareResolver, repo FollowingStorer) func(s warpnet.WarpStream) {
+func StreamGetFollowersHandler(
+	mr middleware.MiddlewareResolver,
+	userRepo UserStorer,
+	repo FollowingStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		followersF := func(buf []byte) (any, error) {
 			var ev event.GetFollowersEvent
@@ -106,17 +133,33 @@ func StreamGetFollowersHandler(mr middleware.MiddlewareResolver, repo FollowingS
 				return nil, errors.New("empty user id")
 			}
 			followers, cursor, err := repo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := updateFollowingsNum(
+				userRepo, ev.UserId, "",
+				func(_ int64) int64 {
+					return int64(len(followers))
+				},
+			); err != nil {
+				log.Printf("get followers: updating followers num: %v", err)
+			}
 			return event.FollowersResponse{
 				Cursor:    cursor,
 				Followee:  ev.UserId,
 				Followers: followers,
-			}, err
+			}, nil
 		}
 		mr.UnwrapStream(s, followersF)
 	}
 }
 
-func StreamGetFolloweesHandler(mr middleware.MiddlewareResolver, repo FollowingStorer) func(s warpnet.WarpStream) {
+func StreamGetFolloweesHandler(
+	mr middleware.MiddlewareResolver,
+	userRepo UserStorer,
+	repo FollowingStorer,
+) func(s warpnet.WarpStream) {
 	return func(s warpnet.WarpStream) {
 		followeesF := func(buf []byte) (any, error) {
 			var ev event.GetFolloweesEvent
@@ -128,12 +171,54 @@ func StreamGetFolloweesHandler(mr middleware.MiddlewareResolver, repo FollowingS
 				return nil, errors.New("empty user id")
 			}
 			followees, cursor, err := repo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := updateFollowingsNum(
+				userRepo, ev.UserId, "",
+				func(_ int64) int64 {
+					return int64(len(followees))
+				},
+			); err != nil {
+				log.Printf("get followeEs: updating followers num: %v", err)
+			}
 			return event.FolloweesResponse{
 				Cursor:    cursor,
 				Follower:  ev.UserId,
 				Followees: followees,
-			}, err
+			}, nil
 		}
 		mr.UnwrapStream(s, followeesF)
 	}
+}
+
+type followingNumUpdateClosure func(existingNum int64) (newNum int64)
+
+func updateFollowingsNum(
+	userRepo UserStorer,
+	followeeId, followerId string,
+	updateF followingNumUpdateClosure,
+) error {
+	if followeeId != "" {
+		followeeUser, err := userRepo.Get(followeeId)
+		if err != nil {
+			return err
+		}
+		followeeUser.FollowersNum = updateF(followeeUser.FollowersNum)
+		_, err = userRepo.Create(followeeUser)
+		if err != nil {
+			return err
+		}
+	}
+	if followerId != "" {
+		followerUser, err := userRepo.Get(followerId)
+		if err != nil {
+			return err
+		}
+		followerUser.FollowingNum = updateF(followerUser.FollowingNum)
+		_, err = userRepo.Create(followerUser)
+		return err
+	}
+	return nil
 }

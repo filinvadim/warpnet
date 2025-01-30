@@ -167,11 +167,12 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
-			fmt.Println("connect attempt")
+			log.Println("connect attempt to node:", p.ID.String())
 			if err := n.node.Connect(n.ctx, p); err != nil {
 				log.Println("node connect error:", err)
 				return false, nil
 			}
+			log.Println("connect attempt successful:", p.ID.String())
 			return true, nil
 		},
 		now.Add(time.Minute*2),

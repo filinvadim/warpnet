@@ -2,6 +2,7 @@ package mdns
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -73,7 +74,9 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	if m.node == nil {
 		panic("mdns: node is nil")
 	}
-	log.Println("mdns: handle peer found", p.ID)
+
+	fmt.Printf("\033[1mMDNS: found new peer: %s\033[0m\n", p.ID.String())
+
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.discoveryHandler == nil {

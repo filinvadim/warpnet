@@ -173,8 +173,14 @@ func main() {
 		stream.ReplyDeletePrivate,
 		handler.StreamDeleteReplyHandler(mw, pubsubService, authRepo, replyRepo),
 	)
-	n.SetStreamHandler(stream.FollowPostPrivate, handler.StreamFollowHandler(mw, pubsubService, followRepo))
-	n.SetStreamHandler(stream.UnfollowPostPrivate, handler.StreamUnfollowHandler(mw, pubsubService, followRepo))
+	n.SetStreamHandler(
+		stream.FollowPostPrivate,
+		handler.StreamFollowHandler(mw, pubsubService, userRepo, followRepo),
+	)
+	n.SetStreamHandler(
+		stream.UnfollowPostPrivate,
+		handler.StreamUnfollowHandler(mw, pubsubService, userRepo, followRepo),
+	)
 
 	n.SetStreamHandler(stream.UserGetPublic, handler.StreamGetUserHandler(mw, userRepo))
 	n.SetStreamHandler(stream.UsersGetPublic, handler.StreamGetUsersHandler(mw, userRepo))
@@ -183,8 +189,14 @@ func main() {
 	n.SetStreamHandler(stream.TweetGetPublic, handler.StreamGetTweetHandler(mw, tweetRepo))
 	n.SetStreamHandler(stream.ReplyGetPublic, handler.StreamGetReplyHandler(mw, replyRepo))
 	n.SetStreamHandler(stream.RepliesGetPublic, handler.StreamGetRepliesHandler(mw, replyRepo))
-	n.SetStreamHandler(stream.FollowersGetPublic, handler.StreamGetFollowersHandler(mw, followRepo))
-	n.SetStreamHandler(stream.FolloweesGetPublic, handler.StreamGetFolloweesHandler(mw, followRepo))
+	n.SetStreamHandler(
+		stream.FollowersGetPublic,
+		handler.StreamGetFollowersHandler(mw, userRepo, followRepo),
+	)
+	n.SetStreamHandler(
+		stream.FolloweesGetPublic,
+		handler.StreamGetFolloweesHandler(mw, userRepo, followRepo),
+	)
 
 	nodeReadyChan <- authInfo
 	<-interruptChan

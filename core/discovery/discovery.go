@@ -169,6 +169,9 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	log.Printf("discovery: connected to new peer: %s", pi.ID)
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), stream.InfoGetPublic, nil)
+	if isBootstrapError(err) {
+		return
+	}
 	if err != nil {
 		log.Printf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -211,7 +214,8 @@ func isBootstrapError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if strings.Contains(err.Error(), "protocols not supported") {
+	if strings.Contains(err.Error(), "protocols not supported") ||
+		strings.Contains(err.Error(), "routing: not found") {
 		// bootstrap node doesn't support requesting
 		return true
 	}
