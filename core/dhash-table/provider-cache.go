@@ -69,11 +69,12 @@ func (d *ProviderCache) dumpProviders() {
 			d.mutex.RLock()
 			for key, values := range d.m {
 				for i, v := range values {
-					newValues := values
-					if v.readAt.Before(now.Add(-time.Hour*24)) && i < len(newValues)-1 {
-						slices.Delete(newValues, i, i+1)
+					valuesCopy := values
+					if v.readAt.Before(now.Add(-time.Hour*24)) && i < len(valuesCopy)-1 {
+						// drop outdated items from cache
+						slices.Delete(valuesCopy, i, i+1)
 						delete(d.m, key)
-						d.m[key] = newValues
+						d.m[key] = valuesCopy
 						continue
 					}
 					if err := d.db.AddProvider(d.ctx, []byte(key), v.addr); err != nil {
@@ -149,6 +150,13 @@ func (d *ProviderCache) Close() (err error) {
 			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
+	d.mutex.RLock()
+	for key, values := range d.m {
+		for _, v := range values {
+			_ = d.db.AddProvider(d.ctx, []byte(key), v.addr)
+		}
+	}
+	d.mutex.RUnlock()
 	close(d.stopChan)
 	return err
 }

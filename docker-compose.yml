@@ -1,14 +1,38 @@
 services:
-  bootstrap-node-vadim: # change host name
-    build:
-      context: .
-      dockerfile: Dockerfile
+  node1:
+    image: ghcr.io/filinvadim/warpnet:latest
+    hostname: bootstrap
+    restart: always
     ports:
       - "4011:4001"
       - "4012:4002"
     networks:
-      - warpnet-network
+      - node1-network
+
+  node2:
+    image: ghcr.io/filinvadim/warpnet:latest
+    hostname: bootstrap2
+    restart: always
+    ports:
+      - "4021:4001"
+      - "4022:4002"
+    networks:
+      - node2-network
+
+  node3:
+    image: ghcr.io/filinvadim/warpnet:latest
+    hostname: bootstrap3
+    restart: always
+    ports:
+      - "4031:4001"
+      - "4032:4002"
+    networks:
+      - node3-network
 
 networks:
-  warpnet-network:
+  node1-network:
+    driver: bridge
+  node2-network:
+    driver: bridge
+  node3-network:
     driver: bridge

@@ -75,7 +75,11 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 		panic("mdns: node is nil")
 	}
 
-	fmt.Printf("\033[1mMDNS: found new peer: %s\033[0m\n", p.ID.String())
+	if addrs := m.node.Node().Peerstore().Addrs(p.ID); len(addrs) > 0 {
+		return // node already stored
+	}
+
+	fmt.Printf("\033[1mmdns: found new peer: %s\033[0m\n", p.ID.String())
 
 	m.mx.Lock()
 	defer m.mx.Unlock()
