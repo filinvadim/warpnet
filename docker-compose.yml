@@ -1,40 +1,11 @@
 services:
-  node1:
+  bootstrap-node-vadim: # change host name
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        SEED_ID_ARG: "1"
     ports:
-      - "4001:4001"
-    environment:
-      SEED_ID: "1"
-    networks:
-      - warpnet-network
-
-  node2:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SEED_ID_ARG: "2"
-    ports:
-      - "4002:4001"
-    environment:
-      SEED_ID: "2"
-    networks:
-      - warpnet-network
-
-  node3:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SEED_ID_ARG: "3"
-    ports:
-      - "4003:4001"
-    environment:
-      SEED_ID: "3"
+      - "4011:4001"
+      - "4012:4002"
     networks:
       - warpnet-network
 

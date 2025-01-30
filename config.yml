@@ -1,7 +1,8 @@
-version: 0.1.53
+version: 0.1.54
 node:
     bootstrap:
       - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWRF5X4RyV9ou26h7WHrSLcURPaKQtG5jowBq1Sdwh8tee"
+      - "/ip4/67.207.72.168/tcp/4011/p2p/12D3KooWJL4tMKbuGM4dgUh9fkfTZfhGYwUpkTTrP8LAmBCvR9FF"
     listen_addrs:
       - "/ip4/0.0.0.0/tcp/4001"
 #      - "/ip6/::/tcp/4001"

@@ -148,6 +148,7 @@ func setupMemberNode(
 		isClosed: new(atomic.Bool),
 		retrier:  retrier.New(time.Second * 5),
 		version:  version,
+		streamer: stream.NewStreamPool(ctx, node),
 	}
 
 	n.ipv4, n.ipv6 = parseAddresses(node)
@@ -253,6 +254,9 @@ func (n *WarpNode) IPv6() string {
 }
 
 func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
+	if n == nil || n.streamer == nil {
+		return nil, nil
+	}
 	id, err := warpnet.IDFromBytes([]byte(nodeId))
 	if err != nil {
 		return nil, err
