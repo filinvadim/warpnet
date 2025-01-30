@@ -305,7 +305,6 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	}
 
 	if g.discoveryHandler == nil { // just bootstrap
-		log.Println("pubsub: no discovery handler")
 		if err := g.node.Connect(peerInfo); err != nil {
 			log.Printf("pubsub discovery: failed to connect to peer: %v", err)
 			return

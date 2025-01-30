@@ -41,6 +41,5 @@ jobs:
 
       - name: Deploy to Droplet
         run: |
-          scp ./docker-compose.yml root@${{ secrets.DO_HOST }}:/root
           scp ./deploy.sh root@${{ secrets.DO_HOST }}:/root
           ssh root@${{ secrets.DO_HOST }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
