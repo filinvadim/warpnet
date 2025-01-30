@@ -22,6 +22,7 @@ import (
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
+	log2 "github.com/ipfs/go-log/v2"
 	"log"
 	"os"
 	"os/signal"
@@ -149,6 +150,7 @@ func main() {
 	go mdnsService.Start(n)
 	go pubsubService.Run(n)
 
+	log2.SetDebugLogging()
 	authInfo.Identity.Owner.NodeId = n.ID().String()
 	authInfo.Identity.Owner.Ipv6 = n.IPv6()
 	authInfo.Identity.Owner.Ipv4 = n.IPv4()

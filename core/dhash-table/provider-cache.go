@@ -150,6 +150,7 @@ func (d *ProviderCache) Close() (err error) {
 			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
+	log.Println("providers cache is shutting down")
 	d.mutex.RLock()
 	for key, values := range d.m {
 		for _, v := range values {
