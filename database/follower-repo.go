@@ -31,15 +31,12 @@ func NewFollowRepo(db FollowerStorer) *FollowRepo {
 	return &FollowRepo{db: db}
 }
 
-func (repo *FollowRepo) Follow(fromUserId, toUserId string) error {
+func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Following) error {
 	if fromUserId == "" || toUserId == "" {
 		return errors.New("invalid follow params")
 	}
 
-	data, _ := json.JSON.Marshal(domain.Following{
-		Followee: toUserId,
-		Follower: fromUserId,
-	})
+	data, _ := json.JSON.Marshal(event)
 
 	followeeKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddRootID(followeeSubName).

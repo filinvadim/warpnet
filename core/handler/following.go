@@ -22,7 +22,7 @@ type FollowingBroadcaster interface {
 }
 
 type FollowingStorer interface {
-	Follow(fromUserId, toUserId string) error
+	Follow(fromUserId, toUserId string, event domain.Following) error
 	Unfollow(fromUserId, toUserId string) error
 	GetFollowers(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error)
 	GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error)
@@ -54,7 +54,12 @@ func StreamFollowHandler(
 				return nil, err
 			}
 
-			if err := repo.Follow(ev.Follower, ev.Followee); err != nil {
+			if err := repo.Follow(ev.Follower, ev.Followee, domain.Following{
+				Followee:         ev.Followee,
+				Follower:         ev.Follower,
+				FollowerAvatar:   ev.FollowerAvatar,
+				FollowerUsername: ev.FollowerUsername,
+			}); err != nil {
 				_ = broadcaster.UnsubscribeUserUpdate(ev.Followee)
 				return nil, err
 			}
