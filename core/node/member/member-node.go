@@ -184,7 +184,7 @@ func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.Warp
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
-func (n *WarpNode) NodeInfo(s warpnet.WarpStream) p2p.NodeInfo {
+func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	reg := n.Node()
 	id := reg.ID()
 	addrs := reg.Peerstore().Addrs(id)
@@ -210,8 +210,9 @@ func (n *WarpNode) NodeInfo(s warpnet.WarpStream) p2p.NodeInfo {
 		NetworkState: connectedness.String(),
 		ListenAddrs:  listenAddrs,
 		Version:      n.version.String(),
-		StreamStats:  s.Stat(),
-		OwnerId:      n.ownerId,
+		//StreamStats:  nil, // will be added later
+		OwnerId: n.ownerId,
+		// TODO integrity hash
 	}
 }
 

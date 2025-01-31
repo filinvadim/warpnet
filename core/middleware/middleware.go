@@ -2,22 +2,16 @@ package middleware
 
 import (
 	"bufio"
-	"errors"
-	"fmt"
+	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"io"
 	"log"
 )
 
-type MiddlewareResolver interface {
-	UnwrapStream(s warpnet.WarpStream, fn StreamPoolHandler)
-	Authenticate(s warpnet.WarpStream) error
-	SetClientID(id warpnet.WarpPeerID)
-}
-
-type StreamPoolHandler func([]byte) (any, error)
+type WarpHandler func([]byte) (any, error)
 
 type WarpMiddleware struct {
 	clientPeerID warpnet.WarpPeerID
@@ -27,52 +21,74 @@ func NewWarpMiddleware() *WarpMiddleware {
 	return &WarpMiddleware{""}
 }
 
-func (p *WarpMiddleware) SetClientID(id warpnet.WarpPeerID) {
-	p.clientPeerID = id
+func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
+	return func(s warpnet.WarpStream) {
+		log.Printf("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+		next(s)
+		log.Printf("middleware: server stream closed: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+	}
 }
 
-func (p *WarpMiddleware) Authenticate(s warpnet.WarpStream) error {
-	if p.clientPeerID == "" {
-		return errors.New("no client peer ID")
+func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
+	return func(s warpnet.WarpStream) {
+		if s.Protocol() == stream.PairPostPrivate.ProtocolID() { // first pair client node
+			p.clientPeerID = s.Conn().RemotePeer()
+			next(s)
+			return
+		}
+		route := stream.FromPrIDToRoute(s.Protocol())
+		if route.IsPrivate() && p.clientPeerID == "" {
+			log.Println("middleware: client peer ID not set, ignoring private route:", route)
+			s.Write([]byte("auth failed"))
+			return
+		}
+		if route.IsPrivate() && p.clientPeerID != "" { // not private == no auth
+			idMatch := p.clientPeerID == s.Conn().RemotePeer() // only own client node can do private requests
+			if !idMatch {
+				log.Println("middleware: client peer id mismatch:", s.Conn().RemotePeer())
+				s.Write([]byte("auth failed"))
+				return
+			}
+		}
+		next(s)
 	}
-	route := stream.FromPrIDToRoute(s.Protocol())
-	if !route.IsPrivate() {
-		return nil
-	}
-	idMatch := p.clientPeerID == s.Conn().RemotePeer()
-	if !idMatch {
-		log.Printf("middleware: peer ID mismatch for %s %s", s.Protocol(), s.Conn().RemotePeer())
-		return errors.New("middleware: peer ID mismatch")
-	}
-
-	return nil
 }
 
-// TODO refactor
-func (p *WarpMiddleware) UnwrapStream(s warpnet.WarpStream, fn StreamPoolHandler) {
-	defer func() {
-		log.Printf("middleware closed: %s %s", s.Protocol(), s.Conn().RemotePeer())
-		_ = s.Close()
-	}()
+func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStreamHandler {
+	return func(s warpnet.WarpStream) {
+		defer func() {
+			_ = s.Close()
+		}()
 
-	log.Println("middleware: server stream opened:", s.Protocol(), s.Conn().RemotePeer())
+		reader := bufio.NewReader(s)
+		data, err := io.ReadAll(reader)
+		if err != nil && err != io.EOF {
+			log.Printf("middleware: reading from stream: %v", err)
+			return
+		}
 
-	reader := bufio.NewReader(s)
-	data, err := io.ReadAll(reader)
-	if err != nil && err != io.EOF {
-		log.Printf("middleware: reading from stream: %v", err)
-		return
-	}
+		response, err := fn(data)
+		if err != nil {
+			log.Printf("handling %s message: %v\n", s.Protocol(), err)
+			response = domain.Error{Message: err.Error()}
+		}
 
-	response, err := fn(data)
-	if err != nil {
-		msg := fmt.Sprintf("handling %s message: %v\n", s.Protocol(), err)
-		log.Println(msg)
-		response = []byte(msg)
-	}
+		encoder := json.JSON.NewEncoder(s)
 
-	encoder := json.JSON.NewEncoder(s)
-	if err := encoder.Encode(response); err != nil {
-		log.Printf("fail encoding response: %v", err)
+		switch response.(type) {
+		case []byte:
+			if _, err := s.Write(response.([]byte)); err != nil {
+				log.Printf("middleware: writing bytes to stream: %v", err)
+			}
+			return
+		case p2p.NodeInfo:
+			info := response.(p2p.NodeInfo)
+			info.StreamStats = s.Stat()
+			response = info
+		default:
+		}
+		if err := encoder.Encode(response); err != nil {
+			log.Printf("fail encoding generic response: %v", err)
+		}
 	}
 }

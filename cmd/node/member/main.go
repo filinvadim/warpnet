@@ -155,47 +155,78 @@ func main() {
 	authInfo.Version = conf.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
-	n.SetStreamHandler(stream.PairPostPrivate, handler.StreamNodesPairingHandler(mw, authInfo))
-	n.SetStreamHandler(stream.TimelineGetPrivate, handler.StreamTimelineHandler(mw, timelineRepo))
+	logMw := mw.LoggingMiddleware
+	authMw := mw.AuthMiddleware
+	unwrapMw := mw.UnwrapStreamMiddleware
+
+	n.SetStreamHandler(
+		stream.PairPostPrivate,
+		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
+	)
+	n.SetStreamHandler(
+		stream.TimelineGetPrivate,
+		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
+	)
 	n.SetStreamHandler(
 		stream.TweetPostPrivate,
-		handler.StreamNewTweetHandler(mw, pubsubService, authRepo, tweetRepo, timelineRepo),
+		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
 	)
 	n.SetStreamHandler(
 		stream.TweetDeletePrivate,
-		handler.StreamDeleteTweetHandler(mw, pubsubService, authRepo, tweetRepo),
+		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
 	)
 	n.SetStreamHandler(
 		stream.ReplyPostPrivate,
-		handler.StreamNewReplyHandler(mw, pubsubService, authRepo, replyRepo),
+		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
 		stream.ReplyDeletePrivate,
-		handler.StreamDeleteReplyHandler(mw, pubsubService, authRepo, replyRepo),
+		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
 		stream.FollowPostPrivate,
-		handler.StreamFollowHandler(mw, pubsubService, userRepo, followRepo),
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, userRepo, followRepo)))),
 	)
 	n.SetStreamHandler(
 		stream.UnfollowPostPrivate,
-		handler.StreamUnfollowHandler(mw, pubsubService, userRepo, followRepo),
+		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, userRepo, followRepo)))),
 	)
 
-	n.SetStreamHandler(stream.UserGetPublic, handler.StreamGetUserHandler(mw, userRepo))
-	n.SetStreamHandler(stream.UsersGetPublic, handler.StreamGetUsersHandler(mw, userRepo))
-	n.SetStreamHandler(stream.TweetsGetPublic, handler.StreamGetTweetsHandler(mw, tweetRepo))
-	n.SetStreamHandler(stream.InfoGetPublic, handler.StreamGetInfoHandler(mw, n))
-	n.SetStreamHandler(stream.TweetGetPublic, handler.StreamGetTweetHandler(mw, tweetRepo))
-	n.SetStreamHandler(stream.ReplyGetPublic, handler.StreamGetReplyHandler(mw, replyRepo))
-	n.SetStreamHandler(stream.RepliesGetPublic, handler.StreamGetRepliesHandler(mw, replyRepo))
+	n.SetStreamHandler(
+		stream.UserGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(userRepo)))),
+	)
+	n.SetStreamHandler(
+		stream.UsersGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo)))),
+	)
+	n.SetStreamHandler(
+		stream.TweetsGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
+	)
+	n.SetStreamHandler(
+		stream.InfoGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(n)))),
+	)
+	n.SetStreamHandler(
+		stream.TweetGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
+	)
+	n.SetStreamHandler(
+		stream.ReplyGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
+	)
+	n.SetStreamHandler(
+		stream.RepliesGetPublic,
+		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
+	)
 	n.SetStreamHandler(
 		stream.FollowersGetPublic,
-		handler.StreamGetFollowersHandler(mw, userRepo, followRepo),
+		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, n)))),
 	)
 	n.SetStreamHandler(
 		stream.FolloweesGetPublic,
-		handler.StreamGetFolloweesHandler(mw, userRepo, followRepo),
+		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, n)))),
 	)
 
 	nodeReadyChan <- authInfo
