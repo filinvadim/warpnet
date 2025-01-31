@@ -31,3 +31,8 @@ server/frontend/*
 server/frontend/.git
 !/server/frontend/.gitkeep
 !/server/frontend/dist
+*.pem
+!public.example.pem
+!private.example.pem
+*.sig
+!warpnet.example.sig

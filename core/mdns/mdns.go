@@ -13,28 +13,30 @@ import (
 )
 
 /*
-  Multicast DNS (mDNS) — это протокол, позволяющий устройствам обнаруживать друг друга в локальной сети
-без использования централизованных серверов. Он работает путём многоадресной рассылки (multicast)
-DNS-запросов, что позволяет узлам находить другие узлы по именам хостов.
-  mDNS используется в:
-- Apple Bonjour (автоматическое обнаружение устройств в сети)
-- Google Chromecast, AirPlay
-- IoT-устройствах и P2P-сетях
-- Децентрализованных системах, где нет центрального сервера для объявления узлов
+  Multicast DNS (mDNS) is a protocol that allows devices to discover each other on a local network
+  without the need for centralized servers. It works by sending multicast DNS queries,
+  enabling nodes to find other nodes by hostname.
 
-  Библиотекаgo-libp2p-mdns — это реализация mDNS для libp2p, предназначенная для автоматического обнаружения
-узлов в локальной сети без необходимости централизованного сервера.
-  Основные характеристики go-libp2p-mdns:
-- Обнаружение узлов в локальной сети
-- Позволяет автоматически находить других участников сети без ручной конфигурации.
-- Работает через UDP-многоадресные запросы
-- Позволяет передавать DNS-запросы без использования традиционного DNS-сервера.
-- Гибкость
-- Подходит для временных сетей (Ad-Hoc) и локальных P2P-систем.
-- Zero-configuration
-- Упрощает запуск P2P-приложений без необходимости ручного указания адресов узлов.
-- Оптимизирован для небольших сетей
-- Подходит для локальных приложений, но неэффективен в глобальных масштабируемых P2P-сетях.
+  ### **mDNS is used in:**
+  - Apple Bonjour (automatic device discovery in networks)
+  - Google Chromecast, AirPlay
+  - IoT devices and P2P networks
+  - Decentralized systems where no central server is available for node announcements
+
+  The **go-libp2p-mdns** library is an implementation of mDNS for libp2p, designed for
+  automatic peer discovery in local networks without requiring a centralized server.
+
+  ### **Key Features of go-libp2p-mdns:**
+  - **Local Peer Discovery**
+    - Enables automatic detection of network participants without manual configuration.
+  - **Works via UDP Multicast Queries**
+    - Allows DNS queries to be transmitted without using a traditional DNS server.
+  - **Flexibility**
+    - Suitable for temporary (Ad-Hoc) networks and local P2P systems.
+  - **Zero-Configuration**
+    - Simplifies the deployment of P2P applications without requiring manual node address setup.
+  - **Optimized for Small Networks**
+    - Ideal for local applications but inefficient for large-scale global P2P networks.
 */
 
 const mdnsServiceName = "warpnet"
@@ -56,15 +58,6 @@ type mdnsDiscoveryService struct {
 	discoveryHandler discovery.DiscoveryHandler
 	node             NodeConnector
 	mx               *sync.Mutex
-}
-
-func (m *mdnsDiscoveryService) joinNode(n NodeConnector) {
-	if m == nil {
-		return
-	}
-	m.mx.Lock()
-	defer m.mx.Unlock()
-	m.node = n
 }
 
 func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
@@ -112,8 +105,10 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	}
 	m.isRunning.Store(true)
 
-	m.service.joinNode(n)
-
+	m.service.mx.Lock()
+	m.service.node = n
+	m.service.mx.Unlock()
+	
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 
 	if err := m.mdns.Start(); err != nil {

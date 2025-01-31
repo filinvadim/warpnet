@@ -33,3 +33,8 @@ ssh:
 
 gen-md:
 	./embedmd -w README.md
+
+self-sign:
+	openssl genpkey -algorithm Ed25519 -out private.pem
+	openssl pkey -in private.pem -pubout -out public.pem
+	openssl pkeyutl -sign -inkey private.pem -rawin -in warpnet -out warpnet.sig

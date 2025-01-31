@@ -9,13 +9,27 @@ import (
 	"strings"
 )
 
+/*
+Self-hashing is a security technique where a binary computes its own cryptographic hash (e.g., SHA-256)
+to verify its integrity. This ensures that the executable has not been tampered with or modified after deployment.
+Key Benefits:
+✔ Integrity Verification – Detects unauthorized modifications to the binary.
+✔ Tamper Detection – Helps identify if the binary has been altered by malware or an attacker.
+✔ P2P Security – In decentralized systems, nodes can verify their own integrity without
+
+	a centralized trust authority.
+
+✔ Runtime Checks – The binary can periodically rehash itself to detect modifications. TODO
+
+Self-hashing is useful in distributed P2P networks, where nodes must ensure their integrity independently
+*/
 type (
 	SelfHash       string
 	SelfHashPrefix int
 )
 
 const (
-	Bootstrap = iota
+	Bootstrap SelfHashPrefix = iota
 	Member
 	Business
 )

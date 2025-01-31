@@ -15,34 +15,37 @@ import (
 )
 
 /*
-  Distributed Hash Table (DHT) — это распределённая хеш-таблица, используемая для децентрализованного
-хранения и поиска данных в одноранговых (P2P) сетях. Вместо того чтобы хранить данные на одном сервере,
-DHT распределяет их между множеством узлов.
-DHT решает три основные задачи:
-1. Маршрутизация — позволяет эффективно находить узлы, хранящие определённые ключи.
-2. Хранение данных — каждый узел отвечает за часть пространства ключей.
-3. Поиск по ключу — обеспечивает быстрый доступ к данным без центрального сервера.
-  DHT используется в BitTorrent, IPFS, Ethereum, а также в P2P-мессенджерах и других децентрализованных
-приложениях.
+  Distributed Hash Table (DHT) is a distributed hash table used for decentralized
+  data storage and lookup in peer-to-peer (P2P) networks. Instead of storing data on a single server,
+  DHT distributes it across multiple nodes.
 
-  Библиотека go-libp2p-kad-dht — это реализация Kademlia DHT для libp2p. Она позволяет одноранговым узлам
-обмениваться данными и находить друг друга без централизованных серверов.
-Основные характеристики go-libp2p-kad-dht:
-- Алгоритм Kademlia
-- Использует Kademlia DHT, один из самых популярных алгоритмов для распределённых таблиц.
-- Поиск узлов и данных в P2P-сети
-- Позволяет находить ноды и запрашивать у них данные по ключу.
-- Гибкая маршрутизация
-- Оптимизирован для работы в сетях с высокой динамикой (узлы могут подключаться и отключаться).
-- Поддержка PubSub и IPFS
-- Используется в IPFS и может применяться в P2P-мессенджерах и децентрализованных приложениях.
-- Хэширование ключей
-- Разбивает пространство ключей по узлам, что позволяет равномерно распределять нагрузку.
+  DHT solves three main tasks:
+  1. Routing — enables efficient lookup of nodes storing specific keys.
+  2. Data storage — each node is responsible for a portion of the key space.
+  3. Key-based lookup — provides fast access to data without a central server.
 
-DHT подходит для децентрализованных приложений, которым нужен распределённый поиск без единой точки отказа,
-P2P-сетей, где узлы постоянно подключаются и отключаются, обмена данными между нодами без централизованного сервера.
-  Библиотека go-libp2p-kad-dht удобен, если требуется найти другие узлы в libp2p-сети, нужно организовать
-децентрализованный поиск контента (как в IPFS), требуется эффективная маршрутизация в распределённой сети.
+  DHT is used in BitTorrent, IPFS, Ethereum, as well as in P2P messengers and other decentralized applications.
+
+  The go-libp2p-kad-dht library is an implementation of Kademlia DHT for libp2p.
+  It allows peer-to-peer nodes to exchange data and discover each other without centralized servers.
+
+  Key features of go-libp2p-kad-dht:
+  - **Kademlia Algorithm**
+    - Implements Kademlia DHT, one of the most widely used algorithms for distributed hash tables.
+  - **Node and data lookup in a P2P network**
+    - Enables finding nodes and querying them for data by key.
+  - **Flexible routing**
+    - Optimized for dynamic networks where nodes frequently join and leave.
+  - **Support for PubSub and IPFS**
+    - Used in IPFS and applicable to P2P messengers and decentralized applications.
+  - **Key hashing**
+    - Distributes the key space across nodes, ensuring balanced load distribution.
+
+  DHT is well-suited for decentralized applications that require distributed search without a single point of failure,
+  P2P networks where nodes frequently connect and disconnect, and data exchange between nodes without a central server.
+
+  The go-libp2p-kad-dht library is useful for finding other nodes in a libp2p network,
+  implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
 const protocolPrefix = "/warpnet"

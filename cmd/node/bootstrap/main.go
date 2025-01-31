@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	embedded "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/encrypting"
@@ -35,6 +36,11 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	isValid := encrypting.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
+	if !isValid {
+		log.Println("invalid binary signature - TODO") // TODO
+	}
 
 	selfHash, err := encrypting.GetSelfHash(encrypting.Bootstrap)
 	if err != nil {

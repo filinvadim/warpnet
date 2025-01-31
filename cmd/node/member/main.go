@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	embedded "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
@@ -44,6 +45,11 @@ func main() {
 
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 	log.Println("Warpnet Version:", conf.Version)
+
+	isValid := encrypting.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
+	if !isValid {
+		log.Println("invalid binary signature - TODO") // TODO
+	}
 
 	selfHash, err := encrypting.GetSelfHash(encrypting.Member)
 	if err != nil {

@@ -14,26 +14,30 @@ import (
 )
 
 /*
-	Raft — это алгоритм консенсуса, предназначенный для управления реплицированными журналами в
-распределённых системах. Он был разработан как более понятная альтернатива Paxos и используется
-для обеспечения согласованности данных между узлами.
-  Raft решает три ключевые задачи:
- 1. Выбор лидера (Leader Election): Один узел выбирается лидером, который управляет записями в журнале.
- 2. Лог репликация (Log Replication): Лидер принимает команды и рассылает их другим узлам для синхронизации.
- 3. Безопасность и отказоустойчивость (Safety and Fault Tolerance): Гарантирует, что данные остаются согласованными даже при сбоях.
-    Raft обеспечивает strong consistency, что делает его удобным для распределённых систем, которым нужна предсказуемость и защита от разделения сети (network partitioning).
+	Raft is a consensus algorithm designed for managing replicated logs in distributed systems.
+	It was developed as a more understandable alternative to Paxos and is used to ensure data consistency across nodes.
 
-  Библиотека go-libp2p-consensus — это модуль для libp2p, который позволяет внедрять механизмы консенсуса (включая Raft)
-в одноранговые (peer-to-peer) сети. Он предоставляет абстрактный интерфейс, который можно реализовать для
-различных алгоритмов консенсуса, включая Raft, PoW, PoS и BFT-системы.Основные характеристики go-libp2p-consensus:
-- Абстракция над алгоритмами консенсуса
-- Позволяет использовать Raft или любой другой алгоритм (например, PoS).
-- Интеграция с libp2p
-- Поддерживает работу в децентрализованных системах без центрального координатора.
-- Гибкость
-- Разработчики могут реализовывать свою логику консенсуса, расширяя интерфейсы библиотеки.
-- Работа в P2P-среде
-- Отличается от классического Raft тем, что адаптирован под динамически изменяющиеся сети.
+  Raft solves three key tasks:
+  1. **Leader Election**: One node is elected as the leader, responsible for managing log entries.
+  2. **Log Replication**: The leader accepts commands and distributes them to other nodes for synchronization.
+  3. **Safety and Fault Tolerance**: Ensures that data remains consistent even in the event of failures.
+
+  Raft provides **strong consistency**, making it suitable for distributed systems that require predictability
+  and protection against network partitioning.
+
+  The **go-libp2p-consensus** library is a module for libp2p that enables the integration of consensus mechanisms
+  (including Raft) into peer-to-peer (P2P) networks. It provides an abstract interface that can be implemented
+  for various consensus algorithms, including Raft, PoW, PoS, and BFT-based systems.
+
+  ### **Key Features of go-libp2p-consensus:**
+  - **Consensus Algorithm Abstraction**
+    - Supports Raft and other algorithms (e.g., PoS).
+  - **Integration with libp2p**
+    - Designed for decentralized systems without a central coordinator.
+  - **Flexibility**
+    - Developers can implement custom consensus logic by extending the library's interfaces.
+  - **Optimized for P2P Environments**
+    - Unlike traditional Raft, it is adapted for dynamically changing networks.
 */
 
 type (
