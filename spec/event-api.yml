@@ -13,6 +13,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "/private/post/login/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description:  NOTE! This is WS response. Not a HTTP!
@@ -29,6 +38,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "/private/post/logout/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -41,6 +59,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/get/timeline/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -57,6 +84,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/post/tweet/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -73,6 +109,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/post/reply/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -89,6 +134,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/delete/reply/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -105,6 +159,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/delete/tweet/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -121,6 +184,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/post/follow/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -128,7 +200,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Message"
-
 
   /private/post/unfollow/1.0.0:
     options:
@@ -138,6 +209,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "private/post/unfollow/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -154,6 +234,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/user/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -170,6 +259,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/users/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -186,6 +284,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/tweets/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -202,6 +309,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/tweet/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -218,6 +334,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/replies/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -234,6 +359,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/reply/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -241,6 +375,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Message"
+
   /public/get/info/1.0.0:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
@@ -249,6 +384,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/info/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -265,6 +409,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/followers/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -281,6 +434,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/followees/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
