@@ -3,8 +3,6 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
-	"github.com/filinvadim/warpnet/core/stream"
-	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -17,7 +15,7 @@ type OwnerReplyStorer interface {
 }
 
 type ReplyBroadcaster interface {
-	PublishOwnerUpdate(ownerId string, msg api.Message) (err error)
+	PublishOwnerUpdate(ownerId string, msg event.Message) (err error)
 }
 
 type ReplyStorer interface {
@@ -111,12 +109,14 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 				UserId:        reply.UserId,
 				Username:      reply.Username,
 			}
-			respEvent := &api.Event{}
-			_ = respEvent.FromNewReplyEvent(respReplyEvent)
-			msg := api.Message{
-				Data:      respEvent,
+			reqBody := event.RequestBody{}
+			_ = reqBody.FromNewReplyEvent(respReplyEvent)
+			msgBody := &event.Message_Body{}
+			_ = msgBody.FromRequestBody(reqBody)
+			msg := event.Message{
+				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      stream.ReplyPostPrivate.String(),
+				Path:      event.PRIVATE_POST_REPLY_1_0_0,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
@@ -159,12 +159,14 @@ func StreamDeleteReplyHandler(
 				ParentReplyId: ev.ParentReplyId,
 				RootId:        ev.RootId,
 			}
-			respEvent := &api.Event{}
-			_ = respEvent.FromDeleteReplyEvent(respReplyEvent)
-			msg := api.Message{
-				Data:      respEvent,
+			reqBody := event.RequestBody{}
+			_ = reqBody.FromDeleteReplyEvent(respReplyEvent)
+			msgBody := &event.Message_Body{}
+			_ = msgBody.FromRequestBody(reqBody)
+			msg := event.Message{
+				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      stream.ReplyDeletePrivate.String(),
+				Path:      event.PRIVATE_DELETE_REPLY_1_0_0,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {

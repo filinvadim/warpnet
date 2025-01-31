@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
@@ -15,10 +16,8 @@ import (
 
 	externalRef0 "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
 )
-
-// BaseEvent defines model for BaseEvent.
-type BaseEvent = map[string]interface{}
 
 // ChatsResponse defines model for ChatsResponse.
 type ChatsResponse struct {
@@ -35,6 +34,12 @@ type DeleteTweetEvent = GetTweetEvent
 
 // ErrorEvent defines model for ErrorEvent.
 type ErrorEvent struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
@@ -125,11 +130,7 @@ type GetReplyEvent struct {
 }
 
 // GetTimelineEvent defines model for GetTimelineEvent.
-type GetTimelineEvent struct {
-	Cursor *string `json:"cursor,omitempty"`
-	Limit  *uint64 `json:"limit,omitempty"`
-	UserId string  `json:"user_id"`
-}
+type GetTimelineEvent = GetAllTweetsEvent
 
 // GetTweetEvent defines model for GetTweetEvent.
 type GetTweetEvent struct {
@@ -151,9 +152,30 @@ type LoginEvent struct {
 	Username string `json:"username"`
 }
 
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	Owner Owner  `json:"owner"`
+	Token string `json:"token"`
+}
+
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent struct {
 	Token string `json:"token"`
+}
+
+// Message defines model for Message.
+type Message struct {
+	Body      *Message_Body `json:"body,omitempty"`
+	MessageId string        `json:"message_id"`
+	NodeId    string        `json:"node_id"`
+	Path      string        `json:"path"`
+	Timestamp time.Time     `json:"timestamp,omitempty"`
+	Version   string        `json:"version"`
+}
+
+// Message_Body defines model for Message.Body.
+type Message_Body struct {
+	union json.RawMessage
 }
 
 // MessagesResponse defines model for MessagesResponse.
@@ -172,15 +194,7 @@ type NewChatEvent struct {
 }
 
 // NewFollowEvent defines model for NewFollowEvent.
-type NewFollowEvent struct {
-	// Followee to user
-	Followee string `json:"followee"`
-
-	// Follower from user
-	Follower         string  `json:"follower"`
-	FollowerAvatar   *[]byte `json:"follower_avatar,omitempty"`
-	FollowerUsername *string `json:"follower_username,omitempty"`
-}
+type NewFollowEvent = externalRef0.Following
 
 // NewMessageEvent defines model for NewMessageEvent.
 type NewMessageEvent struct {
@@ -189,45 +203,16 @@ type NewMessageEvent struct {
 }
 
 // NewReplyEvent defines model for NewReplyEvent.
-type NewReplyEvent struct {
-	CreatedAt     time.Time  `json:"created_at"`
-	Id            string     `json:"id"`
-	Likes         *[]Like    `json:"likes,omitempty"`
-	LikesCount    *int64     `json:"likes_count,omitempty"`
-	ParentId      string     `json:"parent_id"`
-	Retweets      *[]Retweet `json:"retweets,omitempty"`
-	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	RootId        string     `json:"root_id"`
-	Text          string     `json:"text"`
-	UserId        string     `json:"user_id"`
-	Username      string     `json:"username"`
-}
+type NewReplyEvent = externalRef0.Tweet
+
+// NewReplyResponse defines model for NewReplyResponse.
+type NewReplyResponse = externalRef0.Tweet
 
 // NewTweetEvent defines model for NewTweetEvent.
-type NewTweetEvent struct {
-	CreatedAt     time.Time  `json:"created_at"`
-	Id            string     `json:"id"`
-	Likes         *[]Like    `json:"likes,omitempty"`
-	LikesCount    *int64     `json:"likes_count,omitempty"`
-	ParentId      string     `json:"parent_id"`
-	Retweets      *[]Retweet `json:"retweets,omitempty"`
-	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	RootId        string     `json:"root_id"`
-	Text          string     `json:"text"`
-	UserId        string     `json:"user_id"`
-	Username      string     `json:"username"`
-}
+type NewTweetEvent = externalRef0.Tweet
 
 // NewUnfollowEvent defines model for NewUnfollowEvent.
-type NewUnfollowEvent struct {
-	// Followee to user
-	Followee string `json:"followee"`
-
-	// Follower from user
-	Follower         string  `json:"follower"`
-	FollowerAvatar   *[]byte `json:"follower_avatar,omitempty"`
-	FollowerUsername *string `json:"follower_username,omitempty"`
-}
+type NewUnfollowEvent = externalRef0.Following
 
 // NewUserEvent defines model for NewUserEvent.
 type NewUserEvent struct {
@@ -242,6 +227,16 @@ type RepliesTreeResponse struct {
 	Cursor  string                   `json:"cursor"`
 	Replies []externalRef0.ReplyNode `json:"replies"`
 	UserId  *string                  `json:"user_id,omitempty"`
+}
+
+// RequestBody defines model for RequestBody.
+type RequestBody struct {
+	union json.RawMessage
+}
+
+// ResponseBody defines model for ResponseBody.
+type ResponseBody struct {
+	union json.RawMessage
 }
 
 // Retweet defines model for Retweet.
@@ -260,31 +255,879 @@ type UsersResponse struct {
 	Users  []externalRef0.User `json:"users"`
 }
 
+// OptionsPrivateDeleteReply100JSONRequestBody defines body for OptionsPrivateDeleteReply100 for application/json ContentType.
+type OptionsPrivateDeleteReply100JSONRequestBody = Message
+
+// OptionsPrivateDeleteTweet100JSONRequestBody defines body for OptionsPrivateDeleteTweet100 for application/json ContentType.
+type OptionsPrivateDeleteTweet100JSONRequestBody = Message
+
+// OptionsPrivateGetTimeline100JSONRequestBody defines body for OptionsPrivateGetTimeline100 for application/json ContentType.
+type OptionsPrivateGetTimeline100JSONRequestBody = Message
+
+// OptionsPrivatePostFollow100JSONRequestBody defines body for OptionsPrivatePostFollow100 for application/json ContentType.
+type OptionsPrivatePostFollow100JSONRequestBody = Message
+
+// OptionsPrivatePostLogin100JSONRequestBody defines body for OptionsPrivatePostLogin100 for application/json ContentType.
+type OptionsPrivatePostLogin100JSONRequestBody = Message
+
+// OptionsPrivatePostLogout100JSONRequestBody defines body for OptionsPrivatePostLogout100 for application/json ContentType.
+type OptionsPrivatePostLogout100JSONRequestBody = Message
+
+// OptionsPrivatePostReply100JSONRequestBody defines body for OptionsPrivatePostReply100 for application/json ContentType.
+type OptionsPrivatePostReply100JSONRequestBody = Message
+
+// OptionsPrivatePostTweet100JSONRequestBody defines body for OptionsPrivatePostTweet100 for application/json ContentType.
+type OptionsPrivatePostTweet100JSONRequestBody = Message
+
+// OptionsPrivatePostUnfollow100JSONRequestBody defines body for OptionsPrivatePostUnfollow100 for application/json ContentType.
+type OptionsPrivatePostUnfollow100JSONRequestBody = Message
+
+// OptionsPublicGetFollowees100JSONRequestBody defines body for OptionsPublicGetFollowees100 for application/json ContentType.
+type OptionsPublicGetFollowees100JSONRequestBody = Message
+
+// OptionsPublicGetFollowers100JSONRequestBody defines body for OptionsPublicGetFollowers100 for application/json ContentType.
+type OptionsPublicGetFollowers100JSONRequestBody = Message
+
+// OptionsPublicGetInfo100JSONRequestBody defines body for OptionsPublicGetInfo100 for application/json ContentType.
+type OptionsPublicGetInfo100JSONRequestBody = Message
+
+// OptionsPublicGetReplies100JSONRequestBody defines body for OptionsPublicGetReplies100 for application/json ContentType.
+type OptionsPublicGetReplies100JSONRequestBody = Message
+
+// OptionsPublicGetReply100JSONRequestBody defines body for OptionsPublicGetReply100 for application/json ContentType.
+type OptionsPublicGetReply100JSONRequestBody = Message
+
+// OptionsPublicGetTweet100JSONRequestBody defines body for OptionsPublicGetTweet100 for application/json ContentType.
+type OptionsPublicGetTweet100JSONRequestBody = Message
+
+// OptionsPublicGetTweets100JSONRequestBody defines body for OptionsPublicGetTweets100 for application/json ContentType.
+type OptionsPublicGetTweets100JSONRequestBody = Message
+
+// OptionsPublicGetUser100JSONRequestBody defines body for OptionsPublicGetUser100 for application/json ContentType.
+type OptionsPublicGetUser100JSONRequestBody = Message
+
+// OptionsPublicGetUsers100JSONRequestBody defines body for OptionsPublicGetUsers100 for application/json ContentType.
+type OptionsPublicGetUsers100JSONRequestBody = Message
+
+// AsRequestBody returns the union data inside the Message_Body as a RequestBody
+func (t Message_Body) AsRequestBody() (RequestBody, error) {
+	var body RequestBody
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRequestBody overwrites any union data inside the Message_Body as the provided RequestBody
+func (t *Message_Body) FromRequestBody(v RequestBody) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRequestBody performs a merge with any union data inside the Message_Body, using the provided RequestBody
+func (t *Message_Body) MergeRequestBody(v RequestBody) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResponseBody returns the union data inside the Message_Body as a ResponseBody
+func (t Message_Body) AsResponseBody() (ResponseBody, error) {
+	var body ResponseBody
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResponseBody overwrites any union data inside the Message_Body as the provided ResponseBody
+func (t *Message_Body) FromResponseBody(v ResponseBody) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResponseBody performs a merge with any union data inside the Message_Body, using the provided ResponseBody
+func (t *Message_Body) MergeResponseBody(v ResponseBody) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t Message_Body) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *Message_Body) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsErrorEvent returns the union data inside the RequestBody as a ErrorEvent
+func (t RequestBody) AsErrorEvent() (ErrorEvent, error) {
+	var body ErrorEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromErrorEvent overwrites any union data inside the RequestBody as the provided ErrorEvent
+func (t *RequestBody) FromErrorEvent(v ErrorEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeErrorEvent performs a merge with any union data inside the RequestBody, using the provided ErrorEvent
+func (t *RequestBody) MergeErrorEvent(v ErrorEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewTweetEvent returns the union data inside the RequestBody as a NewTweetEvent
+func (t RequestBody) AsNewTweetEvent() (NewTweetEvent, error) {
+	var body NewTweetEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewTweetEvent overwrites any union data inside the RequestBody as the provided NewTweetEvent
+func (t *RequestBody) FromNewTweetEvent(v NewTweetEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewTweetEvent performs a merge with any union data inside the RequestBody, using the provided NewTweetEvent
+func (t *RequestBody) MergeNewTweetEvent(v NewTweetEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewUserEvent returns the union data inside the RequestBody as a NewUserEvent
+func (t RequestBody) AsNewUserEvent() (NewUserEvent, error) {
+	var body NewUserEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewUserEvent overwrites any union data inside the RequestBody as the provided NewUserEvent
+func (t *RequestBody) FromNewUserEvent(v NewUserEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewUserEvent performs a merge with any union data inside the RequestBody, using the provided NewUserEvent
+func (t *RequestBody) MergeNewUserEvent(v NewUserEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteTweetEvent returns the union data inside the RequestBody as a DeleteTweetEvent
+func (t RequestBody) AsDeleteTweetEvent() (DeleteTweetEvent, error) {
+	var body DeleteTweetEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteTweetEvent overwrites any union data inside the RequestBody as the provided DeleteTweetEvent
+func (t *RequestBody) FromDeleteTweetEvent(v DeleteTweetEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteTweetEvent performs a merge with any union data inside the RequestBody, using the provided DeleteTweetEvent
+func (t *RequestBody) MergeDeleteTweetEvent(v DeleteTweetEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteReplyEvent returns the union data inside the RequestBody as a DeleteReplyEvent
+func (t RequestBody) AsDeleteReplyEvent() (DeleteReplyEvent, error) {
+	var body DeleteReplyEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteReplyEvent overwrites any union data inside the RequestBody as the provided DeleteReplyEvent
+func (t *RequestBody) FromDeleteReplyEvent(v DeleteReplyEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteReplyEvent performs a merge with any union data inside the RequestBody, using the provided DeleteReplyEvent
+func (t *RequestBody) MergeDeleteReplyEvent(v DeleteReplyEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewFollowEvent returns the union data inside the RequestBody as a NewFollowEvent
+func (t RequestBody) AsNewFollowEvent() (NewFollowEvent, error) {
+	var body NewFollowEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewFollowEvent overwrites any union data inside the RequestBody as the provided NewFollowEvent
+func (t *RequestBody) FromNewFollowEvent(v NewFollowEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewFollowEvent performs a merge with any union data inside the RequestBody, using the provided NewFollowEvent
+func (t *RequestBody) MergeNewFollowEvent(v NewFollowEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewUnfollowEvent returns the union data inside the RequestBody as a NewUnfollowEvent
+func (t RequestBody) AsNewUnfollowEvent() (NewUnfollowEvent, error) {
+	var body NewUnfollowEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewUnfollowEvent overwrites any union data inside the RequestBody as the provided NewUnfollowEvent
+func (t *RequestBody) FromNewUnfollowEvent(v NewUnfollowEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewUnfollowEvent performs a merge with any union data inside the RequestBody, using the provided NewUnfollowEvent
+func (t *RequestBody) MergeNewUnfollowEvent(v NewUnfollowEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAllTweetsEvent returns the union data inside the RequestBody as a GetAllTweetsEvent
+func (t RequestBody) AsGetAllTweetsEvent() (GetAllTweetsEvent, error) {
+	var body GetAllTweetsEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAllTweetsEvent overwrites any union data inside the RequestBody as the provided GetAllTweetsEvent
+func (t *RequestBody) FromGetAllTweetsEvent(v GetAllTweetsEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAllTweetsEvent performs a merge with any union data inside the RequestBody, using the provided GetAllTweetsEvent
+func (t *RequestBody) MergeGetAllTweetsEvent(v GetAllTweetsEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetTimelineEvent returns the union data inside the RequestBody as a GetTimelineEvent
+func (t RequestBody) AsGetTimelineEvent() (GetTimelineEvent, error) {
+	var body GetTimelineEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetTimelineEvent overwrites any union data inside the RequestBody as the provided GetTimelineEvent
+func (t *RequestBody) FromGetTimelineEvent(v GetTimelineEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetTimelineEvent performs a merge with any union data inside the RequestBody, using the provided GetTimelineEvent
+func (t *RequestBody) MergeGetTimelineEvent(v GetTimelineEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetTweetEvent returns the union data inside the RequestBody as a GetTweetEvent
+func (t RequestBody) AsGetTweetEvent() (GetTweetEvent, error) {
+	var body GetTweetEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetTweetEvent overwrites any union data inside the RequestBody as the provided GetTweetEvent
+func (t *RequestBody) FromGetTweetEvent(v GetTweetEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetTweetEvent performs a merge with any union data inside the RequestBody, using the provided GetTweetEvent
+func (t *RequestBody) MergeGetTweetEvent(v GetTweetEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetUserEvent returns the union data inside the RequestBody as a GetUserEvent
+func (t RequestBody) AsGetUserEvent() (GetUserEvent, error) {
+	var body GetUserEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetUserEvent overwrites any union data inside the RequestBody as the provided GetUserEvent
+func (t *RequestBody) FromGetUserEvent(v GetUserEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetUserEvent performs a merge with any union data inside the RequestBody, using the provided GetUserEvent
+func (t *RequestBody) MergeGetUserEvent(v GetUserEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAllUsersEvent returns the union data inside the RequestBody as a GetAllUsersEvent
+func (t RequestBody) AsGetAllUsersEvent() (GetAllUsersEvent, error) {
+	var body GetAllUsersEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAllUsersEvent overwrites any union data inside the RequestBody as the provided GetAllUsersEvent
+func (t *RequestBody) FromGetAllUsersEvent(v GetAllUsersEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAllUsersEvent performs a merge with any union data inside the RequestBody, using the provided GetAllUsersEvent
+func (t *RequestBody) MergeGetAllUsersEvent(v GetAllUsersEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAllRepliesEvent returns the union data inside the RequestBody as a GetAllRepliesEvent
+func (t RequestBody) AsGetAllRepliesEvent() (GetAllRepliesEvent, error) {
+	var body GetAllRepliesEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAllRepliesEvent overwrites any union data inside the RequestBody as the provided GetAllRepliesEvent
+func (t *RequestBody) FromGetAllRepliesEvent(v GetAllRepliesEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAllRepliesEvent performs a merge with any union data inside the RequestBody, using the provided GetAllRepliesEvent
+func (t *RequestBody) MergeGetAllRepliesEvent(v GetAllRepliesEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewReplyEvent returns the union data inside the RequestBody as a NewReplyEvent
+func (t RequestBody) AsNewReplyEvent() (NewReplyEvent, error) {
+	var body NewReplyEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewReplyEvent overwrites any union data inside the RequestBody as the provided NewReplyEvent
+func (t *RequestBody) FromNewReplyEvent(v NewReplyEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewReplyEvent performs a merge with any union data inside the RequestBody, using the provided NewReplyEvent
+func (t *RequestBody) MergeNewReplyEvent(v NewReplyEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetReplyEvent returns the union data inside the RequestBody as a GetReplyEvent
+func (t RequestBody) AsGetReplyEvent() (GetReplyEvent, error) {
+	var body GetReplyEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetReplyEvent overwrites any union data inside the RequestBody as the provided GetReplyEvent
+func (t *RequestBody) FromGetReplyEvent(v GetReplyEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetReplyEvent performs a merge with any union data inside the RequestBody, using the provided GetReplyEvent
+func (t *RequestBody) MergeGetReplyEvent(v GetReplyEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsLoginEvent returns the union data inside the RequestBody as a LoginEvent
+func (t RequestBody) AsLoginEvent() (LoginEvent, error) {
+	var body LoginEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLoginEvent overwrites any union data inside the RequestBody as the provided LoginEvent
+func (t *RequestBody) FromLoginEvent(v LoginEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLoginEvent performs a merge with any union data inside the RequestBody, using the provided LoginEvent
+func (t *RequestBody) MergeLoginEvent(v LoginEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsLogoutEvent returns the union data inside the RequestBody as a LogoutEvent
+func (t RequestBody) AsLogoutEvent() (LogoutEvent, error) {
+	var body LogoutEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLogoutEvent overwrites any union data inside the RequestBody as the provided LogoutEvent
+func (t *RequestBody) FromLogoutEvent(v LogoutEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLogoutEvent performs a merge with any union data inside the RequestBody, using the provided LogoutEvent
+func (t *RequestBody) MergeLogoutEvent(v LogoutEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t RequestBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *RequestBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsErrorResponse returns the union data inside the ResponseBody as a ErrorResponse
+func (t ResponseBody) AsErrorResponse() (ErrorResponse, error) {
+	var body ErrorResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromErrorResponse overwrites any union data inside the ResponseBody as the provided ErrorResponse
+func (t *ResponseBody) FromErrorResponse(v ErrorResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeErrorResponse performs a merge with any union data inside the ResponseBody, using the provided ErrorResponse
+func (t *ResponseBody) MergeErrorResponse(v ErrorResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsLoginResponse returns the union data inside the ResponseBody as a LoginResponse
+func (t ResponseBody) AsLoginResponse() (LoginResponse, error) {
+	var body LoginResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLoginResponse overwrites any union data inside the ResponseBody as the provided LoginResponse
+func (t *ResponseBody) FromLoginResponse(v LoginResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLoginResponse performs a merge with any union data inside the ResponseBody, using the provided LoginResponse
+func (t *ResponseBody) MergeLoginResponse(v LoginResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUsersResponse returns the union data inside the ResponseBody as a UsersResponse
+func (t ResponseBody) AsUsersResponse() (UsersResponse, error) {
+	var body UsersResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUsersResponse overwrites any union data inside the ResponseBody as the provided UsersResponse
+func (t *ResponseBody) FromUsersResponse(v UsersResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUsersResponse performs a merge with any union data inside the ResponseBody, using the provided UsersResponse
+func (t *ResponseBody) MergeUsersResponse(v UsersResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTweetsResponse returns the union data inside the ResponseBody as a TweetsResponse
+func (t ResponseBody) AsTweetsResponse() (TweetsResponse, error) {
+	var body TweetsResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTweetsResponse overwrites any union data inside the ResponseBody as the provided TweetsResponse
+func (t *ResponseBody) FromTweetsResponse(v TweetsResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTweetsResponse performs a merge with any union data inside the ResponseBody, using the provided TweetsResponse
+func (t *ResponseBody) MergeTweetsResponse(v TweetsResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsChatsResponse returns the union data inside the ResponseBody as a ChatsResponse
+func (t ResponseBody) AsChatsResponse() (ChatsResponse, error) {
+	var body ChatsResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromChatsResponse overwrites any union data inside the ResponseBody as the provided ChatsResponse
+func (t *ResponseBody) FromChatsResponse(v ChatsResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeChatsResponse performs a merge with any union data inside the ResponseBody, using the provided ChatsResponse
+func (t *ResponseBody) MergeChatsResponse(v ChatsResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMessagesResponse returns the union data inside the ResponseBody as a MessagesResponse
+func (t ResponseBody) AsMessagesResponse() (MessagesResponse, error) {
+	var body MessagesResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMessagesResponse overwrites any union data inside the ResponseBody as the provided MessagesResponse
+func (t *ResponseBody) FromMessagesResponse(v MessagesResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMessagesResponse performs a merge with any union data inside the ResponseBody, using the provided MessagesResponse
+func (t *ResponseBody) MergeMessagesResponse(v MessagesResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsRepliesTreeResponse returns the union data inside the ResponseBody as a RepliesTreeResponse
+func (t ResponseBody) AsRepliesTreeResponse() (RepliesTreeResponse, error) {
+	var body RepliesTreeResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRepliesTreeResponse overwrites any union data inside the ResponseBody as the provided RepliesTreeResponse
+func (t *ResponseBody) FromRepliesTreeResponse(v RepliesTreeResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRepliesTreeResponse performs a merge with any union data inside the ResponseBody, using the provided RepliesTreeResponse
+func (t *ResponseBody) MergeRepliesTreeResponse(v RepliesTreeResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFolloweesResponse returns the union data inside the ResponseBody as a FolloweesResponse
+func (t ResponseBody) AsFolloweesResponse() (FolloweesResponse, error) {
+	var body FolloweesResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFolloweesResponse overwrites any union data inside the ResponseBody as the provided FolloweesResponse
+func (t *ResponseBody) FromFolloweesResponse(v FolloweesResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFolloweesResponse performs a merge with any union data inside the ResponseBody, using the provided FolloweesResponse
+func (t *ResponseBody) MergeFolloweesResponse(v FolloweesResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFollowersResponse returns the union data inside the ResponseBody as a FollowersResponse
+func (t ResponseBody) AsFollowersResponse() (FollowersResponse, error) {
+	var body FollowersResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFollowersResponse overwrites any union data inside the ResponseBody as the provided FollowersResponse
+func (t *ResponseBody) FromFollowersResponse(v FollowersResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFollowersResponse performs a merge with any union data inside the ResponseBody, using the provided FollowersResponse
+func (t *ResponseBody) MergeFollowersResponse(v FollowersResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNewReplyResponse returns the union data inside the ResponseBody as a NewReplyResponse
+func (t ResponseBody) AsNewReplyResponse() (NewReplyResponse, error) {
+	var body NewReplyResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewReplyResponse overwrites any union data inside the ResponseBody as the provided NewReplyResponse
+func (t *ResponseBody) FromNewReplyResponse(v NewReplyResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewReplyResponse performs a merge with any union data inside the ResponseBody, using the provided NewReplyResponse
+func (t *ResponseBody) MergeNewReplyResponse(v NewReplyResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xZS2/bOBD+KwZ3j0yTYosefNtHt1ggTYEiwR6KwqCtscONRGqHVNyg8H9fkKJeFiVR",
-	"spJmi9xki5z55uO8OPpGNjJJpQChFVl+I2pzCwmzj78xBe/uQWjzQz+kQJZErv+BjSYHSn6/ZVp9ApVK",
-	"ocCsSFGmgJqD3bwxr80D15DYh58RtmRJfjqvFJ47beeRTBgXKyPTyHbKGCJ7ML83GSqJNRhKIxc78ypT",
-	"gCseed4dKEH4N+MIEVl+LmRQh+wLbZv0B8Sg4ROk8UNpN4vjj1uy/NyPv6LqQI+ZSBmC0Cs0Yv1IDdC+",
-	"l1LqrnfB5hdCaAtPTXslr03Pl5Kg6z2AnpEgbeT9daJ9xUJaivOb8A5R4ozgNzKCGjouNOwADfQElGI7",
-	"CPBMI6Ja78f9p4xjuQfoC7nuKNkWu8dGZK7WSTkOSycVRwRfBaS23ReLzl48zd6+lzgnGQP2Ys1e8Nr7",
-	"HvSvcWyT6pze+URZOOYJ1/4wCE/QFutQCsp5+pDHytxUdWXZCZZT8vVsJ8/cvxkX+u0br8lDpppyxOe1",
-	"dC5raFht6yxfwSWqjx9bjZ4pPaOrV5+hNwrwiezkauWSVR37WsoYmGgsMBu8K0bHhd9uk4vmtBmBaYhW",
-	"zMrbSkzME4mYhjPNE1OG2+UCZbKqnWTCxSWInb4ly9ee5VoGLz5ygoaihiBaB97pI2WL8KMHQ9kb/OiG",
-	"ujL3RFVu+Iox4PpmpWAJjOnWC0BWfScRL3eyPnaueQIxF6f5Sd/KdqUtVf+f74LvQZuiOiP8mUL/kt95",
-	"7jvWmPBInFCBjojzA6TkUu64mDUaldpL7D718KRiV9JKYge/ciezWd1W3oEYRpgv82MqrjT9I7UJNxQ3",
-	"V5h0DXSgfLfB8YO3EojPp65g/9LrBfZ6V7DPW6BHS/jtgYfT+wgdyYRjqo3WxjryoYvR01uMACi2XJYq",
-	"Ty+eo1XeiO138pxHqLSB5280dx38x73I5ZzulDy9f+Pvq9P7t94XQkYwvomc1mfXimOh1kF2AAfyDiVu",
-	"EHWNAJNmspjvH1uGbFxeyWimIlSg8Fto255n3HnlLfgk+q3c0ey77DEH8w5A332GEjvkmmSfkTravDw1",
-	"hA7zcxU+2PXJ+fIxGpHQy3qzI2mTlEYjoRxxYV00sHlpqBtg7UNV0Uc0vVJoV1AGonJSPv/u45DKwkb+",
-	"HsjTrQrc4rT+dSwCtUGeai4FWRItF7aw0u6vZu1Nxh0Gt63YPdMMG/SvHzT07glnsDRp4LOiI+eZX7Ad",
-	"ypfmJLg5aTULnkTC4wjzW/ps/Yed0o0rpcczQCuBVvB6rXvu/UnD1HkcN+qYyd+NbyVt1HtO0QpbbWQm",
-	"msDyiT41RPEkS8jygno+cLvZbecUeVrjVZy11+lykZMR9w2vNXzVM7rRtHyQO5pBUi+BFdG0NjofXRhv",
-	"lC+p+soTFwwffE65Zpu7HcpMRCueuLYlZBuXXs7XHPWtiYLwsJjUUxafzVbCuIbHbdquUn7lHbGnK2Tl",
-	"huUdw8hq47w9HEDd5Qa8cw9rxY+IzzAO64PNeXYUryZvx9wftck1A+vO0PZhg4KLrWz3YHZMohZbiQu2",
-	"iLhBvc40RIvrPdca8MzkuAVL05i7U6BEcx0b6X8zTBdXoPcS7wgl94AqF/r61cWrC8OSTEGwlJMl+cX+",
-	"ZWJR35q4ORz+CwAA///gTV1SQSoAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

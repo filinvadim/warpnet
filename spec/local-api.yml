@@ -10,6 +10,7 @@ servers:
 paths:
   /:
     get:
+      description: HTTP endpoint
       summary: Serve static files
       operationId: GetIndex
       responses:
@@ -20,7 +21,7 @@ paths:
     get:
       summary: Serve static files
       operationId: GetStaticFile
-      description: Returns any static file from the /static/ directory
+      description: HTTP endpoint. Returns any static file from the /static/ directory
       parameters:
         - in: path
           name: file
@@ -41,6 +42,7 @@ paths:
   /v1/api/ws:
     get:
       summary: Serve Websocket connection
+      description: HTTP to WS endpoint
       operationId: WebsocketUpgrade
       responses:
         '101':
@@ -50,97 +52,7 @@ paths:
 
 components:
   schemas:
-    Message:
-      type: object
-      properties:
-        version:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-          x-go-type-skip-optional-pointer: true
-        message_id:
-          type: string
-        path:
-          type: string
-          example: /private/login/1.0.0
-        node_id:
-          type: string
-        data:
-          $ref: '#/components/schemas/Event'
-      required:
-        - message_id
-        - node_id
-        - path
-        - version
-
-    Event:
-      anyOf:
-        - $ref: '#/components/schemas/ErrorEvent'
-        - $ref: '#/components/schemas/NewTweetEvent'
-        - $ref: '#/components/schemas/NewUserEvent'
-        - $ref: '#/components/schemas/DeleteTweetEvent'
-        - $ref: '#/components/schemas/DeleteReplyEvent'
-        - $ref: '#/components/schemas/NewFollowEvent'
-        - $ref: '#/components/schemas/NewUnfollowEvent'
-        - $ref: '#/components/schemas/GetAllTweetsEvent'
-        - $ref: '#/components/schemas/GetTimelineEvent'
-        - $ref: '#/components/schemas/GetTweetEvent'
-        - $ref: '#/components/schemas/GetUserEvent'
-        - $ref: '#/components/schemas/GetAllUsersEvent'
-        - $ref: '#/components/schemas/GetAllRepliesEvent'
-        - $ref: '#/components/schemas/NewReplyEvent'
-        - $ref: '#/components/schemas/GetReplyEvent'
-        - $ref: '#/components/schemas/LoginEvent'
-        - $ref: '#/components/schemas/LogoutEvent'
-
-    Response:
-      type: object
-      properties:
-        version:
-          type: string
-        message_id:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        path:
-          type: string
-          example: /private/login/1.0.0
-        node_id:
-          type: string
-        data:
-          type: string
-          format: byte
-          x-go-type: json.RawMessage
-      required:
-        - message_id
-        - node_id
-        - path
-        - timestamp
-        - data
-        - version
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-        owner:
-          $ref: './event.yml#/components/schemas/Owner'
-      required:
-        - token
-        - owner
-
     ErrorResponse:
-      allOf:
-        - $ref: '#/components/schemas/Response'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/ErrorData'
-
-    ErrorData:
       type: object
       properties:
         code:
@@ -150,91 +62,3 @@ components:
       required:
         - code
         - message
-
-    NewMessageEvent:
-      $ref: './event.yml#/components/schemas/NewMessageEvent'
-
-    GetMessageEvent:
-      $ref: './event.yml#/components/schemas/GetMessageEvent'
-
-    GetAllMessagesEvent:
-      $ref: './event.yml#/components/schemas/GetAllMessagesEvent'
-
-    NewReplyEvent:
-      $ref: './event.yml#/components/schemas/NewReplyEvent'
-
-    GetReplyEvent:
-      $ref: './event.yml#/components/schemas/GetReplyEvent'
-
-    DeleteReplyEvent:
-      $ref: './event.yml#/components/schemas/DeleteReplyEvent'
-
-    GetAllRepliesEvent:
-      $ref: './event.yml#/components/schemas/GetAllRepliesEvent'
-
-    NewTweetEvent:
-      $ref: './event.yml#/components/schemas/NewTweetEvent'
-
-    DeleteTweetEvent:
-      $ref: './event.yml#/components/schemas/DeleteTweetEvent'
-
-    GetTweetEvent:
-      $ref: './event.yml#/components/schemas/GetTweetEvent'
-
-    GetAllTweetsEvent:
-      $ref: './event.yml#/components/schemas/GetAllTweetsEvent'
-
-    GetTimelineEvent:
-      $ref: './event.yml#/components/schemas/GetTimelineEvent'
-
-    NewUserEvent:
-      $ref: './event.yml#/components/schemas/NewUserEvent'
-
-    GetUserEvent:
-      $ref: './event.yml#/components/schemas/GetUserEvent'
-
-    GetAllUsersEvent:
-      $ref: './event.yml#/components/schemas/GetAllUsersEvent'
-
-    NewChatEvent:
-      $ref: './event.yml#/components/schemas/NewChatEvent'
-
-    GetChatEvent:
-      $ref: './event.yml#/components/schemas/GetChatEvent'
-
-    GetAllChatsEvent:
-      $ref: './event.yml#/components/schemas/GetAllChatsEvent'
-
-    NewFollowEvent:
-      $ref: './event.yml#/components/schemas/NewFollowEvent'
-
-    NewUnfollowEvent:
-      $ref: './event.yml#/components/schemas/NewUnfollowEvent'
-
-    ErrorEvent:
-      $ref: './event.yml#/components/schemas/ErrorEvent'
-
-    LoginEvent:
-      $ref: './event.yml#/components/schemas/LoginEvent'
-
-    LogoutEvent:
-      $ref: './event.yml#/components/schemas/LogoutEvent'
-
-    BaseEvent:
-      $ref: './event.yml#/components/schemas/BaseEvent'
-
-#      RESPONSES
-    TweetsResponse:
-      $ref: './event.yml#/components/schemas/TweetsResponse'
-
-    RepliesTreeResponse:
-      $ref: './event.yml#/components/schemas/RepliesTreeResponse'
-
-    ChatsResponse:
-      $ref: './event.yml#/components/schemas/ChatsResponse'
-
-    MessagesResponse:
-      $ref: './event.yml#/components/schemas/MessagesResponse'
-
-    UsersResponse:
-      $ref: './event.yml#/components/schemas/UsersResponse'

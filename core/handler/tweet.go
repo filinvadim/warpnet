@@ -3,8 +3,6 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
-	"github.com/filinvadim/warpnet/core/stream"
-	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -17,7 +15,7 @@ type OwnerTweetStorer interface {
 }
 
 type TweetBroadcaster interface {
-	PublishOwnerUpdate(ownerId string, msg api.Message) (err error)
+	PublishOwnerUpdate(ownerId string, msg event.Message) (err error)
 }
 
 type TweetsStorer interface {
@@ -128,12 +126,14 @@ func StreamNewTweetHandler(
 				UserId:        tweet.UserId,
 				Username:      tweet.Username,
 			}
-			respEvent := &api.Event{}
-			_ = respEvent.FromNewTweetEvent(respTweetEvent)
-			msg := api.Message{
-				Data:      respEvent,
+			reqBody := event.RequestBody{}
+			_ = reqBody.FromNewTweetEvent(respTweetEvent)
+			msgBody := &event.Message_Body{}
+			_ = msgBody.FromRequestBody(reqBody)
+			msg := event.Message{
+				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      stream.TweetPostPrivate.String(),
+				Path:      event.PRIVATE_POST_TWEET_1_0_0,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
@@ -170,12 +170,14 @@ func StreamDeleteTweetHandler(
 				UserId:  ev.UserId,
 				TweetId: ev.TweetId,
 			}
-			respEvent := &api.Event{}
-			_ = respEvent.FromDeleteTweetEvent(respTweetEvent)
-			msg := api.Message{
-				Data:      respEvent,
+			reqBody := event.RequestBody{}
+			_ = reqBody.FromDeleteTweetEvent(respTweetEvent)
+			msgBody := &event.Message_Body{}
+			_ = msgBody.FromRequestBody(reqBody)
+			msg := event.Message{
+				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      stream.TweetDeletePrivate.String(),
+				Path:      event.PRIVATE_DELETE_TWEET_1_0_0,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {

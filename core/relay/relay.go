@@ -6,30 +6,33 @@ import (
 )
 
 /*
-  Библиотека libp2p Relay v2 — это улучшенная версия механизма ретрансляции соединений в libp2p,
-предназначенная для случаев, когда узлы не имеют прямого соединения из-за NAT, брандмауэров или других
-сетевых ограничений.
-  В стандартной P2P-сети узлы должны устанавливать прямое соединение друг с другом, но если один или
-оба узла находятся за NAT или Firewall, прямое соединение может быть невозможным. В таких случаях
-Relay v2 позволяет передавать трафик через посреднические узлы (relay nodes), обеспечивая связь даже
-в ограниченных сетях.
-  Основные характеристики libp2p Relay v2:
-- Автоматическое обнаружение и использование релеев
-- Если узел не может подключиться напрямую, он автоматически находит relay-узел.
-- Режимы работы:
-- Active relay: Узел может сам выступать релеем для других.
-- Passive relay: Узел использует релейные сервисы без предоставления своих ресурсов.
-- Hole Punching
-- Использует механизмы NAT-traversal (например, DCUtR – Direct Connection Upgrade through Relay) для попытки установить прямое соединение, прежде чем переключаться на relay.
-- Более эффективная маршрутизация
-- Relay v2 использует маршруты с минимальной задержкой, а не просто передаёт весь трафик через один узел.
-- Оптимизация пропускной способности
+  The libp2p Relay v2 library is an improved version of the connection relay mechanism in libp2p,
+  designed for scenarios where nodes cannot establish direct connections due to NAT, firewalls,
+  or other network restrictions.
 
-  Relay v2 нужен, если:
-- Узлы не имеют публичного IP-адреса и находятся за NAT.
-- Требуется обеспечить соединение между участниками сети, которые не могут соединиться напрямую.
-- Важно уменьшить нагрузку на relay-серверы (по сравнению с Relay v1).
-- Используется DCUtR, чтобы попытаться обойти NAT перед переходом к relay.
+  In a standard P2P network, nodes are expected to connect directly to each other. However, if one
+  or both nodes are behind NAT or a firewall, direct connections may be impossible. In such cases,
+  Relay v2 enables traffic to be relayed through intermediary nodes (relay nodes), allowing communication
+  even in restricted network environments.
+
+  ### **Key Features of libp2p Relay v2:**
+  - **Automatic Relay Discovery and Usage**
+    - If a node cannot establish a direct connection, it automatically finds a relay node.
+  - **Operating Modes:**
+    - **Active relay:** A node can act as a relay for others.
+    - **Passive relay:** A node uses relay services without providing its own resources.
+  - **Hole Punching**
+    - Uses NAT traversal techniques (e.g., **DCUtR – Direct Connection Upgrade through Relay**)
+      to attempt a direct connection before falling back to a relay.
+  - **More Efficient Routing**
+    - Relay v2 selects low-latency routes instead of simply forwarding all traffic through a single node.
+  - **Bandwidth Optimization**
+
+  ### **When is Relay v2 Needed?**
+  - Nodes do not have a public IP address and are behind NAT.
+  - A connection is required between network participants who cannot connect directly.
+  - Reducing relay server load is important (compared to Relay v1).
+  - **DCUtR is used** to attempt NAT traversal before falling back to a relay.
 */
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {

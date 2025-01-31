@@ -14,8 +14,6 @@ import (
 	"strconv"
 )
 
-const SessionTokenName = "X-SESSION-TOKEN"
-
 var (
 	ErrBrowserLoadFailed = errors.New("browser load failed")
 )
@@ -51,15 +49,15 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
 	}
 	swagger.Servers = nil
+	swagger.Paths.Map()
 
 	e := echo.New()
 	e.HideBanner = true
 
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
-		AllowOrigins:  []string{"*"}, // TODO
-		AllowHeaders:  []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "X-SESSION-TOKEN"},
-		ExposeHeaders: []string{SessionTokenName}, // ВАЖНО: Разрешить фронтенду видеть заголовок
-		AllowMethods:  []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowOrigins: []string{"*"}, // TODO
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+		AllowMethods: []string{http.MethodGet},
 	}))
 	e.Use(echomiddleware.Gzip())
 

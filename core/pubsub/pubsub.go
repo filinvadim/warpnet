@@ -8,7 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/gen/api-gen"
+	"github.com/filinvadim/warpnet/gen/event-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
@@ -174,7 +174,7 @@ func (g *Gossip) Close() (err error) {
 }
 
 // PublishOwnerUpdate - publish for followers
-func (g *Gossip) PublishOwnerUpdate(ownerId string, msg api.Message) (err error) {
+func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
 	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, ownerId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
@@ -250,7 +250,7 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 }
 
 func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
-	var simulatedMessage api.Message
+	var simulatedMessage event.Message
 	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
 		log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
@@ -263,7 +263,7 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 		log.Println("pubsub user update: message has no path", string(msg.Data))
 		return fmt.Errorf("pubsub user update: message has no path: %s", string(msg.Data))
 	}
-	if simulatedMessage.Data == nil {
+	if simulatedMessage.Body == nil {
 		return nil
 	}
 	if stream.IsValidRoute(simulatedMessage.Path) {

@@ -135,7 +135,7 @@ func StreamGetFollowersHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, stream.FollowersGetPublic, buf)
+			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWERS_1_0_0, buf)
 		}
 
 		followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
@@ -180,7 +180,7 @@ func StreamGetFolloweesHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, stream.FolloweesGetPublic, buf)
+			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWEES_1_0_0, buf)
 		}
 
 		followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)

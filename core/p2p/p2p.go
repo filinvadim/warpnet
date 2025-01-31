@@ -28,7 +28,7 @@ type NodeInfo struct {
 }
 
 const (
-	DefaultTimeout = 60 * time.Second
+	DefaultTimeout = 180 * time.Second
 	ServiceName    = "warpnet"
 )
 

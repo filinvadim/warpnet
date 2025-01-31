@@ -156,7 +156,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)
 
-	infoResp, err := s.node.GenericStream(pi.ID.String(), stream.InfoGetPublic, nil)
+	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
 	if isBootstrapError(err) {
 		return
 	}
@@ -177,7 +177,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.OwnerId})
-	userResp, err := s.node.GenericStream(pi.ID.String(), stream.UserGetPublic, bt)
+	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER_1_0_0, bt)
 	if isBootstrapError(err) {
 		return
 	}

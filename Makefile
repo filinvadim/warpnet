@@ -2,9 +2,10 @@ oapi-codegen-install:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
 ggen:
-	~/go/bin/oapi-codegen -generate types,spec,skip-prune -package domain ./spec/domain.yml > gen/domain-gen/domain.gen.go
-	~/go/bin/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/warpnet/gen/domain-gen -generate types,spec,skip-prune -package event ./spec/event.yml > gen/event-gen/event.gen.go
-	~/go/bin/oapi-codegen -import-mapping ./event.yml:github.com/filinvadim/warpnet/gen/event-gen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > gen/api-gen/api.gen.go
+	tools/oapi-codegen -generate types,spec,skip-prune -package domain ./spec/domain.yml > gen/domain-gen/domain.gen.go
+	tools/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/warpnet/gen/domain-gen -generate types,spec,skip-prune -package event ./spec/event-api.yml > gen/event-gen/event.gen.go
+	tools/oapi-codegen -import-mapping ./event.yml:github.com/filinvadim/warpnet/gen/event-gen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > gen/api-gen/api.gen.go
+	go run tools/routes-gen.go
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
 
@@ -32,7 +33,7 @@ ssh:
 	ssh root@207.154.221.44
 
 gen-md:
-	./embedmd -w README.md
+	tools/embedmd -w README.md
 
 self-sign:
 	openssl genpkey -algorithm Ed25519 -out private.pem

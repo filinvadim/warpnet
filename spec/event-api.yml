@@ -1,0 +1,734 @@
+openapi: 3.0.0
+info:
+  title: Warp Network
+  version: 1.0.0
+  description: Events for a distributed Twitter-like application
+
+paths:
+  /private/post/login/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description:  NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/post/logout/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+
+  /private/get/timeline/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/post/tweet/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/post/reply/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/delete/reply/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/delete/tweet/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /private/post/follow/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+
+  /private/post/unfollow/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/user/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/users/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/tweets/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/tweet/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/replies/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/reply/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /public/get/info/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/followers/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/followees/1.0.0:
+    options:
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+          x-go-type-skip-optional-pointer: true
+        message_id:
+          type: string
+        path:
+          type: string
+          example: /private/login/1.0.0
+        node_id:
+          type: string
+        body:
+          anyOf:
+            - $ref: '#/components/schemas/RequestBody'
+            - $ref: '#/components/schemas/ResponseBody'
+      required:
+        - message_id
+        - node_id
+        - path
+        - version
+
+    RequestBody:
+      anyOf:
+        - $ref: '#/components/schemas/ErrorEvent'
+        - $ref: '#/components/schemas/NewTweetEvent'
+        - $ref: '#/components/schemas/NewUserEvent'
+        - $ref: '#/components/schemas/DeleteTweetEvent'
+        - $ref: '#/components/schemas/DeleteReplyEvent'
+        - $ref: '#/components/schemas/NewFollowEvent'
+        - $ref: '#/components/schemas/NewUnfollowEvent'
+        - $ref: '#/components/schemas/GetAllTweetsEvent'
+        - $ref: '#/components/schemas/GetTimelineEvent'
+        - $ref: '#/components/schemas/GetTweetEvent'
+        - $ref: '#/components/schemas/GetUserEvent'
+        - $ref: '#/components/schemas/GetAllUsersEvent'
+        - $ref: '#/components/schemas/GetAllRepliesEvent'
+        - $ref: '#/components/schemas/NewReplyEvent'
+        - $ref: '#/components/schemas/GetReplyEvent'
+        - $ref: '#/components/schemas/LoginEvent'
+        - $ref: '#/components/schemas/LogoutEvent'
+
+    ResponseBody:
+      anyOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: '#/components/schemas/LoginResponse'
+        - $ref: '#/components/schemas/UsersResponse'
+        - $ref: '#/components/schemas/TweetsResponse'
+        - $ref: '#/components/schemas/ChatsResponse'
+        - $ref: '#/components/schemas/MessagesResponse'
+        - $ref: '#/components/schemas/RepliesTreeResponse'
+        - $ref: '#/components/schemas/FolloweesResponse'
+        - $ref: '#/components/schemas/FollowersResponse'
+        - $ref: '#/components/schemas/NewReplyResponse'
+
+    NewReplyResponse:
+      $ref: './domain.yml#/components/schemas/Tweet'
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Owner'
+      required:
+        - token
+        - owner
+
+    ErrorResponse:
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    NewMessageEvent:
+      type: object
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        message:
+          $ref: './domain.yml#/components/schemas/ChatMessage'
+
+    GetMessageEvent:
+      allOf:
+        - type: object
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            username:
+              type: string
+            id:
+              type: string
+            chat_id:
+              type: string
+          required:
+            - user_id
+            - chat_id
+            - id
+
+    GetAllMessagesEvent:
+      type: object
+      properties:
+        chat_id:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - chat_id
+
+    NewReplyEvent:
+      $ref: './domain.yml#/components/schemas/Tweet'
+
+    GetReplyEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+        parent_reply_id:
+          type: string
+        root_id:
+          type: string
+        reply_id:
+          type: string
+      required:
+        - root_id
+        - parent_reply_id
+        - reply_id
+        - user_id
+
+    DeleteReplyEvent:
+      $ref: '#/components/schemas/GetReplyEvent'
+
+    GetAllRepliesEvent:
+      type: object
+      properties:
+        parent_reply_id:
+          type: string
+        root_id:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - root_id
+        - parent_reply_id
+
+    NewTweetEvent:
+      $ref: './domain.yml#/components/schemas/Tweet'
+
+    Like:
+      $ref: './domain.yml#/components/schemas/Like'
+
+    Retweet:
+      $ref: './domain.yml#/components/schemas/Retweet'
+
+    GetTweetEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+        tweetId:
+          type: string
+      required:
+        - user_id
+        - tweetId
+
+    DeleteTweetEvent:
+      $ref: '#/components/schemas/GetTweetEvent'
+
+    GetAllTweetsEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - user_id
+
+    GetTimelineEvent:
+      $ref: '#/components/schemas/GetAllTweetsEvent'
+
+    NewUserEvent:
+      type: object
+      properties:
+        user:
+          $ref: './domain.yml#/components/schemas/User'
+
+    GetUserEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+      required:
+        - user_id
+
+    GetAllUsersEvent:
+      type: object
+      properties:
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+        is_following:
+          type: boolean
+        is_followed:
+          type: boolean
+
+    NewChatEvent:
+      type: object
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        from_user_id:
+          type: string
+          minLength: 1
+        to_user_id:
+          type: string
+          minLength: 1
+      required:
+        - from_user_id
+        - to_user_id
+        - created_at
+
+    GetChatEvent:
+      type: object
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        from_user_id:
+          type: string
+          minLength: 1
+        to_user_id:
+          type: string
+          minLength: 1
+      required:
+        - from_user_id
+        - to_user_id
+        - created_at
+
+    GetAllChatsEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        limit:
+          type: integer
+        chats:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Chat'
+      required:
+        - chats
+        - user_id
+
+    NewFollowEvent:
+      $ref: './domain.yml#/components/schemas/Following'
+
+    NewUnfollowEvent:
+      $ref: './domain.yml#/components/schemas/Following'
+
+    GetFollowersEvent:
+      type: object
+      properties:
+        user_id:
+          type: string
+        limit:
+          type: integer
+          x-go-type: uint64
+        cursor:
+          type: string
+      required:
+        - user_id
+
+    GetFolloweesEvent:
+      $ref: '#/components/schemas/GetFollowersEvent'
+
+    FollowersResponse:
+      type: object
+      properties:
+        followee:
+          type: string
+        cursor:
+          type: string
+        followers:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Following'
+      required:
+        - cursor
+        - followers
+        - followee
+
+    FolloweesResponse:
+      type: object
+      properties:
+        follower:
+          type: string
+        cursor:
+          type: string
+        followees:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Following'
+      required:
+        - cursor
+        - followees
+        - follower
+
+    ErrorEvent:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    LoginEvent:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LogoutEvent:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+
+    Owner:
+      $ref: './domain.yml#/components/schemas/Owner'
+
+    TweetsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        tweets:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Tweet'
+      required:
+        - cursor
+        - tweets
+        - user_id
+
+    RepliesTreeResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        replies:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/ReplyNode'
+      required:
+        - cursor
+        - replies
+
+    ChatsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        cursor:
+          type: string
+        chats:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/Chat'
+      required:
+        - cursor
+        - chats
+
+    MessagesResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        chat_id:
+          type: string
+        cursor:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/ChatMessage'
+      required:
+        - cursor
+        - messages
+
+    UsersResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/User'
+      required:
+        - cursor
+        - users

@@ -21,6 +21,7 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
@@ -177,68 +178,67 @@ func main() {
 		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
 	)
 	n.SetStreamHandler(
-		stream.TimelineGetPrivate,
+		event.PRIVATE_GET_TIMELINE_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.TweetPostPrivate,
+		event.PRIVATE_POST_TWEET_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.TweetDeletePrivate,
+		event.PRIVATE_DELETE_TWEET_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.ReplyPostPrivate,
+		event.PRIVATE_POST_REPLY_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.ReplyDeletePrivate,
+		event.PRIVATE_DELETE_REPLY_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.FollowPostPrivate,
+		event.PRIVATE_POST_FOLLOW_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, userRepo, followRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.UnfollowPostPrivate,
+		event.PRIVATE_POST_UNFOLLOW_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, userRepo, followRepo)))),
 	)
-
 	n.SetStreamHandler(
-		stream.UserGetPublic,
+		event.PUBLIC_GET_USER_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(userRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.UsersGetPublic,
+		event.PUBLIC_GET_USERS_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.TweetsGetPublic,
+		event.PUBLIC_GET_TWEETS_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.InfoGetPublic,
+		event.PUBLIC_GET_INFO_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(n)))),
 	)
 	n.SetStreamHandler(
-		stream.TweetGetPublic,
+		event.PUBLIC_GET_TWEET_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.ReplyGetPublic,
+		event.PUBLIC_GET_REPLY_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.RepliesGetPublic,
+		event.PUBLIC_GET_REPLIES_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
 	)
 	n.SetStreamHandler(
-		stream.FollowersGetPublic,
+		event.PUBLIC_GET_FOLLOWERS_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, n)))),
 	)
 	n.SetStreamHandler(
-		stream.FolloweesGetPublic,
+		event.PUBLIC_GET_FOLLOWEES_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, n)))),
 	)
 

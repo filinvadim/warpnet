@@ -23,6 +23,7 @@ const (
 	ErrUnknownClientPeer middlewareError = "auth failed: unknown client peer"
 	ErrStreamReadError   middlewareError = "stream reading failed"
 	ErrInternalNodeError middlewareError = "internal node error"
+	ErrDoublePairing     middlewareError = "double pairing is not allowed"
 )
 
 type WarpHandler func([]byte) (any, error)
@@ -45,6 +46,11 @@ func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpn
 
 func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
+		if s.Protocol() == stream.PairPostPrivate.ProtocolID() && p.clientNodeID != "" {
+			log.Println("middleware: already paired")
+			s.Write(ErrDoublePairing.Bytes())
+			return
+		}
 		if s.Protocol() == stream.PairPostPrivate.ProtocolID() { // first tether client node
 			p.clientNodeID = s.Conn().RemotePeer()
 			next(s)
