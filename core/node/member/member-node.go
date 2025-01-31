@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
@@ -60,18 +61,19 @@ type WarpNode struct {
 
 	ipv4, ipv6 string
 
-	retrier retrier.Retrier
-	ownerId string
-	version *semver.Version
+	retrier  retrier.Retrier
+	ownerId  string
+	version  *semver.Version
+	selfHash encrypting.SelfHash
 }
 
 func NewMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
+	selfHash encrypting.SelfHash,
 	db PersistentLayer,
 	conf config.Config,
 	routingFn routingFunc,
-	version *semver.Version,
 ) (_ *WarpNode, err error) {
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	if err != nil {
@@ -83,7 +85,9 @@ func NewMemberNode(
 		return nil, err
 	}
 
-	n, err := setupMemberNode(ctx, privKey, store, bootstrapAddrs, conf, routingFn, version)
+	n, err := setupMemberNode(
+		ctx, privKey, selfHash, store, bootstrapAddrs, conf, routingFn,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +103,11 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func setupMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
+	selfHash encrypting.SelfHash,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn routingFunc,
-	version *semver.Version,
 ) (*WarpNode, error) {
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
@@ -147,8 +151,9 @@ func setupMemberNode(
 		relay:    nodeRelay,
 		isClosed: new(atomic.Bool),
 		retrier:  retrier.New(time.Second * 5),
-		version:  version,
+		version:  conf.Version,
 		streamer: stream.NewStreamPool(ctx, node),
+		selfHash: selfHash,
 	}
 
 	n.ipv4, n.ipv6 = parseAddresses(node)
@@ -211,9 +216,13 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 		ListenAddrs:  listenAddrs,
 		Version:      n.version.String(),
 		//StreamStats:  nil, // will be added later
-		OwnerId: n.ownerId,
-		// TODO integrity hash
+		OwnerId:  n.ownerId,
+		SelfHash: n.selfHash,
 	}
+}
+
+func (n *WarpNode) SelfHash() encrypting.SelfHash {
+	return n.selfHash
 }
 
 func (n *WarpNode) ID() warpnet.WarpPeerID {

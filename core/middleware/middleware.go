@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"bufio"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -11,10 +10,25 @@ import (
 	"log"
 )
 
+type middlewareError string
+
+func (e middlewareError) Error() string {
+	return string(e)
+}
+func (e middlewareError) Bytes() []byte {
+	return []byte(e)
+}
+
+const (
+	ErrUnknownClientPeer middlewareError = "auth failed: unknown client peer"
+	ErrStreamReadError   middlewareError = "stream reading failed"
+	ErrInternalNodeError middlewareError = "internal node error"
+)
+
 type WarpHandler func([]byte) (any, error)
 
 type WarpMiddleware struct {
-	clientPeerID warpnet.WarpPeerID
+	clientNodeID warpnet.WarpPeerID
 }
 
 func NewWarpMiddleware() *WarpMiddleware {
@@ -31,22 +45,21 @@ func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpn
 
 func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		if s.Protocol() == stream.PairPostPrivate.ProtocolID() { // first pair client node
-			p.clientPeerID = s.Conn().RemotePeer()
+		if s.Protocol() == stream.PairPostPrivate.ProtocolID() { // first tether client node
+			p.clientNodeID = s.Conn().RemotePeer()
 			next(s)
 			return
 		}
 		route := stream.FromPrIDToRoute(s.Protocol())
-		if route.IsPrivate() && p.clientPeerID == "" {
+		if route.IsPrivate() && p.clientNodeID == "" {
 			log.Println("middleware: client peer ID not set, ignoring private route:", route)
-			s.Write([]byte("auth failed"))
+			s.Write(ErrUnknownClientPeer.Bytes())
 			return
 		}
-		if route.IsPrivate() && p.clientPeerID != "" { // not private == no auth
-			idMatch := p.clientPeerID == s.Conn().RemotePeer() // only own client node can do private requests
-			if !idMatch {
+		if route.IsPrivate() && p.clientNodeID != "" { // not private == no auth
+			if !(p.clientNodeID == s.Conn().RemotePeer()) { // only own client node can do private requests
 				log.Println("middleware: client peer id mismatch:", s.Conn().RemotePeer())
-				s.Write([]byte("auth failed"))
+				s.Write(ErrUnknownClientPeer.Bytes())
 				return
 			}
 		}
@@ -54,31 +67,39 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 	}
 }
 
+const (
+	KB = 1000
+	MB = 1000 * KB
+)
+
 func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		defer func() {
-			_ = s.Close()
-		}()
+		defer func() { s.Close() }() //#nosec
 
-		reader := bufio.NewReader(s)
+		var (
+			response any
+			encoder  = json.JSON.NewEncoder(s)
+		)
+
+		reader := io.LimitReader(s, MB) // TODO size limit???
 		data, err := io.ReadAll(reader)
 		if err != nil && err != io.EOF {
 			log.Printf("middleware: reading from stream: %v", err)
+			response = domain.Error{Message: ErrStreamReadError.Error()}
 			return
 		}
-
-		response, err := fn(data)
-		if err != nil {
-			log.Printf("handling %s message: %v\n", s.Protocol(), err)
-			response = domain.Error{Message: err.Error()}
+		if response == nil {
+			response, err = fn(data)
+			if err != nil {
+				log.Printf("handling %s message: %v\n", s.Protocol(), err)
+				response = domain.Error{Message: ErrInternalNodeError.Error()}
+			}
 		}
-
-		encoder := json.JSON.NewEncoder(s)
 
 		switch response.(type) {
 		case []byte:
 			if _, err := s.Write(response.([]byte)); err != nil {
-				log.Printf("middleware: writing bytes to stream: %v", err)
+				log.Printf("middleware: writing raw bytes to stream: %v", err)
 			}
 			return
 		case p2p.NodeInfo:

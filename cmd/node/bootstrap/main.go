@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/encrypting"
@@ -34,6 +35,12 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	selfHash, err := encrypting.GetSelfHash(encrypting.Bootstrap)
+	if err != nil {
+		log.Fatalf("fail to get self hash: %v", err)
+	}
+	fmt.Println("self hash:", selfHash) // TODO verify with network consensus
 
 	seed := []byte("bootstrap")
 	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
@@ -77,7 +84,7 @@ func main() {
 	defer dHashTable.Close()
 
 	n, err := bootstrap.NewBootstrapNode(
-		ctx, warpPrivKey, memoryStore, conf, dHashTable.StartRouting,
+		ctx, warpPrivKey, selfHash, memoryStore, conf, dHashTable.StartRouting,
 	)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)

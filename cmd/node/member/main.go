@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/middleware"
@@ -43,6 +44,12 @@ func main() {
 
 	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
 	log.Println("Warpnet Version:", conf.Version)
+
+	selfHash, err := encrypting.GetSelfHash(encrypting.Member)
+	if err != nil {
+		log.Fatalf("fail to get self hash: %v", err)
+	}
+	fmt.Println("self hash:", selfHash) // TODO verify with network consensus
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -135,10 +142,10 @@ func main() {
 	n, err := member.NewMemberNode(
 		ctx,
 		privKey,
+		selfHash,
 		persLayer,
 		conf,
 		dHashTable.StartRouting,
-		conf.Version,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)

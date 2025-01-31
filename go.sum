@@ -94,12 +94,6 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/fatih/color v1.16.0 h1:zmkK9Ngbjj+K0yRhTVONQh1p/HknKYSlNT+vZCzyokM=
 github.com/fatih/color v1.16.0/go.mod h1:fL2Sau1YI5c0pdGEVCbKQbLXB6edEj1ZgiY4NijnWvE=
-github.com/filinvadim/warpnet-frontend v0.0.84 h1:8YzO2T/ZPN8FOAU69+jxcW2t/U/TnL9riael0khnjP8=
-github.com/filinvadim/warpnet-frontend v0.0.84/go.mod h1:jZ1sALG6byGMnCkF6RUzFFiiP8Ak9KQMe7aDh1rAFBo=
-github.com/filinvadim/warpnet-frontend v0.0.85 h1:wmAKtHwF7+HZYkmoFom9XBOSyIKEqw/IkfDIucfFtFQ=
-github.com/filinvadim/warpnet-frontend v0.0.85/go.mod h1:jZ1sALG6byGMnCkF6RUzFFiiP8Ak9KQMe7aDh1rAFBo=
-github.com/filinvadim/warpnet-frontend v0.0.86 h1:WqlUcfenRYMTQi5TARzdOjLMmHJIz6exlaFi5vwwZ6I=
-github.com/filinvadim/warpnet-frontend v0.0.86/go.mod h1:jZ1sALG6byGMnCkF6RUzFFiiP8Ak9KQMe7aDh1rAFBo=
 github.com/filinvadim/warpnet-frontend v0.0.89 h1:8m3qJdIq/ZtqGZHvvQ+sI4UKgkASKiEkV/3Hq1OCCnk=
 github.com/filinvadim/warpnet-frontend v0.0.89/go.mod h1:jZ1sALG6byGMnCkF6RUzFFiiP8Ak9KQMe7aDh1rAFBo=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=

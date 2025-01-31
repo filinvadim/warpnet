@@ -24,6 +24,7 @@ type NodeInfo struct {
 	Version      string                `json:"version"`
 	StreamStats  network.Stats         `json:"stream_stats"`
 	OwnerId      string                `json:"owner_id"`
+	SelfHash     encrypting.SelfHash   `json:"self_hash"`
 }
 
 const (

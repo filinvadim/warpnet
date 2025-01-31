@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
@@ -19,11 +20,12 @@ import (
 )
 
 type WarpBootstrapNode struct {
-	ctx     context.Context
-	node    warpnet.P2PNode
-	relay   warpnet.WarpRelayCloser
-	retrier retrier.Retrier
-	version *semver.Version
+	ctx      context.Context
+	node     warpnet.P2PNode
+	relay    warpnet.WarpRelayCloser
+	retrier  retrier.Retrier
+	version  *semver.Version
+	selfHash encrypting.SelfHash
 }
 
 type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
@@ -31,6 +33,7 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func NewBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
+	selfHash encrypting.SelfHash,
 	memoryStore warpnet.WarpPeerstore,
 	conf config.Config,
 	routingF routingFunc,
@@ -44,22 +47,22 @@ func NewBootstrapNode(
 	return setupBootstrapNode(
 		ctx,
 		privKey,
+		selfHash,
 		memoryStore,
 		bootstrapAddrs,
 		conf,
 		routingF,
-		conf.Version,
 	)
 }
 
 func setupBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
+	selfHash encrypting.SelfHash,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
-	version *semver.Version,
 ) (*WarpBootstrapNode, error) {
 	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 
@@ -97,11 +100,12 @@ func setupBootstrapNode(
 	}
 
 	n := &WarpBootstrapNode{
-		ctx:     ctx,
-		node:    node,
-		relay:   nodeRelay,
-		retrier: retrier.New(time.Second * 5),
-		version: version,
+		ctx:      ctx,
+		node:     node,
+		relay:    nodeRelay,
+		retrier:  retrier.New(time.Second * 5),
+		version:  conf.Version,
+		selfHash: selfHash,
 	}
 
 	println()
@@ -126,6 +130,10 @@ func (n *WarpBootstrapNode) Addrs() (addrs []string) {
 		addrs = append(addrs, addr.String())
 	}
 	return addrs
+}
+
+func (n *WarpBootstrapNode) SelfHash() encrypting.SelfHash {
+	return n.selfHash
 }
 
 func (n *WarpBootstrapNode) ID() warpnet.WarpPeerID {
