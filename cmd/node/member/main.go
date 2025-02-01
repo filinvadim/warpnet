@@ -246,11 +246,11 @@ func main() {
 
 	nodeReadyChan <- authInfo
 	bootstrapAddrs, _ := conf.Node.AddrInfos()
-	raft, err := consensus.NewRaft(ctx, n, consensusRepo, bootstrapAddrs, false)
+	raft, err := consensus.NewRaft(ctx, n, consensusRepo, false)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft.Start()
+	raft.Negotiate(bootstrapAddrs)
 	defer raft.Shutdown()
 	<-interruptChan
 	log.Println("interrupted...")

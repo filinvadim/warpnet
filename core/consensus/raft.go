@@ -64,19 +64,18 @@ type NodeServicesProvider interface {
 }
 
 type consensusService struct {
-	ctx              context.Context
-	node             NodeServicesProvider
-	consRepo         ConsensusStorer
-	state            StateCommitter
-	raft             *raft.Raft
-	fsm              raft.FSM
-	bootstrapServers []raft.Server
-	config           *raft.Config
-	logStore         raft.LogStore
-	stableStore      raft.StableStore
-	snapshotStore    raft.SnapshotStore
-	transport        *raft.NetworkTransport
-	consensus        *Consensus
+	ctx           context.Context
+	node          NodeServicesProvider
+	consRepo      ConsensusStorer
+	state         StateCommitter
+	raft          *raft.Raft
+	fsm           raft.FSM
+	config        *raft.Config
+	logStore      raft.LogStore
+	stableStore   raft.StableStore
+	snapshotStore raft.SnapshotStore
+	transport     *raft.NetworkTransport
+	consensus     *Consensus
 }
 
 // NewRaft TODO
@@ -84,7 +83,6 @@ func NewRaft(
 	ctx context.Context,
 	node NodeServicesProvider,
 	consRepo ConsensusStorer,
-	bootstrapAddrs []warpnet.PeerAddrInfo,
 	isBootstrap bool,
 ) (_ *consensusService, err error) {
 	var (
@@ -145,40 +143,22 @@ func NewRaft(
 	}
 	log.Println("consensus: transport configured with local address:", transport.LocalAddr())
 
-	bootstrapServers := make([]raft.Server, 0, len(bootstrapAddrs)+1)
-	bootstrapServers = append(
-		bootstrapServers,
-		raft.Server{Suffrage: raft.Voter, ID: config.LocalID, Address: transport.LocalAddr()},
-	)
-
-	for _, addr := range bootstrapAddrs {
-		for _, a := range addr.Addrs {
-			serverIdP2p := raft.ServerID(addr.ID.String())
-			serverAddrP2P := raft.ServerAddress(a.String())
-			bootstrapServers = append(
-				bootstrapServers,
-				raft.Server{Suffrage: raft.Voter, ID: serverIdP2p, Address: serverAddrP2P},
-			)
-		}
-	}
-
 	return &consensusService{
-		ctx:              ctx,
-		node:             node,
-		consRepo:         consRepo,
-		state:            NewStateStore(state, cons),
-		fsm:              fsm,
-		bootstrapServers: bootstrapServers,
-		config:           config,
-		logStore:         logStore,
-		stableStore:      stableStore,
-		snapshotStore:    snapshotStore,
-		transport:        transport,
-		consensus:        cons,
+		ctx:           ctx,
+		node:          node,
+		consRepo:      consRepo,
+		state:         NewStateStore(state, cons),
+		fsm:           fsm,
+		config:        config,
+		logStore:      logStore,
+		stableStore:   stableStore,
+		snapshotStore: snapshotStore,
+		transport:     transport,
+		consensus:     cons,
 	}, nil
 }
 
-func (c *consensusService) Start() {
+func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 	log.Println("consensus: node starting...")
 
 	var err error
@@ -193,7 +173,23 @@ func (c *consensusService) Start() {
 		log.Printf("consensus: failed to create raft node: %v", err)
 	}
 
-	wait := c.raft.BootstrapCluster(raft.Configuration{Servers: c.bootstrapServers})
+	bootstrapServers := make([]raft.Server, 0, len(bootstrapAddrs)+1)
+	bootstrapServers = append(
+		bootstrapServers,
+		raft.Server{Suffrage: raft.Voter, ID: c.config.LocalID, Address: c.transport.LocalAddr()},
+	)
+	for _, addr := range bootstrapAddrs {
+		for _, a := range addr.Addrs {
+			serverIdP2p := raft.ServerID(addr.ID.String())
+			serverAddrP2P := raft.ServerAddress(a.String())
+			bootstrapServers = append(
+				bootstrapServers,
+				raft.Server{Suffrage: raft.Voter, ID: serverIdP2p, Address: serverAddrP2P},
+			)
+		}
+	}
+
+	wait := c.raft.BootstrapCluster(raft.Configuration{Servers: bootstrapServers})
 	if wait != nil && wait.Error() != nil {
 		log.Printf("consensus: failed to bootstrap cluster: %v", wait.Error())
 		return

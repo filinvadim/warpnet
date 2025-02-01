@@ -101,11 +101,11 @@ func main() {
 	go mdnsService.Start(n)
 	go pubsubService.Run(n)
 
-	raft, err := consensus.NewRaft(ctx, n, nil, nil, true)
+	raft, err := consensus.NewRaft(ctx, n, nil, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft.Start()
+	raft.Negotiate(nil)
 	defer raft.Shutdown()
 	<-interruptChan
 	log.Println("bootstrap node interrupted...")
