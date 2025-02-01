@@ -9,13 +9,11 @@ ENV GOPRIVATE='github.com/filinvadim/warpnet'
 ENV GO111MODULE=''
 ENV CGO_ENABLED=0
 
-RUN cp warpnet.example.sig warpnet.sig && cp public.example.pem /public.pem
+RUN cp warpnet.example.sig warpnet.sig && cp public.example.pem public.pem
 RUN go build -mod=vendor -v -o warpnet cmd/node/bootstrap/main.go
 
 FROM alpine:3.20
 COPY --from=builder /go/src/github.com/filinvadim/warpnet/warpnet /warpnet
-COPY --from=builder /go/src/github.com/filinvadim/warpnet/warpnet.example.sig /warpnet.sig
-COPY --from=builder /go/src/github.com/filinvadim/warpnet/public.example.pem /public.pem
 
 EXPOSE 4001 4002
 
