@@ -194,7 +194,14 @@ func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 		log.Printf("consensus: failed to bootstrap cluster: %v", wait.Error())
 		return
 	}
+	go c.listenEvents()
 	log.Printf("consensus: node started with ID: %s and last index: %d", c.raft.String(), c.raft.LastIndex())
+}
+
+func (c *consensusService) listenEvents() {
+	for range c.consensus.Subscribe() {
+		log.Println("consensus: state was updated")
+	}
 }
 
 func (c *consensusService) Commit(newState ConsensusDefaultState) (_ ConsensusDefaultState, err error) {
