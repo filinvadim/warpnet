@@ -49,26 +49,37 @@ func (cr *ConsensusRepo) SnapshotPath() string {
 // FirstIndex returns the first known index from the Raft log.
 func (cr *ConsensusRepo) FirstIndex() (uint64, error) {
 	var value uint64
-	err := cr.db.IterateKeys(ConsensusLogsNamespace, func(key string) error {
-		value = bytesToUint64([]byte(key)[1:])
+	err := cr.db.InnerDB().View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.IteratorOptions{
+			PrefetchValues: false,
+			Reverse:        false,
+		})
+		defer it.Close()
+
+		it.Seek([]byte(ConsensusLogsNamespace))
+		if it.ValidForPrefix([]byte(ConsensusLogsNamespace)) {
+			value = bytesToUint64(it.Item().Key()[len(ConsensusLogsNamespace):])
+		}
 		return nil
 	})
 	return value, err
 }
 
 // LastIndex returns the last known index from the Raft log.
-func (cr *ConsensusRepo) LastIndex() (uint64, error) { // TODO
+func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 	var value uint64
 	err := cr.db.InnerDB().View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
 			PrefetchValues: false,
-			Reverse:        true,
+			Reverse:        true, // Идем в обратном порядке
 		})
 		defer it.Close()
 
-		it.Seek(append([]byte(ConsensusLogsNamespace), 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff))
-		if it.ValidForPrefix([]byte(ConsensusLogsNamespace)) { // TODO
-			value = bytesToUint64(it.Item().Key()[1:])
+		prefix := []byte(ConsensusLogsNamespace)
+		it.Seek(append(prefix, 0xff)) // Ищем последний возможный ключ
+
+		if it.ValidForPrefix(prefix) {
+			value = bytesToUint64(it.Item().Key()[len(prefix):])
 		}
 		return nil
 	})
@@ -100,31 +111,20 @@ func (cr *ConsensusRepo) StoreLog(log *raft.Log) error {
 
 // StoreLogs stores a set of raft logs.
 func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
-	last := 0
-	errTooBig := error(nil)
 	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
-		for i, log := range logs {
-			var (
-				key = append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
-			)
+		for _, log := range logs {
+			key := append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
 			val, err := encode(log)
 			if err != nil {
 				return err
 			}
-			err = txn.Set(key, val.Bytes())
-			if errors.Is(err, badger.ErrTxnTooBig) {
-				last = i
-				errTooBig = err
-				return nil
+			if err = txn.Set(key, val.Bytes()); errors.Is(err, badger.ErrTxnTooBig) {
+				_ = txn.Commit()
+				return err
 			}
-			return err
 		}
-		return nil
+		return txn.Commit()
 	})
-	if errTooBig != nil {
-		errTooBig = nil
-		return cr.StoreLogs(logs[last:])
-	}
 	return err
 }
 
@@ -137,23 +137,37 @@ func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 	)
 
 	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
+		var keysToDelete [][]byte
+
 		err := cr.db.IterateKeys(storage.DatabaseKey(start), func(key string) error {
-			if bytesToUint64([]byte(key)[1:]) > max {
+			index := bytesToUint64([]byte(key)[len(ConsensusLogsNamespace):])
+			if index > max {
 				return nil
 			}
-			err := txn.Delete([]byte(key))
-			if errors.Is(err, badger.ErrTxnTooBig) {
-				end = []byte(key)
-				errTooBig = err
-				return nil
-			}
-			return err
+			keysToDelete = append(keysToDelete, []byte(key))
+			return nil
 		})
-		return err
+		if err != nil {
+			return err
+		}
+
+		for _, key := range keysToDelete {
+			if err := txn.Delete(key); errors.Is(err, badger.ErrTxnTooBig) {
+				_ = txn.Commit() // Завершаем текущую транзакцию
+				end = key        // Запоминаем последний успешный ключ
+				errTooBig = err
+				return nil // Прерываем удаление, чтобы перезапустить процесс
+			}
+		}
+		return txn.Commit()
 	})
+
+	// Если транзакция была слишком большой, продолжаем с последнего удаленного ключа
 	if errTooBig != nil {
-		errTooBig = nil
-		return cr.DeleteRange(bytesToUint64(end[1:]), max)
+		nextMin := bytesToUint64(end[len(ConsensusLogsNamespace):])
+		if nextMin > min { // Гарантия отсутствия бесконечной рекурсии
+			return cr.DeleteRange(nextMin, max)
+		}
 	}
 	return err
 }
@@ -177,14 +191,19 @@ func (cr *ConsensusRepo) Get(key []byte) ([]byte, error) {
 
 // SetUint64 is like Set, but handles uint64 values
 func (cr *ConsensusRepo) SetUint64(key []byte, val uint64) error {
-	return cr.db.Set(storage.DatabaseKey(key), uint64ToBytes(val))
+	fullKey := append([]byte(ConsensusConfigNamespace), key...)
+	return cr.db.Set(storage.DatabaseKey(fullKey), uint64ToBytes(val))
 }
 
-// GetUint64 is like Get, but handles uint64 values
 func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
-	val, err := cr.db.Get(storage.DatabaseKey(key))
+	fullKey := append([]byte(ConsensusConfigNamespace), key...)
+	val, err := cr.db.Get(storage.DatabaseKey(fullKey))
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return 0, ErrKeyNotFound
+	}
 	return bytesToUint64(val), err
 }
+
 func (cr *ConsensusRepo) Close() error {
 	return nil
 }
@@ -204,12 +223,16 @@ func encode(in interface{}) (*bytes.Buffer, error) {
 	return buf, err
 }
 
-// Converts bytes to an integer
 func bytesToUint64(b []byte) uint64 {
+	if len(b) < 8 {
+		var padded [8]byte
+		copy(padded[8-len(b):], b) // Заполняем недостающие байты нулями
+		return binary.BigEndian.Uint64(padded[:])
+	}
 	return binary.BigEndian.Uint64(b)
 }
 
-// Converts a uint to a byte slice
+// Converts a uint64 to a byte slice
 func uint64ToBytes(u uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, u)

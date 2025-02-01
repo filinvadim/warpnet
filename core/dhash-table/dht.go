@@ -154,4 +154,5 @@ func (d *DistributedHashTable) Close() {
 	if err := d.dht.Close(); err != nil {
 		log.Printf("dht: table close: %v\n", err)
 	}
+	d.dht = nil
 }

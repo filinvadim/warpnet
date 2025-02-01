@@ -2,9 +2,11 @@ package consensus
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	"github.com/libp2p/go-libp2p/core/host"
 	"log"
 	"os"
 	"time"
@@ -45,15 +47,45 @@ type (
 	State     = consensus.State
 )
 
-// NewRaft TODO not used for now
+type ConsensusStorer interface {
+	raft.LogStore
+	raft.StableStore
+	SnapshotPath() string
+}
+
+type StateCommitter interface {
+	Commit(key string, secret string) (err error)
+}
+
+type NodeServicesProvider interface {
+	Node() warpnet.P2PNode
+	ID() warpnet.WarpPeerID
+}
+
+type consensusService struct {
+	ctx           context.Context
+	node          NodeServicesProvider
+	consRepo      ConsensusStorer
+	state         StateCommitter
+	raft          *raft.Raft
+	fsm           raft.FSM
+	servers       []raft.Server
+	config        *raft.Config
+	logStore      raft.LogStore
+	stableStore   raft.StableStore
+	snapshotStore raft.SnapshotStore
+	transport     *raft.NetworkTransport
+}
+
+// NewRaft TODO
 func NewRaft(
 	ctx context.Context,
-	node host.Host,
-	consRepo *database.ConsensusRepo,
+	node NodeServicesProvider,
+	consRepo ConsensusStorer,
+	bootstrapAddrs []warpnet.PeerAddrInfo,
 	isBootstrap bool,
-) {
+) (_ *consensusService, err error) {
 	var (
-		err           error
 		logStore      raft.LogStore
 		stableStore   raft.StableStore
 		snapshotStore raft.SnapshotStore
@@ -61,57 +93,118 @@ func NewRaft(
 
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(node.ID().String())
+	config.ElectionTimeout = 60 * time.Second
+	config.Logger = nil
 
 	if isBootstrap {
-		logStore = raft.NewInmemStore()              // In-memory хранилище логов
-		stableStore = raft.NewInmemStore()           // In-memory стабильное хранилище
-		snapshotStore = raft.NewInmemSnapshotStore() // Хранилище снапшотов
+		logStore = raft.NewInmemStore()
+		stableStore = raft.NewInmemStore()
+		snapshotStore = raft.NewInmemSnapshotStore()
 	} else {
 		logStore = consRepo
 		stableStore = consRepo
 		snapshotStore, err = raft.NewFileSnapshotStore(consRepo.SnapshotPath(), 5, os.Stdout)
 		if err != nil {
-			log.Fatalf("Failed to create snapshot store: %v", err)
+			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 	}
 
-	transport, err := libp2praft.NewLibp2pTransport(node, time.Second*30)
-	if err != nil {
-		log.Fatalf("Failed to create raft transport: %v", err)
+	_, err = stableStore.Get([]byte("CurrentTerm"))
+	if errors.Is(err, database.ErrKeyNotFound) {
+		stableStore.SetUint64([]byte("CurrentTerm"), 1)
 	}
+
+	last, err := logStore.LastIndex()
+	if err != nil {
+		return nil, fmt.Errorf("consensus: failed to get last log index: %v", err)
+	}
+	log.Printf("consensus: log store last index %d", last)
+	if last == 0 {
+		err = logStore.StoreLog(&raft.Log{
+			Index:      1,
+			Term:       1,
+			Type:       raft.LogCommand,
+			Data:       []byte("genesis-log"),
+			AppendedAt: time.Now(),
+			Extensions: []byte("ext"),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to store genesis log: %v", err)
+		}
+	}
+	log.Println("consensus: stores configured")
+
+	transport, err := libp2praft.NewLibp2pTransport(node.Node(), time.Second*60)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create raft transport: %w", err)
+	}
+	log.Println("consensus: transport configured with local address:", transport.LocalAddr())
 
 	state := map[string]string{}
 	cons := libp2praft.NewConsensus(&state)
-	// Получаем FSM через Consensus
 	fsm := cons.FSM()
+	log.Println("consensus: FSM and state configured")
 
-	// Создаём узел Raft
-	raftNode, err := raft.NewRaft(
-		config,
-		fsm,
-		logStore, stableStore,
-		snapshotStore,
-		transport,
+	bootstrapServers := make([]raft.Server, 0, len(bootstrapAddrs)+1)
+	bootstrapServers = append(
+		bootstrapServers,
+		raft.Server{Suffrage: raft.Voter, ID: config.LocalID, Address: transport.LocalAddr()},
+	)
+
+	for _, addr := range bootstrapAddrs {
+		for _, a := range addr.Addrs {
+			serverId := raft.ServerID(addr.ID.String())
+			serverAddr := raft.ServerAddress(a.String())
+			bootstrapServers = append(
+				bootstrapServers,
+				raft.Server{Suffrage: raft.Voter, ID: serverId, Address: serverAddr},
+			)
+		}
+
+	}
+	log.Println("consensus: bootstrap servers configured")
+
+	return &consensusService{
+		ctx:           ctx,
+		node:          node,
+		consRepo:      consRepo,
+		state:         NewStateStore(state, cons),
+		fsm:           fsm,
+		servers:       bootstrapServers,
+		config:        config,
+		logStore:      logStore,
+		stableStore:   stableStore,
+		snapshotStore: snapshotStore,
+		transport:     transport,
+	}, nil
+}
+
+func (c *consensusService) Start() {
+	log.Println("consensus: node starting...")
+
+	var err error
+	c.raft, err = raft.NewRaft(
+		c.config,
+		c.fsm,
+		c.logStore, c.stableStore,
+		c.snapshotStore,
+		c.transport,
 	)
 	if err != nil {
-		log.Fatalf("Failed to create raft node: %v", err)
+		log.Printf("consensus: failed to create raft node: %v", err)
 	}
+	c.raft.BootstrapCluster(raft.Configuration{Servers: c.servers})
+	log.Printf("consensus: node started with ID: %s and last index: %d", c.raft.String(), c.raft.LastIndex())
+}
 
-	raftNode.BootstrapCluster(raft.Configuration{
-		Servers: []raft.Server{
-			{
-				ID:      config.LocalID,
-				Address: transport.LocalAddr(),
-			},
-		},
-	})
-	defer func() {
-		wait := raftNode.Shutdown()
-		if wait != nil && wait.Error() != nil {
-			log.Fatalf("failed to shutdown raft: %v", wait.Error())
-		}
-	}()
-
-	log.Printf("Raft node started with ID: %s", config.LocalID)
-	select {}
+func (c *consensusService) Shutdown() {
+	if c == nil || c.raft == nil {
+		return
+	}
+	wait := c.raft.Shutdown()
+	if wait != nil && wait.Error() != nil {
+		log.Printf("failed to shutdown raft: %v", wait.Error())
+	}
+	log.Println("consensus: raft node shut down")
+	c.raft = nil
 }

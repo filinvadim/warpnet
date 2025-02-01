@@ -12,6 +12,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"log"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -168,8 +169,8 @@ func (g *Gossip) Close() (err error) {
 		return errors.Join(errs...)
 	}
 
-	g.pubsub = nil
 	g.isRunning.Store(false)
+	g.pubsub = nil
 	return
 }
 
@@ -244,8 +245,16 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 	err = topic.Close()
 
 	g.mx.Lock()
+	for i, s := range g.subs {
+		if s.Topic() == topicName {
+			s.Cancel()
+			slices.Delete(g.subs, i, i+1)
+			break
+		}
+	}
 	delete(g.topics, topicName)
 	g.mx.Unlock()
+
 	return err
 }
 

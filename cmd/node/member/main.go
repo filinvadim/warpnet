@@ -8,6 +8,7 @@ import (
 	embedded "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/encrypting"
@@ -79,6 +80,7 @@ func main() {
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
+	consensusRepo := database.NewConsensusRepo(db)
 
 	var (
 		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
@@ -243,6 +245,13 @@ func main() {
 	)
 
 	nodeReadyChan <- authInfo
+	bootstrapAddrs, _ := conf.Node.AddrInfos()
+	raft, err := consensus.NewRaft(ctx, n, consensusRepo, bootstrapAddrs, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+	raft.Start()
+	defer raft.Shutdown()
 	<-interruptChan
 	log.Println("interrupted...")
 }

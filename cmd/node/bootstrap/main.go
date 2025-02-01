@@ -5,6 +5,7 @@ import (
 	"fmt"
 	embedded "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/mdns"
@@ -100,6 +101,12 @@ func main() {
 	go mdnsService.Start(n)
 	go pubsubService.Run(n)
 
+	raft, err := consensus.NewRaft(ctx, n, nil, nil, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	raft.Start()
+	defer raft.Shutdown()
 	<-interruptChan
 	log.Println("bootstrap node interrupted...")
 }

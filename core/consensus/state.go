@@ -4,23 +4,21 @@ import (
 	"sync"
 )
 
-type SecretStorer interface{}
-
-type store struct {
+type stateStore struct {
 	mx        *sync.RWMutex
 	state     State
-	consensus Consensus
+	consensus *Consensus
 }
 
-func NewSecretStore(consensus Consensus) SecretStorer {
-	return &store{
+func NewStateStore(stateBase map[string]string, consensus *Consensus) *stateStore {
+	return &stateStore{
 		mx:        new(sync.RWMutex),
-		state:     make(map[string]string),
+		state:     stateBase,
 		consensus: consensus,
 	}
 }
 
-func (s *store) Commit(key string, secret string) (err error) {
+func (s *stateStore) Commit(key string, secret string) (err error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 

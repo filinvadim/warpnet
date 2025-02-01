@@ -38,12 +38,16 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 		return nil, errors.New("client node: server node ID is empty")
 	}
 	serverNodeId := clientInfo.Identity.Owner.NodeId
+	privKey, err := encrypting.GenerateKeyFromSeed([]byte("client-node"))
+	if err != nil {
+		log.Fatalf("fail generating key: %v", err)
+	}
 
 	client, err := libp2p.New(
+		libp2p.Identity(privKey.(warpnet.WarpPrivateKey)),
 		libp2p.NoListenAddrs,
 		libp2p.DisableMetrics(),
 		libp2p.DisableRelay(),
-		libp2p.RandomIdentity,
 		libp2p.Ping(false),
 		libp2p.ForceReachabilityPrivate(),
 		libp2p.DisableIdentifyAddressDiscovery(),
@@ -67,7 +71,7 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 	}
 
 	client.Peerstore().AddAddrs(serverInfo.ID, serverInfo.Addrs, warpnet.PermanentAddrTTL)
-
+	client.ID()
 	n := &WarpClientNode{
 		ctx:     ctx,
 		node:    client,
@@ -121,4 +125,5 @@ func (n *WarpClientNode) Stop() {
 	if err := n.node.Close(); err != nil {
 		log.Println("client node stop fail:", err)
 	}
+	n.node = nil
 }

@@ -289,6 +289,7 @@ func (n *WarpNode) Stop() {
 		log.Printf("failed to close node: %v", err)
 	}
 	n.isClosed.Store(true)
+	n.node = nil
 	return
 }
 

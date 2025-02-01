@@ -108,7 +108,7 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	m.service.mx.Lock()
 	m.service.node = n
 	m.service.mx.Unlock()
-	
+
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 
 	if err := m.mdns.Start(); err != nil {
@@ -129,4 +129,5 @@ func (m *MulticastDNS) Close() {
 		log.Println("mdns failed to close", err)
 	}
 	m.isRunning.Store(false)
+	m.mdns = nil
 }

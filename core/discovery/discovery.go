@@ -105,6 +105,10 @@ func (s *discoveryService) Close() {
 		}
 	}()
 	close(s.stopChan)
+	for len(s.discoveryChan) > 0 {
+		<-s.discoveryChan
+	}
+	close(s.discoveryChan)
 }
 
 func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {

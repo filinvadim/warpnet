@@ -9,6 +9,7 @@ import (
 	"log"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -30,6 +31,7 @@ type ProviderCache struct {
 	mutex    *sync.RWMutex
 	m        map[string][]addrEntry
 	stopChan chan struct{}
+	isClosed *atomic.Bool
 }
 
 func NewProviderCache(ctx context.Context, db ProviderCacheStorer) (*ProviderCache, error) {
@@ -39,6 +41,7 @@ func NewProviderCache(ctx context.Context, db ProviderCacheStorer) (*ProviderCac
 		mutex:    new(sync.RWMutex),
 		m:        make(map[string][]addrEntry),
 		stopChan: make(chan struct{}),
+		isClosed: new(atomic.Bool),
 	}
 	prestoredProviders, err := db.ListProviders()
 	if err != nil {
@@ -150,6 +153,9 @@ func (d *ProviderCache) Close() (err error) {
 			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
+	if d.isClosed.Load() {
+		return nil
+	}
 	log.Println("providers cache is shutting down")
 	d.mutex.RLock()
 	for key, values := range d.m {
@@ -159,5 +165,7 @@ func (d *ProviderCache) Close() (err error) {
 	}
 	d.mutex.RUnlock()
 	close(d.stopChan)
+	d.isClosed.Store(true)
+	d.m = nil
 	return err
 }

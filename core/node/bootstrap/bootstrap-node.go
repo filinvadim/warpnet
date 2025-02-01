@@ -163,4 +163,5 @@ func (n *WarpBootstrapNode) Stop() {
 	if err := n.node.Close(); err != nil {
 		log.Println("bootstrap node stop fail:", err)
 	}
+	n.node = nil
 }
