@@ -159,7 +159,7 @@ func NewRaft(
 }
 
 func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
-	log.Println("consensus: node starting...")
+	log.Println("consensus: raft starting...")
 
 	var err error
 	c.raft, err = raft.NewRaft(

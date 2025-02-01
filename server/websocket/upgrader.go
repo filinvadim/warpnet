@@ -57,8 +57,14 @@ func (s *EncryptedUpgrader) UpgradeConnection(w http.ResponseWriter, r *http.Req
 	return s.readLoop()
 }
 
-func (s *EncryptedUpgrader) Close() error {
-	return s.conn.Close()
+func (s *EncryptedUpgrader) Close() {
+	if s == nil || s.conn == nil {
+		return
+	}
+	_ = s.conn.Close()
+	s.conn = nil
+	s.salt = nil
+	return
 }
 
 func (s *EncryptedUpgrader) OnMessage(fn func(msg []byte) ([]byte, error)) {
@@ -138,6 +144,9 @@ func (s *EncryptedUpgrader) SendPlain(msg string) error {
 	return s.conn.WriteMessage(ws.TextMessage, []byte(msg))
 }
 func (s *EncryptedUpgrader) SetNewSalt(salt string) {
+	if s == nil {
+		return
+	}
 	if salt == "" {
 		return
 	}

@@ -38,23 +38,22 @@ func NewWSController(
 	auth *auth.AuthService,
 ) *WSController {
 
-	return &WSController{
-		websocket.NewEncryptedUpgrader(), auth, nil,
-		conf, nil,
-	}
+	return &WSController{nil, auth, nil, conf, nil}
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 	ctx.Logger().Infof("websocket upgrade request: %s", ctx.Request().URL.Path)
 
+	c.upgrader = websocket.NewEncryptedUpgrader()
 	c.upgrader.OnMessage(c.handle)
 
 	c.ctx = ctx.Request().Context()
 
-	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request())
+	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request()) // WS listener infinite loop
 	if err != nil {
 		ctx.Logger().Errorf("websocket upgrader: %v", err)
 	}
+	c.upgrader.Close()
 
 	return nil
 }
@@ -121,18 +120,17 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		response.Body = msgBody
 	case event.PRIVATE_POST_LOGOUT_1_0_0:
 		defer c.client.Stop()
-		defer func() {
-			if err := c.upgrader.Close(); err != nil {
-				log.Printf("upgrader close: %v", err)
-			}
-		}()
-		err = c.auth.AuthLogout()
-		return nil, err
+		defer c.upgrader.Close()
+		return nil, c.auth.AuthLogout()
 
 	default:
 		if !c.auth.IsAuthenticated() {
 			log.Printf("websocket: not authenticated: %s\n", string(msg))
 			response = newErrorResp("not authenticated")
+			break
+		}
+		if c.client == nil {
+			response = newErrorResp("not connected to server node")
 			break
 		}
 		if wsMsg.Body == nil {
