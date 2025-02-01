@@ -8,7 +8,7 @@
 - warpnet member node must be managed only by nodes consensus
 - warpnet business node could have centralized management
 - warpnet node must store private data only at host machine
-
+- warpnet member node must not be developed by single programmer
 ## Requirements
     golang >=1.23
 
