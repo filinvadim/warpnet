@@ -11,7 +11,6 @@ import (
 	"github.com/filinvadim/warpnet/gen/event-gen"
 
 	"github.com/filinvadim/warpnet/json"
-	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/websocket"
 	"github.com/labstack/echo/v4"
 	"log"
@@ -24,9 +23,15 @@ type GenericStreamer interface {
 	Stop()
 }
 
+type AuthServicer interface {
+	AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error)
+	AuthLogout() error
+	IsAuthenticated() bool
+}
+
 type WSController struct {
 	upgrader *websocket.EncryptedUpgrader
-	auth     *auth.AuthService
+	auth     AuthServicer
 	ctx      context.Context
 	conf     config.Config
 
@@ -35,7 +40,7 @@ type WSController struct {
 
 func NewWSController(
 	conf config.Config,
-	auth *auth.AuthService,
+	auth AuthServicer,
 ) *WSController {
 
 	return &WSController{nil, auth, nil, conf, nil}
@@ -53,7 +58,9 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 	if err != nil {
 		ctx.Logger().Errorf("websocket upgrader: %v", err)
 	}
+	_ = c.auth.AuthLogout()
 	c.upgrader.Close()
+	c.upgrader = nil
 
 	return nil
 }
