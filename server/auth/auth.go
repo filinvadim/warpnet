@@ -50,8 +50,16 @@ func (as *AuthService) IsAuthenticated() bool {
 
 func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
-		l.Println("already authenticated")
-		return resp, errors.New("already authenticated")
+		token := as.userPersistence.SessionToken()
+		owner, err := as.userPersistence.GetOwner()
+		if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
+			l.Printf("owner fetching failed: %v", err)
+			return nil, err
+		}
+		return event.LoginResponse{
+			Token: token,
+			Owner: owner,
+		}, nil
 	}
 	l.Printf("authenticating user %s", message.Username)
 
