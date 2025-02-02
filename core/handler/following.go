@@ -12,7 +12,7 @@ import (
 )
 
 type FollowNodeStreamer interface {
-	GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type FollowingAuthStorer interface {

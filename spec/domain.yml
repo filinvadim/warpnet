@@ -139,6 +139,9 @@ components:
           type: string
         root_id:
           type: string
+        is_retweet_of:
+          type: string
+          description: user_id
       required:
         - user_id
         - id

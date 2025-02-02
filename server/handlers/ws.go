@@ -19,7 +19,7 @@ import (
 )
 
 type GenericStreamer interface {
-	GenericStream(string, stream.WarpRoute, []byte) ([]byte, error)
+	GenericStream(string, stream.WarpRoute, any) ([]byte, error)
 	Stop()
 }
 
@@ -146,12 +146,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 		// TODO check version
-		data, err := (*wsMsg.Body).MarshalJSON()
-		if err != nil {
-			log.Printf("websocket: marshal: %v", err)
-			response = newErrorResp(err.Error())
-			break
-		}
+
 		if wsMsg.NodeId == "" || wsMsg.Path == "" {
 			log.Printf("websocket: missing node id or path: %s\n", string(msg))
 			response = newErrorResp(
@@ -160,8 +155,8 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 
-		log.Println("WS incoming message:", string(data))
-		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), data)
+		log.Printf("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
+		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), *wsMsg.Body)
 		if err != nil {
 			log.Printf("websocket: send stream: %v", err)
 			response = newErrorResp(err.Error())

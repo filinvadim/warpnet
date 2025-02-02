@@ -23,7 +23,7 @@ type DiscoveryInfoStorer interface {
 	Peerstore() peerstore.Peerstore
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
-	GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type NodeStorer interface {
@@ -162,6 +162,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
 	if isBootstrapError(err) {
+		log.Println("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
 	}
 	if err != nil {
@@ -180,9 +181,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Printf("discovery: failed to store info of new peer: %s", err)
 	}
 
-	bt, _ := json.JSON.Marshal(event.GetUserEvent{UserId: info.OwnerId})
-	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER_1_0_0, bt)
+	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
+	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER_1_0_0, getUserEvent)
 	if isBootstrapError(err) {
+		log.Println("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
 	}
 	if err != nil {

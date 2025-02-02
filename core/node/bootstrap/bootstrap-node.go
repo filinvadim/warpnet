@@ -151,7 +151,7 @@ func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
 	return n.node.Connect(n.ctx, p)
 }
 
-func (n *WarpBootstrapNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
+func (n *WarpBootstrapNode) GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error) {
 	// just a stub
 	return nil, nil
 }

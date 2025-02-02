@@ -46,12 +46,7 @@ func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpn
 
 func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		if s.Protocol() == stream.PairPostPrivate.ProtocolID() && p.clientNodeID != "" {
-			log.Println("middleware: already paired")
-			s.Write(ErrDoublePairing.Bytes())
-			return
-		}
-		if s.Protocol() == stream.PairPostPrivate.ProtocolID() { // first tether client node
+		if s.Protocol() == stream.PairPostPrivate.ProtocolID() && p.clientNodeID == "" { // first tether client node
 			p.clientNodeID = s.Conn().RemotePeer()
 			next(s)
 			return

@@ -97,17 +97,25 @@ func (n *WarpClientNode) pairNodes(nodeId string, clientInfo domain.AuthNodeInfo
 	if n == nil {
 		return errors.New("client node must not be nil")
 	}
-	bt, err := json.JSON.Marshal(clientInfo)
-	if err != nil {
-		return err
-	}
-	_, err = n.GenericStream(nodeId, stream.PairPostPrivate, bt)
+	_, err := n.GenericStream(nodeId, stream.PairPostPrivate, clientInfo)
 	return err
 }
 
-func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
+func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil {
 		return nil, errors.New("client node must not be nil")
+	}
+
+	var bt []byte
+	if data != nil {
+		var ok bool
+		bt, ok = data.([]byte)
+		if !ok {
+			bt, err = json.JSON.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	addrInfo, err := peer.AddrInfoFromString(serverNodeAddrDefault + nodeId)
@@ -115,7 +123,7 @@ func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, dat
 		return nil, err
 	}
 
-	return n.streamer.Send(addrInfo, path, data)
+	return n.streamer.Send(addrInfo, path, bt)
 }
 
 func (n *WarpClientNode) Stop() {

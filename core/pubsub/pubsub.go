@@ -32,7 +32,7 @@ type PeerInfoStorer interface {
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
-	GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type Gossip struct {
@@ -98,7 +98,9 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 				g.handlePubSubDiscovery(msg)
 			default:
 				if strings.HasPrefix(*msg.Topic, userUpdateTopicPrefix) {
-					g.handleUserUpdate(msg)
+					if err := g.handleUserUpdate(msg); err != nil {
+						log.Printf("pubsub discovery: user update error: %v", err)
+					}
 				}
 			}
 		}
@@ -265,7 +267,6 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 		return err
 	}
 	if simulatedMessage.NodeId == "" {
-
 		return fmt.Errorf("pubsub user update: message has no node ID: %s", string(msg.Data))
 	}
 	if simulatedMessage.Path == "" {
@@ -281,7 +282,7 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
 	}
-	_, err := g.node.GenericStream(
+	_, err := g.node.GenericStream( // send to self
 		simulatedMessage.NodeId,
 		stream.WarpRoute(simulatedMessage.Path),
 		msg.Data,

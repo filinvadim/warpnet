@@ -12,6 +12,7 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
@@ -264,16 +265,29 @@ func (n *WarpNode) IPv6() string {
 	return n.ipv6
 }
 
-func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data []byte) ([]byte, error) {
+func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, nil
 	}
+
+	var bt []byte
+	if data != nil {
+		var ok bool
+		bt, ok = data.([]byte)
+		if !ok {
+			bt, err = json.JSON.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	id, err := warpnet.IDFromBytes([]byte(nodeId))
 	if err != nil {
 		return nil, err
 	}
 	log.Println("stream: request:", path, nodeId)
-	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, data)
+	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, bt)
 }
 
 func (n *WarpNode) Stop() {
