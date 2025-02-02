@@ -59,7 +59,6 @@ func StreamFollowHandler(
 		if err := followRepo.Follow(ev.Follower, ev.Followee, domain.Following{
 			Followee:         ev.Followee,
 			Follower:         ev.Follower,
-			FollowerAvatar:   ev.FollowerAvatar,
 			FollowerUsername: ev.FollowerUsername,
 		}); err != nil {
 			_ = broadcaster.UnsubscribeUserUpdate(ev.Followee)

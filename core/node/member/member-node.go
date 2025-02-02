@@ -272,6 +272,7 @@ func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data []by
 	if err != nil {
 		return nil, err
 	}
+	log.Println("stream: request:", path, nodeId)
 	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, data)
 }
 

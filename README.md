@@ -12,7 +12,12 @@
 ## Requirements
     golang >=1.23
 
-## How to run
+## How to run (dev mode)
+- create stub binary signing keys
+```bash 
+cp warpnet.example.sig warpnet.sig 
+cp public.example.pem public.pem
+```
 - bootstrap node
 ```bash 
 go run cmd/node/bootstrap/main.go
