@@ -6,6 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
+	"time"
 )
 
 const (
@@ -38,59 +39,93 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 
 	data, _ := json.JSON.Marshal(event)
 
-	followeeKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followeeSubName).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(toUserId).
-		AddId(fromUserId).
+	sortableFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeSubName).
+		AddRootID(toUserId).
+		AddReversedTimestamp(time.Now()).
+		AddParentId(fromUserId).
 		Build()
 
-	followerKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followerSubName).
+	sortableFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(fromUserId).
+		AddReversedTimestamp(time.Now()).
+		AddParentId(toUserId).
+		Build()
+
+	fixedFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeSubName).
+		AddRootID(toUserId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(fromUserId).
-		AddId(toUserId).
+		Build()
+
+	fixedFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(fromUserId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(toUserId).
 		Build()
 
 	return repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err := repo.db.Set(followeeKey, data); err != nil {
+		if err := repo.db.Set(sortableFollowerKey, data); err != nil {
 			return err
 		}
-		return repo.db.Set(followerKey, data)
+		if err := repo.db.Set(sortableFolloweeKey, data); err != nil {
+			return err
+		}
+		if err := repo.db.Set(fixedFollowerKey, []byte(sortableFollowerKey)); err != nil {
+			return err
+		}
+		return repo.db.Set(fixedFolloweeKey, []byte(sortableFolloweeKey))
 	})
 }
 
 // Unfollow removes a reader-writer relationship in both directions
 func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
-	followeeKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followeeSubName).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(toUserId).
-		AddId(fromUserId).
-		Build()
-
-	followerKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followerSubName).
+	fixedFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeSubName).
+		AddRootID(toUserId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(fromUserId).
-		AddId(toUserId).
 		Build()
+
+	fixedFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(fromUserId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(toUserId).
+		Build()
+
+	sortableFollowerKey, err := repo.db.Get(fixedFollowerKey)
+	if err != nil {
+		return err
+	}
+	sortableFolloweeKey, err := repo.db.Get(fixedFolloweeKey)
+	if err != nil {
+		return err
+	}
 	return repo.db.WriteTxn(func(tx *badger.Txn) error {
-		if err := repo.db.Delete(followeeKey); err != nil {
+		if err := repo.db.Delete(fixedFolloweeKey); err != nil {
 			return err
 		}
-		return repo.db.Delete(followerKey)
+		if err := repo.db.Delete(fixedFollowerKey); err != nil {
+			return err
+		}
+		if err := repo.db.Delete(storage.DatabaseKey(sortableFollowerKey)); err != nil {
+			return err
+		}
+		return repo.db.Delete(storage.DatabaseKey(sortableFolloweeKey))
 	})
 }
 
 func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {
-	prefix := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followerSubName).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
+	followeePrefix := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeSubName).
+		AddRootID(userId).
 		Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	items, cur, err := repo.db.List(followeePrefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}
@@ -110,13 +145,12 @@ func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *strin
 
 // GetFollowees : followee - one who is followed (has his/her posts monitored by another user)
 func (repo *FollowRepo) GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {
-	prefix := storage.NewPrefixBuilder(FollowRepoName).
-		AddRootID(followeeSubName).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
+	followerPrefix := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(userId).
 		Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	items, cur, err := repo.db.List(followerPrefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}

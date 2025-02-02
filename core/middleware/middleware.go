@@ -8,6 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"io"
 	"log"
+	"time"
 )
 
 type middlewareError string
@@ -39,8 +40,15 @@ func NewWarpMiddleware() *WarpMiddleware {
 func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
 		log.Printf("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+		before := time.Now()
 		next(s)
-		log.Printf("middleware: server stream closed: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+		after := time.Now()
+		log.Printf(
+			"middleware: server stream closed: %s %s, elapsed: %s\n",
+			s.Protocol(),
+			s.Conn().RemotePeer(),
+			after.Sub(before).String(),
+		)
 	}
 }
 
