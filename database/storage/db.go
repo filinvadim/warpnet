@@ -150,8 +150,12 @@ func (db *DB) runEventualGC() {
 	log.Println("database garbage collection started")
 	_ = db.badger.RunValueLogGC(discardRatio)
 	for {
+		isEmpty, err := isDirectoryEmpty(db.dbPath)
+		if isEmpty && err == nil {
+			log.Fatalln("database folder was emptied")
+		}
 		select {
-		case <-time.After(time.Hour * 24):
+		case <-time.After(time.Hour):
 			for {
 				err := db.badger.RunValueLogGC(discardRatio)
 				if errors.Is(err, badger.ErrNoRewrite) {

@@ -26,7 +26,6 @@ type GenericStreamer interface {
 type AuthServicer interface {
 	AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error)
 	AuthLogout() error
-	IsAuthenticated() bool
 }
 
 type WSController struct {
@@ -131,11 +130,6 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		return nil, c.auth.AuthLogout()
 
 	default:
-		if !c.auth.IsAuthenticated() {
-			log.Printf("websocket: not authenticated: %s\n", string(msg))
-			response = newErrorResp("not authenticated")
-			break
-		}
 		if c.client == nil {
 			response = newErrorResp("not connected to server node")
 			break

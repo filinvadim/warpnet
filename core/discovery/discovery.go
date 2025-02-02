@@ -155,7 +155,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Printf("discovery: failed to connect to new peer: %s, removing...", err)
-		s.node.Peerstore().RemovePeer(pi.ID) // try add it again
+		s.node.Peerstore().RemovePeer(pi.ID) // try to add it again
 		return
 	}
 	log.Printf("discovery: connected to new peer: %s", pi.ID)

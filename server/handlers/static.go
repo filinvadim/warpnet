@@ -63,7 +63,10 @@ func (c *StaticController) GetIndex(ctx echo.Context) error {
 func (c *StaticController) GetStaticFile(ctx echo.Context, filePath string) error {
 	f, err := c.fileSystem.Open(filePath)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, api.ErrorResponse{500, err.Error()})
+		f, err = c.fileSystem.Open("index.html")
+		if err != nil {
+			return ctx.JSON(http.StatusInternalServerError, api.ErrorResponse{500, err.Error()})
+		}
 	}
 	fi, _ := f.Stat()
 	ff := f.(io.ReadSeeker)
