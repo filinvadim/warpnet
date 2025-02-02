@@ -3,6 +3,7 @@ package relay
 import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	"time"
 )
 
 /*
@@ -38,7 +39,10 @@ import (
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
 	relay, err := relayv2.New(
 		node,
-		relayv2.WithInfiniteLimits(),
+		relayv2.WithLimit(&relayv2.RelayLimit{
+			Duration: 5 * time.Minute,
+			Data:     1 << 19, // 512kb
+		}),
 	)
 	return relay, err
 }

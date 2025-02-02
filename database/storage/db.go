@@ -348,31 +348,6 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 	return result, nil
 }
 
-type WarpTxn = badger.Txn
-
-func (db *DB) WriteTxn(f func(tx *badger.Txn) error) error {
-	return db.txn(true, f)
-}
-
-func (db *DB) ReadTxn(f func(tx *badger.Txn) error) error {
-	return db.txn(false, f)
-}
-
-func (db *DB) txn(isWrite bool, f func(tx *badger.Txn) error) error {
-	if !db.isRunning.Load() {
-		return ErrNotRunning
-	}
-
-	txn := db.badger.NewTransaction(isWrite)
-	defer txn.Discard()
-
-	if err := f(txn); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
 func (db *DB) Delete(key DatabaseKey) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
@@ -399,6 +374,90 @@ func (db *DB) NextSequence() (uint64, error) {
 	}
 
 	return db.sequence.Next()
+}
+
+type WarpTxn = badger.Txn
+
+func (db *DB) WriteTxn(f func(tx *badger.Txn) error) error {
+	return db.txn(true, f)
+}
+
+func (db *DB) ReadTxn(f func(tx *badger.Txn) error) error {
+	return db.txn(false, f)
+}
+
+func (db *DB) txn(isWrite bool, f func(tx *badger.Txn) error) error {
+	if !db.isRunning.Load() {
+		return ErrNotRunning
+	}
+
+	txn := db.badger.NewTransaction(isWrite)
+	defer txn.Discard()
+
+	if err := f(txn); err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func (db *DB) BatchSet(data []ListItem) error {
+	var (
+		lastIndex int
+		isTooBig  bool
+	)
+	err := db.WriteTxn(func(txn *badger.Txn) error {
+		for i, item := range data {
+			key := item.Key
+			value := item.Value
+			err := txn.Set([]byte(key), value)
+			if errors.Is(err, badger.ErrTxnTooBig) {
+				isTooBig = true
+				lastIndex = i
+				return nil // force commit in the middle of iteration
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if isTooBig {
+		leftovers := data[lastIndex:]
+		data = nil
+		err = db.BatchSet(leftovers)
+	}
+	return err
+}
+
+func (db *DB) BatchGet(keys ...DatabaseKey) ([]ListItem, error) {
+	result := make([]ListItem, 0, len(keys))
+
+	err := db.ReadTxn(func(txn *badger.Txn) error {
+		for _, key := range keys {
+			item, err := txn.Get([]byte(key))
+			if errors.Is(err, badger.ErrKeyNotFound) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			val, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			it := ListItem{
+				Key:   key.String(),
+				Value: val,
+			}
+			result = append(result, it)
+		}
+		return nil
+	})
+	return result, err
 }
 
 func (db *DB) GC() {

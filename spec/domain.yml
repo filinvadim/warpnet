@@ -259,9 +259,6 @@ components:
           description: from user
         follower_username:
           type: string
-        follower_avatar:
-          type: string
-          format: byte
       required:
         - followee
         - follower

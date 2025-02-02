@@ -44,7 +44,7 @@ func NewEncryptedUpgrader() *EncryptedUpgrader {
 		},
 		encrypter: e,
 		mx:        new(sync.Mutex),
-		salt:      nil,
+		salt:      getCurrentDate(),
 	}
 }
 
@@ -92,7 +92,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 			}
 			s.externalPubKey = pubKey
 
-			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, getCurrentDate()); err != nil {
+			if err := s.encrypter.ComputeSharedSecret(s.externalPubKey, s.salt); err != nil {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
