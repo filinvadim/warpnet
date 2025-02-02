@@ -54,7 +54,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		owner, err := as.userPersistence.GetOwner()
 		if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
 			l.Printf("owner fetching failed: %v", err)
-			return nil, err
+			return resp, err
 		}
 		return event.LoginResponse{
 			Token: token,

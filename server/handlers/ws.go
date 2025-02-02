@@ -58,7 +58,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 	if err != nil {
 		ctx.Logger().Errorf("websocket upgrader: %v", err)
 	}
-	_ = c.auth.AuthLogout()
+
 	c.upgrader.Close()
 	c.upgrader = nil
 
