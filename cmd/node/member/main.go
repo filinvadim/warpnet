@@ -263,8 +263,10 @@ func main() {
 		event.PUBLIC_GET_LIKERS_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
+	log.Infoln("SUPPORTED PROTOCOLS:", n.SupportedProtocols())
 
 	nodeReadyChan <- authInfo
+
 	bootstrapAddrs, _ := conf.Node.AddrInfos()
 	raft, err := consensus.NewRaft(ctx, n, consensusRepo, false)
 	if err != nil {

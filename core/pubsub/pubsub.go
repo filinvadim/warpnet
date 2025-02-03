@@ -107,12 +107,17 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 	}
 }
 
-func (g *Gossip) run(n PeerInfoStorer) error {
+func (g *Gossip) run(n PeerInfoStorer) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("pubsub discovery: recovered from panic: %v", r)
+			err = errors.New("recovered from panic")
+		}
+	}()
 	if g == nil {
 		panic("discovery service not initialized properly")
 	}
 
-	var err error
 	g.pubsub, err = pubsub.NewGossipSub(g.ctx, n.Node())
 	if err != nil {
 

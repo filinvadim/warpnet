@@ -54,11 +54,12 @@ type (
 	WarpPeerRouting   = routing.PeerRouting
 	P2PNode           = host.Host
 
-	WarpPeerstore = peerstore.Peerstore
-	WarpNetwork   = network.Network
-	WarpPeerID    = peer.ID
-	WarpDHT       = dht.IpfsDHT
-	WarpAddress   = multiaddr.Multiaddr
+	WarpPeerstore      = peerstore.Peerstore
+	WarpProtocolSwitch = protocol.Switch
+	WarpNetwork        = network.Network
+	WarpPeerID         = peer.ID
+	WarpDHT            = dht.IpfsDHT
+	WarpAddress        = multiaddr.Multiaddr
 )
 
 func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {

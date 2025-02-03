@@ -190,6 +190,30 @@ func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.Warp
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
+func (n *WarpNode) SupportedProtocols() []string {
+	protocols := n.node.Mux().Protocols()
+	filtered := make([]string, 0, len(protocols))
+	for _, p := range protocols {
+		if strings.HasPrefix(string(p), "/ipfs") {
+			continue
+		}
+		if strings.HasPrefix(string(p), "/libp2p") {
+			continue
+		}
+		if strings.HasPrefix(string(p), "/warpnet") {
+			continue
+		}
+		if strings.HasPrefix(string(p), "/meshsub") {
+			continue
+		}
+		if strings.HasPrefix(string(p), "/floodsub") {
+			continue
+		}
+		filtered = append(filtered, string(p))
+	}
+	return filtered
+}
+
 func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	reg := n.Node()
 	id := reg.ID()
@@ -252,6 +276,10 @@ func (n *WarpNode) Network() warpnet.WarpNetwork {
 		return nil
 	}
 	return n.node.Network()
+}
+
+func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
+	return n.node.Mux()
 }
 
 func (n *WarpNode) Addrs() []string {

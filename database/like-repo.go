@@ -55,7 +55,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 			return nil
 		}
 
-		if err = txn.Set(likerKey.Bytes(), []byte("")); err != nil {
+		if err = txn.Set(likerKey.Bytes(), []byte(userId)); err != nil {
 			return err
 		}
 		likesNum, err = repo.db.Increment(txn, likeKey)

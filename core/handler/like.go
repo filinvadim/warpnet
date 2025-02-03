@@ -116,6 +116,12 @@ func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) mid
 		if err != nil {
 			return nil, err
 		}
+		if len(likers) == 0 {
+			return event.UsersResponse{
+				Cursor: cur,
+				Users:  []domain.User{},
+			}, nil
+		}
 
 		users, err := userRepo.GetBatch(likers...)
 		if err != nil {

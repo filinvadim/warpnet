@@ -97,6 +97,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			response = domain.Error{Message: ErrStreamReadError.Error()}
 			return
 		}
+
 		if response == nil {
 			response, err = fn(data)
 			if err != nil {

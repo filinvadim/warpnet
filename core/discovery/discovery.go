@@ -11,16 +11,15 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 type DiscoveryHandler func(warpnet.PeerAddrInfo)
 
 type DiscoveryInfoStorer interface {
 	ID() warpnet.WarpPeerID
-	Peerstore() peerstore.Peerstore
+	Peerstore() warpnet.WarpPeerstore
+	Mux() warpnet.WarpProtocolSwitch
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
 	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
@@ -155,16 +154,22 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Errorf("discovery: failed to connect to new peer: %s, removing...", err)
-		s.node.Peerstore().RemovePeer(pi.ID) // try to add it again
 		return
 	}
 	log.Infof("discovery: connected to new peer: %s", pi.ID)
 
-	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
-	if isBootstrapError(err) {
+	otherProtocols, err := s.node.Peerstore().GetProtocols(pi.ID)
+	if err != nil {
+		log.Errorf("discovery: failed to get new node protocols: %s", err)
+		return
+	}
+	mineProtocols := s.node.Mux().Protocols()
+	if len(otherProtocols) < len(mineProtocols) {
 		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
 	}
+
+	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -183,10 +188,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
 	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER_1_0_0, getUserEvent)
-	if isBootstrapError(err) {
-		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
-		return
-	}
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -202,16 +203,4 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if err != nil {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
 	}
-}
-
-func isBootstrapError(err error) bool {
-	if err == nil {
-		return false
-	}
-	if strings.Contains(err.Error(), "protocols not supported") ||
-		strings.Contains(err.Error(), "routing: not found") {
-		// bootstrap node doesn't support requesting
-		return true
-	}
-	return false
 }

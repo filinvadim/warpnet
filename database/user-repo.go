@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	log "github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"
@@ -171,22 +172,25 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err e
 			if err != nil {
 				return err
 			}
-
-			item, err = txn.Get(item.Key())
+			sortableKey, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			userItem, err := txn.Get(sortableKey)
 			if errors.Is(err, storage.ErrKeyNotFound) {
 				continue
 			}
 			if err != nil {
 				return err
 			}
-
-			data, err := item.ValueCopy(nil)
+			data, err := userItem.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
 			var u domainGen.User
 			err = json.JSON.Unmarshal(data, &u)
 			if err != nil {
+				log.Errorln("cannot unmarshal batch user data:", string(data))
 				return err
 			}
 			users = append(users, u)
