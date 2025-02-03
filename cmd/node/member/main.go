@@ -83,6 +83,7 @@ func main() {
 	tweetRepo := database.NewTweetRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
 	consensusRepo := database.NewConsensusRepo(db)
+	likeRepo := database.NewLikeRepo(db)
 
 	var (
 		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
@@ -244,6 +245,23 @@ func main() {
 	n.SetStreamHandler(
 		event.PUBLIC_GET_FOLLOWEES_1_0_0,
 		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, n)))),
+	)
+
+	n.SetStreamHandler(
+		event.PRIVATE_POST_LIKE_1_0_0,
+		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, pubsubService)))),
+	)
+	n.SetStreamHandler(
+		event.PRIVATE_POST_UNLIKE_1_0_0,
+		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
+	)
+	n.SetStreamHandler(
+		event.PUBLIC_GET_LIKESNUM_1_0_0,
+		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
+	)
+	n.SetStreamHandler(
+		event.PUBLIC_GET_LIKERS_1_0_0,
+		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
 
 	nodeReadyChan <- authInfo

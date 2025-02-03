@@ -113,6 +113,18 @@ type GetFollowersEvent struct {
 	UserId string  `json:"user_id"`
 }
 
+// GetLikersEvent defines model for GetLikersEvent.
+type GetLikersEvent struct {
+	Cursor  *string `json:"cursor,omitempty"`
+	Limit   *uint64 `json:"limit,omitempty"`
+	TweetId string  `json:"tweet_id"`
+}
+
+// GetLikesNumEvent defines model for GetLikesNumEvent.
+type GetLikesNumEvent struct {
+	TweetId string `json:"tweet_id"`
+}
+
 // GetMessageEvent defines model for GetMessageEvent.
 type GetMessageEvent struct {
 	ChatId   string  `json:"chat_id"`
@@ -145,6 +157,17 @@ type GetUserEvent struct {
 
 // Like defines model for Like.
 type Like = externalRef0.Like
+
+// LikeEvent defines model for LikeEvent.
+type LikeEvent struct {
+	TweetId string `json:"tweet_id"`
+	UserId  string `json:"user_id"`
+}
+
+// LikesNumResponse defines model for LikesNumResponse.
+type LikesNumResponse struct {
+	Num int64 `json:"num"`
+}
 
 // LoginEvent defines model for LoginEvent.
 type LoginEvent struct {
@@ -249,6 +272,9 @@ type TweetsResponse struct {
 	UserId string               `json:"user_id"`
 }
 
+// UnlikeEvent defines model for UnlikeEvent.
+type UnlikeEvent = LikeEvent
+
 // UsersResponse defines model for UsersResponse.
 type UsersResponse struct {
 	Cursor string              `json:"cursor"`
@@ -267,6 +293,9 @@ type OptionsPrivateGetTimeline100JSONRequestBody = Message
 // OptionsPrivatePostFollow100JSONRequestBody defines body for OptionsPrivatePostFollow100 for application/json ContentType.
 type OptionsPrivatePostFollow100JSONRequestBody = Message
 
+// OptionsPrivatePostLike100JSONRequestBody defines body for OptionsPrivatePostLike100 for application/json ContentType.
+type OptionsPrivatePostLike100JSONRequestBody = Message
+
 // OptionsPrivatePostLogin100JSONRequestBody defines body for OptionsPrivatePostLogin100 for application/json ContentType.
 type OptionsPrivatePostLogin100JSONRequestBody = Message
 
@@ -282,6 +311,9 @@ type OptionsPrivatePostTweet100JSONRequestBody = Message
 // OptionsPrivatePostUnfollow100JSONRequestBody defines body for OptionsPrivatePostUnfollow100 for application/json ContentType.
 type OptionsPrivatePostUnfollow100JSONRequestBody = Message
 
+// OptionsPrivatePostUnlike100JSONRequestBody defines body for OptionsPrivatePostUnlike100 for application/json ContentType.
+type OptionsPrivatePostUnlike100JSONRequestBody = Message
+
 // OptionsPublicGetFollowees100JSONRequestBody defines body for OptionsPublicGetFollowees100 for application/json ContentType.
 type OptionsPublicGetFollowees100JSONRequestBody = Message
 
@@ -290,6 +322,12 @@ type OptionsPublicGetFollowers100JSONRequestBody = Message
 
 // OptionsPublicGetInfo100JSONRequestBody defines body for OptionsPublicGetInfo100 for application/json ContentType.
 type OptionsPublicGetInfo100JSONRequestBody = Message
+
+// OptionsPublicGetLikers100JSONRequestBody defines body for OptionsPublicGetLikers100 for application/json ContentType.
+type OptionsPublicGetLikers100JSONRequestBody = Message
+
+// OptionsPublicGetLikesnum100JSONRequestBody defines body for OptionsPublicGetLikesnum100 for application/json ContentType.
+type OptionsPublicGetLikesnum100JSONRequestBody = Message
 
 // OptionsPublicGetReplies100JSONRequestBody defines body for OptionsPublicGetReplies100 for application/json ContentType.
 type OptionsPublicGetReplies100JSONRequestBody = Message
@@ -813,6 +851,110 @@ func (t *RequestBody) MergeLogoutEvent(v LogoutEvent) error {
 	return err
 }
 
+// AsLikeEvent returns the union data inside the RequestBody as a LikeEvent
+func (t RequestBody) AsLikeEvent() (LikeEvent, error) {
+	var body LikeEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLikeEvent overwrites any union data inside the RequestBody as the provided LikeEvent
+func (t *RequestBody) FromLikeEvent(v LikeEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLikeEvent performs a merge with any union data inside the RequestBody, using the provided LikeEvent
+func (t *RequestBody) MergeLikeEvent(v LikeEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUnlikeEvent returns the union data inside the RequestBody as a UnlikeEvent
+func (t RequestBody) AsUnlikeEvent() (UnlikeEvent, error) {
+	var body UnlikeEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUnlikeEvent overwrites any union data inside the RequestBody as the provided UnlikeEvent
+func (t *RequestBody) FromUnlikeEvent(v UnlikeEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUnlikeEvent performs a merge with any union data inside the RequestBody, using the provided UnlikeEvent
+func (t *RequestBody) MergeUnlikeEvent(v UnlikeEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetLikesNumEvent returns the union data inside the RequestBody as a GetLikesNumEvent
+func (t RequestBody) AsGetLikesNumEvent() (GetLikesNumEvent, error) {
+	var body GetLikesNumEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetLikesNumEvent overwrites any union data inside the RequestBody as the provided GetLikesNumEvent
+func (t *RequestBody) FromGetLikesNumEvent(v GetLikesNumEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetLikesNumEvent performs a merge with any union data inside the RequestBody, using the provided GetLikesNumEvent
+func (t *RequestBody) MergeGetLikesNumEvent(v GetLikesNumEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetLikersEvent returns the union data inside the RequestBody as a GetLikersEvent
+func (t RequestBody) AsGetLikersEvent() (GetLikersEvent, error) {
+	var body GetLikersEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetLikersEvent overwrites any union data inside the RequestBody as the provided GetLikersEvent
+func (t *RequestBody) FromGetLikersEvent(v GetLikersEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetLikersEvent performs a merge with any union data inside the RequestBody, using the provided GetLikersEvent
+func (t *RequestBody) MergeGetLikersEvent(v GetLikersEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t RequestBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1083,6 +1225,32 @@ func (t *ResponseBody) MergeNewReplyResponse(v NewReplyResponse) error {
 	return err
 }
 
+// AsLikesNumResponse returns the union data inside the ResponseBody as a LikesNumResponse
+func (t ResponseBody) AsLikesNumResponse() (LikesNumResponse, error) {
+	var body LikesNumResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLikesNumResponse overwrites any union data inside the ResponseBody as the provided LikesNumResponse
+func (t *ResponseBody) FromLikesNumResponse(v LikesNumResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLikesNumResponse performs a merge with any union data inside the ResponseBody, using the provided LikesNumResponse
+func (t *ResponseBody) MergeLikesNumResponse(v LikesNumResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ResponseBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1096,43 +1264,45 @@ func (t *ResponseBody) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xcX1PjOBL/Kl7dvZ1D/sDAkbfdWXZu6nZhig3H3i5TKSVWQIsteWWZTIrKd7+SrMRy",
-	"bNly8JHB47cQS+1ft35qdbc6PIM5DUJKEOERGD+DaP6AAig/vn+APLpGUUhJhMQXIaMhYhwj+XguHosP",
-	"mKNAfvg7QwswBn/rpyL7Sl7fowHEZCpkgrUL+CpEYAwgY3Al/p7HLKJMCFFPIs4wuReP4gixKfYKnq1d",
-	"wNBfMWbIA+M/NjJchezz9i109ieay9f+iHzE0TUK/dXFEyI8r1UIGSJ8ysSQ4reKl5Y9pJSbnlmrshHi",
-	"5vBob0/lmVWdLBHiBlW5ePbxhUg3A92tuCIwF4xRZoAxpx7S3oMJR/eIiVkBiiJ4jyxWXohIxxsRlJC5",
-	"eRBrF/xEfZ8uESrbRWbiLzaz626y5LVKyu5OU1JZjf2UAtGmFxlZ6ctepm/ZQ9akMSr0ZZq+qERfITun",
-	"p66Mh6I5wyHHlIAx4NQRmwa4ZiXzkxaMBpXTpmIAgYEFWbfwKlb0A+Lf+748CUzb95WOAR8HmBdvUfsT",
-	"QmIt95uJxr8ku7hMaZOT30MHF3zp3dOe+jbGhJ+eFIIvBy3ONWzG3BQu1+6QNJ6D1medWVN5rL2CorWP",
-	"QTPkmwixPRDjaKo2qI5iRqmPIMkMUG4oP6I264o0EDvWhJ4hyJE3hTxxfCwQn4AHOepxHKBCl8VoMNWs",
-	"G2DyMyL3/AGMhwXDObUevOvo9BdlBLk6cMO6bQ/wt0O17Rn8diArZ7sFDH3/agHGf9TxutURdwXF7M9O",
-	"jUAKkHx9XrnPiXrfRLrxAfEJDpCPCXo7xPtKsqMPiIvTwQCkEWV/xo/IoKP99tjD/e4YwAiP3mNi3CJR",
-	"tKTMvBL2u1aOdFOJRijm/IUuSRKfl0W5V3KQPLceEanGlgxzlXADKhobqVrnLUXSf0lz3KzkGfVW0iOT",
-	"lfLIZWpfo79iFPEfxKS1WzU2sXAy+HOaaJucGaGe8VkIBRmfAfoCg9AXz/ohw0+Qo74vlrM/PBocDYri",
-	"EBGfRBwGoWXoonmkXvSIwx6VGRr0eyEVXouBMWcxWrvgCbFI5m5Vy6LpnWqpdErFlCxbRY1ujzxFQdor",
-	"rdtwqSC7q1/J2wIpUv8SLb/BqPQSLZMQz6B3SwoPl2i5Gxa+fH21Wl5dNq+LMZbFdvsgNEW30ZSh5ASl",
-	"i/wiaUzKh1aPNfaxDBMKdq6UMp3TmGR1SSIyV3AfB3EAxgO3oD6jgkpjeCsVswd5nUwowrmRtTfUsnCa",
-	"oy+8wUhpv5QjWWWBxAVzSrhgnm5hVwvmtZCn2qlIJpecJB2ZOzK/GTKXJXYdkzsmvx0m35DFtxHtVVRA",
-	"LGM2IaU4WLvaJO4NeIPw6aTYH4RPp7WTV3NWtB8VNXql2aSErABW0k7dI00YQntd5LJkft3sUUYgl9Rr",
-	"KHfcoCjWMK1UWJc3tCaGqupG9giyGJ2yv2pwrq/DboKWqFjA0TNMG/QZJ1U1IX+FZzEjW1y2mWBvoUz9",
-	"1Q69dptnNyFzN2th0hrrlb1iqBqtlVothm6LjrJElyna1ds3W0dihc96tFwH69EJ56yHZxvgqkbnqnHV",
-	"JdC8m62ak+8ospxRw0q5ZFCtfRLefb2XCJNifF2838X7byTe3/FPdWKumounQq6JaQXrh1sKQPktcdZd",
-	"19FPSK2tXpIN2Lb9Ja8ogq13rf1fLhpsHVD2xiFvpNCrCWXHFpKvlpcTmddVWM14wVh6QaX2VfUObtDF",
-	"v2LDiO457H1Erq21rTUBpehX3rmQy10LKI59jyUX9I2lw7Irp56T3+35kRLcFF6pdl977JdRtQsBuxDw",
-	"rYaAeuSS4zF8ghyyjDFnmEC2KuLbDM4f7xmNiTfFgTp8baZhWmjzGWb8QewY+y3U4Lbz6Rzy4naa8uqq",
-	"YiERPCvgYPGPCTZUqGDNEs0ivGOQmPl2UZaws6FYu+3nlrC136OovzNBmKagvkh5bgkUmCxo3mnJCk/k",
-	"LChzoONhgXoWc+Q5kyXmHLGecDoODEMfq1VwAcdcNlrdQhY6l4gvKXvU2pXGIGm5WruAhojAEIMxOFZd",
-	"WCHkD5LP2y4tT9Yo+/JMUs1a42eQ9FZFecCXV5OL75zJA44cHDm3vzqqscPBHiIcLwRMyo6cS8od6Pxr",
-	"Mvn0HZBAmIT/0QNjcJUI/5Qg0Iqkw8EAJOulVYi1WFSzQ//PKKFk2nj2fEccJ23pGjt3YHB2Ds/OBrAH",
-	"R4Pj3ol3OuudeyfveicLCM9HZyfz4RzeAVdMVBwQs4ajH4//Tent+9XFf78/hr/dhmSCzj/8fnP6w8Px",
-	"+9Nf5zH5z/UX79PZ2c3v//xtdPvup4cLJUXYV4gwW1cN3Ha/idGjwehdbzDsHQ8no9F4eDo+PjkaDU6H",
-	"796dH4/+MTgZDzbT1CJL3Y6GR6fH6vsZ9VZj53l9R9Z3giPJMVF1iKQtNsk+SZJDueqjwcDC+LVf41bR",
-	"aQMiy6AE4C5n5f47IGdlyNNazmrW7Tj7cs7eI97n6iblIJzVbnLax9m8dTvOvpyzIY14PwmBDkLZTzRS",
-	"P6pqH2Nztu0I2xBh9d8dvD5f5SVqe+hqNG1H1+boSmN+SL7SmLeYsFvjvi3GNsavw2X2gl4tzet3Ldt5",
-	"w4bYericXrC1pRn9rmU7tjbE1pgcODvatH+2lLNZ+3a0fQFt45mP57JOsv2fYq/MWolA/88uLSKt0bod",
-	"Z5vkLDswZ1mrOcs6zjbJWUwW9EB0/UgWtJVMTW3akbQRkqqfah2Ip+p3GK2kasayHVsbY+vqgFxdtZap",
-	"XR2rSZ4eooq14WnbaliFVu142hxPo0MSNWovU7ujv0mqxhFiByLqTYRYK2ma2rQjaWMkjQ7I0qi1NO2c",
-	"6ct4ul7/LwAA///QelZ4b2gAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

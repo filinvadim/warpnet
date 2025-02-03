@@ -12,7 +12,7 @@ const (
 	FixedKey      = "fixed"
 	FixedRangeKey = "fixed"
 	NoneRangeKey  = "none"
-	delimeter     = "/"
+	Delimeter     = "/"
 )
 
 type (
@@ -44,7 +44,7 @@ func (ns Namespace) AddSubPrefix(p string) Namespace {
 	if p == "" {
 		panic("sub prefix must not be empty")
 	}
-	return Namespace(fmt.Sprintf("%s%s%s", ns, delimeter, p))
+	return Namespace(fmt.Sprintf("%s%s%s", ns, Delimeter, p))
 }
 
 func (ns Namespace) Build() DatabaseKey {
@@ -55,7 +55,7 @@ func (ns Namespace) AddRootID(mandatoryPrefix string) ParentLayer {
 	if mandatoryPrefix == "" {
 		panic("root prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s%s%s", ns, delimeter, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", ns, Delimeter, mandatoryPrefix)
 	return ParentLayer(key)
 }
 
@@ -76,13 +76,13 @@ func (l ParentLayer) AddRange(mandatoryPrefix RangePrefix) RangeLayer {
 		}
 	}
 
-	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, Delimeter, mandatoryPrefix)
 	return RangeLayer(key)
 }
 
 func (l ParentLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
 	key := string(l)
-	key = fmt.Sprintf("%s%s%019d", key, delimeter, math.MaxInt64-tm.Unix())
+	key = fmt.Sprintf("%s%s%019d", key, Delimeter, math.MaxInt64-tm.Unix())
 	return RangeLayer(key)
 }
 func (l RangeLayer) Build() DatabaseKey {
@@ -93,7 +93,7 @@ func (l RangeLayer) AddParentId(mandatoryPrefix string) IdLayer {
 	if mandatoryPrefix == "" {
 		panic("id prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, Delimeter, mandatoryPrefix)
 	return IdLayer(key)
 }
 
@@ -101,7 +101,7 @@ func (l IdLayer) AddId(mandatoryPrefix string) IdLayer {
 	if mandatoryPrefix == "" {
 		panic("id prefix must not be empty")
 	}
-	key := fmt.Sprintf("%s%s%s", l, delimeter, mandatoryPrefix)
+	key := fmt.Sprintf("%s%s%s", l, Delimeter, mandatoryPrefix)
 	return IdLayer(key)
 }
 
@@ -124,7 +124,7 @@ func (k DatabaseKey) Bytes() []byte {
 }
 func (k DatabaseKey) DropId() string {
 	key := string(k)
-	lastColon := strings.LastIndex(key, delimeter)
+	lastColon := strings.LastIndex(key, Delimeter)
 	if lastColon == -1 {
 		// Если двоеточия нет, возвращаем оригинальную строку
 		return key

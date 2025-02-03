@@ -10,11 +10,9 @@ import (
 )
 
 const (
-	FollowRepoName     = "/FOLLOWER"
-	followeeSubName    = "FOLLOWEE"
-	followerSubName    = "FOLLOWER"
-	followeeNumSubName = "FOLLOWEENUM"
-	followerNumSubName = "FOLLOWERNUM"
+	FollowRepoName  = "/FOLLOWER"
+	followeeSubName = "FOLLOWEE"
+	followerSubName = "FOLLOWER"
 )
 
 type FollowerStorer interface {
@@ -23,8 +21,6 @@ type FollowerStorer interface {
 	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
-	Increment(key storage.DatabaseKey) (int64, error)
-	Decrement(key storage.DatabaseKey) (int64, error)
 }
 
 // FollowRepo handles reader/writer relationships

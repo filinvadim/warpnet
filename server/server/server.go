@@ -55,7 +55,7 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	e.HideBanner = true
 
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
-		AllowOrigins: []string{"*"}, // TODO
+		AllowOrigins: []string{"localhost"}, // TODO
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
 		AllowMethods: []string{http.MethodGet},
 	}))
@@ -72,7 +72,12 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 
 func (p *interfaceServer) Start() {
 	log.Infoln("starting public server...")
-	if err := p.e.Start(p.port); err != nil {
+	err := p.e.Start(p.port)
+	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			log.Infoln("public server stopped")
+			return
+		}
 		log.Errorf("interface server start: %v", err)
 	}
 }

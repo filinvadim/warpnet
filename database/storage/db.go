@@ -16,29 +16,30 @@ import (
 )
 
 /*
-  BadgerDB — это высокопроизводительная, встраиваемая key-value база данных,
-написанная на Go и использующая LSM-деревья (Log-Structured Merge-Trees) для эффективного
-хранения и обработки данных. Ориентирована на сценарии с высокой нагрузкой, требующие
-минимальной задержки и высокой пропускной способности.
-Основные характеристики:
-    Встраиваемая: Работает в рамках приложения без необходимости запуска отдельного сервера.
-    Key-Value хранилище: Позволяет хранить и получать данные по ключу, используя эффективные индексы.
-    LSM-архитектура: Обеспечивает высокую скорость записи за счёт лог-структурированного хранения данных.
-    Zero GC overhead: Минимизирует влияние сборки мусора за счёт прямой работы с mmap и byte slices.
-    ACID-транзакции: Поддерживает транзакции с изоляцией snapshot isolation.
-    Режим работы в памяти и на диске: Позволяет хранить данные в RAM или на SSD/HDD.
-    Низкое потребление ресурсов: Подходит для embedded-систем и серверных приложений с ограниченной памятью.
+  BadgerDB is a high-performance, embedded key-value database
+  written in Go, utilizing LSM-trees (Log-Structured Merge-Trees) for efficient
+  data storage and processing. It is designed for high-load scenarios that require
+  minimal latency and high throughput.
 
-BadgerDB используется в тех случаях, когда требуется:
-    Высокая скорость работы: Он быстрее, чем традиционные дисковые базы данных (например, BoltDB) благодаря LSM-структуре.
-    Встраиваемое хранилище: Нет необходимости поднимать отдельный сервер базы данных (в отличие от Redis, PostgreSQL и др.).
-    Эффективная работа с потоковыми записями: Подходит для логов, кэшей, брокеров сообщений и других write-intensive задач.
-    Поддержка транзакций: Можно безопасно выполнять несколько операций в рамках одной транзакции.
-    Работа с большими объёмами данных: Поддерживает шардирование и offloading на диск, что полезно при обработке больших массивов данных.
-    Гибкость: Можно легко интегрировать в распределённые системы и P2P-приложения.
+  Key Features:
+    - Embedded: Operates within the application without the need for a separate database server.
+    - Key-Value Store: Enables storing and retrieving data by key using efficient indexing.
+    - LSM Architecture: Provides high write speed due to log-structured data storage.
+    - Zero GC Overhead: Minimizes garbage collection impact by directly working with mmap and byte slices.
+    - ACID Transactions: Supports transactions with snapshot isolation.
+    - In-Memory and Disk Mode: Allows storing data in RAM or on SSD/HDD.
+    - Low Resource Consumption: Suitable for embedded systems and server applications with limited memory.
 
-BadgerDB особенно хорош для систем, где важны высокая скорость записи, низкие накладные расходы и возможность работы без внешнего сервера БД.
-https://github.com/dgraph-io/badger
+  BadgerDB is used in cases where:
+    - High Performance is required: It is faster than traditional disk-based databases (e.g., BoltDB) due to the LSM structure.
+    - Embedded Storage is needed: No need to run a separate database server (unlike Redis, PostgreSQL, etc.).
+    - Efficient Streaming Writes are required: Suitable for logs, caches, message brokers, and other write-intensive workloads.
+    - Transaction Support is necessary: Allows safely executing multiple operations within a single transaction.
+    - Large Data Volumes are handled: Supports sharding and disk offloading, useful for processing massive datasets.
+    - Flexibility is key: Easily integrates into distributed systems and P2P applications.
+
+  BadgerDB is especially useful for systems where high write speed, low overhead, and the ability to operate without an external database server are critical.
+  https://github.com/dgraph-io/badger
 */
 
 const discardRatio = 0.5
@@ -477,44 +478,42 @@ func (db *DB) GC() {
 	}
 }
 
-func (db *DB) Increment(key DatabaseKey) (int64, error) {
+func (db *DB) Increment(txn *badger.Txn, key DatabaseKey) (int64, error) {
 	if !db.isRunning.Load() {
 		return 0, ErrNotRunning
 	}
-	return db.increment(key.Bytes(), 1)
+	return db.increment(txn, key.Bytes(), 1)
 }
 
-func (db *DB) Decrement(key DatabaseKey) (int64, error) {
+func (db *DB) Decrement(txn *WarpTxn, key DatabaseKey) (int64, error) {
 	if !db.isRunning.Load() {
 		return 0, ErrNotRunning
 	}
-	return db.increment(key.Bytes(), -1)
+	return db.increment(txn, key.Bytes(), -1)
 }
 
-func (db *DB) increment(key []byte, incVal int64) (int64, error) {
+func (db *DB) increment(txn *WarpTxn, key []byte, incVal int64) (int64, error) {
 	var newValue int64
 
-	err := db.WriteTxn(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			newValue = incVal
-			return txn.Set(key, encodeInt64(newValue))
-		}
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-			return err
-		}
+	item, err := txn.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		newValue = incVal
+		return newValue, txn.Set(key, encodeInt64(newValue))
+	}
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		return newValue, err
+	}
 
-		val, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		newValue = decodeInt64(val) + incVal
-		if newValue < 0 {
-			newValue = 0
-		}
+	val, err := item.ValueCopy(nil)
+	if err != nil {
+		return newValue, err
+	}
+	newValue = decodeInt64(val) + incVal
+	if newValue < 0 {
+		newValue = 0
+	}
 
-		return txn.Set(key, encodeInt64(newValue))
-	})
+	err = txn.Set(key, encodeInt64(newValue))
 	return newValue, err
 }
 

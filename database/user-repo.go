@@ -18,6 +18,7 @@ const (
 )
 
 type UserStorer interface {
+	ReadTxn(f func(tx *storage.WarpTxn) error) error
 	WriteTxn(f func(tx *storage.WarpTxn) error) error
 	Set(key storage.DatabaseKey, value []byte) error
 	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
@@ -147,4 +148,51 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 	}
 
 	return users, cur, nil
+}
+
+func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err error) {
+	if len(userIDs) == 0 {
+		return nil, ErrUserNotFound
+	}
+
+	users = make([]domainGen.User, 0, len(userIDs))
+	err = repo.db.ReadTxn(func(txn *storage.WarpTxn) error {
+		for _, userID := range userIDs {
+			fixedKey := storage.NewPrefixBuilder(UsersRepoName).
+				AddSubPrefix(UserSubNamespace).
+				AddRootID("None").
+				AddRange(storage.FixedRangeKey).
+				AddParentId(userID).
+				Build()
+			item, err := txn.Get(fixedKey.Bytes())
+			if errors.Is(err, storage.ErrKeyNotFound) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+
+			item, err = txn.Get(item.Key())
+			if errors.Is(err, storage.ErrKeyNotFound) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+
+			data, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			var u domainGen.User
+			err = json.JSON.Unmarshal(data, &u)
+			if err != nil {
+				return err
+			}
+			users = append(users, u)
+		}
+		return nil
+	})
+
+	return users, err
 }

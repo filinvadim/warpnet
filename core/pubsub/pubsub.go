@@ -266,10 +266,7 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
 	}
-	if simulatedMessage.NodeId == "" {
-		log.Errorln("pubsub user update: discovery message node id is empty")
-		return fmt.Errorf("pubsub user update: message has no node ID: %s", string(msg.Data))
-	}
+
 	if simulatedMessage.Path == "" {
 		log.Errorln("pubsub user update: message has no path", simulatedMessage.Path)
 		return fmt.Errorf("pubsub user update: message has no path: %s", string(msg.Data))
@@ -277,15 +274,11 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if simulatedMessage.Body == nil {
 		return nil
 	}
-	if stream.IsValidRoute(simulatedMessage.Path) {
-		log.Errorf("pubsub user update: discovery message path is invalid: %s", simulatedMessage.Path)
-		return fmt.Errorf("pubsub user update: message has invalid path: %s", simulatedMessage.Path)
-	}
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
 	}
 	_, err := g.node.GenericStream( // send to self
-		simulatedMessage.NodeId,
+		g.node.ID().String(),
 		stream.WarpRoute(simulatedMessage.Path),
 		msg.Data,
 	)
