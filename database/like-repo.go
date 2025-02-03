@@ -46,14 +46,16 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 		AddSubPrefix(LikerSubNamespace).
 		AddRootID(tweetId).
 		AddReversedTimestamp(time.Now()).
+		AddParentId(userId).
 		Build()
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
-		_, err := txn.Get(likeKey.Bytes())
-		if err == nil || !errors.Is(err, ErrKeyNotFound) { // already liked
+		_, err := txn.Get(likerKey.Bytes())
+		if !errors.Is(err, storage.ErrKeyNotFound) {
 			return nil
 		}
-		if err = txn.Set(likerKey.Bytes(), []byte(userId)); err != nil {
+
+		if err = txn.Set(likerKey.Bytes(), []byte("")); err != nil {
 			return err
 		}
 		likesNum, err = repo.db.Increment(txn, likeKey)
@@ -79,6 +81,7 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error)
 		AddSubPrefix(LikerSubNamespace).
 		AddRootID(tweetId).
 		AddReversedTimestamp(time.Now()).
+		AddParentId(userId).
 		Build()
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
