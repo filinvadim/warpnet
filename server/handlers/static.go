@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/fs"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -24,7 +24,7 @@ type StaticController struct {
 
 func NewStaticController(isFirstRun bool, staticFolder StaticFolderOpener) *StaticController {
 	pwd, _ := os.Getwd()
-	log.Println("CURRENT DIRECTORY: ", pwd)
+	log.Infoln("CURRENT DIRECTORY: ", pwd)
 	fileSystem := echo.MustSubFS(staticFolder, "dist/")
 
 	return &StaticController{fileSystem, isFirstRun}
@@ -33,7 +33,7 @@ func NewStaticController(isFirstRun bool, staticFolder StaticFolderOpener) *Stat
 func (c *StaticController) GetIndex(ctx echo.Context) error {
 	f, err := c.fileSystem.Open("index.html")
 	if err != nil {
-		log.Println("failed opening index.html: ", err)
+		log.Errorf("failed opening index.html: ", err)
 		return ctx.JSON(http.StatusInternalServerError, api.ErrorResponse{500, err.Error()})
 	}
 	fi, _ := f.Stat()

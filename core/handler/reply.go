@@ -6,7 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -120,7 +120,7 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-				log.Println("broadcaster publish owner reply update:", err)
+				log.Infoln("broadcaster publish owner reply update:", err)
 			}
 		}
 
@@ -170,7 +170,7 @@ func StreamDeleteReplyHandler(
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-				log.Println("broadcaster publish owner reply update:", err)
+				log.Infoln("broadcaster publish owner reply update:", err)
 			}
 		}
 		return nil, nil

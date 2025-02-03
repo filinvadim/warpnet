@@ -29,7 +29,10 @@ get-frontend:
 	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend
 	go mod vendor
 
-ssh:
+setup-hooks:
+	git config core.hooksPath .githooks
+
+ssh-do:
 	ssh root@207.154.221.44
 
 self-sign:

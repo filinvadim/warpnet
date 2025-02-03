@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
@@ -14,12 +13,13 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -65,13 +65,13 @@ type WarpNode struct {
 	retrier  retrier.Retrier
 	ownerId  string
 	version  *semver.Version
-	selfHash encrypting.SelfHash
+	selfHash security.SelfHash
 }
 
 func NewMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash encrypting.SelfHash,
+	selfHash security.SelfHash,
 	db PersistentLayer,
 	conf config.Config,
 	routingFn routingFunc,
@@ -104,7 +104,7 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func setupMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash encrypting.SelfHash,
+	selfHash security.SelfHash,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
@@ -173,12 +173,12 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
-			log.Println("connect attempt to node:", p.ID.String())
+			log.Infoln("connect attempt to node:", p.ID.String())
 			if err := n.node.Connect(n.ctx, p); err != nil {
-				log.Println("node connect error:", err)
+				log.Errorf("node connect attempt error: %v", err)
 				return false, nil
 			}
-			log.Println("connect attempt successful:", p.ID.String())
+			log.Infoln("connect attempt successful:", p.ID.String())
 			return true, nil
 		},
 		now.Add(time.Minute*2),
@@ -222,7 +222,7 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	}
 }
 
-func (n *WarpNode) SelfHash() encrypting.SelfHash {
+func (n *WarpNode) SelfHash() security.SelfHash {
 	return n.selfHash
 }
 
@@ -286,22 +286,22 @@ func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data any)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("stream: request:", path, nodeId)
+	log.Infoln("stream: request:", path, nodeId)
 	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, bt)
 }
 
 func (n *WarpNode) Stop() {
-	log.Println("shutting down node...")
+	log.Infoln("shutting down node...")
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("recovered: %v\n", r)
+			log.Errorf("recovered: %v\n", r)
 		}
 	}()
 	if n.relay != nil {
 		_ = n.relay.Close()
 	}
 	if err := n.node.Close(); err != nil {
-		log.Printf("failed to close node: %v", err)
+		log.Errorf("failed to close node: %v", err)
 	}
 	n.isClosed.Store(true)
 	n.node = nil

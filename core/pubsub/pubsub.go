@@ -11,7 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"slices"
 	"strings"
 	"sync"
@@ -86,7 +86,7 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 			}
 			cancel()
 			if err != nil && !errors.Is(err, context.Canceled) {
-				log.Printf("pubsub discovery: subscription error: %v", err)
+				log.Infof("pubsub discovery: subscription error: %v", err)
 				return
 			}
 
@@ -99,7 +99,7 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 			default:
 				if strings.HasPrefix(*msg.Topic, userUpdateTopicPrefix) {
 					if err := g.handleUserUpdate(msg); err != nil {
-						log.Printf("pubsub discovery: user update error: %v", err)
+						log.Infof("pubsub discovery: user update error: %v", err)
 					}
 				}
 			}
@@ -119,21 +119,21 @@ func (g *Gossip) run(n PeerInfoStorer) error {
 	}
 	g.node = n
 	g.isRunning.Store(true)
-	log.Println("started pubsub service")
+	log.Infoln("started pubsub service")
 
 	discTopic, err := g.pubsub.Join(pubSubDiscoveryTopic)
 	if err != nil {
-		log.Printf("failed to join discovery topic: %s", err)
+		log.Errorf("failed to join discovery topic: %s", err)
 		return err
 	}
 
 	if _, err = discTopic.Relay(); err != nil {
-		log.Printf("failed to relay discovery topic: %s", err)
+		log.Errorf("failed to relay discovery topic: %s", err)
 	}
 
 	discoverySub, err := discTopic.Subscribe()
 	if err != nil {
-		log.Printf("pubsub discovery: failed to subscribe to topic: %s", err)
+		log.Errorf("pubsub discovery: failed to subscribe to topic: %s", err)
 		return err
 	}
 	g.mx.Lock()
@@ -195,12 +195,12 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("pubsub discovery: failed to marchal message: %v", err)
+		log.Errorf("pubsub discovery: failed to marchal message: %v", err)
 		return err
 	}
 	err = topic.Publish(g.ctx, data)
 	if err != nil {
-		log.Printf("pubsub discovery: failed to publish message: %v", err)
+		log.Errorf("pubsub discovery: failed to publish message: %v", err)
 		return err
 	}
 	return
@@ -263,21 +263,23 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	var simulatedMessage event.Message
 	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
-		log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
 	}
 	if simulatedMessage.NodeId == "" {
+		log.Errorln("pubsub user update: discovery message node id is empty")
 		return fmt.Errorf("pubsub user update: message has no node ID: %s", string(msg.Data))
 	}
 	if simulatedMessage.Path == "" {
-		log.Println("pubsub user update: message has no path", string(msg.Data))
+		log.Errorln("pubsub user update: message has no path", simulatedMessage.Path)
 		return fmt.Errorf("pubsub user update: message has no path: %s", string(msg.Data))
 	}
 	if simulatedMessage.Body == nil {
 		return nil
 	}
 	if stream.IsValidRoute(simulatedMessage.Path) {
-		return fmt.Errorf("pubsub user update: message has invalid path: %s", string(msg.Data))
+		log.Errorf("pubsub user update: discovery message path is invalid: %s", simulatedMessage.Path)
+		return fmt.Errorf("pubsub user update: message has invalid path: %s", simulatedMessage.Path)
 	}
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
@@ -293,11 +295,11 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	var discoveryMsg warpnet.WarpAddrInfo
 	if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
-		log.Printf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return
 	}
 	if discoveryMsg.ID == "" {
-		log.Println("pubsub discovery: message has no ID", string(msg.Data))
+		log.Errorf("pubsub discovery: message has no ID", string(msg.Data))
 		return
 	}
 	if discoveryMsg.ID == g.node.ID() {
@@ -316,10 +318,10 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 
 	if g.discoveryHandler == nil { // just bootstrap
 		if err := g.node.Connect(peerInfo); err != nil {
-			log.Printf("pubsub discovery: failed to connect to peer: %v", err)
+			log.Errorf("pubsub discovery: failed to connect to peer: %v", err)
 			return
 		}
-		log.Printf("pubsub: connected to peer: %s", discoveryMsg.ID)
+		log.Infof("pubsub: connected to peer: %s", discoveryMsg.ID)
 		return
 	}
 	g.discoveryHandler(peerInfo) // add new user
@@ -328,8 +330,8 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
-	log.Println("pubsub: publisher started")
-	defer log.Println("pubsub: publisher stopped")
+	log.Infoln("pubsub: publisher started")
+	defer log.Infoln("pubsub: publisher stopped")
 
 	for {
 		if !g.isRunning.Load() {
@@ -338,7 +340,7 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 		}
 		select {
 		case <-g.ctx.Done():
-			log.Println(g.ctx.Err())
+			log.Infoln(g.ctx.Err())
 			return
 		case <-ticker.C:
 			addrs := make([]string, 0, len(g.node.Addrs()))
@@ -355,12 +357,12 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 			}
 			data, err := json.Marshal(msg)
 			if err != nil {
-				log.Printf("pubsub discovery: failed to marchal message: %v", err)
+				log.Errorf("pubsub discovery: failed to marchal message: %v", err)
 				return
 			}
 			err = discTopic.Publish(g.ctx, data)
 			if err != nil {
-				log.Printf("pubsub discovery: failed to publish message: %v", err)
+				log.Errorf("pubsub discovery: failed to publish message: %v", err)
 			}
 		}
 	}

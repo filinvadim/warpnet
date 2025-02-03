@@ -13,8 +13,8 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 const (
-	UsersRepoName = "/USERS"
-	defaultRootID = "users"
+	UsersRepoName    = "/USERS"
+	UserSubNamespace = "USER"
 )
 
 type UserStorer interface {
@@ -47,22 +47,24 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	}
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(defaultRootID).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(user.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(defaultRootID).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
 		AddReversedTimestamp(user.CreatedAt).
 		AddParentId(user.Id).
 		Build()
 
 	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = repo.db.Set(fixedKey, sortableKey.Bytes()); err != nil {
+		if err = tx.Set(fixedKey.Bytes(), sortableKey.Bytes()); err != nil {
 			return err
 		}
-		return repo.db.Set(sortableKey, data)
+		return tx.Set(sortableKey.Bytes(), data)
 	})
 	return user, err
 }
@@ -73,7 +75,8 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 		return user, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(defaultRootID).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
@@ -104,7 +107,8 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 // Delete removes a user by their ID
 func (repo *UserRepo) Delete(userID string) error {
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddRootID(defaultRootID).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
@@ -116,16 +120,16 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = repo.db.Delete(fixedKey); err != nil {
+		if err = tx.Delete(fixedKey.Bytes()); err != nil {
 			return err
 		}
-		return repo.db.Delete(storage.DatabaseKey(sortableKeyBytes))
+		return tx.Delete(sortableKeyBytes)
 	})
 	return err
 }
 
 func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
-	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(defaultRootID).Build()
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(UserSubNamespace).Build()
 
 	items, cur, err := repo.db.List(prefix, limit, cursor)
 	if err != nil {

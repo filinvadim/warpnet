@@ -64,10 +64,10 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 	}
 
 	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
-		if err = repo.db.Set(fixedKey, sortableKey.Bytes()); err != nil {
+		if err = tx.Set(fixedKey.Bytes(), sortableKey.Bytes()); err != nil {
 			return err
 		}
-		return repo.db.Set(sortableKey, data)
+		return tx.Set(sortableKey.Bytes(), data)
 	})
 	data = nil
 	return tweet, err
@@ -110,10 +110,10 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		return err
 	}
 	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
-		if err = repo.db.Delete(fixedKey); err != nil {
+		if err = tx.Delete(fixedKey.Bytes()); err != nil {
 			return err
 		}
-		return repo.db.Delete(storage.DatabaseKey(sortableKeyBytes))
+		return tx.Delete(sortableKeyBytes)
 	})
 	return err
 }

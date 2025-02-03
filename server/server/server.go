@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 )
@@ -64,16 +64,16 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	port := ":" + strconv.Itoa(conf.Server.Port)
 	err = browser.OpenURL("http://localhost" + port)
 	if err != nil {
-		e.Logger.Errorf("failed to open browser: %v", err)
+		log.Errorf("failed to open browser: %v", err)
 		return nil, ErrBrowserLoadFailed
 	}
 	return &interfaceServer{e, port}, nil
 }
 
 func (p *interfaceServer) Start() {
-	log.Println("starting public server...")
+	log.Infoln("starting public server...")
 	if err := p.e.Start(p.port); err != nil {
-		p.e.Logger.Printf("interface server start: %v", err)
+		log.Errorf("interface server start: %v", err)
 	}
 }
 
@@ -91,7 +91,7 @@ func (p *interfaceServer) Shutdown(ctx context.Context) {
 			p.e.Logger.Error(r)
 		}
 	}()
-	log.Println("shutting down public server...")
+	log.Infoln("shutting down public server...")
 	if p == nil {
 		return
 	}

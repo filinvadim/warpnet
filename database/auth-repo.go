@@ -6,10 +6,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/database/storage"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/security"
 	"math/big"
 	"time"
 )
@@ -65,14 +65,14 @@ func (repo *AuthRepo) generateSecrets(username, password string) (token string, 
 	}
 	randChar := string(uint8(n.Uint64())) //#nosec
 	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
-	token = base64.StdEncoding.EncodeToString(encrypting.ConvertToSHA256(feed))
+	token = base64.StdEncoding.EncodeToString(security.ConvertToSHA256(feed))
 
 	seed := base64.StdEncoding.EncodeToString(
-		encrypting.ConvertToSHA256(
+		security.ConvertToSHA256(
 			[]byte(username + "@" + password + "@" + "seed"), // no random - private key must be determined
 		),
 	)
-	privateKey, err := encrypting.GenerateKeyFromSeed([]byte(seed))
+	privateKey, err := security.GenerateKeyFromSeed([]byte(seed))
 	if err != nil {
 		return "", nil, fmt.Errorf("generate private key from seed: %w", err)
 	}

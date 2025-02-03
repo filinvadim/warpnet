@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/filinvadim/warpnet/security"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type WarpBootstrapNode struct {
 	relay    warpnet.WarpRelayCloser
 	retrier  retrier.Retrier
 	version  *semver.Version
-	selfHash encrypting.SelfHash
+	selfHash security.SelfHash
 }
 
 type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
@@ -33,7 +33,7 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func NewBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash encrypting.SelfHash,
+	selfHash security.SelfHash,
 	memoryStore warpnet.WarpPeerstore,
 	conf config.Config,
 	routingF routingFunc,
@@ -58,7 +58,7 @@ func NewBootstrapNode(
 func setupBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash encrypting.SelfHash,
+	selfHash security.SelfHash,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
@@ -132,7 +132,7 @@ func (n *WarpBootstrapNode) Addrs() (addrs []string) {
 	return addrs
 }
 
-func (n *WarpBootstrapNode) SelfHash() encrypting.SelfHash {
+func (n *WarpBootstrapNode) SelfHash() security.SelfHash {
 	return n.selfHash
 }
 
@@ -161,7 +161,7 @@ func (n *WarpBootstrapNode) Stop() {
 		return
 	}
 	if err := n.node.Close(); err != nil {
-		log.Println("bootstrap node stop fail:", err)
+		log.Infoln("bootstrap node stop fail:", err)
 	}
 	n.node = nil
 }

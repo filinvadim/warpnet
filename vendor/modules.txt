@@ -64,7 +64,7 @@ github.com/elastic/gosigar/sys/windows
 # github.com/fatih/color v1.16.0
 ## explicit; go 1.17
 github.com/fatih/color
-# github.com/filinvadim/warpnet-frontend v0.0.108
+# github.com/filinvadim/warpnet-frontend v0.0.117
 ## explicit; go 1.23.5
 github.com/filinvadim/warpnet-frontend
 # github.com/flynn/noise v1.1.0
@@ -669,6 +669,9 @@ github.com/quic-go/webtransport-go
 # github.com/raulk/go-watchdog v1.3.0
 ## explicit; go 1.15
 github.com/raulk/go-watchdog
+# github.com/sirupsen/logrus v1.8.1
+## explicit; go 1.13
+github.com/sirupsen/logrus
 # github.com/spaolacci/murmur3 v1.1.0
 ## explicit
 github.com/spaolacci/murmur3

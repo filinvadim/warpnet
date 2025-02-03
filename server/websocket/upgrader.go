@@ -2,9 +2,9 @@ package websocket
 
 import (
 	"encoding/base64"
-	"github.com/filinvadim/warpnet/core/encrypting"
+	"github.com/filinvadim/warpnet/security"
 	ws "github.com/gorilla/websocket"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
 	"time"
@@ -14,7 +14,7 @@ type EncryptedUpgrader struct {
 	upgrader        ws.Upgrader
 	conn            *ws.Conn
 	readCallback    func(msg []byte) ([]byte, error)
-	encrypter       *encrypting.DiffieHellmanEncrypter
+	encrypter       *security.DiffieHellmanEncrypter
 	mx              *sync.Mutex
 	isAuthenticated bool
 	externalPubKey  []byte
@@ -23,7 +23,7 @@ type EncryptedUpgrader struct {
 }
 
 func NewEncryptedUpgrader() *EncryptedUpgrader {
-	e, err := encrypting.NewDiffieHellmanEncrypter()
+	e, err := security.NewDiffieHellmanEncrypter()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -84,7 +84,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 		}
 
 		if !s.isAuthenticated {
-			log.Println("websocket received client public key")
+			log.Infoln("websocket received client public key")
 			pubKey, err := base64.StdEncoding.DecodeString(string(message))
 			if err != nil {
 				_ = s.SendPlain(err.Error())
@@ -96,44 +96,44 @@ func (s *EncryptedUpgrader) readLoop() error {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
-			log.Println("websocket computed shared secret")
+			log.Infoln("websocket computed shared secret")
 
 			// send ours public key
 			encoded := base64.StdEncoding.EncodeToString(s.encrypter.PublicKey())
 			err = s.SendPlain(encoded)
 			if err != nil {
-				log.Printf("websocket error sending public key: %s", err)
+				log.Infof("websocket error sending public key: %s", err)
 				continue
 			}
-			log.Println("websocket sent server public key")
+			log.Infoln("websocket sent server public key")
 
 			s.isAuthenticated = true
-			log.Println("websocket handshake complete")
+			log.Infoln("websocket handshake complete")
 			continue
 		}
 
 		if s.readCallback == nil {
-			log.Println("no read callback provided")
+			log.Infoln("no read callback provided")
 			continue
 		}
 		decryptedMessage, err := s.encrypter.DecryptMessage(message)
 		if err != nil {
-			log.Printf("failed to decrypt message: %v", err)
+			log.Errorf("failed to decrypt message: %v", err)
 			return nil
 		}
 
 		response, err := s.readCallback(decryptedMessage)
 		if err != nil {
-			log.Printf("callback: %v", err)
+			log.Errorf("callback: %v", err)
 		}
 		if response == nil {
 			continue
 		}
 		if err = s.SendEncrypted(response); err != nil {
-			log.Printf("failed to send encrypted message: %v", err)
+			log.Errorf("failed to send encrypted message: %v", err)
 		}
 		if err := s.renewSalt(); err != nil {
-			log.Printf("failed to renew salt: %v", err)
+			log.Errorf("failed to renew salt: %v", err)
 		}
 	}
 }
@@ -168,7 +168,7 @@ func (s *EncryptedUpgrader) renewSalt() error {
 		return err
 	}
 	s.isSaltRenewed = true
-	log.Println("secret renewed")
+	log.Infoln("secret renewed")
 	return nil
 }
 

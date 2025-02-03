@@ -2,7 +2,7 @@ package chat
 
 //
 //import (
-//	"log"
+//	log "github.com/sirupsen/logrus"
 //	"net/http"
 //	"time"
 //
@@ -234,7 +234,7 @@ package chat
 //			var msg Message
 //			if err := ws.ReadJSON(&msg); err != nil {
 //				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-//					log.Printf("error: %v, user-agent: %v", err, r.Header.Get("User-Agent"))
+//					log.Infof("error: %v, user-agent: %v", err, r.Header.Get("User-Agent"))
 //				}
 //				// Don't use return - it will not trigger the defer function.
 //				break

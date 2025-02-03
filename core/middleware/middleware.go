@@ -6,8 +6,8 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"time"
 )
 
@@ -39,11 +39,11 @@ func NewWarpMiddleware() *WarpMiddleware {
 
 func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		log.Printf("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+		log.Infof("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
 		before := time.Now()
 		next(s)
 		after := time.Now()
-		log.Printf(
+		log.Infof(
 			"middleware: server stream closed: %s %s, elapsed: %s\n",
 			s.Protocol(),
 			s.Conn().RemotePeer(),
@@ -61,13 +61,13 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 		}
 		route := stream.FromPrIDToRoute(s.Protocol())
 		if route.IsPrivate() && p.clientNodeID == "" {
-			log.Println("middleware: client peer ID not set, ignoring private route:", route)
+			log.Errorf("middleware: client peer ID not set, ignoring private route:", route)
 			s.Write(ErrUnknownClientPeer.Bytes())
 			return
 		}
 		if route.IsPrivate() && p.clientNodeID != "" { // not private == no auth
 			if !(p.clientNodeID == s.Conn().RemotePeer()) { // only own client node can do private requests
-				log.Println("middleware: client peer id mismatch:", s.Conn().RemotePeer())
+				log.Errorf("middleware: client peer id mismatch:", s.Conn().RemotePeer())
 				s.Write(ErrUnknownClientPeer.Bytes())
 				return
 			}
@@ -93,14 +93,14 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		reader := io.LimitReader(s, MB) // TODO size limit???
 		data, err := io.ReadAll(reader)
 		if err != nil && err != io.EOF {
-			log.Printf("middleware: reading from stream: %v", err)
+			log.Errorf("middleware: reading from stream: %v", err)
 			response = domain.Error{Message: ErrStreamReadError.Error()}
 			return
 		}
 		if response == nil {
 			response, err = fn(data)
 			if err != nil {
-				log.Printf("handling %s message: %v\n", s.Protocol(), err)
+				log.Errorf("handling %s message: %v\n", s.Protocol(), err)
 				response = domain.Error{Message: ErrInternalNodeError.Error()}
 			}
 		}
@@ -108,7 +108,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		switch response.(type) {
 		case []byte:
 			if _, err := s.Write(response.([]byte)); err != nil {
-				log.Printf("middleware: writing raw bytes to stream: %v", err)
+				log.Errorf("middleware: writing raw bytes to stream: %v", err)
 			}
 			return
 		case p2p.NodeInfo:
@@ -118,7 +118,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		default:
 		}
 		if err := encoder.Encode(response); err != nil {
-			log.Printf("fail encoding generic response: %v", err)
+			log.Errorf("fail encoding generic response: %v", err)
 		}
 	}
 }

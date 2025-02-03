@@ -2,9 +2,9 @@ package p2p
 
 import (
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
@@ -24,7 +24,7 @@ type NodeInfo struct {
 	Version      string                `json:"version"`
 	StreamStats  network.Stats         `json:"stream_stats"`
 	OwnerId      string                `json:"owner_id"`
-	SelfHash     encrypting.SelfHash   `json:"self_hash"`
+	SelfHash     security.SelfHash     `json:"self_hash"`
 }
 
 const (
@@ -51,7 +51,7 @@ func NewP2PNode(
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
 		// TODO shuffle name thru consensus. "warpnet" now
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))),
+		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.PSK))),
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),

@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -64,9 +64,9 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	if s == nil {
 		return
 	}
-	log.Println("discovery service started")
+	log.Infoln("discovery service started")
 	printPeers(n)
-	defer log.Println("discovery service stopped")
+	defer log.Infoln("discovery service stopped")
 
 	s.node = n
 
@@ -87,7 +87,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 func printPeers(n DiscoveryInfoStorer) {
 	defer func() {
 		if r := recover(); r != nil { // could panic
-			log.Println("discovery: print peers: recovered from panic:", r)
+			log.Errorf("discovery: print peers: recovered from panic:", r)
 		}
 	}()
 	for _, id := range n.Peerstore().Peers() {
@@ -101,7 +101,7 @@ func printPeers(n DiscoveryInfoStorer) {
 func (s *discoveryService) Close() {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("discovery: close recovered from panic:", r)
+			log.Errorf("discovery: close recovered from panic:", r)
 		}
 	}()
 	close(s.stopChan)
@@ -116,7 +116,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 		return
 	}
 	if s.discoveryChan == nil {
-		log.Println("discovery channel is nil")
+		log.Errorf("discovery channel is nil")
 		return
 	}
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
@@ -127,12 +127,12 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 
 func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
-		log.Println("discovery service is not initialized")
+		log.Errorf("discovery service is not initialized")
 		return
 	}
 
 	if pi.ID == "" {
-		log.Printf("discovery: peer %s has no ID", pi.ID.String())
+		log.Errorf("discovery: peer %s has no ID", pi.ID.String())
 		return
 	}
 	if pi.ID == s.node.ID() {
@@ -140,10 +140,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
 	if err != nil {
-		log.Printf("discovery: failed to check blocklist: %s", err)
+		log.Errorf("discovery: failed to check blocklist: %s", err)
 	}
 	if ok {
-		log.Printf("discovery: found blocklisted peer: %s", pi.ID.String())
+		log.Infof("discovery: found blocklisted peer: %s", pi.ID.String())
 		return
 	}
 
@@ -154,53 +154,53 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.ID.String(), peerState)
 
 	if err := s.node.Connect(pi); err != nil {
-		log.Printf("discovery: failed to connect to new peer: %s, removing...", err)
+		log.Errorf("discovery: failed to connect to new peer: %s, removing...", err)
 		s.node.Peerstore().RemovePeer(pi.ID) // try to add it again
 		return
 	}
-	log.Printf("discovery: connected to new peer: %s", pi.ID)
+	log.Infof("discovery: connected to new peer: %s", pi.ID)
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
 	if isBootstrapError(err) {
-		log.Println("discovery: bootstrap node doesn't support requesting", pi.ID.String())
+		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
 	}
 	if err != nil {
-		log.Printf("discovery: failed to get info from new peer: %s", err)
+		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
 
 	var info p2p.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
-		log.Printf("discovery: failed to unmarshal info from new peer: %s", err)
+		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)
 		return
 	}
 
 	if err = s.nodeRepo.AddInfo(s.ctx, pi.ID, info); err != nil {
-		log.Printf("discovery: failed to store info of new peer: %s", err)
+		log.Errorf("discovery: failed to store info of new peer: %s", err)
 	}
 
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
 	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER_1_0_0, getUserEvent)
 	if isBootstrapError(err) {
-		log.Println("discovery: bootstrap node doesn't support requesting", pi.ID.String())
+		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
 	}
 	if err != nil {
-		log.Printf("discovery: failed to get info from new peer: %s", err)
+		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
 
 	var user domain.User
 	err = json.JSON.Unmarshal(userResp, &user)
 	if err != nil {
-		log.Printf("discovery: failed to unmarshal user from new peer: %s", err)
+		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
 	_, err = s.userRepo.Create(user)
 	if err != nil {
-		log.Printf("discovery: failed to create user from new peer: %s", err)
+		log.Errorf("discovery: failed to create user from new peer: %s", err)
 	}
 }
 

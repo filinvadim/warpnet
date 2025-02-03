@@ -13,7 +13,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/websocket"
 	"github.com/labstack/echo/v4"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -46,7 +46,7 @@ func NewWSController(
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
-	ctx.Logger().Infof("websocket upgrade request: %s", ctx.Request().URL.Path)
+	log.Infof("websocket upgrade request: %s", ctx.Request().URL.Path)
 
 	c.upgrader = websocket.NewEncryptedUpgrader()
 	c.upgrader.OnMessage(c.handle)
@@ -55,7 +55,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request()) // WS listener infinite loop
 	if err != nil {
-		ctx.Logger().Errorf("websocket upgrader: %v", err)
+		log.Errorf("websocket upgrader: %v", err)
 	}
 
 	c.upgrader.Close()
@@ -73,11 +73,11 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		return nil, err
 	}
 	if wsMsg.MessageId == "" {
-		log.Printf("websocket request: missing message_id: %s\n", string(msg))
+		log.Errorf("websocket request: missing message_id: %s\n", string(msg))
 		return nil, fmt.Errorf("websocket request: missing message_id")
 	}
 	if wsMsg.Body == nil {
-		log.Printf("websocket request: missing body: %s\n", string(msg))
+		log.Errorf("websocket request: missing body: %s\n", string(msg))
 		return nil, fmt.Errorf("websocket request: missing body")
 	}
 
@@ -85,19 +85,19 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	case event.PRIVATE_POST_LOGIN_1_0_0:
 		req, err := wsMsg.Body.AsRequestBody()
 		if err != nil {
-			log.Printf("websocket: login as request: %v", err)
+			log.Errorf("websocket: login as request: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
 		ev, err := req.AsLoginEvent()
 		if err != nil {
-			log.Printf("websocket: login as event: %v", err)
+			log.Errorf("websocket: login as event: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
 		loginResp, err := c.auth.AuthLogin(ev)
 		if err != nil {
-			log.Printf("websocket: auth: %v", err)
+			log.Errorf("websocket: auth: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
@@ -105,12 +105,12 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 
 		respBody := event.ResponseBody{}
 		if err = respBody.FromLoginResponse(loginResp); err != nil {
-			log.Printf("websocket: login FromLoginResponse: %v", err)
+			log.Errorf("websocket: login FromLoginResponse: %v", err)
 			break
 		}
 		msgBody := &event.Message_Body{}
 		if err = msgBody.FromResponseBody(respBody); err != nil {
-			log.Printf("websocket: login FromResponseBody: %v", err)
+			log.Errorf("websocket: login FromResponseBody: %v", err)
 			break
 		}
 
@@ -120,7 +120,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 		c.client, err = client.NewClientNode(c.ctx, clientInfo, c.conf)
 		if err != nil {
-			log.Printf("create node client: %v", err)
+			log.Errorf("create node client: %v", err)
 		}
 
 		response.Body = msgBody
@@ -131,28 +131,29 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 
 	default:
 		if c.client == nil {
+			log.Errorf("websocket request: not connected to server node")
 			response = newErrorResp("not connected to server node")
 			break
 		}
 		if wsMsg.Body == nil {
-			log.Printf("websocket: missing body: %s\n", string(msg))
+			log.Errorf("websocket: missing body: %s\n", string(msg))
 			response = newErrorResp(fmt.Sprintf("missing data: %s", msg))
 			break
 		}
 		// TODO check version
 
 		if wsMsg.NodeId == "" || wsMsg.Path == "" {
-			log.Printf("websocket: missing node id or path: %s\n", string(msg))
+			log.Errorf("websocket: missing node id or path: %s\n", string(msg))
 			response = newErrorResp(
 				fmt.Sprintf("missing path or node ID: %s", msg),
 			)
 			break
 		}
 
-		log.Printf("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
+		log.Infof("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
 		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), *wsMsg.Body)
 		if err != nil {
-			log.Printf("websocket: send stream: %v", err)
+			log.Errorf("websocket: send stream: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
@@ -162,7 +163,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		_ = response.Body.FromResponseBody(respBody)
 	}
 	if response.Body == nil {
-		log.Println("websocket response body is empty")
+		log.Errorf("websocket response body is empty")
 		return nil, nil
 	}
 

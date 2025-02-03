@@ -11,7 +11,6 @@ import (
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/middleware"
@@ -23,10 +22,11 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -40,24 +40,26 @@ type API struct {
 }
 
 func main() {
+	security.EnableCoreDumps()
+	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
+	if !isValid {
+		log.Infoln("invalid binary signature - TODO") // TODO
+	}
+	security.DisableCoreDumps()
+	security.MustNotGDBAttached()
+	selfHash, err := security.GetSelfHash(security.Member)
+	if err != nil {
+		log.Fatalf("fail to get self hash: %v", err)
+	}
+	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
+
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
-	log.Println("Warpnet Version:", conf.Version)
-
-	isValid := encrypting.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
-	if !isValid {
-		log.Println("invalid binary signature - TODO") // TODO
-	}
-
-	selfHash, err := encrypting.GetSelfHash(encrypting.Member)
-	if err != nil {
-		log.Fatalf("fail to get self hash: %v", err)
-	}
-	fmt.Println("self hash:", selfHash) // TODO verify with network consensus
+	log.Infoln("config bootstrap nodes: ", conf.Node.Bootstrap)
+	log.Infoln("Warpnet Version:", conf.Version)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -121,10 +123,10 @@ func main() {
 	var authInfo domain.AuthNodeInfo
 	select {
 	case <-interruptChan:
-		log.Println("logged out")
+		log.Infoln("logged out")
 		return
 	case authInfo = <-authReadyChan:
-		log.Println("authentication was successful")
+		log.Infoln("authentication was successful")
 	}
 	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
 	persLayer := persistentLayer{nodeRepo, authRepo}
@@ -201,11 +203,11 @@ func main() {
 	)
 	n.SetStreamHandler(
 		event.PRIVATE_POST_FOLLOW_1_0_0,
-		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, userRepo, followRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, followRepo)))),
 	)
 	n.SetStreamHandler(
 		event.PRIVATE_POST_UNFOLLOW_1_0_0,
-		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, userRepo, followRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, followRepo)))),
 	)
 	n.SetStreamHandler(
 		event.PUBLIC_GET_USER_1_0_0,
@@ -253,7 +255,7 @@ func main() {
 	raft.Negotiate(bootstrapAddrs)
 	defer raft.Shutdown()
 	<-interruptChan
-	log.Println("interrupted...")
+	log.Infoln("interrupted...")
 }
 
 type persistentLayer struct {

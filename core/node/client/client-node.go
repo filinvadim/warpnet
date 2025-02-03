@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"time"
 )
 
@@ -38,7 +38,7 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 		return nil, errors.New("client node: server node ID is empty")
 	}
 	serverNodeId := clientInfo.Identity.Owner.NodeId
-	privKey, err := encrypting.GenerateKeyFromSeed([]byte("client-node"))
+	privKey, err := security.GenerateKeyFromSeed([]byte("client-node"))
 	if err != nil {
 		log.Fatalf("fail generating key: %v", err)
 	}
@@ -53,7 +53,7 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 		libp2p.DisableIdentifyAddressDiscovery(),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.PrivateNetwork(encrypting.ConvertToSHA256([]byte(conf.Node.PSK))),
+		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.PSK))),
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {
@@ -88,13 +88,14 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
-	log.Println("client-server nodes paired")
-	log.Println("client node created:", n.node.ID())
+	log.Infoln("client-server nodes paired")
+	log.Infoln("client node created:", n.node.ID())
 	return n, nil
 }
 
 func (n *WarpClientNode) pairNodes(nodeId string, clientInfo domain.AuthNodeInfo) error {
 	if n == nil {
+		log.Errorln("client node must not be nil")
 		return errors.New("client node must not be nil")
 	}
 	_, err := n.GenericStream(nodeId, stream.PairPostPrivate, clientInfo)
@@ -131,7 +132,7 @@ func (n *WarpClientNode) Stop() {
 		return
 	}
 	if err := n.node.Close(); err != nil {
-		log.Println("client node stop fail:", err)
+		log.Errorf("client node stop fail: %v", err)
 	}
 	n.node = nil
 }

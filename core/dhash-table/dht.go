@@ -9,8 +9,8 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"time"
 )
 
@@ -71,7 +71,7 @@ type DistributedHashTable struct {
 }
 
 func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
-	log.Println("dht: node removed", info.ID)
+	log.Infoln("dht: node removed", info.ID)
 }
 
 // TODO: track this: dht	go-libp2p-kad-dht/dht.go:523
@@ -81,7 +81,7 @@ func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
 // peer id mismatch: expected 12D3KooWJAYu4meUU7v5usd7P4b5LAJjBH6svwmGZqoVe24rLEQo,
 // but remote key matches 12D3KooWSmiUppeMgcxGgPzJheaDfQvGuUpa9JzciDfpMea2epG3"}
 func DefaultNodeAddedCallback(info warpnet.PeerAddrInfo) {
-	log.Println("dht: node added", info.ID)
+	log.Infoln("dht: node added", info.ID)
 }
 
 func NewDHTable(
@@ -117,7 +117,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
 	)
 	if err != nil {
-		log.Printf("new dht: %v\n", err)
+		log.Infof("new dht: %v\n", err)
 		return nil, err
 	}
 
@@ -136,13 +136,13 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	go func() {
 		if err := dhTable.Bootstrap(d.ctx); err != nil {
-			log.Printf("dht: bootstrap: %s", err)
+			log.Errorf("dht: bootstrap: %s", err)
 		}
 	}()
 
 	<-dhTable.RefreshRoutingTable()
 
-	log.Println("dht: routing started")
+	log.Infoln("dht: routing started")
 
 	return dhTable, nil
 }
@@ -152,7 +152,8 @@ func (d *DistributedHashTable) Close() {
 		return
 	}
 	if err := d.dht.Close(); err != nil {
-		log.Printf("dht: table close: %v\n", err)
+		log.Errorf("dht: table close: %v\n", err)
 	}
 	d.dht = nil
+	log.Infoln("dht: table closed")
 }

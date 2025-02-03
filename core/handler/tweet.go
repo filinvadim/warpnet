@@ -6,7 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -110,7 +110,7 @@ func StreamNewTweetHandler(
 			return tweet, errors.New("tweet handler: empty tweet id")
 		}
 		if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
-			log.Printf("fail adding tweet to timeline: %v", err)
+			log.Infof("fail adding tweet to timeline: %v", err)
 		}
 		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respTweetEvent := event.NewTweetEvent{
@@ -137,7 +137,7 @@ func StreamNewTweetHandler(
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-				log.Println("broadcaster publish owner tweet update:", err)
+				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
 		}
 		return tweet, nil
@@ -181,7 +181,7 @@ func StreamDeleteTweetHandler(
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-				log.Println("broadcaster publish owner tweet update:", err)
+				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
 		}
 		return nil, nil

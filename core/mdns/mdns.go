@@ -7,7 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 )
@@ -78,9 +78,9 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	defer m.mx.Unlock()
 	if m.discoveryHandler == nil {
 		if err := m.node.Connect(p); err != nil {
-			log.Println("mdns: failed to connect to peer", p.ID, err)
+			log.Errorln("mdns: failed to connect to peer", p.ID, err)
 		}
-		log.Println("mdns: connected to peer:", p.ID)
+		log.Infoln("mdns: connected to peer:", p.ID)
 		return
 	}
 	m.discoveryHandler(p)
@@ -112,10 +112,10 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 
 	if err := m.mdns.Start(); err != nil {
-		log.Println("mdns failed to start", err)
+		log.Errorf("mdns failed to start: %v", err)
 		return
 	}
-	log.Println("mdns service started")
+	log.Infoln("mdns service started")
 }
 
 func (m *MulticastDNS) Close() {
@@ -126,7 +126,7 @@ func (m *MulticastDNS) Close() {
 		return
 	}
 	if err := m.mdns.Close(); err != nil {
-		log.Println("mdns failed to close", err)
+		log.Errorf("mdns failed to close: %v", err)
 	}
 	m.isRunning.Store(false)
 	m.mdns = nil

@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	FollowRepoName  = "/FOLLOWER"
-	followeeSubName = "followee"
-	followerSubName = "follower"
+	FollowRepoName     = "/FOLLOWER"
+	followeeSubName    = "FOLLOWEE"
+	followerSubName    = "FOLLOWER"
+	followeeNumSubName = "FOLLOWEENUM"
+	followerNumSubName = "FOLLOWERNUM"
 )
 
 type FollowerStorer interface {
@@ -21,6 +23,8 @@ type FollowerStorer interface {
 	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
+	Increment(key storage.DatabaseKey) (int64, error)
+	Decrement(key storage.DatabaseKey) (int64, error)
 }
 
 // FollowRepo handles reader/writer relationships
@@ -68,16 +72,16 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		Build()
 
 	return repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err := repo.db.Set(sortableFollowerKey, data); err != nil {
+		if err := tx.Set(sortableFollowerKey.Bytes(), data); err != nil {
 			return err
 		}
-		if err := repo.db.Set(sortableFolloweeKey, data); err != nil {
+		if err := tx.Set(sortableFolloweeKey.Bytes(), data); err != nil {
 			return err
 		}
-		if err := repo.db.Set(fixedFollowerKey, []byte(sortableFollowerKey)); err != nil {
+		if err := tx.Set(fixedFollowerKey.Bytes(), []byte(sortableFollowerKey)); err != nil {
 			return err
 		}
-		return repo.db.Set(fixedFolloweeKey, []byte(sortableFolloweeKey))
+		return tx.Set(fixedFolloweeKey.Bytes(), []byte(sortableFolloweeKey))
 	})
 }
 
@@ -105,17 +109,18 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	if err != nil {
 		return err
 	}
+
 	return repo.db.WriteTxn(func(tx *badger.Txn) error {
-		if err := repo.db.Delete(fixedFolloweeKey); err != nil {
+		if err := tx.Delete(fixedFolloweeKey.Bytes()); err != nil {
 			return err
 		}
-		if err := repo.db.Delete(fixedFollowerKey); err != nil {
+		if err := tx.Delete(fixedFollowerKey.Bytes()); err != nil {
 			return err
 		}
-		if err := repo.db.Delete(storage.DatabaseKey(sortableFollowerKey)); err != nil {
+		if err := tx.Delete(sortableFollowerKey); err != nil {
 			return err
 		}
-		return repo.db.Delete(storage.DatabaseKey(sortableFolloweeKey))
+		return tx.Delete(sortableFolloweeKey)
 	})
 }
 

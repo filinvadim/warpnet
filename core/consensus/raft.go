@@ -7,7 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 
@@ -141,7 +141,7 @@ func NewRaft(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create raft transport: %w", err)
 	}
-	log.Println("consensus: transport configured with local address:", transport.LocalAddr())
+	log.Infoln("consensus: transport configured with local address:", transport.LocalAddr())
 
 	return &consensusService{
 		ctx:           ctx,
@@ -159,7 +159,7 @@ func NewRaft(
 }
 
 func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
-	log.Println("consensus: raft starting...")
+	log.Infoln("consensus: raft starting...")
 
 	var err error
 	c.raft, err = raft.NewRaft(
@@ -170,7 +170,7 @@ func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 		c.transport,
 	)
 	if err != nil {
-		log.Printf("consensus: failed to create raft node: %v", err)
+		log.Infof("consensus: failed to create raft node: %v", err)
 	}
 
 	bootstrapServers := make([]raft.Server, 0, len(bootstrapAddrs)+1)
@@ -191,16 +191,16 @@ func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 
 	wait := c.raft.BootstrapCluster(raft.Configuration{Servers: bootstrapServers})
 	if wait != nil && wait.Error() != nil {
-		log.Printf("consensus: failed to bootstrap cluster: %v", wait.Error())
+		log.Infof("consensus: failed to bootstrap cluster: %v", wait.Error())
 		return
 	}
 	go c.listenEvents()
-	log.Printf("consensus: node started with ID: %s and last index: %d", c.raft.String(), c.raft.LastIndex())
+	log.Infof("consensus: node started with ID: %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 }
 
 func (c *consensusService) listenEvents() {
 	for range c.consensus.Subscribe() {
-		log.Println("consensus: state was updated")
+		log.Infoln("consensus: state was updated")
 	}
 }
 
@@ -249,8 +249,8 @@ func (c *consensusService) Shutdown() {
 	}
 	wait := c.raft.Shutdown()
 	if wait != nil && wait.Error() != nil {
-		log.Printf("failed to shutdown raft: %v", wait.Error())
+		log.Infof("failed to shutdown raft: %v", wait.Error())
 	}
-	log.Println("consensus: raft node shut down")
+	log.Infoln("consensus: raft node shut down")
 	c.raft = nil
 }

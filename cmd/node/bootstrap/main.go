@@ -2,20 +2,19 @@ package main
 
 import (
 	"context"
-	"fmt"
 	embedded "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
-	"github.com/filinvadim/warpnet/core/encrypting"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,13 +23,26 @@ import (
 )
 
 func main() {
+	security.EnableCoreDumps()
+	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
+	if !isValid {
+		log.Errorln("invalid binary signature - TODO") // TODO
+	}
+	security.DisableCoreDumps()
+	security.MustNotGDBAttached()
+	selfHash, err := security.GetSelfHash(security.Bootstrap)
+	if err != nil {
+		log.Fatalf("fail to get self hash: %v", err)
+	}
+	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
+
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.Fatalf("fail loading config: %v", err)
 	}
 
-	log.Println("Warpnet Version:", conf.Version)
-	log.Println("config bootstrap nodes: ", conf.Node.Bootstrap)
+	log.Infoln("Warpnet Version:", conf.Version)
+	log.Infoln("config bootstrap nodes: ", conf.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -38,22 +50,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	isValid := encrypting.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
-	if !isValid {
-		log.Println("invalid binary signature - TODO") // TODO
-	}
-
-	selfHash, err := encrypting.GetSelfHash(encrypting.Bootstrap)
-	if err != nil {
-		log.Fatalf("fail to get self hash: %v", err)
-	}
-	fmt.Println("self hash:", selfHash) // TODO verify with network consensus
-
 	seed := []byte("bootstrap")
 	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
 		seed = []byte(hostname)
 	}
-	privKey, err := encrypting.GenerateKeyFromSeed(seed)
+	privKey, err := security.GenerateKeyFromSeed(seed)
 	if err != nil {
 		log.Fatalf("fail generating key: %v", err)
 	}
@@ -103,10 +104,10 @@ func main() {
 
 	raft, err := consensus.NewRaft(ctx, n, nil, true)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	raft.Negotiate(nil)
 	defer raft.Shutdown()
 	<-interruptChan
-	log.Println("bootstrap node interrupted...")
+	log.Infoln("bootstrap node interrupted...")
 }

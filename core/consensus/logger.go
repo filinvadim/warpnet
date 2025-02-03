@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"github.com/hashicorp/go-hclog"
+	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"os"
@@ -36,20 +37,20 @@ func (d *defaultConsensusLogger) Trace(msg string, args ...interface{}) {
 
 func (d *defaultConsensusLogger) Debug(msg string, args ...interface{}) {
 	if d.level == hclog.Debug {
-		log.Printf("%s %v\n", msg, args)
+		logrus.Debugf("%s %v\n", msg, args)
 	}
 }
 
 func (d *defaultConsensusLogger) Info(msg string, args ...interface{}) {
-	log.Printf("%s %v\n", msg, args)
+	logrus.Infof("%s %v\n", msg, args)
 }
 
 func (d *defaultConsensusLogger) Warn(msg string, args ...interface{}) {
-	log.Printf("%s %v\n", msg, args)
+	logrus.Warnf("%s %v\n", msg, args)
 }
 
 func (d *defaultConsensusLogger) Error(msg string, args ...interface{}) {
-	log.Printf("%s %v\n", msg, args)
+	logrus.Errorf("%s %v\n", msg, args)
 }
 
 func (d *defaultConsensusLogger) IsTrace() bool {

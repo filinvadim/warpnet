@@ -1,12 +1,13 @@
 package storage
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	"github.com/filinvadim/warpnet/core/encrypting"
-	"log"
+	"github.com/filinvadim/warpnet/security"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,7 +126,7 @@ func (db *DB) Run(username, password string) (err error) {
 	if username == "" || password == "" {
 		return errors.New("database username or password is empty")
 	}
-	hashSum := encrypting.ConvertToSHA256([]byte(username + "@" + password))
+	hashSum := security.ConvertToSHA256([]byte(username + "@" + password))
 	execOpts := db.storedOpts.WithEncryptionKey(hashSum)
 
 	db.badger, err = badger.Open(execOpts)
@@ -147,7 +148,7 @@ func (db *DB) Run(username, password string) (err error) {
 }
 
 func (db *DB) runEventualGC() {
-	log.Println("database garbage collection started")
+	log.Infoln("database garbage collection started")
 	_ = db.badger.RunValueLogGC(discardRatio)
 	for {
 		isEmpty, err := isDirectoryEmpty(db.dbPath)
@@ -476,8 +477,59 @@ func (db *DB) GC() {
 	}
 }
 
+func (db *DB) Increment(key DatabaseKey) (int64, error) {
+	if !db.isRunning.Load() {
+		return 0, ErrNotRunning
+	}
+	return db.increment(key.Bytes(), 1)
+}
+
+func (db *DB) Decrement(key DatabaseKey) (int64, error) {
+	if !db.isRunning.Load() {
+		return 0, ErrNotRunning
+	}
+	return db.increment(key.Bytes(), -1)
+}
+
+func (db *DB) increment(key []byte, incVal int64) (int64, error) {
+	var newValue int64
+
+	err := db.WriteTxn(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			newValue = incVal
+			return txn.Set(key, encodeInt64(newValue))
+		}
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return err
+		}
+
+		val, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		newValue = decodeInt64(val) + incVal
+		if newValue < 0 {
+			newValue = 0
+		}
+
+		return txn.Set(key, encodeInt64(newValue))
+	})
+	return newValue, err
+}
+
+func encodeInt64(n int64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(n))
+	return b
+}
+
+func decodeInt64(b []byte) int64 {
+	return int64(binary.BigEndian.Uint64(b))
+}
+
 func (db *DB) Close() {
-	log.Println("closing database...")
+	log.Infoln("closing database...")
 	close(db.stopChan)
 	if db.sequence != nil {
 		_ = db.sequence.Release()
@@ -490,6 +542,6 @@ func (db *DB) Close() {
 	}
 	db.isRunning.Store(false)
 	if err := db.badger.Close(); err != nil {
-		log.Println("database close: ", err)
+		log.Infoln("database close: ", err)
 	}
 }

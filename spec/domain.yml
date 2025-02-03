@@ -72,12 +72,6 @@ components:
         background_image:
           type: string
           format: binary
-        followers_num:
-          type: integer
-          format: int64
-        following_num:
-          type: integer
-          format: int64
         tweets_num:
           type: integer
           format: int64
