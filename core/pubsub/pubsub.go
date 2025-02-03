@@ -86,7 +86,7 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 			}
 			cancel()
 			if err != nil && !errors.Is(err, context.Canceled) {
-				log.Infof("pubsub discovery: subscription error: %v", err)
+				log.Infof("pubsub discovery: subscription: %v", err)
 				return
 			}
 
