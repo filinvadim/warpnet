@@ -3,8 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
-	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"sort"
 	"time"
 
@@ -34,9 +33,12 @@ func NewTweetRepo(db TweetsStorer) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen.Tweet, error) {
-	if tweet == (domain_gen.Tweet{}) {
+func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, error) {
+	if tweet == (domain.Tweet{}) {
 		return tweet, errors.New("nil tweet")
+	}
+	if tweet.RetweetId != nil {
+		tweet.Id = ""
 	}
 	if tweet.Id == "" {
 		tweet.Id = uuid.New().String()
@@ -63,7 +65,7 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 		return tweet, fmt.Errorf("tweet marshal: %w", err)
 	}
 
-	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = tx.Set(fixedKey.Bytes(), sortableKey.Bytes()); err != nil {
 			return err
 		}
@@ -74,7 +76,7 @@ func (repo *TweetRepo) Create(userID string, tweet domain_gen.Tweet) (domain_gen
 }
 
 // Get retrieves a tweet by its ID
-func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain_gen.Tweet, err error) {
+func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err error) {
 	fixedKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
 		AddRange(storage.FixedRangeKey).
@@ -109,7 +111,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	if err != nil {
 		return err
 	}
-	err = repo.db.WriteTxn(func(tx *badger.Txn) error {
+	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err = tx.Delete(fixedKey.Bytes()); err != nil {
 			return err
 		}
@@ -118,7 +120,7 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	return err
 }
 
-func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain.Tweet, string, error) {
 	if userId == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
@@ -132,9 +134,9 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		return nil, "", err
 	}
 
-	tweets := make([]domain_gen.Tweet, 0, len(items))
+	tweets := make([]domain.Tweet, 0, len(items))
 	for _, item := range items {
-		var t domain_gen.Tweet
+		var t domain.Tweet
 		err = json.JSON.Unmarshal(item.Value, &t)
 		if err != nil {
 			return nil, "", err

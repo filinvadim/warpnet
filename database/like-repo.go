@@ -49,6 +49,10 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 		Build()
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
+		_, err := txn.Get(likeKey.Bytes())
+		if err == nil || !errors.Is(err, ErrKeyNotFound) { // already liked
+			return nil
+		}
 		if err = txn.Set(likerKey.Bytes(), []byte(userId)); err != nil {
 			return err
 		}
@@ -78,6 +82,10 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error)
 		Build()
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
+		_, err := txn.Get(likeKey.Bytes())
+		if errors.Is(err, ErrKeyNotFound) { // already unliked
+			return nil
+		}
 		if err = txn.Delete(likerKey.Bytes()); err != nil {
 			return err
 		}

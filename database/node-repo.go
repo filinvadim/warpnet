@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/badger/v3"
+
+	//"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
@@ -16,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 )
@@ -81,7 +83,7 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 		AddRootID(key.String()).
 		Build().
 		Bytes()
-	return d.db.WriteTxn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		return tx.Set(prefix, value)
 	})
 }
@@ -104,7 +106,7 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	return d.db.WriteTxn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -145,7 +147,7 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 	}
 
 	expiration := time.Time{}
-	err = d.db.ReadTxn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -179,7 +181,7 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 	}
 
 	value = []byte{}
-	err = d.db.ReadTxn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -210,7 +212,7 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 		return false, storage.ErrNotRunning
 	}
 
-	err = d.db.ReadTxn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -245,7 +247,7 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 		return size, storage.ErrNotRunning
 	}
 
-	err = d.db.ReadTxn(func(tx *badger.Txn) error {
+	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -275,7 +277,7 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 	if d.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
-	return d.db.WriteTxn(func(tx *badger.Txn) error {
+	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		prefix := storage.NewPrefixBuilder(NodesNamespace).
 			AddRootID(key.String()).
 			Build().
@@ -323,7 +325,7 @@ func (d *NodeRepo) Query(ctx context.Context, q dsq.Query) (res dsq.Results, err
 	return d.query(tx, q, true)
 }
 
-func (d *NodeRepo) query(tx *badger.Txn, q dsq.Query, implicit bool) (dsq.Results, error) {
+func (d *NodeRepo) query(tx *storage.WarpTxn, q dsq.Query, implicit bool) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 

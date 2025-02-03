@@ -80,34 +80,26 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 		}
 
 		reply, err := repo.AddReply(domain.Tweet{
-			CreatedAt:     ev.CreatedAt,
-			Id:            ev.Id,
-			Likes:         ev.Likes,
-			LikesCount:    ev.LikesCount,
-			ParentId:      ev.ParentId,
-			Retweets:      ev.Retweets,
-			RetweetsCount: ev.RetweetsCount,
-			RootId:        ev.RootId,
-			Text:          ev.Text,
-			UserId:        ev.UserId,
-			Username:      ev.Username,
+			CreatedAt: ev.CreatedAt,
+			Id:        ev.Id,
+			ParentId:  ev.ParentId,
+			RootId:    ev.RootId,
+			Text:      ev.Text,
+			UserId:    ev.UserId,
+			Username:  ev.Username,
 		})
 		if err != nil {
 			return nil, err
 		}
 		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respReplyEvent := event.NewReplyEvent{
-				CreatedAt:     reply.CreatedAt,
-				Id:            reply.Id,
-				Likes:         reply.Likes,
-				LikesCount:    reply.LikesCount,
-				ParentId:      reply.ParentId,
-				Retweets:      reply.Retweets,
-				RetweetsCount: reply.RetweetsCount,
-				RootId:        reply.RootId,
-				Text:          reply.Text,
-				UserId:        reply.UserId,
-				Username:      reply.Username,
+				CreatedAt: reply.CreatedAt,
+				Id:        reply.Id,
+				ParentId:  reply.ParentId,
+				RootId:    reply.RootId,
+				Text:      reply.Text,
+				UserId:    reply.UserId,
+				Username:  reply.Username,
 			}
 			reqBody := event.RequestBody{}
 			_ = reqBody.FromNewReplyEvent(respReplyEvent)

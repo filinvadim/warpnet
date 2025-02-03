@@ -731,12 +731,6 @@ components:
     NewTweetEvent:
       $ref: './domain.yml#/components/schemas/Tweet'
 
-    Like:
-      $ref: './domain.yml#/components/schemas/Like'
-
-    Retweet:
-      $ref: './domain.yml#/components/schemas/Retweet'
-
     GetTweetEvent:
       type: object
       properties:

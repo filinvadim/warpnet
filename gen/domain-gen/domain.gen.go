@@ -86,28 +86,16 @@ type ReplyNode struct {
 	Reply    Tweet       `json:"reply"`
 }
 
-// Retweet defines model for Retweet.
-type Retweet struct {
-	TweetId string `json:"tweet_id"`
-	UserId  string `json:"user_id"`
-}
-
 // Tweet defines model for Tweet.
 type Tweet struct {
 	CreatedAt time.Time `json:"created_at"`
 	Id        string    `json:"id"`
-
-	// IsRetweetOf user_id
-	IsRetweetOf   *string    `json:"is_retweet_of,omitempty"`
-	Likes         *[]Like    `json:"likes,omitempty"`
-	LikesCount    *int64     `json:"likes_count,omitempty"`
-	ParentId      string     `json:"parent_id"`
-	Retweets      *[]Retweet `json:"retweets,omitempty"`
-	RetweetsCount *int64     `json:"retweets_count,omitempty"`
-	RootId        string     `json:"root_id"`
-	Text          string     `json:"text"`
-	UserId        string     `json:"user_id"`
-	Username      string     `json:"username"`
+	ParentId  string    `json:"parent_id"`
+	RetweetId *string   `json:"retweet_id,omitempty"`
+	RootId    string    `json:"root_id"`
+	Text      string    `json:"text"`
+	UserId    string    `json:"user_id"`
+	Username  string    `json:"username"`
 }
 
 // User defines model for User.
@@ -128,20 +116,19 @@ type User struct {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xXT4+bPhD9KpF/vyP7T632wK1atdJK212p2qqHqkIODMk0YLvDkDRa5btXNiRAMIHd",
-	"5tAbYM/Mm+c3M+ZFxDo3WoHiQoQvooiXkEv3+KHk5aNO4F6l2r4b0gaIEdwqJqAYeWuf/ydIRSj+u2p8",
-	"XdWOru73+3aBWAMVqJU14a0BEYqCCdVC7HaBIPhVIkEiwu+N88bmR7C30fOfELP1d7eU3EcWE0iGJKrW",
-	"Uk25fRKJZLhgzEEEx9EDkZLOo7IAijDxwAvEwGfWJ61Kk7wSSo8IcQSuEzNoJ9sJN0TXZygKuQAPa0vJ",
-	"Q2nEWjEol0OO6gHUgpcivPHw+Bbuh7hreB0JancqmcO4rlq81ekGFcX7DFvOOsn46PxIpMlDpE7aSFAx",
-	"LICsQd5wfxqmc9Hs9wX/pLNMb6xxD0DqlsDFSaCICQ27qhOsZzY9bwFURtQ3suobNYumn8EBXiuoL8P7",
-	"VoPpJqg3qgJ6qu88uU2uRFcwoeVU24LauQ/QA648dcMbAJ6u0yk7B0V7iOWD97Rn5e+7IZr1e38XNOtb",
-	"74LSCUTjhXyW0m1V6D5sDbkGOFq5X8Bk28e6To/bIGYJVYJBhrwY01nja3eIJImkG3hkF8c8PNtT7eVb",
-	"mQYNIH8iThL/sCqf/fjOOCewiKiiIdJpv321cB5bZriq7zJTDtqVv+eMnZco1qXq5oKKb60kc1SYl7kI",
-	"rwPPTDCSQA0O3jqx4hVqrATh1WLl681QSetBoAy/+Yxae1tjqE7ZImkP9IbhJoXXjPmvha+tyrVkSR0W",
-	"56gkbX1Cm8t4tSBdqiTCvL4BTDFD7SV7jsRLWyrTa+eM9ZbpWLL/Fn96DtTyU1ZgHvH1BdfWwIhcNjAv",
-	"8IiQkrJp92vL88BYSffXLAe7ubEU9Xvn+t1KsH1IfVFZFFj/VXW71d2hpGepppmcJWiRz0uGZPa8QWag",
-	"C9txZtKYDOuTCAQjZzbCN0lm9gi80bRq/TyF4uby+vLaMqUNKGlQhOKd+2QLhJdW07vdnwAAAP//p92o",
-	"2g0OAAA=",
+	"H4sIAAAAAAAC/6xWT2/bPgz9KoF+v6P7Dyt6yG0oNqBA1wJDhx2GIVAsJuZiSxpNJwuKfPdBthPLsRy7",
+	"XW5OJJKPj4+kXkVsMms0aM7F9FXkcQKZLD8/Fpw8GQUPemHcb0vGAjFCeYoKNCNv3ff/BAsxFf9dNb6u",
+	"akdXD/t7u0isgXI02pnw1oKYipwJ9VLsdpEg+F0ggRLTH43zxuZntLcx818Qs/N3n0juIosJJIOaVWcL",
+	"Q5n7EkoyXDBmIKLj6JFYkMlmRQ40QxWAF4mev9mctCqseiOUDhHiCFwrZuQn2wrXR9cXyHO5hABrieS+",
+	"NGKjGXSZQ4b6EfSSEzG9CfD4Hu77uGt4HQjqbmqZwbCuPN7qdKOK4n2GnrNWMiE6PxEZChBplI8ENcMS",
+	"yBlkDfenYZYumvuh4J9NmpqNM+4AWJRHUMZRkMeElsuuE2wmLr1gA1RG1DVy6hs0m42vwQGeFzSU4YM3",
+	"YNoJmo2ugJ6aO8/lpbJFVzBi5FTXotp5CNAjrgJ9wxsAHq/TMTd7RXuIFYL3vGfl36ch2vVteAra9V3w",
+	"QBsFs+FGPkvreh26D1tDrgEOdu5XsOn2qe7T4zGIqaJKMMiQ5UM6a3ztDpEkkSwXHrnDIQ8vrqqdfCvT",
+	"qAEUSqQyPU/NwwWykkD3LgYCX/7dY2N6zxj+8Bl75n1SqrrKIfFXQJNzk8JbFsO3PNSIci1ZUqsgc9SS",
+	"tqFqzGW8WpIptJphVu+MMWZogmTPkThx5R+vhzNqKDWx5PC77/TkKMWVz3SRtTCg5rvbJr63YX0NDMhl",
+	"A/McjwgpKB33InM89wyixX4xl7CbHZfXv1sPNi9Bv0hdUTkUWL/D2+v5/jBQJgtDEzlR6JDPCwY1edkg",
+	"M9BFiiuYSGtTrCsRCUZOXYTvkuzkCXhjaOU9t6fi5vL68toxZSxoaVFMxYfyL9cgnDhN73Z/AwAA//8A",
+	"bqkFPwwAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

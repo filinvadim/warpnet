@@ -90,17 +90,13 @@ func StreamNewTweetHandler(
 		}
 
 		tweet, err := tweetRepo.Create(ev.UserId, domain.Tweet{
-			CreatedAt:     ev.CreatedAt,
-			Id:            ev.Id,
-			Likes:         ev.Likes,
-			LikesCount:    ev.LikesCount,
-			ParentId:      ev.ParentId,
-			Retweets:      ev.Retweets,
-			RetweetsCount: ev.RetweetsCount,
-			RootId:        ev.RootId,
-			Text:          ev.Text,
-			UserId:        ev.UserId,
-			Username:      ev.Username,
+			CreatedAt: ev.CreatedAt,
+			Id:        ev.Id,
+			ParentId:  ev.ParentId,
+			RootId:    ev.RootId,
+			Text:      ev.Text,
+			UserId:    ev.UserId,
+			Username:  ev.Username,
 		})
 		if err != nil {
 			return nil, err
@@ -114,17 +110,13 @@ func StreamNewTweetHandler(
 		}
 		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respTweetEvent := event.NewTweetEvent{
-				CreatedAt:     tweet.CreatedAt,
-				Id:            tweet.Id,
-				Likes:         tweet.Likes,
-				LikesCount:    tweet.LikesCount,
-				ParentId:      tweet.ParentId,
-				Retweets:      tweet.Retweets,
-				RetweetsCount: tweet.RetweetsCount,
-				RootId:        tweet.RootId,
-				Text:          tweet.Text,
-				UserId:        tweet.UserId,
-				Username:      tweet.Username,
+				CreatedAt: tweet.CreatedAt,
+				Id:        tweet.Id,
+				ParentId:  tweet.ParentId,
+				RootId:    tweet.RootId,
+				Text:      tweet.Text,
+				UserId:    tweet.UserId,
+				Username:  tweet.Username,
 			}
 			reqBody := event.RequestBody{}
 			_ = reqBody.FromNewTweetEvent(respTweetEvent)

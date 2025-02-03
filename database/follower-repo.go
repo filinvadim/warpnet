@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -106,7 +105,7 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 		return err
 	}
 
-	return repo.db.WriteTxn(func(tx *badger.Txn) error {
+	return repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
 		if err := tx.Delete(fixedFolloweeKey.Bytes()); err != nil {
 			return err
 		}
