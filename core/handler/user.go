@@ -6,7 +6,12 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
+	"slices"
 )
+
+type OwnerUserStorer interface {
+	GetOwner() (domain.Owner, error)
+}
 
 type UserFetcher interface {
 	Get(userID string) (user domain.User, err error)
@@ -36,7 +41,10 @@ func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
 	}
 }
 
-func StreamGetRecommendedUsersHandler(repo UserFetcher) middleware.WarpHandler {
+func StreamGetRecommendedUsersHandler(
+	authRepo OwnerUserStorer,
+	repo UserFetcher,
+) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
 		var ev event.GetAllUsersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -47,6 +55,14 @@ func StreamGetRecommendedUsersHandler(repo UserFetcher) middleware.WarpHandler {
 		users, cursor, err := repo.ListRecommended(ev.Limit, ev.Cursor)
 		if err != nil {
 			return nil, err
+		}
+
+		owner, _ := authRepo.GetOwner()
+		for i, user := range users {
+			if owner.UserId == user.Id {
+				slices.Delete(users, i, i+1)
+				break
+			}
 		}
 
 		return event.UsersResponse{

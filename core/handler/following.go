@@ -5,7 +5,6 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -40,8 +39,27 @@ type FollowingStorer interface {
 
 func StreamFollowHandler(
 	broadcaster FollowingBroadcaster,
+	authRepo FollowingAuthStorer,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
+	owner, _ := authRepo.GetOwner()
+
+	var (
+		nextCursor string
+		limit      = uint64(20)
+	)
+	// presubscribe
+	for {
+		followees, cur, _ := followRepo.GetFollowees(owner.UserId, &limit, &nextCursor)
+		for _, f := range followees {
+			_ = broadcaster.SubscribeUserUpdate(f.Followee)
+		}
+		if len(followees) < int(limit) {
+			break
+		}
+		nextCursor = cur
+	}
+
 	return func(buf []byte) (any, error) {
 		var ev event.NewFollowEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -97,7 +115,7 @@ func StreamUnfollowHandler(
 }
 
 func StreamGetFollowersHandler(
-	authRepo *database.AuthRepo,
+	authRepo FollowingAuthStorer,
 	userRepo FollowingUserStorer,
 	followRepo FollowingStorer,
 	streamer FollowNodeStreamer,
@@ -134,7 +152,7 @@ func StreamGetFollowersHandler(
 }
 
 func StreamGetFolloweesHandler(
-	authRepo *database.AuthRepo,
+	authRepo FollowingAuthStorer,
 	userRepo FollowingUserStorer,
 	followRepo FollowingStorer,
 	streamer FollowNodeStreamer,

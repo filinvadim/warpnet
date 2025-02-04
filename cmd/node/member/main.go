@@ -204,7 +204,7 @@ func main() {
 	)
 	n.SetStreamHandler(
 		event.PRIVATE_POST_FOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, followRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, authRepo, followRepo)))),
 	)
 	n.SetStreamHandler(
 		event.PRIVATE_POST_UNFOLLOW,
@@ -216,7 +216,7 @@ func main() {
 	)
 	n.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(authRepo, userRepo)))),
 	)
 	n.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
