@@ -59,6 +59,7 @@ func StreamFollowHandler(
 		}
 		nextCursor = cur
 	}
+	log.Infoln("followees presubscribed")
 
 	return func(buf []byte) (any, error) {
 		var ev event.NewFollowEvent
