@@ -216,7 +216,7 @@ func main() {
 	)
 	n.SetStreamHandler(
 		event.PUBLIC_GET_USERS_1_0_0,
-		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(userRepo)))),
 	)
 	n.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS_1_0_0,

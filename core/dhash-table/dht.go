@@ -9,6 +9,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"time"
@@ -48,8 +49,6 @@ import (
   implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
-const protocolPrefix = "/warpnet"
-
 type RoutingStorer interface {
 	warpnet.WarpBatching
 }
@@ -68,6 +67,7 @@ type DistributedHashTable struct {
 	addF          discovery.DiscoveryHandler
 	removeF       discovery.DiscoveryHandler
 	dht           *dht.IpfsDHT
+	prefix        string
 }
 
 func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
@@ -100,6 +100,7 @@ func NewDHTable(
 		boostrapNodes: bootstrapAddrs,
 		addF:          addF,
 		removeF:       removeF,
+		prefix:        "/" + conf.Node.Prefix,
 	}
 }
 
@@ -107,7 +108,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(protocolPrefix),
+		dht.ProtocolPrefix(protocol.ID(d.prefix)),
 		dht.Datastore(d.db),
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour*24),

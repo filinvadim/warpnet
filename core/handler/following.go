@@ -64,7 +64,8 @@ func StreamFollowHandler(
 			_ = broadcaster.UnsubscribeUserUpdate(ev.Followee)
 			return nil, err
 		}
-		return nil, nil
+
+		return event.Accepted, nil
 	}
 }
 
@@ -91,7 +92,7 @@ func StreamUnfollowHandler(
 			return nil, err
 		}
 
-		return nil, nil
+		return event.Accepted, nil
 	}
 }
 

@@ -54,7 +54,8 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 		libp2p.DisableIdentifyAddressDiscovery(),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.PSK))),
+		// TODO that's initial PSK but it must be updated thru consensus
+		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.Prefix))),
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {

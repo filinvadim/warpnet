@@ -17,7 +17,7 @@ type Node struct {
 	Bootstrap []string `yaml:"bootstrap"`
 	Port      string   `yaml:"port"`
 	Logging   Logging  `yaml:"logging"`
-	PSK       string   `yaml:"psk"`
+	Prefix    string   `yaml:"network_prefix"`
 }
 type Database struct {
 	DirName string `yaml:"dirName"`

@@ -172,6 +172,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	var info p2p.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
+		log.Infoln(string(infoResp))
 		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)
 		return
 	}
@@ -193,10 +194,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
-	_, err = s.userRepo.Create(user)
+	newUser, err := s.userRepo.Create(user)
 	if err != nil {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
 	}
+	bt, _ := json.JSON.MarshalIndent(newUser, "", "  ")
+	log.Infoln("new user added:", string(bt))
 }
 
 func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {

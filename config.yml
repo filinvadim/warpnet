@@ -1,11 +1,11 @@
-version: 0.1.95
+version: 0.1.96
 node:
   bootstrap:
     - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
   port: 4001
   logging:
     level: info
-  psk: 'warpnet'
+  network_prefix: 'warpnet'
 database:
   dirName: "storage"
 server:

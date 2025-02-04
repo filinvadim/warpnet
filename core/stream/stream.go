@@ -60,13 +60,14 @@ func send(
 	if data != nil {
 		log.Infof("stream: sent to %s data with size %d\n", r, len(data))
 		_, err = rw.Write(data)
-		flush(rw)
-		closeWrite(stream)
-		if err != nil {
-			log.Errorf("stream: writing: %v", err)
-			return nil, fmt.Errorf("stream: writing: %s", err)
-		}
 	}
+	flush(rw)
+	closeWrite(stream)
+	if err != nil {
+		log.Errorf("stream: writing: %v", err)
+		return nil, fmt.Errorf("stream: writing: %s", err)
+	}
+
 	log.Infoln("stream: waiting for response...", r.ProtocolID(), serverInfo.ID)
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(rw)

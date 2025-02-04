@@ -232,7 +232,7 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 	if err != nil {
 		return err
 	}
-
+	log.Infof("pubsub discovery: subscribed to user updates: %s", userId)
 	g.mx.Lock()
 	g.subs = append(g.subs, sub)
 	g.mx.Unlock()

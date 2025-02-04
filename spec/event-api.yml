@@ -616,6 +616,11 @@ components:
         - $ref: '#/components/schemas/FollowersResponse'
         - $ref: '#/components/schemas/NewReplyResponse'
         - $ref: '#/components/schemas/LikesNumResponse'
+        - $ref: '#/components/schemas/AcceptedResponse'
+
+    AcceptedResponse:
+      type: string
+      enum: [Accepted]
 
     NewReplyResponse:
       $ref: './domain.yml#/components/schemas/Tweet'

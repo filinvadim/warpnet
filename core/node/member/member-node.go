@@ -217,11 +217,9 @@ func (n *WarpNode) SupportedProtocols() []string {
 func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	reg := n.Node()
 	id := reg.ID()
-	addrs := reg.Peerstore().Addrs(id)
 	latency := reg.Peerstore().LatencyEWMA(id)
 	peerInfo := reg.Peerstore().PeerInfo(id)
 	connectedness := reg.Network().Connectedness(id)
-	listenAddrs := reg.Network().ListenAddresses()
 
 	plainAddrs := make([]string, 0, len(peerInfo.Addrs))
 	for _, a := range peerInfo.Addrs {
@@ -229,15 +227,10 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	}
 
 	return p2p.NodeInfo{
-		Addrs:     addrs,
-		Protocols: n.SupportedProtocols(),
-		Latency:   latency,
-		PeerInfo: warpnet.WarpAddrInfo{
-			ID:    peerInfo.ID,
-			Addrs: plainAddrs,
-		},
+		Addrs:        n.Addrs(),
+		Protocols:    n.SupportedProtocols(),
+		Latency:      latency,
 		NetworkState: connectedness.String(),
-		ListenAddrs:  listenAddrs,
 		Version:      n.version.String(),
 		//StreamStats:  nil, // will be added later
 		OwnerId:  n.ownerId,

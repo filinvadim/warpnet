@@ -130,6 +130,39 @@ func (repo *UserRepo) Delete(userID string) error {
 	return err
 }
 
+func (repo *UserRepo) ListRecommended(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(UserSubNamespace).Build()
+
+	items, cur, err := repo.db.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	users := make([]domainGen.User, 0, len(items))
+	for _, item := range items {
+		var u domainGen.User
+		err = json.JSON.Unmarshal(item.Value, &u)
+		if err != nil {
+			return nil, "", err
+		}
+		if u.Username == "" {
+			continue // drop nameless nodes until they set username
+		}
+		if u.CreatedAt.IsZero() {
+			u.CreatedAt = time.Now()
+		}
+		if u.Id == "" {
+			continue // impossible case but...
+		}
+
+		users = append(users, u)
+	}
+
+	// TODO match with followers and sort
+
+	return users, cur, nil
+}
+
 func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
 	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(UserSubNamespace).Build()
 

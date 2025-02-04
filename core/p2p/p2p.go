@@ -16,16 +16,14 @@ import (
 )
 
 type NodeInfo struct {
-	Addrs        []warpnet.WarpAddress `json:"addrs"`
-	Latency      time.Duration         `json:"latency"`
-	PeerInfo     warpnet.WarpAddrInfo  `json:"peer"`
-	NetworkState string                `json:"network_state"`
-	ListenAddrs  []warpnet.WarpAddress `json:"listen_addrs"`
-	Version      string                `json:"version"`
-	StreamStats  network.Stats         `json:"stream_stats"`
-	OwnerId      string                `json:"owner_id"`
-	SelfHash     security.SelfHash     `json:"self_hash"`
-	Protocols    []string              `json:"protocols"`
+	Addrs        []string          `json:"addrs"`
+	Latency      time.Duration     `json:"latency"`
+	NetworkState string            `json:"network_state"`
+	Version      string            `json:"version"`
+	StreamStats  network.Stats     `json:"stream_stats"`
+	OwnerId      string            `json:"owner_id"`
+	SelfHash     security.SelfHash `json:"self_hash"`
+	Protocols    []string          `json:"protocols"`
 }
 
 const (
@@ -58,7 +56,7 @@ func NewP2PNode(
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
 		// TODO shuffle name thru consensus. "warpnet" now
-		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.PSK))),
+		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.Prefix))),
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),

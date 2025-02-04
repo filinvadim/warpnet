@@ -112,6 +112,11 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 				log.Errorf("middleware: writing raw bytes to stream: %v", err)
 			}
 			return
+		case string:
+			if _, err := s.Write([]byte(response.(string))); err != nil {
+				log.Errorf("middleware: writing string to stream: %v", err)
+			}
+			return
 		case p2p.NodeInfo:
 			info := response.(p2p.NodeInfo)
 			info.StreamStats = s.Stat()

@@ -10,7 +10,7 @@ import (
 
 type UserFetcher interface {
 	Get(userID string) (user domain.User, err error)
-	List(limit *uint64, cursor *string) ([]domain.User, string, error)
+	ListRecommended(limit *uint64, cursor *string) ([]domain.User, string, error)
 }
 
 func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
@@ -36,7 +36,7 @@ func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
 	}
 }
 
-func StreamGetUsersHandler(repo UserFetcher) middleware.WarpHandler {
+func StreamGetRecommendedUsersHandler(repo UserFetcher) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
 		var ev event.GetAllUsersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -44,7 +44,7 @@ func StreamGetUsersHandler(repo UserFetcher) middleware.WarpHandler {
 			return nil, err
 		}
 
-		users, cursor, err := repo.List(ev.Limit, ev.Cursor)
+		users, cursor, err := repo.ListRecommended(ev.Limit, ev.Cursor)
 		if err != nil {
 			return nil, err
 		}
