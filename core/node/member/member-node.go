@@ -73,7 +73,6 @@ func NewMemberNode(
 	privKey warpnet.WarpPrivateKey,
 	selfHash security.SelfHash,
 	db PersistentLayer,
-	conf config.Config,
 	routingFn routingFunc,
 ) (_ *WarpNode, err error) {
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
@@ -81,13 +80,13 @@ func NewMemberNode(
 		return nil, err
 	}
 
-	bootstrapAddrs, err := conf.Node.AddrInfos()
+	bootstrapAddrs, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
 
 	n, err := setupMemberNode(
-		ctx, privKey, selfHash, store, bootstrapAddrs, conf, routingFn,
+		ctx, privKey, selfHash, store, bootstrapAddrs, config.ConfigFile, routingFn,
 	)
 	if err != nil {
 		return nil, err

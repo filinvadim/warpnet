@@ -88,11 +88,10 @@ func NewDHTable(
 	ctx context.Context,
 	db RoutingStorer,
 	providerStore ProviderStorer,
-	conf config.Config,
 	addF discovery.DiscoveryHandler,
 	removeF discovery.DiscoveryHandler,
 ) *DistributedHashTable {
-	bootstrapAddrs, _ := conf.Node.AddrInfos()
+	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
 	return &DistributedHashTable{
 		ctx:           ctx,
 		db:            db,
@@ -100,7 +99,7 @@ func NewDHTable(
 		boostrapNodes: bootstrapAddrs,
 		addF:          addF,
 		removeF:       removeF,
-		prefix:        "/" + conf.Node.Prefix,
+		prefix:        "/" + config.ConfigFile.Node.Prefix,
 	}
 }
 

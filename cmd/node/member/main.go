@@ -8,6 +8,7 @@ import (
 	embedded "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
+	_ "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
@@ -53,13 +54,8 @@ func main() {
 	}
 	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
 
-	conf, err := config.GetConfig()
-	if err != nil {
-		log.Fatalf("fail loading config: %v", err)
-	}
-
-	log.Infoln("config bootstrap nodes: ", conf.Node.Bootstrap)
-	log.Infoln("Warpnet Version:", conf.Version)
+	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
+	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -67,7 +63,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, dbCloser, err := storage.New(getAppPath(), false, conf.Database.DirName)
+	db, dbCloser, err := storage.New(getAppPath(), false, config.ConfigFile.Database.DirName)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
@@ -94,7 +90,7 @@ func main() {
 		close(authReadyChan)
 	}()
 
-	interfaceServer, err := server.NewInterfaceServer(conf)
+	interfaceServer, err := server.NewInterfaceServer()
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
 		log.Fatalf("failed to run public server: %v", err)
 	}
@@ -111,8 +107,8 @@ func main() {
 	}
 
 	authService := auth.NewAuthService(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
-	wsCtrl := handlers.NewWSController(conf, authService)
-	staticCtrl := handlers.NewStaticController(conf, db.IsFirstRun(), frontend.GetStaticEmbedded())
+	wsCtrl := handlers.NewWSController(authService)
+	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
 	interfaceServer.RegisterHandlers(&API{
 		staticCtrl,
@@ -132,11 +128,11 @@ func main() {
 	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
 	persLayer := persistentLayer{nodeRepo, authRepo}
 
-	discService := discovery.NewDiscoveryService(ctx, conf, userRepo, persLayer)
+	discService := discovery.NewDiscoveryService(ctx, userRepo, persLayer)
 	defer discService.Close()
 	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
 	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, conf, discService.HandlePeerFound)
+	pubsubService := pubsub.NewPubSub(ctx, discService.HandlePeerFound)
 	defer pubsubService.Close()
 	providerStore, err := dht.NewProviderCache(ctx, persLayer)
 	if err != nil {
@@ -145,7 +141,7 @@ func main() {
 	defer providerStore.Close()
 
 	dHashTable := dht.NewDHTable(
-		ctx, persLayer, providerStore, conf,
+		ctx, persLayer, providerStore,
 		discService.HandlePeerFound,
 		dht.DefaultNodeRemovedCallback,
 	)
@@ -156,7 +152,6 @@ func main() {
 		privKey,
 		selfHash,
 		persLayer,
-		conf,
 		dHashTable.StartRouting,
 	)
 	if err != nil {
@@ -171,7 +166,7 @@ func main() {
 	authInfo.Identity.Owner.NodeId = n.ID().String()
 	authInfo.Identity.Owner.Ipv6 = n.IPv6()
 	authInfo.Identity.Owner.Ipv4 = n.IPv4()
-	authInfo.Version = conf.Version.String()
+	authInfo.Version = config.ConfigFile.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
 	logMw := mw.LoggingMiddleware
@@ -267,7 +262,7 @@ func main() {
 
 	nodeReadyChan <- authInfo
 
-	bootstrapAddrs, _ := conf.Node.AddrInfos()
+	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
 	raft, err := consensus.NewRaft(ctx, n, consensusRepo, false)
 	if err != nil {
 		log.Fatal(err)

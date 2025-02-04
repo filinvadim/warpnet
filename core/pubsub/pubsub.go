@@ -33,6 +33,8 @@ type PeerInfoStorer interface {
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
+
+	// TODO refacto - inject client node
 	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
 }
 
@@ -50,8 +52,8 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, conf config.Config, discoveryHandler discovery.DiscoveryHandler) *Gossip {
-	version := fmt.Sprintf("%d.0.0", conf.Version.Major())
+func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *Gossip {
+	version := fmt.Sprintf("%d.0.0", config.ConfigFile.Version.Major())
 
 	g := &Gossip{
 		ctx:              ctx,

@@ -52,12 +52,11 @@ type discoveryService struct {
 //goland:noinspection ALL
 func NewDiscoveryService(
 	ctx context.Context,
-	conf config.Config,
 	userRepo UserStorer,
 	nodeRepo NodeStorer,
 ) *discoveryService {
 	return &discoveryService{
-		ctx, nil, userRepo, nodeRepo, conf.Version,
+		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version,
 		make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }

@@ -4,8 +4,17 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
+
+var ConfigFile Config
+
+func init() {
+	if err := yaml.Unmarshal(warpnet.GetConfigFile(), &ConfigFile); err != nil {
+		logrus.Fatalln(err)
+	}
+}
 
 type Config struct {
 	Version  *semver.Version `yaml:"version"`
@@ -41,13 +50,4 @@ func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {
 		infos = append(infos, *ai)
 	}
 	return infos, nil
-}
-
-func GetConfig() (Config, error) {
-	var conf Config
-	bt := warpnet.GetConfigFile()
-	if err := yaml.Unmarshal(bt, &conf); err != nil {
-		return Config{}, err
-	}
-	return conf, nil
 }

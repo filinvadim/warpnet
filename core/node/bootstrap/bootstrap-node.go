@@ -35,11 +35,10 @@ func NewBootstrapNode(
 	privKey warpnet.WarpPrivateKey,
 	selfHash security.SelfHash,
 	memoryStore warpnet.WarpPeerstore,
-	conf config.Config,
 	routingF routingFunc,
 ) (_ *WarpBootstrapNode, err error) {
 
-	bootstrapAddrs, err := conf.Node.AddrInfos()
+	bootstrapAddrs, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func NewBootstrapNode(
 		selfHash,
 		memoryStore,
 		bootstrapAddrs,
-		conf,
+		config.ConfigFile,
 		routingF,
 	)
 }

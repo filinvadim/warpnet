@@ -36,13 +36,8 @@ func main() {
 	}
 	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
 
-	conf, err := config.GetConfig()
-	if err != nil {
-		log.Fatalf("fail loading config: %v", err)
-	}
-
-	log.Infoln("Warpnet Version:", conf.Version)
-	log.Infoln("config bootstrap nodes: ", conf.Node.Bootstrap)
+	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
+	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -66,7 +61,7 @@ func main() {
 
 	mdnsService := mdns.NewMulticastDNS(ctx, nil)
 	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, conf, nil)
+	pubsubService := pubsub.NewPubSub(ctx, nil)
 	defer pubsubService.Close()
 
 	memoryStore, err := pstoremem.NewPeerstore()
@@ -85,14 +80,14 @@ func main() {
 	defer providersCache.Close()
 
 	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache, conf,
+		ctx, mapStore, providersCache,
 		dht.DefaultNodeAddedCallback,
 		dht.DefaultNodeRemovedCallback,
 	)
 	defer dHashTable.Close()
 
 	n, err := bootstrap.NewBootstrapNode(
-		ctx, warpPrivKey, selfHash, memoryStore, conf, dHashTable.StartRouting,
+		ctx, warpPrivKey, selfHash, memoryStore, dHashTable.StartRouting,
 	)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)

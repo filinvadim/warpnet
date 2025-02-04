@@ -34,7 +34,8 @@ type interfaceServer struct {
 	port string
 }
 
-func NewInterfaceServer(conf config.Config) (PublicServer, error) {
+func NewInterfaceServer() (PublicServer, error) {
+	conf := config.ConfigFile
 	swagger, err := api_gen.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)

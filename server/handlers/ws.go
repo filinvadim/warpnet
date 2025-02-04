@@ -38,11 +38,10 @@ type WSController struct {
 }
 
 func NewWSController(
-	conf config.Config,
 	auth AuthServicer,
 ) *WSController {
 
-	return &WSController{nil, auth, nil, conf, nil}
+	return &WSController{nil, auth, nil, config.ConfigFile, nil}
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {

@@ -26,7 +26,6 @@ type StaticController struct {
 }
 
 func NewStaticController(
-	conf config.Config,
 	isFirstRun bool,
 	staticFolder StaticFolderOpener,
 ) *StaticController {
@@ -35,7 +34,8 @@ func NewStaticController(
 	fileSystem := echo.MustSubFS(staticFolder, "dist/")
 
 	return &StaticController{
-		fileSystem, isFirstRun, conf.Server.Host, conf.Server.Port,
+		fileSystem, isFirstRun,
+		config.ConfigFile.Server.Host, config.ConfigFile.Server.Port,
 	}
 }
 
