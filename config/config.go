@@ -14,11 +14,10 @@ type Config struct {
 	Server   Server          `yaml:"server"`
 }
 type Node struct {
-	SeedID      int      `yaml:"seed_id"`
-	Bootstrap   []string `yaml:"bootstrap"`
-	ListenAddrs []string `yaml:"listen_addrs"`
-	Logging     Logging  `yaml:"logging"`
-	PSK         string   `yaml:"psk"`
+	Bootstrap []string `yaml:"bootstrap"`
+	Port      string   `yaml:"port"`
+	Logging   Logging  `yaml:"logging"`
+	PSK       string   `yaml:"psk"`
 }
 type Database struct {
 	DirName string `yaml:"dirName"`
@@ -29,7 +28,7 @@ type Logging struct {
 }
 type Server struct {
 	Host    string  `yaml:"host"`
-	Port    int     `yaml:"port"`
+	Port    string  `yaml:"port"`
 	Logging Logging `yaml:"logging"`
 }
 

@@ -20,17 +20,18 @@ import (
 	"time"
 )
 
-const serverNodeAddrDefault = "/ip4/127.0.0.1/tcp/4001/p2p/"
+// TODO
 
 type ClientStreamer interface {
 	Send(peerAddr *warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type WarpClientNode struct {
-	ctx      context.Context
-	node     warpnet.P2PNode
-	streamer ClientStreamer
-	retrier  retrier.Retrier
+	ctx            context.Context
+	node           warpnet.P2PNode
+	streamer       ClientStreamer
+	retrier        retrier.Retrier
+	serverNodeAddr string
 }
 
 func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf config.Config) (_ *WarpClientNode, err error) {
@@ -59,6 +60,8 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 	if err != nil {
 		return nil, fmt.Errorf("client node: init %s", err)
 	}
+
+	serverNodeAddrDefault := fmt.Sprintf("/ip4/127.0.0.1/tcp/%s/p2p/", conf.Node.Port)
 	serverAddr := serverNodeAddrDefault + serverNodeId
 	maddr, err := warpnet.NewMultiaddr(serverAddr)
 	if err != nil {
@@ -73,9 +76,10 @@ func NewClientNode(ctx context.Context, clientInfo domain.AuthNodeInfo, conf con
 	client.Peerstore().AddAddrs(serverInfo.ID, serverInfo.Addrs, warpnet.PermanentAddrTTL)
 	client.ID()
 	n := &WarpClientNode{
-		ctx:     ctx,
-		node:    client,
-		retrier: retrier.New(time.Second * 5),
+		ctx:            ctx,
+		node:           client,
+		retrier:        retrier.New(time.Second * 5),
+		serverNodeAddr: serverNodeAddrDefault,
 	}
 
 	if len(client.Addrs()) != 0 {
@@ -119,7 +123,7 @@ func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, dat
 		}
 	}
 
-	addrInfo, err := peer.AddrInfoFromString(serverNodeAddrDefault + nodeId)
+	addrInfo, err := peer.AddrInfoFromString(n.serverNodeAddr + nodeId)
 	if err != nil {
 		return nil, err
 	}

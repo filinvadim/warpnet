@@ -11,20 +11,11 @@ import (
 	"github.com/pkg/browser"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"strconv"
 )
 
 var (
 	ErrBrowserLoadFailed = errors.New("browser load failed")
 )
-
-var logLevelsMap = map[string]uint8{
-	"debug": 1,
-	"info":  2,
-	"warn":  3,
-	"error": 4,
-	"off":   5,
-}
 
 type (
 	Router            = api_gen.EchoRouter
@@ -61,7 +52,7 @@ func NewInterfaceServer(conf config.Config) (PublicServer, error) {
 	}))
 	e.Use(echomiddleware.Gzip())
 
-	port := ":" + strconv.Itoa(conf.Server.Port)
+	port := ":" + conf.Server.Port
 	err = browser.OpenURL("http://localhost" + port)
 	if err != nil {
 		log.Errorf("failed to open browser: %v", err)

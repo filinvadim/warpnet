@@ -1,15 +1,13 @@
-version: 0.1.93
+version: 0.1.94
 node:
-    bootstrap:
-      - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
-    listen_addrs:
-      - "/ip4/0.0.0.0/tcp/4001"
-      - "/ip6/::/tcp/4001"
-    logging:
-      level: info
-    psk: 'warpnet'
+  bootstrap:
+    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
+  port: 4001
+  logging:
+    level: info
+  psk: 'warpnet'
 database:
-    dirName: "storage"
+  dirName: "storage"
 server:
   host: localhost
   port: 4002

@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
 	"time"
 )
@@ -51,6 +52,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
 		_, err := txn.Get(likerKey.Bytes())
+		fmt.Println(err, "LIKE")
 		if !errors.Is(err, storage.ErrKeyNotFound) {
 			return nil
 		}
@@ -86,6 +88,8 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error)
 
 	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
 		_, err := txn.Get(likeKey.Bytes())
+		fmt.Println(err, "UNLIKE")
+
 		if errors.Is(err, ErrKeyNotFound) { // already unliked
 			return nil
 		}

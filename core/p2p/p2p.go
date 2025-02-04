@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -43,7 +44,10 @@ func NewP2PNode(
 ) (warpnet.P2PNode, error) {
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
-		libp2p.ListenAddrStrings(conf.Node.ListenAddrs...),
+		libp2p.ListenAddrStrings(
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
+			fmt.Sprintf("/ip6/::/tcp/%s", conf.Node.Port),
+		),
 		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
 		libp2p.Identity(privKey),
 		libp2p.Ping(true),

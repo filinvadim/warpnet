@@ -38,7 +38,7 @@ import (
 */
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	log.SetLogLevel("autorelay", "DEBUG")
+	log.SetLogLevel("autorelay", "INFO")
 	relay, err := relayv2.New(
 		node,
 		relayv2.WithLimit(&relayv2.RelayLimit{

@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"fmt"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/gen/api-gen"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -10,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -18,16 +20,23 @@ type StaticFolderOpener interface {
 }
 
 type StaticController struct {
-	fileSystem fs.FS
-	isFirstRun bool
+	fileSystem               fs.FS
+	isFirstRun               bool
+	backendHost, backendPort string
 }
 
-func NewStaticController(isFirstRun bool, staticFolder StaticFolderOpener) *StaticController {
+func NewStaticController(
+	conf config.Config,
+	isFirstRun bool,
+	staticFolder StaticFolderOpener,
+) *StaticController {
 	pwd, _ := os.Getwd()
 	log.Infoln("CURRENT DIRECTORY: ", pwd)
 	fileSystem := echo.MustSubFS(staticFolder, "dist/")
 
-	return &StaticController{fileSystem, isFirstRun}
+	return &StaticController{
+		fileSystem, isFirstRun, conf.Server.Host, conf.Server.Port,
+	}
 }
 
 func (c *StaticController) GetIndex(ctx echo.Context) error {
@@ -46,7 +55,16 @@ func (c *StaticController) GetIndex(ctx echo.Context) error {
 	injectedContent := strings.Replace(
 		string(content),
 		"</head>",
-		fmt.Sprintf("<script>window.isFirstRun = %t;</script></head>", c.isFirstRun),
+		fmt.Sprintf(
+			`<script>
+			window.isFirstRun = %t;
+			window.backendHost = %s;
+			window.backendPort = %s;
+		</script></head>`,
+			c.isFirstRun,
+			strconv.Quote(c.backendHost),
+			strconv.Quote(c.backendPort),
+		),
 		1,
 	)
 

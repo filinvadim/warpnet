@@ -11,6 +11,8 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -158,15 +160,14 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	log.Infof("discovery: connected to new peer: %s", pi.ID)
 
-	otherProtocols, err := s.node.Peerstore().GetProtocols(pi.ID)
-	if err != nil {
-		log.Errorf("discovery: failed to get new node protocols: %s", err)
-		return
-	}
-	mineProtocols := s.node.Mux().Protocols()
-	if len(otherProtocols) < len(mineProtocols) {
+	s.stripLocalHosts(pi)
+	if s.isBootstrapNode(pi) {
 		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
 		return
+	}
+
+	if s.isDialable(pi) {
+		log.Infof("new node is dialable: %s", pi.String())
 	}
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO_1_0_0, nil)
@@ -203,4 +204,49 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if err != nil {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
 	}
+}
+
+const (
+	localhostIPv4 = "/ip4/127.0.0.1/tcp/4001"
+	localhostIPv6 = "/ip6/::1/tcp/4001"
+)
+
+func (s *discoveryService) stripLocalHosts(pi warpnet.PeerAddrInfo) {
+	filtered := []multiaddr.Multiaddr{}
+	addrs := pi.Addrs
+
+	for _, addr := range addrs {
+		if addr.String() == localhostIPv4 {
+			continue
+		}
+		if addr.String() == localhostIPv6 {
+			continue
+		}
+		filtered = append(filtered, addr)
+	}
+
+	s.node.Peerstore().ClearAddrs(pi.ID)
+	s.node.Peerstore().AddAddrs(pi.ID, filtered, peerstore.ConnectedAddrTTL)
+}
+
+func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {
+	otherProtocols, err := s.node.Peerstore().GetProtocols(pi.ID)
+	if err != nil {
+		log.Errorf("discovery: failed to get new node protocols: %s", err)
+		return false
+	}
+	mineProtocols := s.node.Mux().Protocols()
+	if len(otherProtocols) < len(mineProtocols) {
+		// bootstrap node supports only routing protocols
+		return true
+	}
+	return false
+}
+
+func (s *discoveryService) isDialable(pi warpnet.PeerAddrInfo) bool {
+	isDialable := true
+	for _, addr := range pi.Addrs {
+		isDialable = isDialable && s.node.Network().CanDial(pi.ID, addr)
+	}
+	return isDialable
 }

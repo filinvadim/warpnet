@@ -112,7 +112,7 @@ func main() {
 
 	authService := auth.NewAuthService(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
 	wsCtrl := handlers.NewWSController(conf, authService)
-	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
+	staticCtrl := handlers.NewStaticController(conf, db.IsFirstRun(), frontend.GetStaticEmbedded())
 
 	interfaceServer.RegisterHandlers(&API{
 		staticCtrl,
