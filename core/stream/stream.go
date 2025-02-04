@@ -29,7 +29,7 @@ func NewStreamPool(
 	return pool
 }
 
-func (p *streamPool) Send(peerAddr *warpnet.PeerAddrInfo, r WarpRoute, data []byte) ([]byte, error) {
+func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byte) ([]byte, error) {
 	if p == nil {
 		return nil, nil
 	}
@@ -39,12 +39,17 @@ func (p *streamPool) Send(peerAddr *warpnet.PeerAddrInfo, r WarpRoute, data []by
 
 func send(
 	ctx context.Context, n NodeStreamer,
-	serverInfo *warpnet.PeerAddrInfo, r WarpRoute, data []byte,
+	serverInfo warpnet.PeerAddrInfo, r WarpRoute, data []byte,
 ) ([]byte, error) {
-	if n == nil || serverInfo == nil || r == "" {
+	if n == nil || serverInfo.String() == "" || r == "" {
 		return nil, errors.New("stream: parameters improperly configured")
 	}
 
+	if err := serverInfo.ID.Validate(); err != nil {
+		return nil, err
+	}
+
+	log.Infof("stream: opening %s to %s...", r.ProtocolID(), serverInfo.ID)
 	stream, err := n.NewStream(ctx, serverInfo.ID, r.ProtocolID())
 	if err != nil {
 		return nil, fmt.Errorf("stream: new: %s", err)
@@ -62,7 +67,7 @@ func send(
 			return nil, fmt.Errorf("stream: writing: %s", err)
 		}
 	}
-
+	log.Infoln("stream: waiting for response...", r.ProtocolID(), serverInfo.ID)
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(rw)
 	if err != nil {

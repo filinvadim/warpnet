@@ -23,7 +23,7 @@ import (
 // TODO
 
 type ClientStreamer interface {
-	Send(peerAddr *warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
+	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type WarpClientNode struct {
@@ -102,11 +102,11 @@ func (n *WarpClientNode) pairNodes(nodeId string, clientInfo domain.AuthNodeInfo
 		log.Errorln("client node must not be nil")
 		return errors.New("client node must not be nil")
 	}
-	_, err := n.GenericStream(nodeId, stream.PairPostPrivate, clientInfo)
+	_, err := n.PairedStream(nodeId, stream.PairPostPrivate.String(), clientInfo)
 	return err
 }
 
-func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error) {
+func (n *WarpClientNode) PairedStream(nodeId string, path string, data any) (_ []byte, err error) {
 	if n == nil {
 		return nil, errors.New("client node must not be nil")
 	}
@@ -128,7 +128,7 @@ func (n *WarpClientNode) GenericStream(nodeId string, path stream.WarpRoute, dat
 		return nil, err
 	}
 
-	return n.streamer.Send(addrInfo, path, bt)
+	return n.streamer.Send(*addrInfo, stream.WarpRoute(path), bt)
 }
 
 func (n *WarpClientNode) Stop() {

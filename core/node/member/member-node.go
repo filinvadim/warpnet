@@ -49,7 +49,7 @@ type DiscoveryServicer interface {
 }
 
 type Streamer interface {
-	Send(peerAddr *warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
+	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
 type WarpNode struct {
@@ -218,7 +218,6 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	reg := n.Node()
 	id := reg.ID()
 	addrs := reg.Peerstore().Addrs(id)
-	protocols, _ := reg.Peerstore().GetProtocols(id)
 	latency := reg.Peerstore().LatencyEWMA(id)
 	peerInfo := reg.Peerstore().PeerInfo(id)
 	connectedness := reg.Network().Connectedness(id)
@@ -231,7 +230,7 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 
 	return p2p.NodeInfo{
 		Addrs:     addrs,
-		Protocols: stream.FromPrIDToRoutes(protocols),
+		Protocols: n.SupportedProtocols(),
 		Latency:   latency,
 		PeerInfo: warpnet.WarpAddrInfo{
 			ID:    peerInfo.ID,
@@ -293,7 +292,7 @@ func (n *WarpNode) IPv6() string {
 	return n.ipv6
 }
 
-func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error) {
+func (n *WarpNode) GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, nil
 	}
@@ -310,12 +309,15 @@ func (n *WarpNode) GenericStream(nodeId string, path stream.WarpRoute, data any)
 		}
 	}
 
-	id, err := warpnet.IDFromBytes([]byte(nodeId))
-	if err != nil {
-		return nil, err
+	peerInfo := n.Peerstore().PeerInfo(nodeId)
+	if len(peerInfo.Addrs) == 0 {
+		return nil, fmt.Errorf("peer %s does not have any addresses: %v", nodeId, peerInfo.Addrs)
 	}
-	log.Infoln("stream: request:", path, nodeId)
-	return n.streamer.Send(&warpnet.PeerAddrInfo{ID: id}, path, bt)
+	for _, addr := range peerInfo.Addrs {
+		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
+	}
+
+	return n.streamer.Send(peerInfo, path, bt)
 }
 
 func (n *WarpNode) Stop() {

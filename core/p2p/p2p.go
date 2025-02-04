@@ -3,12 +3,12 @@ package p2p
 import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
@@ -17,7 +17,6 @@ import (
 
 type NodeInfo struct {
 	Addrs        []warpnet.WarpAddress `json:"addrs"`
-	Protocols    []stream.WarpRoute    `json:"protocols"`
 	Latency      time.Duration         `json:"latency"`
 	PeerInfo     warpnet.WarpAddrInfo  `json:"peer"`
 	NetworkState string                `json:"network_state"`
@@ -26,6 +25,7 @@ type NodeInfo struct {
 	StreamStats  network.Stats         `json:"stream_stats"`
 	OwnerId      string                `json:"owner_id"`
 	SelfHash     security.SelfHash     `json:"self_hash"`
+	Protocols    []string              `json:"protocols"`
 }
 
 const (
@@ -46,7 +46,10 @@ func NewP2PNode(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
 			fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
-			fmt.Sprintf("/ip6/::/tcp/%s", conf.Node.Port),
+		),
+		libp2p.SwarmOpts(
+			swarm.WithDialTimeout(DefaultTimeout),
+			swarm.WithDialTimeoutLocal(DefaultTimeout),
 		),
 		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
 		libp2p.Identity(privKey),

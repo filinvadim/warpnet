@@ -19,7 +19,7 @@ import (
 )
 
 type GenericStreamer interface {
-	GenericStream(string, stream.WarpRoute, any) ([]byte, error)
+	PairedStream(string, string, any) ([]byte, error)
 	Stop()
 }
 
@@ -151,7 +151,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 
 		log.Infof("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
-		respData, err := c.client.GenericStream(wsMsg.NodeId, stream.WarpRoute(wsMsg.Path), *wsMsg.Body)
+		respData, err := c.client.PairedStream(wsMsg.NodeId, wsMsg.Path, *wsMsg.Body)
 		if err != nil {
 			log.Errorf("websocket: send stream: %v", err)
 			response = newErrorResp(err.Error())

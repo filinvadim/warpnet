@@ -32,7 +32,7 @@ type PeerInfoStorer interface {
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
-	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
+	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type Gossip struct {
@@ -283,7 +283,7 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 		return nil
 	}
 	_, err := g.node.GenericStream( // send to self
-		g.node.ID().String(),
+		g.node.ID(),
 		stream.WarpRoute(simulatedMessage.Path),
 		msg.Data,
 	)

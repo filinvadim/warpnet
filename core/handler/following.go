@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -12,7 +13,7 @@ import (
 )
 
 type FollowNodeStreamer interface {
-	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
+	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type FollowingAuthStorer interface {
@@ -115,7 +116,7 @@ func StreamGetFollowersHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWERS_1_0_0, buf)
+			return streamer.GenericStream(warpnet.WarpPeerID(user.NodeId), event.PUBLIC_GET_FOLLOWERS_1_0_0, buf)
 		}
 
 		followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
@@ -152,7 +153,7 @@ func StreamGetFolloweesHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWEES_1_0_0, buf)
+			return streamer.GenericStream(warpnet.WarpPeerID(user.NodeId), event.PUBLIC_GET_FOLLOWEES_1_0_0, buf)
 		}
 
 		followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
