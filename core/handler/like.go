@@ -49,7 +49,7 @@ func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlewar
 		_ = msgBody.FromRequestBody(reqBody)
 		msg := event.Message{
 			Body:      msgBody,
-			Path:      event.PRIVATE_POST_LIKE_1_0_0,
+			Path:      event.PRIVATE_POST_LIKE,
 			Timestamp: time.Now(),
 		}
 
@@ -79,7 +79,7 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 		_ = msgBody.FromRequestBody(reqBody)
 		msg := event.Message{
 			Body:      msgBody,
-			Path:      event.PRIVATE_POST_UNLIKE_1_0_0,
+			Path:      event.PRIVATE_POST_UNLIKE,
 			Timestamp: time.Now(),
 		}
 

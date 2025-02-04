@@ -125,7 +125,7 @@ func StreamNewTweetHandler(
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_POST_TWEET_1_0_0,
+				Path:      event.PRIVATE_POST_TWEET,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
@@ -169,7 +169,7 @@ func StreamDeleteTweetHandler(
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_DELETE_TWEET_1_0_0,
+				Path:      event.PRIVATE_DELETE_TWEET,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {

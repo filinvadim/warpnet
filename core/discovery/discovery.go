@@ -3,6 +3,8 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"github.com/Masterminds/semver/v3"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -38,11 +40,11 @@ type UserStorer interface {
 }
 
 type discoveryService struct {
-	ctx      context.Context
-	node     DiscoveryInfoStorer
-	userRepo UserStorer
-	nodeRepo NodeStorer
-
+	ctx           context.Context
+	node          DiscoveryInfoStorer
+	userRepo      UserStorer
+	nodeRepo      NodeStorer
+	version       *semver.Version
 	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
 }
@@ -50,11 +52,12 @@ type discoveryService struct {
 //goland:noinspection ALL
 func NewDiscoveryService(
 	ctx context.Context,
+	conf config.Config,
 	userRepo UserStorer,
 	nodeRepo NodeStorer,
 ) *discoveryService {
 	return &discoveryService{
-		ctx, nil, userRepo, nodeRepo,
+		ctx, nil, userRepo, nodeRepo, conf.Version,
 		make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }
@@ -163,7 +166,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	infoResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_INFO_1_0_0, nil)
+	infoResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_INFO, nil)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -172,8 +175,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	var info p2p.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
-		log.Infoln(string(infoResp))
 		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)
+		return
+	}
+
+	if info.Version.Major() < s.version.Major() {
+		log.Infof("discovery: peer %s has old version %s", pi.ID.String(), info.Version.String())
 		return
 	}
 
@@ -182,7 +189,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
-	userResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_USER_1_0_0, getUserEvent)
+	userResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return

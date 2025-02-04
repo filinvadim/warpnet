@@ -108,7 +108,7 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_POST_REPLY_1_0_0,
+				Path:      event.PRIVATE_POST_REPLY,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
@@ -158,7 +158,7 @@ func StreamDeleteReplyHandler(
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_DELETE_REPLY_1_0_0,
+				Path:      event.PRIVATE_DELETE_REPLY,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {

@@ -231,7 +231,7 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 		Protocols:    n.SupportedProtocols(),
 		Latency:      latency,
 		NetworkState: connectedness.String(),
-		Version:      n.version.String(),
+		Version:      n.version,
 		//StreamStats:  nil, // will be added later
 		OwnerId:  n.ownerId,
 		SelfHash: n.selfHash,

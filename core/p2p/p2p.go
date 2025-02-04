@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
@@ -19,7 +20,7 @@ type NodeInfo struct {
 	Addrs        []string          `json:"addrs"`
 	Latency      time.Duration     `json:"latency"`
 	NetworkState string            `json:"network_state"`
-	Version      string            `json:"version"`
+	Version      *semver.Version   `json:"version"`
 	StreamStats  network.Stats     `json:"stream_stats"`
 	OwnerId      string            `json:"owner_id"`
 	SelfHash     security.SelfHash `json:"self_hash"`

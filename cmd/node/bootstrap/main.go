@@ -66,7 +66,7 @@ func main() {
 
 	mdnsService := mdns.NewMulticastDNS(ctx, nil)
 	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, nil)
+	pubsubService := pubsub.NewPubSub(ctx, conf, nil)
 	defer pubsubService.Close()
 
 	memoryStore, err := pstoremem.NewPeerstore()

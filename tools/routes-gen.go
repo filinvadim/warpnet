@@ -16,11 +16,15 @@ const (
 )
 
 type OpenAPI struct {
+	Info struct {
+		Version string `yaml:"version"`
+	} `yaml:"info"`
 	Paths map[string]interface{} `yaml:"paths"`
 }
 
 func pathToConst(path string) string {
 	result := ""
+
 	for _, c := range path {
 		if c == '/' {
 			result += "_"
@@ -36,6 +40,7 @@ func pathToConst(path string) string {
 	result = strings.ToTitle(strings.TrimPrefix(result, "_"))
 	result = strings.ReplaceAll(result, ".", "_")
 	result = strings.ReplaceAll(result, "*", "")
+	result = strings.ReplaceAll(result, "_VERSION", "")
 	return result
 }
 
@@ -52,9 +57,13 @@ func main() {
 	}
 	os.Remove(genFilePath)
 
+	split := strings.Split(api.Info.Version, ".")
+	onlyMajorVersion := split[0] + ".0.0"
+
 	out := fmt.Sprintf("package %s\n\nconst (\n", packageName)
 	for path := range api.Paths {
 		constName := pathToConst(path)
+		path = strings.ReplaceAll(path, "{version}", onlyMajorVersion)
 		out += fmt.Sprintf("    %s = \"%s\"\n", constName, path)
 	}
 	out += ")\n"

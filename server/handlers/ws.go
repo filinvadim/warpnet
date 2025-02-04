@@ -82,7 +82,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	}
 
 	switch wsMsg.Path {
-	case event.PRIVATE_POST_LOGIN_1_0_0:
+	case event.PRIVATE_POST_LOGIN:
 		req, err := wsMsg.Body.AsRequestBody()
 		if err != nil {
 			log.Errorf("websocket: login as request: %v", err)
@@ -124,7 +124,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 
 		response.Body = msgBody
-	case event.PRIVATE_POST_LOGOUT_1_0_0:
+	case event.PRIVATE_POST_LOGOUT:
 		defer c.client.Stop()
 		defer c.upgrader.Close()
 		return nil, c.auth.AuthLogout()

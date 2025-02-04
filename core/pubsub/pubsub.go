@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -40,6 +41,7 @@ type Gossip struct {
 	pubsub           *pubsub.PubSub
 	node             PeerInfoStorer
 	discoveryHandler discovery.DiscoveryHandler
+	version          string
 
 	mx     *sync.RWMutex
 	subs   []*pubsub.Subscription
@@ -48,16 +50,18 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *Gossip {
+func NewPubSub(ctx context.Context, conf config.Config, discoveryHandler discovery.DiscoveryHandler) *Gossip {
+	version := fmt.Sprintf("%d.0.0", conf.Version.Major())
+
 	g := &Gossip{
 		ctx:              ctx,
 		pubsub:           nil,
 		node:             nil,
 		discoveryHandler: discoveryHandler,
-
-		mx:     &sync.RWMutex{},
-		subs:   []*pubsub.Subscription{},
-		topics: map[string]*pubsub.Topic{},
+		version:          version,
+		mx:               &sync.RWMutex{},
+		subs:             []*pubsub.Subscription{},
+		topics:           map[string]*pubsub.Topic{},
 
 		isRunning: new(atomic.Bool),
 	}
@@ -183,7 +187,7 @@ func (g *Gossip) Close() (err error) {
 
 // PublishOwnerUpdate - publish for followers
 func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
-	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, ownerId)
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, ownerId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -213,7 +217,7 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 
 // SubscribeUserUpdate - follow someone
 func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
-	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -241,7 +245,7 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 
 // UnsubscribeUserUpdate - unfollow someone
 func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
-	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
+	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()

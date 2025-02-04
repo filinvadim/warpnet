@@ -132,11 +132,11 @@ func main() {
 	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
 	persLayer := persistentLayer{nodeRepo, authRepo}
 
-	discService := discovery.NewDiscoveryService(ctx, userRepo, persLayer)
+	discService := discovery.NewDiscoveryService(ctx, conf, userRepo, persLayer)
 	defer discService.Close()
 	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
 	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, discService.HandlePeerFound)
+	pubsubService := pubsub.NewPubSub(ctx, conf, discService.HandlePeerFound)
 	defer pubsubService.Close()
 	providerStore, err := dht.NewProviderCache(ctx, persLayer)
 	if err != nil {
@@ -183,84 +183,84 @@ func main() {
 		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_GET_TIMELINE_1_0_0,
+		event.PRIVATE_GET_TIMELINE,
 		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_POST_TWEET_1_0_0,
+		event.PRIVATE_POST_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_DELETE_TWEET_1_0_0,
+		event.PRIVATE_DELETE_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_POST_REPLY_1_0_0,
+		event.PRIVATE_POST_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_DELETE_REPLY_1_0_0,
+		event.PRIVATE_DELETE_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_POST_FOLLOW_1_0_0,
+		event.PRIVATE_POST_FOLLOW,
 		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, followRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_POST_UNFOLLOW_1_0_0,
+		event.PRIVATE_POST_UNFOLLOW,
 		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, followRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_USER_1_0_0,
+		event.PUBLIC_GET_USER,
 		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(userRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_USERS_1_0_0,
+		event.PUBLIC_GET_USERS,
 		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(userRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_TWEETS_1_0_0,
+		event.PUBLIC_GET_TWEETS,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_INFO_1_0_0,
+		event.PUBLIC_GET_INFO,
 		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(n)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_TWEET_1_0_0,
+		event.PUBLIC_GET_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_REPLY_1_0_0,
+		event.PUBLIC_GET_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_REPLIES_1_0_0,
+		event.PUBLIC_GET_REPLIES,
 		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_FOLLOWERS_1_0_0,
+		event.PUBLIC_GET_FOLLOWERS,
 		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, n)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_FOLLOWEES_1_0_0,
+		event.PUBLIC_GET_FOLLOWEES,
 		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, n)))),
 	)
 
 	n.SetStreamHandler(
-		event.PRIVATE_POST_LIKE_1_0_0,
+		event.PRIVATE_POST_LIKE,
 		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, pubsubService)))),
 	)
 	n.SetStreamHandler(
-		event.PRIVATE_POST_UNLIKE_1_0_0,
+		event.PRIVATE_POST_UNLIKE,
 		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_LIKESNUM_1_0_0,
+		event.PUBLIC_GET_LIKESNUM,
 		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
 	)
 	n.SetStreamHandler(
-		event.PUBLIC_GET_LIKERS_1_0_0,
+		event.PUBLIC_GET_LIKERS,
 		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
 	log.Infoln("SUPPORTED PROTOCOLS:", n.SupportedProtocols())

@@ -1,12 +1,17 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.98
+  version: 0.1.99
   description: Events for a distributed Twitter-like application
 
 paths:
   /private/post/login/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -24,7 +29,7 @@ paths:
               }
       responses:
         "200":
-          description:  NOTE! This is WS response. Not a HTTP!
+          description: NOTE! This is WS response. Not a HTTP!
           content:
             application/json:
               schema:
@@ -32,6 +37,11 @@ paths:
 
   /private/post/logout/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -53,6 +63,11 @@ paths:
 
   /private/get/timeline/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -78,6 +93,11 @@ paths:
 
   /private/post/tweet/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -103,6 +123,11 @@ paths:
 
   /private/post/reply/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -128,6 +153,11 @@ paths:
 
   /private/delete/reply/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -153,6 +183,11 @@ paths:
 
   /private/delete/tweet/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -178,6 +213,11 @@ paths:
 
   /private/post/follow/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -203,6 +243,11 @@ paths:
 
   /private/post/unfollow/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -228,6 +273,11 @@ paths:
 
   /public/get/user/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -253,6 +303,11 @@ paths:
 
   /public/get/users/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -278,6 +333,11 @@ paths:
 
   /public/get/tweets/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -303,6 +363,11 @@ paths:
 
   /public/get/tweet/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -328,6 +393,11 @@ paths:
 
   /public/get/replies/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -353,6 +423,11 @@ paths:
 
   /public/get/reply/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -378,6 +453,11 @@ paths:
 
   /public/get/info/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -403,6 +483,11 @@ paths:
 
   /public/get/followers/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -428,6 +513,11 @@ paths:
 
   /public/get/followees/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -453,6 +543,11 @@ paths:
 
   /public/get/likers/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -478,6 +573,11 @@ paths:
 
   /public/get/likesnum/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -503,6 +603,11 @@ paths:
 
   /private/post/like/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
@@ -528,6 +633,11 @@ paths:
 
   /private/post/unlike/{version}:
     options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
         content:
