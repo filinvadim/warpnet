@@ -5,7 +5,7 @@ info:
   description: Events for a distributed Twitter-like application
 
 paths:
-  /private/post/login/1.0.0:
+  /private/post/login/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -30,7 +30,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/logout/1.0.0:
+  /private/post/logout/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -51,7 +51,7 @@ paths:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
 
-  /private/get/timeline/1.0.0:
+  /private/get/timeline/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -76,7 +76,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/tweet/1.0.0:
+  /private/post/tweet/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -101,7 +101,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/reply/1.0.0:
+  /private/post/reply/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -126,7 +126,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/delete/reply/1.0.0:
+  /private/delete/reply/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -151,7 +151,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/delete/tweet/1.0.0:
+  /private/delete/tweet/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -176,7 +176,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/follow/1.0.0:
+  /private/post/follow/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -201,7 +201,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/unfollow/1.0.0:
+  /private/post/unfollow/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -226,7 +226,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/user/1.0.0:
+  /public/get/user/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -251,7 +251,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/users/1.0.0:
+  /public/get/users/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -276,7 +276,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/tweets/1.0.0:
+  /public/get/tweets/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -301,7 +301,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/tweet/1.0.0:
+  /public/get/tweet/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -326,7 +326,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/replies/1.0.0:
+  /public/get/replies/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -351,7 +351,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/reply/1.0.0:
+  /public/get/reply/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -376,7 +376,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/info/1.0.0:
+  /public/get/info/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -401,7 +401,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/followers/1.0.0:
+  /public/get/followers/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -426,7 +426,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/followees/1.0.0:
+  /public/get/followees/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -451,7 +451,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/likers/1.0.0:
+  /public/get/likers/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -476,7 +476,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/likesnum/1.0.0:
+  /public/get/likesnum/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -501,7 +501,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/like/1.0.0:
+  /private/post/like/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
@@ -526,7 +526,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/unlike/1.0.0:
+  /private/post/unlike/{version}:
     options:
       description: NOTE! This is WS message identificator. Not a HTTP!
       requestBody:
