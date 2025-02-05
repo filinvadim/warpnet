@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.102
+  version: 0.1.103
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -712,6 +712,7 @@ components:
         - $ref: '#/components/schemas/UnlikeEvent'
         - $ref: '#/components/schemas/GetLikesNumEvent'
         - $ref: '#/components/schemas/GetLikersEvent'
+        - $ref: '#/components/schemas/GetRecommendedUsersEvent'
 
     ResponseBody:
       anyOf:
@@ -727,6 +728,7 @@ components:
         - $ref: '#/components/schemas/NewReplyResponse'
         - $ref: '#/components/schemas/LikesNumResponse'
         - $ref: '#/components/schemas/AcceptedResponse'
+        - $ref: '#/components/schemas/RecommendedResponse'
 
     AcceptedResponse:
       type: string
@@ -937,6 +939,17 @@ components:
           type: boolean
         is_followed:
           type: boolean
+
+    GetRecommendedUsersEvent:
+      type: object
+      properties:
+        limit:
+          type: integer
+          x-go-type: uint64
+        usersCursor:
+          type: string
+        recommendsCursor:
+          type: string
 
     NewChatEvent:
       type: object
@@ -1152,3 +1165,18 @@ components:
         - cursor
         - users
 
+    RecommendedResponse:
+      type: object
+      properties:
+        usersCursor:
+          type: string
+        recommendsCursor:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: './domain.yml#/components/schemas/User'
+      required:
+        - usersCursor
+        - recommendsCursor
+        - users

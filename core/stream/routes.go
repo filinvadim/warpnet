@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	PairPostPrivate WarpRoute = "/private/post/pair/1.0.0"
+	PairPostPrivate WarpRoute = "/private/post/pair/0.0.0"
 )
 
 type WarpRoute string

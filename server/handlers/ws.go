@@ -5,9 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/node/client"
 	"github.com/filinvadim/warpnet/core/stream"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 
 	"github.com/filinvadim/warpnet/json"
@@ -18,9 +16,9 @@ import (
 	"time"
 )
 
-type GenericStreamer interface {
-	PairedStream(string, string, any) ([]byte, error)
-	Stop()
+type ClientNodeStreamer interface {
+	ClientStream(nodeId string, path string, data any) (_ []byte, err error)
+	IsRunning() bool
 }
 
 type AuthServicer interface {
@@ -34,14 +32,15 @@ type WSController struct {
 	ctx      context.Context
 	conf     config.Config
 
-	client GenericStreamer
+	clientNode ClientNodeStreamer
 }
 
 func NewWSController(
 	auth AuthServicer,
+	clientNode ClientNodeStreamer,
 ) *WSController {
 
-	return &WSController{nil, auth, nil, config.ConfigFile, nil}
+	return &WSController{nil, auth, nil, config.ConfigFile, clientNode}
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
@@ -112,24 +111,13 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			log.Errorf("websocket: login FromResponseBody: %v", err)
 			break
 		}
-
-		clientInfo := domain.AuthNodeInfo{
-			Identity: domain.Identity(loginResp),
-			Version:  c.conf.Version.String(),
-		}
-		c.client, err = client.NewClientNode(c.ctx, clientInfo, c.conf)
-		if err != nil {
-			log.Errorf("create node client: %v", err)
-		}
-
 		response.Body = msgBody
 	case event.PRIVATE_POST_LOGOUT:
-		defer c.client.Stop()
 		defer c.upgrader.Close()
 		return nil, c.auth.AuthLogout()
 
 	default:
-		if c.client == nil {
+		if c.clientNode == nil || !c.clientNode.IsRunning() {
 			log.Errorf("websocket request: not connected to server node")
 			response = newErrorResp("not connected to server node")
 			break
@@ -150,7 +138,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 
 		log.Infof("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
-		respData, err := c.client.PairedStream(wsMsg.NodeId, wsMsg.Path, *wsMsg.Body)
+		respData, err := c.clientNode.ClientStream(wsMsg.NodeId, wsMsg.Path, *wsMsg.Body)
 		if err != nil {
 			log.Errorf("websocket: send stream: %v", err)
 			response = newErrorResp(err.Error())

@@ -5,13 +5,13 @@ import (
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -51,6 +51,7 @@ import (
 
 type RoutingStorer interface {
 	warpnet.WarpBatching
+	AddNearPeer(peerId warpnet.WarpPeerID, latency time.Duration) (err error)
 }
 
 type ProviderStorer interface {
@@ -61,8 +62,8 @@ type ProviderStorer interface {
 
 type DistributedHashTable struct {
 	ctx           context.Context
-	db            datastore.Batching
-	providerStore providers.ProviderStore
+	db            RoutingStorer
+	providerStore ProviderStorer
 	boostrapNodes []warpnet.PeerAddrInfo
 	addF          discovery.DiscoveryHandler
 	removeF       discovery.DiscoveryHandler
@@ -107,6 +108,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
+		dht.AddressFilter(localHostAddressFilter),
 		dht.ProtocolPrefix(protocol.ID(d.prefix)),
 		dht.Datastore(d.db),
 		dht.MaxRecordAge(time.Hour*24*365),
@@ -123,6 +125,9 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
+			if err := d.addNearPeerByRTT(id); err != nil {
+				log.Errorf("add near peer by RTT: %v\n", err)
+			}
 			d.addF(peer.AddrInfo{ID: id})
 		}
 	}
@@ -156,4 +161,34 @@ func (d *DistributedHashTable) Close() {
 	}
 	d.dht = nil
 	log.Infoln("dht: table closed")
+}
+
+func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multiaddr.Multiaddr) {
+	for _, addr := range multiaddrs {
+		if addr == nil {
+			continue
+		}
+		if strings.Contains(addr.String(), "localhost") {
+			continue
+		}
+		if strings.Contains(addr.String(), "127.0.0.1") {
+			continue
+		}
+		filtered = append(filtered, addr)
+	}
+	return filtered
+}
+
+func (d *DistributedHashTable) addNearPeerByRTT(id peer.ID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	now := time.Now()
+	err := d.dht.Ping(ctx, id)
+	if err != nil {
+		return err
+	}
+	rtt := time.Since(now)
+
+	return d.db.AddNearPeer(id, rtt)
 }

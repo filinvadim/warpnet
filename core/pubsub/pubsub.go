@@ -28,20 +28,22 @@ const (
 	userUpdateTopicPrefix = "user-update"
 )
 
-type PeerInfoStorer interface {
+type ServerNodeConnector interface {
 	Node() warpnet.P2PNode
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
+}
 
-	// TODO refacto - inject client node
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
+type ClientNodeStreamer interface {
+	ClientStream(nodeId string, path string, data any) (_ []byte, err error)
 }
 
 type Gossip struct {
 	ctx              context.Context
 	pubsub           *pubsub.PubSub
-	node             PeerInfoStorer
+	serverNode       ServerNodeConnector
+	clientNode       ClientNodeStreamer
 	discoveryHandler discovery.DiscoveryHandler
 	version          string
 
@@ -58,7 +60,8 @@ func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler)
 	g := &Gossip{
 		ctx:              ctx,
 		pubsub:           nil,
-		node:             nil,
+		serverNode:       nil,
+		clientNode:       nil,
 		discoveryHandler: discoveryHandler,
 		version:          version,
 		mx:               &sync.RWMutex{},
@@ -71,11 +74,14 @@ func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler)
 	return g
 }
 
-func (g *Gossip) Run(n PeerInfoStorer) {
+func (g *Gossip) Run(serverNode ServerNodeConnector, clientNode ClientNodeStreamer) {
 	if g.isRunning.Load() {
 		return
 	}
-	if err := g.run(n); err != nil {
+	g.clientNode = clientNode
+	g.serverNode = serverNode
+
+	if err := g.run(serverNode); err != nil {
 		log.Fatalf("failed to create Gossip sub: %s", err)
 	}
 	for {
@@ -113,7 +119,7 @@ func (g *Gossip) Run(n PeerInfoStorer) {
 	}
 }
 
-func (g *Gossip) run(n PeerInfoStorer) (err error) {
+func (g *Gossip) run(n ServerNodeConnector) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("pubsub discovery: recovered from panic: %v", r)
@@ -126,9 +132,8 @@ func (g *Gossip) run(n PeerInfoStorer) (err error) {
 
 	g.pubsub, err = pubsub.NewGossipSub(g.ctx, n.Node())
 	if err != nil {
-
+		return err
 	}
-	g.node = n
 	g.isRunning.Store(true)
 	log.Infoln("started pubsub service")
 
@@ -238,7 +243,7 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Infof("pubsub discovery: subscribed to user updates: %s", userId)
+	log.Infof("pubsub discovery: subscribed to topic: %s", topicName)
 	g.mx.Lock()
 	g.subs = append(g.subs, sub)
 	g.mx.Unlock()
@@ -288,9 +293,9 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
 	}
-	_, err := g.node.GenericStream( // send to self
-		g.node.ID(),
-		stream.WarpRoute(simulatedMessage.Path),
+	_, err := g.clientNode.ClientStream( // send to self
+		g.serverNode.ID().String(),
+		simulatedMessage.Path,
 		msg.Data,
 	)
 	return err
@@ -306,7 +311,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 		log.Errorf("pubsub discovery: message has no ID", string(msg.Data))
 		return
 	}
-	if discoveryMsg.ID == g.node.ID() {
+	if discoveryMsg.ID == g.serverNode.ID() {
 		return
 	}
 
@@ -321,7 +326,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	}
 
 	if g.discoveryHandler == nil { // just bootstrap
-		if err := g.node.Connect(peerInfo); err != nil {
+		if err := g.serverNode.Connect(peerInfo); err != nil {
 			log.Errorf("pubsub discovery: failed to connect to peer: %v", err)
 			return
 		}
@@ -347,8 +352,8 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 			log.Infoln(g.ctx.Err())
 			return
 		case <-ticker.C:
-			addrs := make([]string, 0, len(g.node.Addrs()))
-			for _, addr := range g.node.Addrs() {
+			addrs := make([]string, 0, len(g.serverNode.Addrs()))
+			for _, addr := range g.serverNode.Addrs() {
 				if addr == "" {
 					continue
 				}
@@ -356,7 +361,7 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 			}
 
 			msg := warpnet.WarpAddrInfo{
-				ID:    g.node.ID(),
+				ID:    g.serverNode.ID(),
 				Addrs: addrs,
 			}
 			data, err := json.Marshal(msg)

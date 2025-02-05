@@ -8,13 +8,13 @@ import (
 	embedded "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
-	_ "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/node/client"
 	"github.com/filinvadim/warpnet/core/node/member"
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/stream"
@@ -99,6 +99,11 @@ func main() {
 		manualCredsInput(interfaceServer, db)
 	}
 
+	clientNode, err := client.NewClientNode(ctx)
+	if err != nil {
+		log.Fatalf("failed to init client node: %v", err)
+	}
+
 	userPersistency := struct {
 		*database.AuthRepo
 		*database.UserRepo
@@ -107,7 +112,7 @@ func main() {
 	}
 
 	authService := auth.NewAuthService(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
-	wsCtrl := handlers.NewWSController(authService)
+	wsCtrl := handlers.NewWSController(authService, clientNode)
 	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
 	interfaceServer.RegisterHandlers(&API{
@@ -147,7 +152,7 @@ func main() {
 	)
 	defer dHashTable.Close()
 
-	n, err := member.NewMemberNode(
+	serverNode, err := member.NewMemberNode(
 		ctx,
 		privKey,
 		selfHash,
@@ -157,15 +162,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
-	defer n.Stop()
+	defer serverNode.Stop()
 
-	go discService.Run(n)
-	go mdnsService.Start(n)
-	go pubsubService.Run(n)
-
-	authInfo.Identity.Owner.NodeId = n.ID().String()
-	authInfo.Identity.Owner.Ipv6 = n.IPv6()
-	authInfo.Identity.Owner.Ipv4 = n.IPv4()
+	authInfo.Identity.Owner.NodeId = serverNode.ID().String()
+	authInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
+	authInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
 	authInfo.Version = config.ConfigFile.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
@@ -173,97 +174,106 @@ func main() {
 	authMw := mw.AuthMiddleware
 	unwrapMw := mw.UnwrapStreamMiddleware
 
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		stream.PairPostPrivate,
 		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_GET_TIMELINE,
 		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_DELETE_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_DELETE_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_FOLLOW,
 		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, authRepo, followRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_UNFOLLOW,
 		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, followRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USER,
 		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(userRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(authRepo, userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(authRepo, userRepo, nodeRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
-		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(n)))),
+		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(serverNode)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_REPLIES,
 		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_FOLLOWERS,
-		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, n)))),
+		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, serverNode)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_FOLLOWEES,
-		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, n)))),
+		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, serverNode)))),
 	)
 
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_LIKE,
 		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, pubsubService)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_UNLIKE,
 		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_LIKESNUM,
 		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
 	)
-	n.SetStreamHandler(
+	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_LIKERS,
 		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
-	log.Infoln("SUPPORTED PROTOCOLS:", n.SupportedProtocols())
+	log.Infoln("SUPPORTED PROTOCOLS:", serverNode.SupportedProtocols())
 
 	nodeReadyChan <- authInfo
 
+	if err := clientNode.Pair(authInfo); err != nil {
+		log.Fatalf("failed to init client node: %v", err)
+	}
+	defer clientNode.Stop()
+
+	go discService.Run(serverNode)
+	go mdnsService.Start(serverNode)
+	go pubsubService.Run(serverNode, clientNode)
+
 	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
-	raft, err := consensus.NewRaft(ctx, n, consensusRepo, false)
+	raft, err := consensus.NewRaft(ctx, serverNode, consensusRepo, false)
 	if err != nil {
 		log.Fatal(err)
 	}

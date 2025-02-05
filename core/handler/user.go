@@ -3,10 +3,10 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"slices"
 )
 
 type OwnerUserStorer interface {
@@ -15,7 +15,11 @@ type OwnerUserStorer interface {
 
 type UserFetcher interface {
 	Get(userID string) (user domain.User, err error)
-	ListRecommended(limit *uint64, cursor *string) ([]domain.User, string, error)
+	List(limit *uint64, cursor *string) ([]domain.User, string, error)
+}
+
+type NearestPeersSeeker interface {
+	GetNearestPeers(limit *uint64, cursor *string) (_ []warpnet.WarpPeerID, cur string, err error)
 }
 
 func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
@@ -43,31 +47,69 @@ func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
 
 func StreamGetRecommendedUsersHandler(
 	authRepo OwnerUserStorer,
-	repo UserFetcher,
+	userRepo UserFetcher,
+	nodeRepo NearestPeersSeeker,
 ) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
-		var ev event.GetAllUsersEvent
+		var ev event.GetRecommendedUsersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
 
-		users, cursor, err := repo.ListRecommended(ev.Limit, ev.Cursor)
+		nearLimitDefault := uint64(100)
+		nearest, recCursor, err := nodeRepo.GetNearestPeers(&nearLimitDefault, ev.RecommendsCursor)
+		if err != nil {
+			return nil, err
+		}
+
+		users, usersCursor, err := userRepo.List(ev.Limit, ev.UsersCursor)
 		if err != nil {
 			return nil, err
 		}
 
 		owner, _ := authRepo.GetOwner()
-		for i, user := range users {
+
+		var (
+			recommended        = make([]domain.User, 0, len(users))
+			limit       uint64 = 20
+			userMap            = make(map[string]domain.User, len(users))
+			ownPeerID          = warpnet.WarpPeerID(owner.NodeId)
+		)
+		if ev.Limit != nil {
+			limit = *ev.Limit
+		}
+
+		for _, user := range users {
 			if owner.UserId == user.Id {
-				slices.Delete(users, i, i+1)
+				continue
+			}
+			if user.Username == "" || user.Id == "" {
+				continue
+			}
+			userMap[user.NodeId] = user
+		}
+
+		for _, pId := range nearest {
+			if ownPeerID == pId {
+				continue
+			}
+			user, ok := userMap[pId.String()]
+			if !ok {
+				continue
+			}
+			recommended = append(recommended, user)
+			if len(recommended) == int(limit) {
+				recCursor = ""
+				usersCursor = ""
 				break
 			}
 		}
 
-		return event.UsersResponse{
-			Cursor: cursor,
-			Users:  users,
+		return event.RecommendedResponse{
+			RecommendsCursor: recCursor,
+			UsersCursor:      usersCursor,
+			Users:            recommended,
 		}, nil
 	}
 }

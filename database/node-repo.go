@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 
-	//"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
@@ -29,6 +28,7 @@ const (
 	ProvidersSubNamespace = "PROVIDERS"
 	BlocklistSubNamespace = "BLOCKLIST"
 	InfoSubNamespace      = "INFO"
+	RTTSubNamespace       = "RTT" // round trip time (int)
 )
 
 var (
@@ -710,7 +710,7 @@ func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
 	return providersMap, nil
 }
 
-func (d *NodeRepo) Blocklist(ctx context.Context, peerId peer.ID) error {
+func (d *NodeRepo) Blocklist(ctx context.Context, peerId warpnet.WarpPeerID) error {
 	if d == nil {
 		return ErrNilNodeRepo
 	}
@@ -725,7 +725,7 @@ func (d *NodeRepo) Blocklist(ctx context.Context, peerId peer.ID) error {
 	return d.Put(ctx, ds.NewKey(blocklistKey.String()), []byte(peerId.String()))
 }
 
-func (d *NodeRepo) IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error) {
+func (d *NodeRepo) IsBlocklisted(ctx context.Context, peerId warpnet.WarpPeerID) (bool, error) {
 	if d == nil {
 		return false, ErrNilNodeRepo
 	}
@@ -747,7 +747,7 @@ func (d *NodeRepo) IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, err
 	return true, nil
 }
 
-func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId peer.ID) (err error) {
+func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerID) (err error) {
 	if d == nil {
 		return ErrNilNodeRepo
 	}
@@ -786,7 +786,7 @@ func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info 
 	return d.Put(ctx, ds.NewKey(infoKey.String()), bt)
 }
 
-func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId peer.ID) (err error) {
+func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error) {
 	if d == nil {
 		return ErrNilNodeRepo
 	}
@@ -799,4 +799,51 @@ func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId peer.ID) (err error) {
 		Build()
 
 	return d.Delete(ctx, ds.NewKey(infoKey.String()))
+}
+
+func (d *NodeRepo) AddNearPeer(peerId warpnet.WarpPeerID, latency time.Duration) (err error) {
+	if d == nil {
+		return ErrNilNodeRepo
+	}
+	if peerId == "" {
+		return errors.New("empty peer ID")
+	}
+
+	latencyReversePrefix := time.Unix(0, int64(latency))
+	rttKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(RTTSubNamespace).
+		AddRootID(peerId.String()).
+		AddReversedTimestamp(latencyReversePrefix).
+		Build()
+
+	bt, err := peerId.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return d.Put(context.Background(), ds.NewKey(rttKey.String()), bt)
+}
+
+func (d *NodeRepo) GetNearestPeers(limit *uint64, cursor *string) (_ []warpnet.WarpPeerID, cur string, err error) {
+	if d == nil {
+		return nil, "", ErrNilNodeRepo
+	}
+
+	rttPrefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(RTTSubNamespace).
+		Build()
+
+	items, cur, err := d.db.List(rttPrefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	peerIds := make([]warpnet.WarpPeerID, 0, len(items))
+	for _, item := range items {
+		var peerId warpnet.WarpPeerID
+		if err := peerId.UnmarshalBinary(item.Value); err != nil {
+			return nil, "", err
+		}
+		peerIds = append(peerIds, peerId)
+	}
+	return peerIds, cur, nil
 }
