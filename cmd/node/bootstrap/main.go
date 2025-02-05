@@ -95,7 +95,7 @@ func main() {
 	defer n.Stop()
 
 	go mdnsService.Start(n)
-	go pubsubService.Run(n)
+	go pubsubService.Run(n, nil, nil, nil)
 
 	raft, err := consensus.NewRaft(ctx, n, nil, true)
 	if err != nil {

@@ -2,10 +2,9 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	log "github.com/sirupsen/logrus"
-	"runtime/debug"
+	"strconv"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"
@@ -16,8 +15,9 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 const (
-	UsersRepoName    = "/USERS"
-	UserSubNamespace = "USER"
+	UsersRepoName           = "/USERS"
+	UserSubNamespace        = "USER"
+	defaultAverageRTT int64 = 250000
 )
 
 type UserStorer interface {
@@ -39,9 +39,6 @@ func NewUserRepo(db UserStorer) *UserRepo {
 
 // Create adds a new user to the database
 func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
-	bt, _ := json.JSON.MarshalIndent(user, "", "  ")
-	fmt.Println("USER INSERT!", string(bt))
-	fmt.Println(string(debug.Stack()))
 	if user.Id == "" {
 		user.Id = uuid.New().String()
 	}
@@ -53,6 +50,12 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		return user, err
 	}
 
+	if user.Rtt == 0 {
+		user.Rtt = defaultAverageRTT
+	}
+
+	rttRange := storage.RangePrefix(strconv.FormatInt(user.Rtt, 10))
+
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddSubPrefix(UserSubNamespace).
 		AddRootID("None").
@@ -60,18 +63,26 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		AddParentId(user.Id).
 		Build()
 
-	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
-		AddRootID("None").
-		AddReversedTimestamp(user.CreatedAt).
-		AddParentId(user.Id).
-		Build()
+	sortableKey, err := repo.db.Get(fixedKey)
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		return user, err
+	}
+	if len(sortableKey) == 0 {
+		k := storage.NewPrefixBuilder(UsersRepoName).
+			AddSubPrefix(UserSubNamespace).
+			AddRootID("None").
+			AddRange(rttRange).
+			AddParentId(user.Id).
+			Build()
+
+		sortableKey = k.Bytes()
+	}
 
 	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = tx.Set(fixedKey.Bytes(), sortableKey.Bytes()); err != nil {
+		if err = tx.Set(fixedKey.Bytes(), sortableKey); err != nil {
 			return err
 		}
-		return tx.Set(sortableKey.Bytes(), data)
+		return tx.Set(sortableKey, data)
 	})
 	return user, err
 }
@@ -119,14 +130,20 @@ func (repo *UserRepo) Delete(userID string) error {
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
 		Build()
-	sortableKeyBytes, err := repo.db.Get(fixedKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return ErrUserNotFound
-	}
-	if err != nil {
-		return err
-	}
-	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
+
+	err := repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
+		item, err := tx.Get(fixedKey.Bytes())
+		if errors.Is(err, storage.ErrKeyNotFound) {
+			return ErrUserNotFound
+		}
+		if err != nil {
+			return err
+		}
+
+		sortableKeyBytes, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
 		if err = tx.Delete(fixedKey.Bytes()); err != nil {
 			return err
 		}

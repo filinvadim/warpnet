@@ -31,6 +31,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -211,7 +212,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
@@ -258,7 +259,7 @@ func main() {
 		event.PUBLIC_GET_LIKERS,
 		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
-	log.Infoln("SUPPORTED PROTOCOLS:", serverNode.SupportedProtocols())
+	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	nodeReadyChan <- authInfo
 

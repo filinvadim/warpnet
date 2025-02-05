@@ -177,6 +177,9 @@ func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 }
 
 func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer) error {
+	if authRepo == nil || followRepo == nil {
+		return nil
+	}
 	owner := authRepo.GetOwner()
 
 	var (
@@ -346,6 +349,9 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	body, err := simulatedMessage.Body.AsRequestBody()
 	if err != nil {
 		return err
+	}
+	if g.clientNode == nil {
+		return nil
 	}
 	_, err = g.clientNode.ClientStream( // send to self
 		g.serverNode.ID().String(),

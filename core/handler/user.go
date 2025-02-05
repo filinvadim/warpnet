@@ -6,7 +6,6 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"sort"
 )
 
 type UserFetcher interface {
@@ -37,7 +36,7 @@ func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
 	}
 }
 
-func StreamGetRecommendedUsersHandler(
+func StreamGetUsersHandler(
 	userRepo UserFetcher,
 ) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
@@ -51,11 +50,6 @@ func StreamGetRecommendedUsersHandler(
 		if err != nil {
 			return nil, err
 		}
-
-		// closest first
-		sort.SliceStable(users, func(i, j int) bool {
-			return users[i].Rtt < users[j].Rtt // round trip time
-		})
 
 		return event.UsersResponse{
 			Cursor: cursor,
