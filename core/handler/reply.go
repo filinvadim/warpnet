@@ -11,7 +11,7 @@ import (
 )
 
 type OwnerReplyStorer interface {
-	GetOwner() (domain.Owner, error)
+	GetOwner() domain.Owner
 }
 
 type ReplyBroadcaster interface {
@@ -91,7 +91,7 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 		if err != nil {
 			return nil, err
 		}
-		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+		if owner := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respReplyEvent := event.NewReplyEvent{
 				CreatedAt: reply.CreatedAt,
 				Id:        reply.Id,
@@ -144,7 +144,7 @@ func StreamDeleteReplyHandler(
 		if err = repo.DeleteReply(ev.RootId, ev.ParentReplyId, ev.ReplyId); err != nil {
 			return nil, err
 		}
-		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+		if owner := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respReplyEvent := event.DeleteReplyEvent{
 				UserId:        ev.UserId,
 				ReplyId:       ev.ReplyId,

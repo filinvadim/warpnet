@@ -13,6 +13,8 @@ const (
 	LikerSubNamespace = "LIKER"
 )
 
+var ErrLikesNotFound = errors.New("not found")
+
 type LikeStorer interface {
 	WriteTxn(f func(tx *storage.WarpTxn) error) error
 	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
@@ -108,6 +110,9 @@ func (repo *LikeRepo) LikesCount(tweetId string) (likesNum int64, err error) {
 		Build()
 
 	bt, err := repo.db.Get(likeKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, ErrLikesNotFound
+	}
 	if err != nil {
 		return 0, err
 	}

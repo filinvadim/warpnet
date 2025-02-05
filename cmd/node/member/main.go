@@ -17,7 +17,6 @@ import (
 	"github.com/filinvadim/warpnet/core/node/client"
 	"github.com/filinvadim/warpnet/core/node/member"
 	"github.com/filinvadim/warpnet/core/pubsub"
-	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
@@ -175,7 +174,7 @@ func main() {
 	unwrapMw := mw.UnwrapStreamMiddleware
 
 	serverNode.SetStreamHandler(
-		stream.PairPostPrivate,
+		event.PRIVATE_POST_PAIR,
 		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
 	)
 	serverNode.SetStreamHandler(
@@ -212,7 +211,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(authRepo, userRepo, nodeRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetRecommendedUsersHandler(userRepo)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
@@ -270,7 +269,7 @@ func main() {
 
 	go discService.Run(serverNode)
 	go mdnsService.Start(serverNode)
-	go pubsubService.Run(serverNode, clientNode)
+	go pubsubService.Run(serverNode, clientNode, authRepo, followRepo)
 
 	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
 	raft, err := consensus.NewRaft(ctx, serverNode, consensusRepo, false)

@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"fmt"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -54,7 +56,7 @@ func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpn
 
 func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		if s.Protocol() == stream.PairPostPrivate.ProtocolID() && p.clientNodeID == "" { // first tether client node
+		if s.Protocol() == event.PRIVATE_POST_PAIR && p.clientNodeID == "" { // first tether client node
 			p.clientNodeID = s.Conn().RemotePeer()
 			next(s)
 			return
@@ -97,6 +99,8 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			response = domain.Error{Message: ErrStreamReadError.Error()}
 			return
 		}
+
+		fmt.Println("INCOMING MESSAGE", string(data))
 
 		if response == nil {
 			response, err = fn(data)

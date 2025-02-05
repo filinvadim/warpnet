@@ -2,8 +2,10 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
 	log "github.com/sirupsen/logrus"
+	"runtime/debug"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"
@@ -37,6 +39,9 @@ func NewUserRepo(db UserStorer) *UserRepo {
 
 // Create adds a new user to the database
 func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
+	bt, _ := json.JSON.MarshalIndent(user, "", "  ")
+	fmt.Println("USER INSERT!", string(bt))
+	fmt.Println(string(debug.Stack()))
 	if user.Id == "" {
 		user.Id = uuid.New().String()
 	}

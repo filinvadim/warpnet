@@ -28,7 +28,7 @@ import (
 type PersistentLayer interface {
 	warpnet.WarpBatching
 	providers.ProviderStore
-	GetOwner() (domain.Owner, error)
+	GetOwner() domain.Owner
 	SessionToken() string
 	PrivateKey() go_crypto.PrivateKey
 	ListProviders() (_ map[string][]warpnet.PeerAddrInfo, err error)
@@ -92,7 +92,7 @@ func NewMemberNode(
 		return nil, err
 	}
 
-	owner, _ := db.GetOwner()
+	owner := db.GetOwner()
 	n.ownerId = owner.UserId
 
 	return n, err
@@ -186,6 +186,9 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 }
 
 func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
+	if !stream.IsValidRoute(route) {
+		log.Fatalf("invalid route: %v", route)
+	}
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 

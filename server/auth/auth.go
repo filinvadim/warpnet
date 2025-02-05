@@ -3,11 +3,11 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"math"
 	"os"
 	"sync/atomic"
 	"time"
@@ -17,7 +17,7 @@ type UserPersistencyLayer interface {
 	Authenticate(username, password string) error
 	SessionToken() string
 	Create(user domain.User) (domain.User, error)
-	GetOwner() (domain.Owner, error)
+	GetOwner() domain.Owner
 	SetOwner(domain.Owner) (domain.Owner, error)
 }
 
@@ -51,11 +51,8 @@ func (as *AuthService) IsAuthenticated() bool {
 func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
 		token := as.userPersistence.SessionToken()
-		owner, err := as.userPersistence.GetOwner()
-		if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
-			log.Errorf("owner fetching failed: %v", err)
-			return resp, err
-		}
+		owner := as.userPersistence.GetOwner()
+
 		return event.LoginResponse{
 			Token: token,
 			Owner: owner,
@@ -68,15 +65,10 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		return resp, fmt.Errorf("authentication failed: %v", err)
 	}
 	token := as.userPersistence.SessionToken()
-
-	owner, err := as.userPersistence.GetOwner()
-	if err != nil && !errors.Is(err, database.ErrOwnerNotFound) {
-		log.Errorf("owner fetching failed: %v", err)
-		return resp, err
-	}
+	owner := as.userPersistence.GetOwner()
 
 	var user domain.User
-	if errors.Is(err, database.ErrOwnerNotFound) {
+	if owner.UserId == "" {
 		id := uuid.New().String()
 		log.Infoln("creating new owner:", id)
 		owner, err = as.userPersistence.SetOwner(domain.Owner{
@@ -94,6 +86,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 			Id:        id,
 			NodeId:    "None",
 			Username:  owner.Username,
+			Rtt:       math.MaxInt64, // put your user at the end of a who-to-follow list
 		})
 		if err != nil {
 			return resp, fmt.Errorf("new user creation failed: %v", err)
@@ -106,7 +99,6 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 	}
 	as.authReady <- domain.AuthNodeInfo{
 		Identity: domain.Identity{Owner: owner, Token: token},
-		Version:  "",
 	}
 
 	log.Infoln("OWNER USER ID:", owner.UserId)
@@ -118,11 +110,15 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		log.Errorln("node startup failed: timeout")
 		return resp, errors.New("node starting is timed out")
 	case nodeInfo := <-as.nodeReady:
+		user.Id = owner.UserId
+		user.Username = owner.Username
+		user.CreatedAt = owner.CreatedAt
+		user.Rtt = math.MaxInt64 // put your user at the end of a who-to-follow list
+
 		user.NodeId = nodeInfo.Identity.Owner.NodeId
 		owner.NodeId = nodeInfo.Identity.Owner.NodeId
 	}
 
-	// update
 	if owner, err = as.userPersistence.SetOwner(owner); err != nil {
 		log.Errorf("owner update failed: %v", err)
 	}

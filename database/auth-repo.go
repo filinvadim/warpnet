@@ -33,7 +33,7 @@ type AuthStorer interface {
 
 type AuthRepo struct {
 	db           AuthStorer
-	ownerId      string
+	owner        domainGen.Owner
 	sessionToken string
 	privateKey   crypto.PrivateKey
 }
@@ -94,21 +94,32 @@ func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
 	return repo.privateKey
 }
 
-func (repo *AuthRepo) GetOwner() (owner domainGen.Owner, err error) {
+func (repo *AuthRepo) GetOwner() domainGen.Owner {
+	if repo == nil {
+		panic(ErrNilAuthRepo)
+	}
+	if repo.owner.UserId != "" {
+		return repo.owner
+	}
+
 	ownerKey := storage.NewPrefixBuilder(AuthRepoName).
 		AddRootID(DefaultOwnerKey).
 		Build()
 
 	data, err := repo.db.Get(ownerKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return owner, ErrOwnerNotFound
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		panic(err)
 	}
-	if err != nil {
-		return owner, err
+	if len(data) == 0 {
+		return domainGen.Owner{}
 	}
 
+	var owner domainGen.Owner
 	err = json.JSON.Unmarshal(data, &owner)
-	return owner, err
+	if err != nil {
+		panic(err)
+	}
+	return owner
 
 }
 
@@ -125,5 +136,9 @@ func (repo *AuthRepo) SetOwner(o domainGen.Owner) (_ domainGen.Owner, err error)
 		return o, err
 	}
 
-	return o, repo.db.Set(ownerKey, data)
+	if err = repo.db.Set(ownerKey, data); err != nil {
+		return o, err
+	}
+	repo.owner = o
+	return o, nil
 }

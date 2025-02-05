@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 type DiscoveryHandler func(warpnet.PeerAddrInfo)
@@ -187,12 +188,19 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to store info of new peer: %s", err)
 	}
 
+	if info.OwnerId == "" {
+		log.Infof("discovery: peer %s has no owner", pi.ID.String())
+		return
+	}
+
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
+	now := time.Now()
 	userResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
+	rtt := time.Since(now)
 
 	var user domain.User
 	err = json.JSON.Unmarshal(userResp, &user)
@@ -200,6 +208,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
+	user.Rtt = int64(rtt)
 	newUser, err := s.userRepo.Create(user)
 	if err != nil {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)

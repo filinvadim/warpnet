@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
@@ -28,22 +29,30 @@ const (
 	userUpdateTopicPrefix = "user-update"
 )
 
-type ServerNodeConnector interface {
+type PubsubServerNodeConnector interface {
 	Node() warpnet.P2PNode
 	Connect(warpnet.PeerAddrInfo) error
 	ID() warpnet.WarpPeerID
 	Addrs() []string
 }
 
-type ClientNodeStreamer interface {
+type PubsubClientNodeStreamer interface {
 	ClientStream(nodeId string, path string, data any) (_ []byte, err error)
+}
+
+type PubsubFollowingStorer interface {
+	GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error)
+}
+
+type PubsubAuthStorer interface {
+	GetOwner() domain.Owner
 }
 
 type Gossip struct {
 	ctx              context.Context
 	pubsub           *pubsub.PubSub
-	serverNode       ServerNodeConnector
-	clientNode       ClientNodeStreamer
+	serverNode       PubsubServerNodeConnector
+	clientNode       PubsubClientNodeStreamer
 	discoveryHandler discovery.DiscoveryHandler
 	version          string
 
@@ -74,7 +83,10 @@ func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler)
 	return g
 }
 
-func (g *Gossip) Run(serverNode ServerNodeConnector, clientNode ClientNodeStreamer) {
+func (g *Gossip) Run(
+	serverNode PubsubServerNodeConnector, clientNode PubsubClientNodeStreamer,
+	authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer,
+) {
 	if g.isRunning.Load() {
 		return
 	}
@@ -83,6 +95,10 @@ func (g *Gossip) Run(serverNode ServerNodeConnector, clientNode ClientNodeStream
 
 	if err := g.run(serverNode); err != nil {
 		log.Fatalf("failed to create Gossip sub: %s", err)
+	}
+
+	if err := g.preSubscribe(authRepo, followRepo); err != nil {
+		log.Fatalf("failed to presubscribe: %s", err)
 	}
 	for {
 		g.mx.RLock()
@@ -119,7 +135,7 @@ func (g *Gossip) Run(serverNode ServerNodeConnector, clientNode ClientNodeStream
 	}
 }
 
-func (g *Gossip) run(n ServerNodeConnector) (err error) {
+func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("pubsub discovery: recovered from panic: %v", r)
@@ -160,6 +176,31 @@ func (g *Gossip) run(n ServerNodeConnector) (err error) {
 	return nil
 }
 
+func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer) error {
+	owner := authRepo.GetOwner()
+
+	var (
+		nextCursor string
+		limit      = uint64(20)
+	)
+
+	for {
+		followees, cur, _ := followRepo.GetFollowees(owner.UserId, &limit, &nextCursor)
+		for _, f := range followees {
+			if err := g.SubscribeUserUpdate(f.Followee); err != nil {
+				return err
+			}
+
+		}
+		if len(followees) < int(limit) {
+			break
+		}
+		nextCursor = cur
+	}
+	log.Infoln("followees presubscribed")
+	return nil
+}
+
 func (g *Gossip) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -194,6 +235,9 @@ func (g *Gossip) Close() (err error) {
 
 // PublishOwnerUpdate - publish for followers
 func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
+	if g == nil || !g.isRunning.Load() {
+		return errors.New("pubsub service not initialized")
+	}
 	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, ownerId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
@@ -224,6 +268,9 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 
 // SubscribeUserUpdate - follow someone
 func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
+	if g == nil || !g.isRunning.Load() {
+		return errors.New("pubsub service not initialized")
+	}
 	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
@@ -252,6 +299,9 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 
 // UnsubscribeUserUpdate - unfollow someone
 func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
+	if g == nil || !g.isRunning.Load() {
+		return errors.New("pubsub service not initialized")
+	}
 	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
@@ -293,10 +343,14 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
 	}
-	_, err := g.clientNode.ClientStream( // send to self
+	body, err := simulatedMessage.Body.AsRequestBody()
+	if err != nil {
+		return err
+	}
+	_, err = g.clientNode.ClientStream( // send to self
 		g.serverNode.ID().String(),
 		simulatedMessage.Path,
-		msg.Data,
+		body,
 	)
 	return err
 }

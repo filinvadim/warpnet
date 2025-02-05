@@ -78,8 +78,11 @@ components:
         website:
           type: string
           format: url
-        location:
-          type: string
+        rtt:
+          type: integer
+          format: int64
+          default: 9223372036854775807
+          description: round trip time - nanoseconds, default - max int64
         birthdate:
           type: string
           format: date-time
@@ -96,13 +99,13 @@ components:
         - created_at
         - tweets_num
         - birthdate
+        - rtt
 
     Tweet:
       type: object
       properties:
         user_id:
           type: string
-          minLength: 1
         username:
           type: string
         id:

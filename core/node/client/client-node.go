@@ -8,6 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
@@ -114,7 +115,7 @@ func (n *WarpClientNode) pairNodes(nodeId string, serverInfo domain.AuthNodeInfo
 		log.Errorln("client node must not be nil")
 		return errors.New("client node must not be nil")
 	}
-	_, err := n.ClientStream(nodeId, stream.PairPostPrivate.String(), serverInfo)
+	_, err := n.ClientStream(nodeId, event.PRIVATE_POST_PAIR, serverInfo)
 	return err
 }
 

@@ -5,10 +5,6 @@ import (
 	"strings"
 )
 
-const (
-	PairPostPrivate WarpRoute = "/private/post/pair/0.0.0"
-)
-
 type WarpRoute string
 
 func (r WarpRoute) ProtocolID() protocol.ID {
@@ -27,17 +23,17 @@ func (r WarpRoute) IsGet() bool {
 	return strings.Contains(string(r), "get")
 }
 
-func IsValidRoute(route string) bool { // TODO
-	if !strings.HasPrefix(route, "/") {
+func IsValidRoute(route WarpRoute) bool { // TODO
+	if !strings.HasPrefix(route.String(), "/") {
 		return false
 	}
-	if !(strings.Contains(route, "get") ||
-		strings.Contains(route, "delete") ||
-		strings.Contains(route, "post")) {
+	if !(strings.Contains(route.String(), "get") ||
+		strings.Contains(route.String(), "delete") ||
+		strings.Contains(route.String(), "post")) {
 		return false
 	}
-	if !(strings.Contains(route, "private") ||
-		strings.Contains(route, "public")) {
+	if !(strings.Contains(route.String(), "private") ||
+		strings.Contains(route.String(), "public")) {
 		return false
 	}
 	return true

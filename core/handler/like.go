@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -98,6 +99,9 @@ func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
 			return nil, errors.New("empty tweet id")
 		}
 		num, err := repo.LikesCount(ev.TweetId)
+		if errors.Is(err, database.ErrLikesNotFound) {
+			return event.LikesNumResponse{0}, nil
+		}
 		return event.LikesNumResponse{num}, err
 	}
 }

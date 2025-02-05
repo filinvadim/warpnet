@@ -51,7 +51,6 @@ import (
 
 type RoutingStorer interface {
 	warpnet.WarpBatching
-	AddNearPeer(peerId warpnet.WarpPeerID, latency time.Duration) (err error)
 }
 
 type ProviderStorer interface {
@@ -125,9 +124,6 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
-			if err := d.addNearPeerByRTT(id); err != nil {
-				log.Errorf("add near peer by RTT: %v\n", err)
-			}
 			d.addF(peer.AddrInfo{ID: id})
 		}
 	}
@@ -177,18 +173,4 @@ func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multia
 		filtered = append(filtered, addr)
 	}
 	return filtered
-}
-
-func (d *DistributedHashTable) addNearPeerByRTT(id peer.ID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	now := time.Now()
-	err := d.dht.Ping(ctx, id)
-	if err != nil {
-		return err
-	}
-	rtt := time.Since(now)
-
-	return d.db.AddNearPeer(id, rtt)
 }

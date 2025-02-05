@@ -141,13 +141,6 @@ type GetMessageEvent struct {
 	Username *string `json:"username,omitempty"`
 }
 
-// GetRecommendedUsersEvent defines model for GetRecommendedUsersEvent.
-type GetRecommendedUsersEvent struct {
-	Limit            *uint64 `json:"limit,omitempty"`
-	RecommendsCursor *string `json:"recommendsCursor,omitempty"`
-	UsersCursor      *string `json:"usersCursor,omitempty"`
-}
-
 // GetReplyEvent defines model for GetReplyEvent.
 type GetReplyEvent struct {
 	ParentReplyId string `json:"parent_reply_id"`
@@ -256,13 +249,6 @@ type NewUserEvent struct {
 
 // Owner defines model for Owner.
 type Owner = externalRef0.Owner
-
-// RecommendedResponse defines model for RecommendedResponse.
-type RecommendedResponse struct {
-	RecommendsCursor string              `json:"recommendsCursor"`
-	Users            []externalRef0.User `json:"users"`
-	UsersCursor      string              `json:"usersCursor"`
-}
 
 // RepliesTreeResponse defines model for RepliesTreeResponse.
 type RepliesTreeResponse struct {
@@ -971,32 +957,6 @@ func (t *RequestBody) MergeGetLikersEvent(v GetLikersEvent) error {
 	return err
 }
 
-// AsGetRecommendedUsersEvent returns the union data inside the RequestBody as a GetRecommendedUsersEvent
-func (t RequestBody) AsGetRecommendedUsersEvent() (GetRecommendedUsersEvent, error) {
-	var body GetRecommendedUsersEvent
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGetRecommendedUsersEvent overwrites any union data inside the RequestBody as the provided GetRecommendedUsersEvent
-func (t *RequestBody) FromGetRecommendedUsersEvent(v GetRecommendedUsersEvent) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGetRecommendedUsersEvent performs a merge with any union data inside the RequestBody, using the provided GetRecommendedUsersEvent
-func (t *RequestBody) MergeGetRecommendedUsersEvent(v GetRecommendedUsersEvent) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
 func (t RequestBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1319,32 +1279,6 @@ func (t *ResponseBody) MergeAcceptedResponse(v AcceptedResponse) error {
 	return err
 }
 
-// AsRecommendedResponse returns the union data inside the ResponseBody as a RecommendedResponse
-func (t ResponseBody) AsRecommendedResponse() (RecommendedResponse, error) {
-	var body RecommendedResponse
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromRecommendedResponse overwrites any union data inside the ResponseBody as the provided RecommendedResponse
-func (t *ResponseBody) FromRecommendedResponse(v RecommendedResponse) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeRecommendedResponse performs a merge with any union data inside the ResponseBody, using the provided RecommendedResponse
-func (t *ResponseBody) MergeRecommendedResponse(v RecommendedResponse) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
 func (t ResponseBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1358,46 +1292,46 @@ func (t *ResponseBody) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"jzumvY33Rry34f7ziL9e/z8AAP//tAr+Qa93AAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

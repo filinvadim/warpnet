@@ -16,7 +16,7 @@ type FollowNodeStreamer interface {
 }
 
 type FollowingAuthStorer interface {
-	GetOwner() (domain.Owner, error)
+	GetOwner() domain.Owner
 }
 
 type FollowingUserStorer interface {
@@ -42,25 +42,6 @@ func StreamFollowHandler(
 	authRepo FollowingAuthStorer,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
-	owner, _ := authRepo.GetOwner()
-
-	var (
-		nextCursor string
-		limit      = uint64(20)
-	)
-	// presubscribe
-	for {
-		followees, cur, _ := followRepo.GetFollowees(owner.UserId, &limit, &nextCursor)
-		for _, f := range followees {
-			_ = broadcaster.SubscribeUserUpdate(f.Followee)
-		}
-		if len(followees) < int(limit) {
-			break
-		}
-		nextCursor = cur
-	}
-	log.Infoln("followees presubscribed")
-
 	return func(buf []byte) (any, error) {
 		var ev event.NewFollowEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -130,7 +111,7 @@ func StreamGetFollowersHandler(
 		if ev.UserId == "" {
 			return nil, errors.New("empty user id")
 		}
-		owner, _ := authRepo.GetOwner()
+		owner := authRepo.GetOwner()
 		if ev.UserId != owner.UserId { // redirect
 			user, err := userRepo.Get(ev.UserId)
 			if err != nil {
@@ -167,7 +148,7 @@ func StreamGetFolloweesHandler(
 		if ev.UserId == "" {
 			return nil, errors.New("empty user id")
 		}
-		owner, _ := authRepo.GetOwner()
+		owner := authRepo.GetOwner()
 		if ev.UserId != owner.UserId { // redirect
 			user, err := userRepo.Get(ev.UserId)
 			if err != nil {

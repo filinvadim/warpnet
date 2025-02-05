@@ -11,7 +11,7 @@ import (
 )
 
 type OwnerTweetStorer interface {
-	GetOwner() (domain.Owner, error)
+	GetOwner() domain.Owner
 }
 
 type TweetBroadcaster interface {
@@ -102,13 +102,15 @@ func StreamNewTweetHandler(
 			return nil, err
 		}
 
+		owner := authRepo.GetOwner()
+
 		if tweet.Id == "" {
 			return tweet, errors.New("tweet handler: empty tweet id")
 		}
-		if err = timelineRepo.AddTweetToTimeline(tweet.UserId, tweet); err != nil {
+		if err = timelineRepo.AddTweetToTimeline(owner.UserId, tweet); err != nil {
 			log.Infof("fail adding tweet to timeline: %v", err)
 		}
-		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+		if owner.UserId == ev.UserId {
 			respTweetEvent := event.NewTweetEvent{
 				CreatedAt: tweet.CreatedAt,
 				Id:        tweet.Id,
@@ -157,7 +159,7 @@ func StreamDeleteTweetHandler(
 		if err := repo.Delete(ev.UserId, ev.TweetId); err != nil {
 			return nil, err
 		}
-		if owner, _ := authRepo.GetOwner(); owner.UserId == ev.UserId {
+		if owner := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respTweetEvent := event.DeleteTweetEvent{
 				UserId:  ev.UserId,
 				TweetId: ev.TweetId,
