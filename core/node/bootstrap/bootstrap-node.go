@@ -68,7 +68,7 @@ func setupBootstrapNode(
 	manager, err := connmgr.NewConnManager(
 		100,
 		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Hour),
+		connmgr.WithGracePeriod(time.Hour*24*30),
 	)
 	if err != nil {
 		return nil, err
