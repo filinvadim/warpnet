@@ -1,3 +1,9 @@
+install-garble:
+	go install mvdan.cc/garble@latest
+
+obfuscate-build:
+	garble build -literals -mod=vendor -v -o warpnet cmd/node/member/main.go
+
 oapi-codegen-install:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 

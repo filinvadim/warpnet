@@ -16,11 +16,10 @@ const (
 )
 
 type ReplyStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
 	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
+	NewReadTxn() (*storage.WarpReadTxn, error)
 }
 
 type ReplyRepo struct {
@@ -107,8 +106,18 @@ func (repo *ReplyRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cu
 		AddParentId(parentID).
 		Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, "", err
 	}
 

@@ -17,6 +17,7 @@ type UserPersistencyLayer interface {
 	Authenticate(username, password string) error
 	SessionToken() string
 	Create(user domain.User) (domain.User, error)
+	Update(userId string, newUser domain.User) (domain.User, error)
 	GetOwner() domain.Owner
 	SetOwner(domain.Owner) (domain.Owner, error)
 }
@@ -122,7 +123,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 	if owner, err = as.userPersistence.SetOwner(owner); err != nil {
 		log.Errorf("owner update failed: %v", err)
 	}
-	if _, err = as.userPersistence.Create(user); err != nil {
+	if _, err = as.userPersistence.Update(user.Id, user); err != nil {
 		log.Errorf("user update failed: %v", err)
 	}
 

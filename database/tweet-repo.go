@@ -17,9 +17,9 @@ const (
 )
 
 type TweetsStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
 }
@@ -65,14 +65,19 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 		return tweet, fmt.Errorf("tweet marshal: %w", err)
 	}
 
-	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = tx.Set(fixedKey.Bytes(), sortableKey.Bytes()); err != nil {
-			return err
-		}
-		return tx.Set(sortableKey.Bytes(), data)
-	})
-	data = nil
-	return tweet, err
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return tweet, err
+	}
+	defer txn.Rollback()
+
+	if err = txn.Set(fixedKey, sortableKey.Bytes()); err != nil {
+		return tweet, err
+	}
+	if err = txn.Set(sortableKey, data); err != nil {
+		return tweet, err
+	}
+	return tweet, txn.Commit()
 }
 
 // Get retrieves a tweet by its ID
@@ -111,13 +116,20 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	if err != nil {
 		return err
 	}
-	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = tx.Delete(fixedKey.Bytes()); err != nil {
-			return err
-		}
-		return tx.Delete(sortableKeyBytes)
-	})
-	return err
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if err := txn.Delete(fixedKey); err != nil {
+		return err
+	}
+	if err := txn.Delete(storage.DatabaseKey(sortableKeyBytes)); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]domain.Tweet, string, error) {
@@ -129,8 +141,18 @@ func (repo *TweetRepo) List(userId string, limit *uint64, cursor *string) ([]dom
 		AddRootID(userId).
 		Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, "", err
 	}
 

@@ -28,7 +28,6 @@ const (
 	ProvidersSubNamespace = "PROVIDERS"
 	BlocklistSubNamespace = "BLOCKLIST"
 	InfoSubNamespace      = "INFO"
-	RTTSubNamespace       = "RTT" // round trip time (int)
 )
 
 var (
@@ -38,14 +37,17 @@ var (
 )
 
 type NodeStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
+	GetExpiration(key storage.DatabaseKey) (uint64, error)
+	GetSize(key storage.DatabaseKey) (int64, error)
 	Sync() error
 	IsClosed() bool
 	InnerDB() *storage.WarpDB
-	ReadTxn(f func(tx *storage.WarpTxn) error) error
 	SetWithTTL(key storage.DatabaseKey, value []byte, ttl time.Duration) error
+	Set(key storage.DatabaseKey, value []byte) error
+	Delete(key storage.DatabaseKey) error
 }
 
 type NodeRepo struct {
@@ -81,11 +83,9 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 	}
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(key.String()).
-		Build().
-		Bytes()
-	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		return tx.Set(prefix, value)
-	})
+		Build()
+
+	return d.db.Set(prefix, value)
 }
 
 func (d *NodeRepo) Sync(ctx context.Context, _ ds.Key) error {
@@ -106,13 +106,12 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		return tx.SetEntry(badger.NewEntry(prefix, value).WithTTL(ttl))
-	})
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+
+	return d.db.SetWithTTL(prefix, value, ttl)
+
 }
 
 func (d *NodeRepo) SetTTL(ctx context.Context, key ds.Key, ttl time.Duration) error {
@@ -147,24 +146,23 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 	}
 
 	expiration := time.Time{}
-	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		item, err := tx.Get(prefix)
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return ds.ErrNotFound
-		} else if err != nil {
-			return err
-		}
-		expiresAt := item.ExpiresAt()
-		if expiresAt > math.MaxInt64 {
-			expiresAt--
-		}
-		expiration = time.Unix(int64(expiresAt), 0) //#nosec
-		return nil
-	})
+
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+
+	expiresAt, err := d.db.GetExpiration(prefix)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return t, ds.ErrNotFound
+	} else if err != nil {
+		return t, err
+	}
+
+	if expiresAt > math.MaxInt64 {
+		expiresAt = math.MaxInt64
+	}
+	expiration = time.Unix(int64(expiresAt), 0) //#nosec
+
 	return expiration, err
 }
 
@@ -180,23 +178,18 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 		return nil, storage.ErrNotRunning
 	}
 
-	value = []byte{}
-	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		item, err := tx.Get(prefix)
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			err = ds.ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
 
-		value, err = item.ValueCopy(nil)
-		return err
-	})
+	value, err = d.db.Get(prefix)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		err = ds.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	return value, err
 }
 
@@ -212,25 +205,19 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 		return false, storage.ErrNotRunning
 	}
 
-	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		_, err := tx.Get(prefix)
-		switch {
-		case errors.Is(err, badger.ErrKeyNotFound) || errors.Is(err, ds.ErrNotFound):
-			return nil
-		case err == nil:
-			return nil
-		default:
-			return fmt.Errorf("has: %w", err)
-		}
-	})
-	if err != nil {
-		return false, err
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+
+	_, err = d.db.Get(prefix)
+	switch {
+	case errors.Is(err, badger.ErrKeyNotFound) || errors.Is(err, ds.ErrNotFound):
+		return false, nil
+	case err == nil:
+		return true, nil
+	default:
+		return false, fmt.Errorf("has: %w", err)
 	}
-	return true, nil
 }
 
 func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
@@ -247,23 +234,19 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 		return size, storage.ErrNotRunning
 	}
 
-	err = d.db.ReadTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		item, err := tx.Get(prefix)
-		switch {
-		case err == nil:
-			size = int(item.ValueSize())
-			return nil
-		case errors.Is(err, badger.ErrKeyNotFound):
-			return ds.ErrNotFound
-		default:
-			return fmt.Errorf("size: %w", err)
-		}
-	})
-	return size, err
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+
+	itemSize, err := d.db.GetSize(prefix)
+	switch {
+	case err == nil:
+		return int(itemSize), nil
+	case errors.Is(err, badger.ErrKeyNotFound):
+		return 0, ds.ErrNotFound
+	default:
+		return 0, fmt.Errorf("size: %w", err)
+	}
 }
 
 func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
@@ -277,13 +260,12 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 	if d.db.IsClosed() {
 		return storage.ErrNotRunning
 	}
-	return d.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		prefix := storage.NewPrefixBuilder(NodesNamespace).
-			AddRootID(key.String()).
-			Build().
-			Bytes()
-		return tx.Delete(prefix)
-	})
+
+	prefix := storage.NewPrefixBuilder(NodesNamespace).
+		AddRootID(key.String()).
+		Build()
+
+	return d.db.Delete(prefix)
 }
 
 // DiskUsage implements the PersistentDatastore interface.
@@ -692,8 +674,19 @@ func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
 	providersKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddSubPrefix(ProvidersSubNamespace).
 		Build()
-	items, _, err := d.db.List(providersKey, nil, nil)
+
+	txn, err := d.db.NewReadTxn()
 	if err != nil {
+		return nil, err
+	}
+	defer txn.Rollback()
+
+	items, _, err := txn.List(providersKey, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, err
 	}
 

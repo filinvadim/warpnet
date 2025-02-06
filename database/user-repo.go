@@ -9,22 +9,21 @@ import (
 
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
 )
 
 var ErrUserNotFound = errors.New("user not found")
 
 const (
-	UsersRepoName           = "/USERS"
-	UserSubNamespace        = "USER"
+	UsersRepoName    = "/USERS"
+	UserSubNamespace = "USER"
+
 	defaultAverageRTT int64 = 250000
 )
 
 type UserStorer interface {
-	ReadTxn(f func(tx *storage.WarpTxn) error) error
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
 }
@@ -40,7 +39,7 @@ func NewUserRepo(db UserStorer) *UserRepo {
 // Create adds a new user to the database
 func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	if user.Id == "" {
-		user.Id = uuid.New().String()
+		return user, errors.New("user id is empty")
 	}
 	if user.CreatedAt.IsZero() {
 		user.CreatedAt = time.Now()
@@ -63,28 +62,98 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		AddParentId(user.Id).
 		Build()
 
-	sortableKey, err := repo.db.Get(fixedKey)
-	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+	_, err = repo.db.Get(fixedKey)
+	if !errors.Is(err, storage.ErrKeyNotFound) {
+		return user, errors.New("user already exists")
+	}
+
+	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
+		AddRange(rttRange).
+		AddParentId(user.Id).
+		Build()
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
 		return user, err
 	}
-	if len(sortableKey) == 0 {
-		k := storage.NewPrefixBuilder(UsersRepoName).
-			AddSubPrefix(UserSubNamespace).
-			AddRootID("None").
-			AddRange(rttRange).
-			AddParentId(user.Id).
-			Build()
+	defer txn.Rollback()
 
-		sortableKey = k.Bytes()
+	if err = txn.Set(fixedKey, sortableKey.Bytes()); err != nil {
+		return user, err
+	}
+	if err = txn.Set(sortableKey, data); err != nil {
+		return user, err
+	}
+	return user, txn.Commit()
+}
+
+func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.User, error) {
+	var existingUser domainGen.User
+
+	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
+		AddSubPrefix(UserSubNamespace).
+		AddRootID("None").
+		AddRange(storage.FixedRangeKey).
+		AddParentId(userId).
+		Build()
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return existingUser, err
+	}
+	defer txn.Rollback()
+
+	sortableKeyBytes, err := txn.Get(fixedKey)
+	if err != nil {
+		return existingUser, err
 	}
 
-	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = tx.Set(fixedKey.Bytes(), sortableKey); err != nil {
-			return err
-		}
-		return tx.Set(sortableKey, data)
-	})
-	return user, err
+	data, err := txn.Get(storage.DatabaseKey(sortableKeyBytes))
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return existingUser, ErrUserNotFound
+	}
+	if err != nil {
+		return existingUser, err
+	}
+
+	err = json.JSON.Unmarshal(data, &existingUser)
+	if err != nil {
+		return existingUser, err
+	}
+
+	if !newUser.Birthdate.IsZero() {
+		existingUser.Birthdate = newUser.Birthdate
+	}
+	if newUser.Bio != "" {
+		existingUser.Bio = newUser.Bio
+	}
+	if newUser.Avatar != nil {
+		existingUser.Avatar = newUser.Avatar
+	}
+	if newUser.Username != "" {
+		existingUser.Username = newUser.Username
+	}
+	if newUser.BackgroundImage != nil {
+		existingUser.BackgroundImage = newUser.BackgroundImage
+	}
+	if newUser.Website != nil {
+		existingUser.Website = newUser.Website
+	}
+	if newUser.NodeId != "" {
+		existingUser.NodeId = newUser.NodeId
+	}
+
+	bt, err := json.JSON.Marshal(existingUser)
+	if err != nil {
+		return existingUser, err
+	}
+	if err = txn.Set(storage.DatabaseKey(sortableKeyBytes), bt); err != nil {
+		return existingUser, err
+	}
+
+	return existingUser, txn.Commit()
 }
 
 // Get retrieves a user by their ID
@@ -131,32 +200,44 @@ func (repo *UserRepo) Delete(userID string) error {
 		AddParentId(userID).
 		Build()
 
-	err := repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		item, err := tx.Get(fixedKey.Bytes())
-		if errors.Is(err, storage.ErrKeyNotFound) {
-			return ErrUserNotFound
-		}
-		if err != nil {
-			return err
-		}
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
 
-		sortableKeyBytes, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		if err = tx.Delete(fixedKey.Bytes()); err != nil {
-			return err
-		}
-		return tx.Delete(sortableKeyBytes)
-	})
-	return err
+	sortableKeyBytes, err := txn.Get(fixedKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return ErrUserNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	if err = txn.Delete(fixedKey); err != nil {
+		return err
+	}
+	if err = txn.Delete(storage.DatabaseKey(sortableKeyBytes)); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
 	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(UserSubNamespace).Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err = txn.Commit(); err != nil {
 		return nil, "", err
 	}
 
@@ -178,47 +259,45 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err e
 		return nil, ErrUserNotFound
 	}
 
-	users = make([]domainGen.User, 0, len(userIDs))
-	err = repo.db.ReadTxn(func(txn *storage.WarpTxn) error {
-		for _, userID := range userIDs {
-			fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-				AddSubPrefix(UserSubNamespace).
-				AddRootID("None").
-				AddRange(storage.FixedRangeKey).
-				AddParentId(userID).
-				Build()
-			item, err := txn.Get(fixedKey.Bytes())
-			if errors.Is(err, storage.ErrKeyNotFound) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			sortableKey, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			userItem, err := txn.Get(sortableKey)
-			if errors.Is(err, storage.ErrKeyNotFound) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			data, err := userItem.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			var u domainGen.User
-			err = json.JSON.Unmarshal(data, &u)
-			if err != nil {
-				log.Errorln("cannot unmarshal batch user data:", string(data))
-				return err
-			}
-			users = append(users, u)
-		}
-		return nil
-	})
+	txn, err := repo.db.NewReadTxn()
+	if err != nil {
+		return nil, err
+	}
+	defer txn.Rollback()
 
-	return users, err
+	users = make([]domainGen.User, 0, len(userIDs))
+
+	for _, userID := range userIDs {
+		fixedKey := storage.NewPrefixBuilder(UsersRepoName).
+			AddSubPrefix(UserSubNamespace).
+			AddRootID("None").
+			AddRange(storage.FixedRangeKey).
+			AddParentId(userID).
+			Build()
+		sortableKey, err := txn.Get(fixedKey)
+		if errors.Is(err, storage.ErrKeyNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		data, err := txn.Get(storage.DatabaseKey(sortableKey))
+		if errors.Is(err, storage.ErrKeyNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var u domainGen.User
+		err = json.JSON.Unmarshal(data, &u)
+		if err != nil {
+			log.Errorln("cannot unmarshal batch user data:", string(data))
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, txn.Commit()
 }

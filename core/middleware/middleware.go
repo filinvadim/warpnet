@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -26,7 +27,6 @@ const (
 	ErrUnknownClientPeer middlewareError = "auth failed: unknown client peer"
 	ErrStreamReadError   middlewareError = "stream reading failed"
 	ErrInternalNodeError middlewareError = "internal node error"
-	ErrDoublePairing     middlewareError = "double pairing is not allowed"
 )
 
 type WarpHandler func([]byte) (any, error)
@@ -100,7 +100,12 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
-		fmt.Println("INCOMING MESSAGE", string(data))
+		if strings.Contains(string(s.Protocol()), "login") ||
+			strings.Contains(string(s.Protocol()), "post/user") {
+			fmt.Println("OMITTED MESSAGE", string(s.Protocol()))
+		} else {
+			fmt.Println("MESSAGE", string(s.Protocol()), string(data))
+		}
 
 		if response == nil {
 			response, err = fn(data)

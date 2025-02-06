@@ -26,7 +26,7 @@ const (
 )
 
 const (
-	userUpdateTopicPrefix = "user-update"
+	userUpdateTopicPrefix = "user-update-%s-%s"
 )
 
 type PubsubServerNodeConnector interface {
@@ -121,6 +121,7 @@ func (g *Gossip) Run(
 			if msg.Topic == nil {
 				continue
 			}
+
 			switch *msg.Topic {
 			case pubSubDiscoveryTopic:
 				g.handlePubSubDiscovery(msg)
@@ -241,7 +242,7 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, ownerId)
+	topicName := fmt.Sprintf(userUpdateTopicPrefix, g.version, ownerId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -274,7 +275,7 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
+	topicName := fmt.Sprintf(userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -305,7 +306,7 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
-	topicName := fmt.Sprintf("%s-%s-%s", userUpdateTopicPrefix, g.version, userId)
+	topicName := fmt.Sprintf(userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
 	g.mx.RUnlock()
@@ -334,6 +335,9 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
+	}
+	if simulatedMessage.NodeId == g.serverNode.ID().String() {
+		return nil
 	}
 
 	if simulatedMessage.Path == "" {
@@ -409,7 +413,6 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 		}
 		select {
 		case <-g.ctx.Done():
-			log.Infoln(g.ctx.Err())
 			return
 		case <-ticker.C:
 			addrs := make([]string, 0, len(g.serverNode.Addrs()))

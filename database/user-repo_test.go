@@ -1,8 +1,8 @@
 package database_test
 
 import (
+	"fmt"
 	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
-	"os"
 	"testing"
 
 	"github.com/filinvadim/warpnet/database"
@@ -12,21 +12,19 @@ import (
 )
 
 func setupUserTestDB(t *testing.T) *storage.DB {
-	path := "../var/dbtestuser"
+	path := "/"
+	dir := "tmp"
 	// Открываем базу данных в этой директории
-	db, _, _ := storage.New(path, true, "storage")
-	db.Run("", "")
-
-	t.Cleanup(func() {
-		db.Close()
-		os.RemoveAll(path)
-	})
-
+	db, _, err := storage.New(path, true, dir)
+	assert.NoError(t, err)
+	err = db.Run("test", "test")
+	assert.NoError(t, err)
 	return db
 }
 
 func TestUserRepo_Create(t *testing.T) {
 	db := setupUserTestDB(t)
+	defer db.Close()
 	repo := database.NewUserRepo(db)
 
 	user := domain_gen.User{
@@ -46,8 +44,36 @@ func TestUserRepo_Create(t *testing.T) {
 	assert.Equal(t, user.Id, retrievedUser.Id)
 }
 
+func TestUserRepo_Update(t *testing.T) {
+	db := setupUserTestDB(t)
+	defer db.Close()
+
+	repo := database.NewUserRepo(db)
+
+	user := domain_gen.User{
+		Username: "Test User",
+	}
+	userID := uuid.New().String()
+	user.Id = userID
+
+	_, err := repo.Create(user)
+	assert.NoError(t, err)
+
+	updatedUsername := "Test User Updated"
+	_, err = repo.Update(user.Id, domain_gen.User{Username: updatedUsername})
+	assert.NoError(t, err)
+
+	// Проверяем, что пользователь был корректно создан
+	retrievedUser, err := repo.Get(userID)
+	assert.NoError(t, err)
+	assert.Equal(t, updatedUsername, retrievedUser.Username)
+	assert.Equal(t, user.Id, retrievedUser.Id)
+}
+
 func TestUserRepo_Get(t *testing.T) {
 	db := setupUserTestDB(t)
+	defer db.Close()
+
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
@@ -68,6 +94,8 @@ func TestUserRepo_Get(t *testing.T) {
 
 func TestUserRepo_Delete(t *testing.T) {
 	db := setupUserTestDB(t)
+	defer db.Close()
+
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
@@ -84,13 +112,14 @@ func TestUserRepo_Delete(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Проверяем, что пользователь был удален
-	retrievedUser, err := repo.Get(userID)
+	_, err = repo.Get(userID)
 	assert.Error(t, err)
-	assert.Nil(t, retrievedUser)
 }
 
 func TestUserRepo_List(t *testing.T) {
 	db := setupUserTestDB(t)
+	defer db.Close()
+
 	repo := database.NewUserRepo(db)
 
 	userID := uuid.New().String()
@@ -98,10 +127,10 @@ func TestUserRepo_List(t *testing.T) {
 		Username: "User1",
 		Id:       userID,
 	}
-	userID = uuid.New().String()
+	userID2 := uuid.New().String()
 	user2 := domain_gen.User{
 		Username: "User2",
-		Id:       userID,
+		Id:       userID2,
 	}
 
 	_, err := repo.Create(user1)
@@ -113,8 +142,11 @@ func TestUserRepo_List(t *testing.T) {
 	users, _, err := repo.List(nil, nil)
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
+	fmt.Println(users[0].Username, users[1].Username)
 
 	// Проверяем, что все пользователи корректно получены
-	assert.Contains(t, users, user1)
-	assert.Contains(t, users, user2)
+	assert.Equal(t, user1.Username, users[0].Username)
+	assert.Equal(t, userID, users[0].Id)
+	assert.Equal(t, user2.Username, users[1].Username)
+	assert.Equal(t, userID2, users[1].Id)
 }

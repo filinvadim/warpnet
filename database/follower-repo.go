@@ -15,9 +15,9 @@ const (
 )
 
 type FollowerStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
 }
@@ -66,18 +66,25 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		AddParentId(toUserId).
 		Build()
 
-	return repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err := tx.Set(sortableFollowerKey.Bytes(), data); err != nil {
-			return err
-		}
-		if err := tx.Set(sortableFolloweeKey.Bytes(), data); err != nil {
-			return err
-		}
-		if err := tx.Set(fixedFollowerKey.Bytes(), []byte(sortableFollowerKey)); err != nil {
-			return err
-		}
-		return tx.Set(fixedFolloweeKey.Bytes(), []byte(sortableFolloweeKey))
-	})
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if err := txn.Set(sortableFollowerKey, data); err != nil {
+		return err
+	}
+	if err := txn.Set(sortableFolloweeKey, data); err != nil {
+		return err
+	}
+	if err := txn.Set(fixedFollowerKey, []byte(sortableFollowerKey)); err != nil {
+		return err
+	}
+	if err := txn.Set(fixedFolloweeKey, []byte(sortableFolloweeKey)); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 // Unfollow removes a reader-writer relationship in both directions
@@ -104,19 +111,25 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	if err != nil {
 		return err
 	}
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
 
-	return repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err := tx.Delete(fixedFolloweeKey.Bytes()); err != nil {
-			return err
-		}
-		if err := tx.Delete(fixedFollowerKey.Bytes()); err != nil {
-			return err
-		}
-		if err := tx.Delete(sortableFollowerKey); err != nil {
-			return err
-		}
-		return tx.Delete(sortableFolloweeKey)
-	})
+	if err := txn.Delete(fixedFolloweeKey); err != nil {
+		return err
+	}
+	if err := txn.Delete(fixedFollowerKey); err != nil {
+		return err
+	}
+	if err := txn.Delete(storage.DatabaseKey(sortableFollowerKey)); err != nil {
+		return err
+	}
+	if err := txn.Delete(storage.DatabaseKey(sortableFolloweeKey)); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {
@@ -125,8 +138,18 @@ func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *strin
 		AddRootID(userId).
 		Build()
 
-	items, cur, err := repo.db.List(followeePrefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(followeePrefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, "", err
 	}
 
@@ -150,8 +173,18 @@ func (repo *FollowRepo) GetFollowees(userId string, limit *uint64, cursor *strin
 		AddRootID(userId).
 		Build()
 
-	items, cur, err := repo.db.List(followerPrefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(followerPrefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, "", err
 	}
 

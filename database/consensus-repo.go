@@ -21,12 +21,12 @@ var (
 )
 
 type ConsensusStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Set(key storage.DatabaseKey, value []byte) error
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Sync() error
 	Path() string
-	IterateKeys(prefix storage.DatabaseKey, handler storage.IterKeysFunc) error
 	InnerDB() *storage.WarpDB
 }
 
@@ -111,21 +111,23 @@ func (cr *ConsensusRepo) StoreLog(log *raft.Log) error {
 
 // StoreLogs stores a set of raft logs.
 func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
-	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
-		for _, log := range logs {
-			key := append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
-			val, err := encode(log)
-			if err != nil {
-				return err
-			}
-			if err = txn.Set(key, val.Bytes()); errors.Is(err, badger.ErrTxnTooBig) {
-				_ = txn.Commit()
-				return err
-			}
+	txn, err := cr.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+	for _, log := range logs {
+		key := append([]byte(ConsensusLogsNamespace), uint64ToBytes(log.Index)...)
+		val, err := encode(log)
+		if err != nil {
+			return err
 		}
-		return txn.Commit()
-	})
-	return err
+		if err = txn.Set(storage.DatabaseKey(key), val.Bytes()); errors.Is(err, badger.ErrTxnTooBig) {
+			_ = txn.Commit()
+			return err
+		}
+	}
+	return txn.Commit()
 }
 
 // DeleteRange deletes logs within a given range inclusively.
@@ -136,31 +138,43 @@ func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 		errTooBig error
 	)
 
-	err := cr.db.WriteTxn(func(txn *badger.Txn) error {
-		var keysToDelete [][]byte
+	txn, err := cr.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
 
-		err := cr.db.IterateKeys(storage.DatabaseKey(start), func(key string) error {
-			index := bytesToUint64([]byte(key)[len(ConsensusLogsNamespace):])
-			if index > max {
-				return nil
-			}
-			keysToDelete = append(keysToDelete, []byte(key))
+	readTxn, err := cr.db.NewReadTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	var keysToDelete [][]byte
+	err = readTxn.IterateKeys(storage.DatabaseKey(start), func(key string) error {
+		index := bytesToUint64([]byte(key)[len(ConsensusLogsNamespace):])
+		if index > max {
 			return nil
-		})
-		if err != nil {
-			return err
 		}
-
-		for _, key := range keysToDelete {
-			if err := txn.Delete(key); errors.Is(err, badger.ErrTxnTooBig) {
-				_ = txn.Commit() // Завершаем текущую транзакцию
-				end = key        // Запоминаем последний успешный ключ
-				errTooBig = err
-				return nil // Прерываем удаление, чтобы перезапустить процесс
-			}
-		}
-		return txn.Commit()
+		keysToDelete = append(keysToDelete, []byte(key))
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if err := readTxn.Commit(); err != nil {
+		return err
+	}
+
+	for _, key := range keysToDelete {
+		if err := txn.Delete(storage.DatabaseKey(key)); errors.Is(err, badger.ErrTxnTooBig) {
+			_ = txn.Commit()
+			end = key
+			errTooBig = err
+			break
+		}
+	}
 
 	// Если транзакция была слишком большой, продолжаем с последнего удаленного ключа
 	if errTooBig != nil {
@@ -169,7 +183,7 @@ func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 			return cr.DeleteRange(nextMin, max)
 		}
 	}
-	return err
+	return txn.Commit()
 }
 
 // Set is used to set a key/value set outside of the raft log.

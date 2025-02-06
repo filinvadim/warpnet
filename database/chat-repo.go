@@ -17,11 +17,11 @@ const (
 )
 
 type ChatStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
 	Set(key storage.DatabaseKey, value []byte) error
 	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
 }
 
 type ChatRepo struct {
@@ -58,13 +58,21 @@ func (repo *ChatRepo) CreateChat(userId, otherUserId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return chatId, repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		err := repo.db.Set(userKey, bt)
-		if err != nil {
-			return err
-		}
-		return repo.db.Set(chatKey, bt)
-	})
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return "", err
+	}
+	defer txn.Rollback()
+
+	err = txn.Set(userKey, bt)
+	if err != nil {
+		return "", err
+	}
+	err = repo.db.Set(chatKey, bt)
+	if err != nil {
+		return "", err
+	}
+	return chatId, txn.Commit()
 }
 
 // GetRoom returns the roomIDs for the given userID.
@@ -127,12 +135,20 @@ func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMe
 		return msg, fmt.Errorf("message marshal: %w", err)
 	}
 
-	return msg, repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = repo.db.Set(fixedKey, data); err != nil {
-			return err
-		}
-		return repo.db.Set(sortableKey, data)
-	})
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return msg, err
+	}
+	defer txn.Rollback()
+
+	if err = txn.Set(fixedKey, data); err != nil {
+		return msg, err
+	}
+	err = txn.Set(sortableKey, data)
+	if err != nil {
+		return msg, err
+	}
+	return msg, txn.Commit()
 }
 
 func (repo *ChatRepo) ListChats(userId string, limit *uint64, cursor *string) ([]domainGen.ChatMessage, string, error) {
@@ -234,11 +250,18 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 		AddParentId(userId).
 		AddId(id).
 		Build()
-	err = repo.db.WriteTxn(func(tx *storage.WarpTxn) error {
-		if err = repo.db.Delete(fixedKey); err != nil {
-			return err
-		}
-		return repo.db.Delete(sortableKey)
-	})
-	return err
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if err = repo.db.Delete(fixedKey); err != nil {
+		return err
+	}
+	if err = repo.db.Delete(sortableKey); err != nil {
+		return err
+	}
+	return txn.Commit()
 }

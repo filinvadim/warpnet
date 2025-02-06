@@ -16,11 +16,9 @@ const (
 var ErrLikesNotFound = errors.New("not found")
 
 type LikeStorer interface {
-	WriteTxn(f func(tx *storage.WarpTxn) error) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
-	Increment(txn *storage.WarpTxn, key storage.DatabaseKey) (int64, error)
-	Decrement(txn *storage.WarpTxn, key storage.DatabaseKey) (int64, error)
+	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 }
 
 type LikeRepo struct {
@@ -51,19 +49,25 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 		AddParentId(userId).
 		Build()
 
-	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
-		_, err := txn.Get(likerKey.Bytes())
-		if !errors.Is(err, storage.ErrKeyNotFound) {
-			return nil
-		}
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
 
-		if err = txn.Set(likerKey.Bytes(), []byte(userId)); err != nil {
-			return err
-		}
-		likesNum, err = repo.db.Increment(txn, likeKey)
-		return err
-	})
-	return likesNum, err
+	_, err = txn.Get(likerKey)
+	if !errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, nil // like exists
+	}
+
+	if err = txn.Set(likerKey, []byte(userId)); err != nil {
+		return 0, err
+	}
+	likesNum, err = txn.Increment(likeKey)
+	if err != nil {
+		return 0, err
+	}
+	return likesNum, txn.Commit()
 }
 
 func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error) {
@@ -86,18 +90,24 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error)
 		AddParentId(userId).
 		Build()
 
-	err = repo.db.WriteTxn(func(txn *storage.WarpTxn) error {
-		_, err := txn.Get(likeKey.Bytes())
-		if errors.Is(err, storage.ErrKeyNotFound) { // already unliked
-			return nil
-		}
-		if err = txn.Delete(likerKey.Bytes()); err != nil {
-			return err
-		}
-		likesNum, err = repo.db.Decrement(txn, likeKey)
-		return err
-	})
-	return likesNum, err
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+
+	_, err = txn.Get(likeKey)
+	if errors.Is(err, storage.ErrKeyNotFound) { // already unliked
+		return 0, nil
+	}
+	if err = txn.Delete(likerKey); err != nil {
+		return 0, err
+	}
+	likesNum, err = txn.Decrement(likeKey)
+	if err != nil {
+		return 0, err
+	}
+	return likesNum, txn.Commit()
 }
 
 func (repo *LikeRepo) LikesCount(tweetId string) (likesNum int64, err error) {
@@ -131,8 +141,17 @@ func (repo *LikeRepo) Likers(tweetId string, limit *uint64, cursor *string) (_ l
 		AddRootID(tweetId).
 		Build()
 
-	items, cur, err := repo.db.List(likePrefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(likePrefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	if err = txn.Commit(); err != nil {
 		return nil, "", err
 	}
 

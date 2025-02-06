@@ -122,12 +122,12 @@ func main() {
 	defer interfaceServer.Shutdown(ctx)
 	go interfaceServer.Start()
 
-	var authInfo domain.AuthNodeInfo
+	var serverNodeAuthInfo domain.AuthNodeInfo
 	select {
 	case <-interruptChan:
 		log.Infoln("logged out")
 		return
-	case authInfo = <-authReadyChan:
+	case serverNodeAuthInfo = <-authReadyChan:
 		log.Infoln("authentication was successful")
 	}
 	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
@@ -164,10 +164,10 @@ func main() {
 	}
 	defer serverNode.Stop()
 
-	authInfo.Identity.Owner.NodeId = serverNode.ID().String()
-	authInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
-	authInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
-	authInfo.Version = config.ConfigFile.Version.String()
+	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.ID().String()
+	serverNodeAuthInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
+	serverNodeAuthInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
+	serverNodeAuthInfo.Version = config.ConfigFile.Version.String()
 
 	mw := middleware.NewWarpMiddleware()
 	logMw := mw.LoggingMiddleware
@@ -176,7 +176,7 @@ func main() {
 
 	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_PAIR,
-		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authInfo)))),
+		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(serverNodeAuthInfo)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PRIVATE_GET_TIMELINE,
@@ -259,11 +259,15 @@ func main() {
 		event.PUBLIC_GET_LIKERS,
 		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
 	)
+	serverNode.SetStreamHandler(
+		event.PRIVATE_POST_USER,
+		logMw(authMw(unwrapMw(handler.StreamUpdateProfileHandler(authRepo, userRepo)))),
+	)
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
-	nodeReadyChan <- authInfo
+	nodeReadyChan <- serverNodeAuthInfo
 
-	if err := clientNode.Pair(authInfo); err != nil {
+	if err := clientNode.Pair(serverNodeAuthInfo); err != nil {
 		log.Fatalf("failed to init client node: %v", err)
 	}
 	defer clientNode.Stop()

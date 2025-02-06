@@ -68,10 +68,10 @@ components:
           type: string
         avatar:
           type: string
-          format: binary
+          description: mime type + "," + base64
         background_image:
           type: string
-          format: binary
+          description: mime type + "," + base64
         tweets_num:
           type: integer
           format: int64
@@ -85,7 +85,7 @@ components:
           description: round trip time - nanoseconds, default - max int64
         birthdate:
           type: string
-          format: date-time
+          format: date
         created_at:
           type: string
           format: date-time

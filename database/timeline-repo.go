@@ -15,7 +15,7 @@ const TimelineRepoName = "/TIMELINE"
 
 type TimelineStorer interface {
 	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 	Delete(key storage.DatabaseKey) error
 }
 
@@ -74,8 +74,18 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 
 	prefix := storage.NewPrefixBuilder(TimelineRepoName).AddRootID(userId).Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return nil, "", err
 	}
 

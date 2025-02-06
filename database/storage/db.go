@@ -121,9 +121,6 @@ func (db *DB) IsFirstRun() bool {
 }
 
 func (db *DB) Run(username, password string) (err error) {
-	if db.isRunning.Load() {
-		return nil
-	}
 	if username == "" || password == "" {
 		return errors.New("database username or password is empty")
 	}
@@ -171,138 +168,6 @@ func (db *DB) runEventualGC() {
 	}
 }
 
-func (db *DB) Path() string {
-	return db.dbPath
-}
-
-func (db *DB) IsClosed() bool {
-	return !db.isRunning.Load()
-}
-
-type IterKeysFunc func(key string) error
-
-func (db *DB) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
-	if !db.isRunning.Load() {
-		return ErrNotRunning
-	}
-	if strings.Contains(prefix.String(), FixedKey) {
-		return errors.New("cannot iterate thru fixed key")
-	}
-	return db.badger.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		p := []byte(prefix)
-		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-			item := it.Item()
-			err := handler(string(item.KeyCopy(nil)))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-type ListItem struct {
-	Key   string
-	Value []byte
-}
-
-func (db *DB) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]ListItem, string, error) {
-	var startCursor DatabaseKey
-	if cursor != nil && *cursor != "" {
-		startCursor = DatabaseKey(*cursor)
-	}
-
-	if limit == nil {
-		defaultLimit := uint64(20)
-		limit = &defaultLimit
-	}
-
-	items := make([]ListItem, 0, *limit) //
-	cur, err := db.iterateKeysValues(
-		prefix, startCursor, limit,
-		func(key string, value []byte) error {
-			items = append(items, ListItem{
-				Key:   key,
-				Value: value,
-			})
-			return nil
-		})
-	return items, cur, err
-}
-
-type iterKeysValuesFunc func(key string, val []byte) error
-
-func (db *DB) iterateKeysValues(
-	prefix DatabaseKey,
-	startCursor DatabaseKey,
-	limit *uint64,
-	handler iterKeysValuesFunc,
-) (cursor string, err error) {
-	if !db.isRunning.Load() {
-		return "", ErrNotRunning
-	}
-	if strings.Contains(prefix.String(), FixedKey) {
-		return "", errors.New("cannot iterate thru fixed keys")
-	}
-
-	var lastKey DatabaseKey
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchValues = true
-	opts.PrefetchSize = 20
-
-	err = db.badger.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		p := prefix.Bytes()
-		if !startCursor.IsEmpty() {
-			p = startCursor.Bytes()
-		}
-		iterNum := uint64(0)
-		for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-			p = prefix.Bytes() // starting point found
-
-			item := it.Item()
-			key := string(item.Key())
-
-			if strings.Contains(key, FixedKey) {
-				return nil
-			}
-
-			if iterNum > *limit {
-				lastKey = DatabaseKey(key)
-				return nil
-			}
-			iterNum++
-
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			if err := handler(key, val); err != nil {
-				return err
-			}
-		}
-		if iterNum < *limit {
-			lastKey = ""
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return lastKey.DropId(), nil
-}
-
-func (db *DB) InnerDB() *badger.DB {
-	return db.badger
-}
-
 func (db *DB) Set(key DatabaseKey, value []byte) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
@@ -323,10 +188,6 @@ func (db *DB) SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error
 		e.WithTTL(ttl)
 		return txn.SetEntry(e)
 	})
-}
-
-func (db *DB) Sync() error {
-	return db.badger.Sync()
 }
 
 func (db *DB) Get(key DatabaseKey) ([]byte, error) {
@@ -354,6 +215,48 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 	return result, nil
 }
 
+func (db *DB) GetExpiration(key DatabaseKey) (uint64, error) {
+	if !db.isRunning.Load() {
+		return 0, ErrNotRunning
+	}
+
+	var result uint64
+	err := db.badger.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key.Bytes())
+		if err != nil {
+			return err
+		}
+
+		result = item.ExpiresAt()
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
+func (db *DB) GetSize(key DatabaseKey) (int64, error) {
+	if !db.isRunning.Load() {
+		return 0, ErrNotRunning
+	}
+
+	var result int64
+	err := db.badger.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key.Bytes())
+		if err != nil {
+			return err
+		}
+
+		result = item.ValueSize()
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
 func (db *DB) Delete(key DatabaseKey) error {
 	if !db.isRunning.Load() {
 		return ErrNotRunning
@@ -366,6 +269,315 @@ func (db *DB) Delete(key DatabaseKey) error {
 		return txn.Delete([]byte(key))
 	})
 }
+
+type WarpTxn = badger.Txn
+
+type WarpWriteTxn struct {
+	txn *badger.Txn
+}
+
+type WarpReadTxn struct {
+	txn *badger.Txn
+}
+
+func (db *DB) NewWriteTxn() (*WarpWriteTxn, error) {
+	if !db.isRunning.Load() {
+		return nil, ErrNotRunning
+	}
+	return &WarpWriteTxn{db.badger.NewTransaction(true)}, nil
+}
+
+func (t *WarpWriteTxn) Set(key DatabaseKey, value []byte) error {
+	err := t.txn.Set(key.Bytes(), value)
+	if err != nil {
+		t.txn.Discard()
+		return err
+	}
+	return nil
+}
+
+func (t *WarpWriteTxn) Get(key DatabaseKey) ([]byte, error) {
+	var result []byte
+	item, err := t.txn.Get(key.Bytes())
+	if err != nil {
+		t.txn.Discard()
+		return nil, err
+	}
+
+	val, err := item.ValueCopy(nil)
+	if err != nil {
+		t.txn.Discard()
+		return nil, err
+	}
+	result = append([]byte{}, val...)
+
+	return result, nil
+}
+
+func (t *WarpWriteTxn) SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error {
+	e := badger.NewEntry(key.Bytes(), value)
+	e.WithTTL(ttl)
+
+	err := t.txn.SetEntry(e)
+	if err != nil {
+		t.txn.Discard()
+		return err
+	}
+	return nil
+}
+
+func (t *WarpWriteTxn) BatchSet(data []ListItem) (err error) {
+	var (
+		lastIndex int
+		isTooBig  bool
+	)
+	for i, item := range data {
+		key := item.Key
+		value := item.Value
+		err := t.txn.Set([]byte(key), value)
+		if errors.Is(err, badger.ErrTxnTooBig) {
+			isTooBig = true
+			lastIndex = i
+			_ = t.txn.Commit() // force commit in the middle of iteration
+			break
+		}
+		if err != nil {
+			t.txn.Discard()
+			return err
+		}
+	}
+	if isTooBig {
+		leftovers := data[lastIndex:]
+		data = nil
+		err = t.BatchSet(leftovers)
+	}
+	return err
+}
+
+func (t *WarpWriteTxn) Delete(key DatabaseKey) error {
+	if err := t.txn.Delete(key.Bytes()); err != nil {
+		t.txn.Discard()
+		return err
+	}
+	return t.txn.Delete([]byte(key))
+}
+
+func (t *WarpWriteTxn) Increment(key DatabaseKey) (int64, error) {
+	return increment(t.txn, key.Bytes(), 1)
+}
+
+func (t *WarpWriteTxn) Decrement(key DatabaseKey) (int64, error) {
+	return increment(t.txn, key.Bytes(), -1)
+}
+
+func increment(txn *badger.Txn, key []byte, incVal int64) (int64, error) {
+	var newValue int64
+
+	item, err := txn.Get(key)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		newValue = incVal
+		return newValue, txn.Set(key, encodeInt64(newValue))
+	}
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		txn.Discard()
+		return newValue, err
+	}
+
+	val, err := item.ValueCopy(nil)
+	if err != nil {
+		txn.Discard()
+		return newValue, err
+	}
+	newValue = decodeInt64(val) + incVal
+	if newValue < 0 {
+		newValue = 0
+	}
+
+	err = txn.Set(key, encodeInt64(newValue))
+	return newValue, err
+}
+
+func (t *WarpWriteTxn) Commit() error {
+	return t.txn.Commit()
+}
+
+func (t *WarpWriteTxn) Rollback() {
+	t.txn.Discard()
+}
+
+// =========== READ ===============================
+
+func (db *DB) NewReadTxn() (*WarpReadTxn, error) {
+	if !db.isRunning.Load() {
+		return nil, ErrNotRunning
+	}
+	return &WarpReadTxn{db.badger.NewTransaction(false)}, nil
+}
+
+type IterKeysFunc func(key string) error
+
+func (t *WarpReadTxn) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
+	if strings.Contains(prefix.String(), FixedKey) {
+		return errors.New("cannot iterate thru fixed key")
+	}
+	opts := badger.DefaultIteratorOptions
+	it := t.txn.NewIterator(opts)
+	defer it.Close()
+
+	p := []byte(prefix)
+	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+		item := it.Item()
+		err := handler(string(item.KeyCopy(nil)))
+		if err != nil {
+			t.txn.Discard()
+			return err
+		}
+	}
+	return nil
+}
+
+type ListItem struct {
+	Key   string
+	Value []byte
+}
+
+func (t *WarpReadTxn) List(prefix DatabaseKey, limit *uint64, cursor *string) ([]ListItem, string, error) {
+	var startCursor DatabaseKey
+	if cursor != nil && *cursor != "" {
+		startCursor = DatabaseKey(*cursor)
+	}
+
+	if limit == nil {
+		defaultLimit := uint64(20)
+		limit = &defaultLimit
+	}
+
+	items := make([]ListItem, 0, *limit) //
+	cur, err := iterateKeysValues(
+		t.txn, prefix, startCursor, limit,
+		func(key string, value []byte) error {
+			items = append(items, ListItem{
+				Key:   key,
+				Value: value,
+			})
+			return nil
+		})
+	return items, cur, err
+}
+
+type iterKeysValuesFunc func(key string, val []byte) error
+
+func iterateKeysValues(
+	txn *badger.Txn,
+	prefix DatabaseKey,
+	startCursor DatabaseKey,
+	limit *uint64,
+	handler iterKeysValuesFunc,
+) (cursor string, err error) {
+	if strings.Contains(prefix.String(), FixedKey) {
+		txn.Discard()
+		return "", errors.New("cannot iterate thru fixed keys")
+	}
+
+	var lastKey DatabaseKey
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = true
+	opts.PrefetchSize = 20
+
+	it := txn.NewIterator(opts)
+	defer it.Close()
+
+	p := prefix.Bytes()
+	if !startCursor.IsEmpty() {
+		p = startCursor.Bytes()
+	}
+	iterNum := uint64(0)
+	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+		p = prefix.Bytes() // starting point found
+
+		item := it.Item()
+		key := string(item.Key())
+
+		if strings.Contains(key, FixedKey) {
+			return "", nil
+		}
+
+		if iterNum > *limit {
+			lastKey = DatabaseKey(key)
+			return "", nil
+		}
+		iterNum++
+
+		val, err := item.ValueCopy(nil)
+		if err != nil {
+			txn.Discard()
+			return "", err
+		}
+		if err := handler(key, val); err != nil {
+			txn.Discard()
+			return "", err
+		}
+	}
+	if iterNum < *limit {
+		lastKey = ""
+	}
+	return lastKey.DropId(), nil
+}
+
+func (t *WarpReadTxn) Get(key DatabaseKey) ([]byte, error) {
+	var result []byte
+	item, err := t.txn.Get(key.Bytes())
+	if err != nil {
+		t.txn.Discard()
+		return nil, err
+	}
+
+	val, err := item.ValueCopy(nil)
+	if err != nil {
+		t.txn.Discard()
+		return nil, err
+	}
+	result = append([]byte{}, val...)
+
+	return result, nil
+}
+
+func (t *WarpReadTxn) BatchGet(keys ...DatabaseKey) ([]ListItem, error) {
+	result := make([]ListItem, 0, len(keys))
+
+	for _, key := range keys {
+		item, err := t.txn.Get([]byte(key))
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			continue
+		}
+		if err != nil {
+			t.txn.Discard()
+			return nil, err
+		}
+		val, err := item.ValueCopy(nil)
+		if err != nil {
+			t.txn.Discard()
+			return nil, err
+		}
+		it := ListItem{
+			Key:   key.String(),
+			Value: val,
+		}
+		result = append(result, it)
+	}
+
+	return result, nil
+}
+
+func (t *WarpReadTxn) Commit() error {
+	return t.txn.Commit()
+}
+
+func (t *WarpReadTxn) Rollback() {
+	t.txn.Discard()
+}
+
+// =====================================================
 
 func (db *DB) NextSequence() (uint64, error) {
 	if !db.isRunning.Load() {
@@ -382,90 +594,6 @@ func (db *DB) NextSequence() (uint64, error) {
 	return db.sequence.Next()
 }
 
-type WarpTxn = badger.Txn
-
-func (db *DB) WriteTxn(f func(tx *badger.Txn) error) error {
-	return db.txn(true, f)
-}
-
-func (db *DB) ReadTxn(f func(tx *badger.Txn) error) error {
-	return db.txn(false, f)
-}
-
-func (db *DB) txn(isWrite bool, f func(tx *badger.Txn) error) error {
-	if !db.isRunning.Load() {
-		return ErrNotRunning
-	}
-
-	txn := db.badger.NewTransaction(isWrite)
-	defer txn.Discard()
-
-	if err := f(txn); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (db *DB) BatchSet(data []ListItem) error {
-	var (
-		lastIndex int
-		isTooBig  bool
-	)
-	err := db.WriteTxn(func(txn *badger.Txn) error {
-		for i, item := range data {
-			key := item.Key
-			value := item.Value
-			err := txn.Set([]byte(key), value)
-			if errors.Is(err, badger.ErrTxnTooBig) {
-				isTooBig = true
-				lastIndex = i
-				return nil // force commit in the middle of iteration
-			}
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if isTooBig {
-		leftovers := data[lastIndex:]
-		data = nil
-		err = db.BatchSet(leftovers)
-	}
-	return err
-}
-
-func (db *DB) BatchGet(keys ...DatabaseKey) ([]ListItem, error) {
-	result := make([]ListItem, 0, len(keys))
-
-	err := db.ReadTxn(func(txn *badger.Txn) error {
-		for _, key := range keys {
-			item, err := txn.Get([]byte(key))
-			if errors.Is(err, badger.ErrKeyNotFound) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			it := ListItem{
-				Key:   key.String(),
-				Value: val,
-			}
-			result = append(result, it)
-		}
-		return nil
-	})
-	return result, err
-}
-
 func (db *DB) GC() {
 	if !db.isRunning.Load() {
 		return
@@ -478,43 +606,20 @@ func (db *DB) GC() {
 	}
 }
 
-func (db *DB) Increment(txn *badger.Txn, key DatabaseKey) (int64, error) {
-	if !db.isRunning.Load() {
-		return 0, ErrNotRunning
-	}
-	return db.increment(txn, key.Bytes(), 1)
+func (db *DB) InnerDB() *badger.DB {
+	return db.badger
 }
 
-func (db *DB) Decrement(txn *WarpTxn, key DatabaseKey) (int64, error) {
-	if !db.isRunning.Load() {
-		return 0, ErrNotRunning
-	}
-	return db.increment(txn, key.Bytes(), -1)
+func (db *DB) Sync() error {
+	return db.badger.Sync()
 }
 
-func (db *DB) increment(txn *WarpTxn, key []byte, incVal int64) (int64, error) {
-	var newValue int64
+func (db *DB) Path() string {
+	return db.dbPath
+}
 
-	item, err := txn.Get(key)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		newValue = incVal
-		return newValue, txn.Set(key, encodeInt64(newValue))
-	}
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return newValue, err
-	}
-
-	val, err := item.ValueCopy(nil)
-	if err != nil {
-		return newValue, err
-	}
-	newValue = decodeInt64(val) + incVal
-	if newValue < 0 {
-		newValue = 0
-	}
-
-	err = txn.Set(key, encodeInt64(newValue))
-	return newValue, err
+func (db *DB) IsClosed() bool {
+	return !db.isRunning.Load()
 }
 
 func encodeInt64(n int64) []byte {
