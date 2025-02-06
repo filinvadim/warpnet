@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	FollowRepoName  = "/FOLLOWER"
-	followeeSubName = "FOLLOWEE"
-	followerSubName = "FOLLOWER"
+	FollowRepoName       = "/FOLLOWER"
+	followeeSubName      = "FOLLOWEE"
+	followerSubName      = "FOLLOWER"
+	followeeCountSubName = "FOLLOWEECOUNT"
+	followerCountSubName = "FOLLOWERCOUNT"
 )
 
 type FollowerStorer interface {

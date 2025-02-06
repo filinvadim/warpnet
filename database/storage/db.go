@@ -423,8 +423,8 @@ func (t *WarpReadTxn) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) erro
 	opts := badger.DefaultIteratorOptions
 	it := t.txn.NewIterator(opts)
 	defer it.Close()
-
 	p := []byte(prefix)
+
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 		item := it.Item()
 		err := handler(string(item.KeyCopy(nil)))
@@ -641,11 +641,14 @@ func (db *DB) Close() {
 	if db.badger == nil {
 		return
 	}
+	_ = db.Sync()
 	if !db.isRunning.Load() {
 		return
 	}
-	db.isRunning.Store(false)
+	
 	if err := db.badger.Close(); err != nil {
 		log.Infoln("database close: ", err)
+		return
 	}
+	db.isRunning.Store(false)
 }

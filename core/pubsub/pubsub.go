@@ -12,7 +12,6 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"slices"
 	"strings"
@@ -385,11 +384,11 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 
 	peerInfo := warpnet.PeerAddrInfo{
 		ID:    discoveryMsg.ID,
-		Addrs: make([]multiaddr.Multiaddr, 0, len(discoveryMsg.Addrs)),
+		Addrs: make([]warpnet.WarpAddress, 0, len(discoveryMsg.Addrs)),
 	}
 
 	for _, addr := range discoveryMsg.Addrs {
-		ma, _ := multiaddr.NewMultiaddr(addr)
+		ma, _ := warpnet.NewMultiaddr(addr)
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
 
