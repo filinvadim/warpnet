@@ -1,3 +1,5 @@
+//go:build !windows
+
 package security
 
 import (
@@ -6,7 +8,15 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"strings"
+	"time"
 )
+
+func init() {
+	_ = os.Unsetenv("LD_PRELOAD")
+	EnableCoreDumps()
+	go DisableCoreDumps()
+	MustNotGDBAttached()
+}
 
 func EnableCoreDumps() {
 	err := unix.Prctl(unix.PR_SET_DUMPABLE, 1, 0, 0, 0)
@@ -16,7 +26,9 @@ func EnableCoreDumps() {
 }
 
 func DisableCoreDumps() {
-	_ = os.Unsetenv("LD_PRELOAD")
+	tick := time.NewTicker(1 * time.Minute)
+	defer tick.Stop()
+	<-tick.C
 	err := unix.Prctl(unix.PR_SET_DUMPABLE, 0, 0, 0, 0)
 	if err != nil {
 		log.Fatalf("failed to disable core dumps: %v", err)

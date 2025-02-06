@@ -23,6 +23,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/security"
+	_ "github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
@@ -41,13 +42,11 @@ type API struct {
 }
 
 func main() {
-	security.EnableCoreDumps()
 	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
 	if !isValid {
 		log.Infoln("invalid binary signature - TODO") // TODO
 	}
-	security.DisableCoreDumps()
-	security.MustNotGDBAttached()
+
 	selfHash, err := security.GetSelfHash(security.Member)
 	if err != nil {
 		log.Fatalf("fail to get self hash: %v", err)

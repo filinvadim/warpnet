@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
+	_ "github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -23,13 +24,11 @@ import (
 )
 
 func main() {
-	security.EnableCoreDumps()
 	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
 	if !isValid {
 		log.Errorln("invalid binary signature - TODO") // TODO
 	}
-	security.DisableCoreDumps()
-	security.MustNotGDBAttached()
+
 	selfHash, err := security.GetSelfHash(security.Bootstrap)
 	if err != nil {
 		log.Fatalf("fail to get self hash: %v", err)

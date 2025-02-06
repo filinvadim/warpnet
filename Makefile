@@ -45,3 +45,9 @@ self-sign:
 	openssl genpkey -algorithm Ed25519 -out private.pem
 	openssl pkey -in private.pem -pubout -out public.pem
 	openssl pkeyutl -sign -inkey private.pem -rawin -in warpnet -out warpnet.sig
+
+build-windows:
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-win.exe cmd/node/member/main.go
+
+build-macos:
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-darwin cmd/node/member/main.go

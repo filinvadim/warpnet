@@ -10,7 +10,7 @@ ENV GO111MODULE=''
 ENV CGO_ENABLED=0
 
 RUN cp warpnet.example.sig warpnet.sig && cp public.example.pem public.pem
-RUN go build -mod=vendor -v -o warpnet cmd/node/bootstrap/main.go
+RUN go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet cmd/node/bootstrap/main.go
 
 FROM alpine:3.20
 COPY --from=builder /go/src/github.com/filinvadim/warpnet/warpnet /warpnet
