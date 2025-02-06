@@ -55,6 +55,7 @@ type Gossip struct {
 	clientNode       PubsubClientNodeStreamer
 	discoveryHandler discovery.DiscoveryHandler
 	version          string
+	owner            domain.Owner
 
 	mx     *sync.RWMutex
 	subs   []*pubsub.Subscription
@@ -92,12 +93,13 @@ func (g *Gossip) Run(
 	}
 	g.clientNode = clientNode
 	g.serverNode = serverNode
+	g.owner = authRepo.GetOwner()
 
 	if err := g.run(serverNode); err != nil {
 		log.Fatalf("failed to create Gossip sub: %s", err)
 	}
 
-	if err := g.preSubscribe(authRepo, followRepo); err != nil {
+	if err := g.preSubscribe(g.owner, followRepo); err != nil {
 		log.Fatalf("failed to presubscribe: %s", err)
 	}
 	for {
@@ -177,12 +179,10 @@ func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 	return nil
 }
 
-func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer) error {
-	if authRepo == nil || followRepo == nil {
+func (g *Gossip) preSubscribe(owner domain.Owner, followRepo PubsubFollowingStorer) error {
+	if owner.UserId == "" {
 		return nil
 	}
-	owner := authRepo.GetOwner()
-
 	var (
 		nextCursor string
 		limit      = uint64(20)
@@ -275,6 +275,10 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
+	if g.owner.UserId == userId {
+		return errors.New("can't subscribe to own user")
+	}
+
 	topicName := fmt.Sprintf(userUpdateTopicPrefix, g.version, userId)
 	g.mx.RLock()
 	topic, ok := g.topics[topicName]
