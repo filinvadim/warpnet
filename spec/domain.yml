@@ -72,12 +72,18 @@ components:
         background_image:
           type: string
           description: mime type + "," + base64
-        tweets_num:
+        tweets_count:
           type: integer
-          format: int64
+          x-go-type: uint64
+        followers_count:
+          type: integer
+          x-go-type: uint64
+        followees_count:
+          type: integer
+          x-go-type: uint64
         website:
           type: string
-          format: url
+          format: hostname
         rtt:
           type: integer
           format: int64
@@ -94,10 +100,10 @@ components:
         - bio
         - username
         - node_id
-        - following_num
-        - followers_num
+        - followers_count
+        - followees_count
         - created_at
-        - tweets_num
+        - tweets_count
         - birthdate
         - rtt
 

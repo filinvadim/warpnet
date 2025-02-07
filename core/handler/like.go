@@ -19,9 +19,9 @@ type LikesBroadcaster interface {
 }
 
 type LikesStorer interface {
-	Like(tweetId, userId string) (likesNum int64, err error)
-	Unlike(tweetId, userId string) (likesNum int64, err error)
-	LikesCount(tweetId string) (likesNum int64, err error)
+	Like(tweetId, userId string) (likesNum uint64, err error)
+	Unlike(tweetId, userId string) (likesNum uint64, err error)
+	LikesCount(tweetId string) (likesNum uint64, err error)
 	Likers(tweetId string, limit *uint64, cursor *string) (likers []string, cur string, err error)
 }
 
@@ -50,11 +50,11 @@ func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlewar
 		_ = msgBody.FromRequestBody(reqBody)
 		msg := event.Message{
 			Body:      msgBody,
-			Path:      event.PRIVATE_POST_LIKE,
+			Path:      event.PUBLIC_POST_LIKE,
 			Timestamp: time.Now(),
 		}
 
-		return event.LikesNumResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
+		return event.LikesCountResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
 	}
 }
 
@@ -80,11 +80,11 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 		_ = msgBody.FromRequestBody(reqBody)
 		msg := event.Message{
 			Body:      msgBody,
-			Path:      event.PRIVATE_POST_UNLIKE,
+			Path:      event.PUBLIC_POST_UNLIKE,
 			Timestamp: time.Now(),
 		}
 
-		return event.LikesNumResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
+		return event.LikesCountResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
 	}
 }
 
@@ -100,9 +100,9 @@ func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
 		}
 		num, err := repo.LikesCount(ev.TweetId)
 		if errors.Is(err, database.ErrLikesNotFound) {
-			return event.LikesNumResponse{0}, nil
+			return event.LikesCountResponse{0}, nil
 		}
-		return event.LikesNumResponse{num}, err
+		return event.LikesCountResponse{num}, err
 	}
 }
 
@@ -121,8 +121,8 @@ func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) mid
 			return nil, err
 		}
 		if len(likers) == 0 {
-			return event.UsersResponse{
-				Cursor: cur,
+			return event.GetLikersResponse{
+				Cursor: "",
 				Users:  []domain.User{},
 			}, nil
 		}
@@ -132,7 +132,7 @@ func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) mid
 			return nil, err
 		}
 
-		return event.UsersResponse{
+		return event.GetLikersResponse{
 			Cursor: cur,
 			Users:  users,
 		}, nil

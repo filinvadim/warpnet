@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/binary"
 	"errors"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -68,6 +69,16 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		AddParentId(toUserId).
 		Build()
 
+	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeCountSubName).
+		AddRootID(toUserId).
+		Build()
+
+	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerCountSubName).
+		AddRootID(fromUserId).
+		Build()
+
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return err
@@ -84,6 +95,12 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		return err
 	}
 	if err := txn.Set(fixedFolloweeKey, []byte(sortableFolloweeKey)); err != nil {
+		return err
+	}
+	if _, err := txn.Increment(followersCountKey); err != nil {
+		return err
+	}
+	if _, err := txn.Increment(followeesCountKey); err != nil {
 		return err
 	}
 	return txn.Commit()
@@ -103,6 +120,16 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 		AddRootID(fromUserId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(toUserId).
+		Build()
+
+	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeCountSubName).
+		AddRootID(toUserId).
+		Build()
+
+	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerCountSubName).
+		AddRootID(fromUserId).
 		Build()
 
 	sortableFollowerKey, err := repo.db.Get(fixedFollowerKey)
@@ -131,7 +158,55 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	if err := txn.Delete(storage.DatabaseKey(sortableFolloweeKey)); err != nil {
 		return err
 	}
+	if _, err := txn.Decrement(followersCountKey); err != nil {
+		return err
+	}
+	if _, err := txn.Decrement(followeesCountKey); err != nil {
+		return err
+	}
 	return txn.Commit()
+}
+
+func (repo *FollowRepo) GetFollowersCount(userId string) (uint64, error) {
+	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerCountSubName).
+		AddRootID(userId).
+		Build()
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+	bt, err := txn.Get(followersCountKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	count := binary.BigEndian.Uint64(bt)
+	return count, txn.Commit()
+}
+
+func (repo *FollowRepo) GetFolloweesCount(userId string) (uint64, error) {
+	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeCountSubName).
+		AddRootID(userId).
+		Build()
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+	bt, err := txn.Get(followeesCountKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	count := binary.BigEndian.Uint64(bt)
+	return count, txn.Commit()
 }
 
 func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {

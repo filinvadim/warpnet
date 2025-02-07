@@ -21,12 +21,12 @@ func init() {
 func EnableCoreDumps() {
 	err := unix.Prctl(unix.PR_SET_DUMPABLE, 1, 0, 0, 0)
 	if err != nil {
-		log.Fatalf("Failed to enable core dumps: %v", err)
+		log.Fatalf("failed to enable core dumps: %v", err)
 	}
 }
 
 func DisableCoreDumps() {
-	tick := time.NewTicker(1 * time.Minute)
+	tick := time.NewTicker(10 * time.Second)
 	defer tick.Stop()
 	<-tick.C
 	err := unix.Prctl(unix.PR_SET_DUMPABLE, 0, 0, 0, 0)

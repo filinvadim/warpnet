@@ -29,7 +29,7 @@ func NewLikeRepo(db LikeStorer) *LikeRepo {
 	return &LikeRepo{db: db}
 }
 
-func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
+func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error) {
 	if tweetId == "" {
 		return 0, errors.New("empty tweet id")
 	}
@@ -63,14 +63,14 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesNum int64, err error) {
 	if err = txn.Set(likerKey, []byte(userId)); err != nil {
 		return 0, err
 	}
-	likesNum, err = txn.Increment(likeKey)
+	likesCount, err = txn.Increment(likeKey)
 	if err != nil {
 		return 0, err
 	}
-	return likesNum, txn.Commit()
+	return likesCount, txn.Commit()
 }
 
-func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error) {
+func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err error) {
 	if tweetId == "" {
 		return 0, errors.New("empty tweet id")
 	}
@@ -103,14 +103,14 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesNum int64, err error)
 	if err = txn.Delete(likerKey); err != nil {
 		return 0, err
 	}
-	likesNum, err = txn.Decrement(likeKey)
+	likesCount, err = txn.Decrement(likeKey)
 	if err != nil {
 		return 0, err
 	}
-	return likesNum, txn.Commit()
+	return likesCount, txn.Commit()
 }
 
-func (repo *LikeRepo) LikesCount(tweetId string) (likesNum int64, err error) {
+func (repo *LikeRepo) LikesCount(tweetId string) (likesNum uint64, err error) {
 	if tweetId == "" {
 		return 0, errors.New("empty tweet id")
 	}
@@ -126,7 +126,7 @@ func (repo *LikeRepo) LikesCount(tweetId string) (likesNum int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	return int64(binary.BigEndian.Uint64(bt)), nil
+	return binary.BigEndian.Uint64(bt), nil
 }
 
 type likedUserIDs = []string

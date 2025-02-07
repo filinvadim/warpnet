@@ -32,13 +32,13 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		if err != nil {
 			return nil, err
 		}
-		if ev.ParentReplyId == "" {
+		if ev.ParentId == "" {
 			return nil, errors.New("empty parent id")
 		}
 		if ev.RootId == "" {
 			return nil, errors.New("empty root id")
 		}
-		replies, cursor, err := repo.GetRepliesTree(ev.RootId, ev.ParentReplyId, ev.Limit, ev.Cursor)
+		replies, cursor, err := repo.GetRepliesTree(ev.RootId, ev.ParentId, ev.Limit, ev.Cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -57,14 +57,14 @@ func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
 		if err != nil {
 			return nil, err
 		}
-		if ev.ParentReplyId == "" {
+		if ev.ParentId == "" {
 			return nil, errors.New("empty parent id")
 		}
 		if ev.RootId == "" {
 			return nil, errors.New("empty root id")
 		}
 
-		return repo.GetReply(ev.RootId, ev.ParentReplyId, ev.ReplyId)
+		return repo.GetReply(ev.RootId, ev.ParentId, ev.ReplyId)
 	}
 }
 
@@ -108,12 +108,14 @@ func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStor
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_POST_REPLY,
+				Path:      event.PUBLIC_POST_REPLY,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
 				log.Infoln("broadcaster publish owner reply update:", err)
 			}
+		} else {
+			// stream reply to tweet owner
 		}
 
 		return reply, nil
@@ -137,19 +139,19 @@ func StreamDeleteReplyHandler(
 		if ev.RootId == "" {
 			return nil, errors.New("empty root id")
 		}
-		if ev.ParentReplyId == "" {
+		if ev.ParentId == "" {
 			return nil, errors.New("empty parent id")
 		}
 
-		if err = repo.DeleteReply(ev.RootId, ev.ParentReplyId, ev.ReplyId); err != nil {
+		if err = repo.DeleteReply(ev.RootId, ev.ParentId, ev.ReplyId); err != nil {
 			return nil, err
 		}
 		if owner := authRepo.GetOwner(); owner.UserId == ev.UserId {
 			respReplyEvent := event.DeleteReplyEvent{
-				UserId:        ev.UserId,
-				ReplyId:       ev.ReplyId,
-				ParentReplyId: ev.ParentReplyId,
-				RootId:        ev.RootId,
+				UserId:   ev.UserId,
+				ReplyId:  ev.ReplyId,
+				ParentId: ev.ParentId,
+				RootId:   ev.RootId,
 			}
 			reqBody := event.RequestBody{}
 			_ = reqBody.FromDeleteReplyEvent(respReplyEvent)
@@ -158,7 +160,7 @@ func StreamDeleteReplyHandler(
 			msg := event.Message{
 				Body:      msgBody,
 				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_DELETE_REPLY,
+				Path:      event.PUBLIC_POST_REPLY,
 				Timestamp: time.Now(),
 			}
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {

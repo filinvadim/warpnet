@@ -21,6 +21,7 @@ type Config struct {
 	Node     Node            `yaml:"node"`
 	Database Database        `yaml:"database"`
 	Server   Server          `yaml:"server"`
+	Logging  Logging         `yaml:"logging"`
 }
 type Node struct {
 	Bootstrap []string `yaml:"bootstrap"`
@@ -36,9 +37,8 @@ type Logging struct {
 	Format string `yaml:"format"`
 }
 type Server struct {
-	Host    string  `yaml:"host"`
-	Port    string  `yaml:"port"`
-	Logging Logging `yaml:"logging"`
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
 }
 
 func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {

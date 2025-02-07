@@ -362,31 +362,31 @@ func (t *WarpWriteTxn) Delete(key DatabaseKey) error {
 	return t.txn.Delete([]byte(key))
 }
 
-func (t *WarpWriteTxn) Increment(key DatabaseKey) (int64, error) {
+func (t *WarpWriteTxn) Increment(key DatabaseKey) (uint64, error) {
 	return increment(t.txn, key.Bytes(), 1)
 }
 
-func (t *WarpWriteTxn) Decrement(key DatabaseKey) (int64, error) {
+func (t *WarpWriteTxn) Decrement(key DatabaseKey) (uint64, error) {
 	return increment(t.txn, key.Bytes(), -1)
 }
 
-func increment(txn *badger.Txn, key []byte, incVal int64) (int64, error) {
+func increment(txn *badger.Txn, key []byte, incVal int64) (uint64, error) {
 	var newValue int64
 
 	item, err := txn.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		newValue = incVal
-		return newValue, txn.Set(key, encodeInt64(newValue))
+		return uint64(newValue), txn.Set(key, encodeInt64(newValue))
 	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		txn.Discard()
-		return newValue, err
+		return uint64(newValue), err
 	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {
 		txn.Discard()
-		return newValue, err
+		return uint64(newValue), err
 	}
 	newValue = decodeInt64(val) + incVal
 	if newValue < 0 {
@@ -394,7 +394,7 @@ func increment(txn *badger.Txn, key []byte, incVal int64) (int64, error) {
 	}
 
 	err = txn.Set(key, encodeInt64(newValue))
-	return newValue, err
+	return uint64(newValue), err
 }
 
 func (t *WarpWriteTxn) Commit() error {
@@ -641,11 +641,11 @@ func (db *DB) Close() {
 	if db.badger == nil {
 		return
 	}
-	_ = db.Sync()
 	if !db.isRunning.Load() {
 		return
 	}
-	
+
+	_ = db.Sync()
 	if err := db.badger.Close(); err != nil {
 		log.Infoln("database close: ", err)
 		return

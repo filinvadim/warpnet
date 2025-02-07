@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -13,7 +14,8 @@ import (
 )
 
 const (
-	TweetsNamespace = "/TWEETS"
+	TweetsNamespace     = "/TWEETS"
+	tweetsCountSubspace = "TWEETSCOUNT"
 )
 
 type TweetsStorer interface {
@@ -25,7 +27,8 @@ type TweetsStorer interface {
 }
 
 type TweetRepo struct {
-	db TweetsStorer
+	db        TweetsStorer
+	tweetsNum int64
 }
 
 func NewTweetRepo(db TweetsStorer) *TweetRepo {
@@ -60,6 +63,11 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 		AddParentId(tweet.Id).
 		Build()
 
+	countKey := storage.NewPrefixBuilder(TweetsNamespace).
+		AddSubPrefix(tweetsCountSubspace).
+		AddRootID(userID).
+		Build()
+
 	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
 		return tweet, fmt.Errorf("tweet marshal: %w", err)
@@ -75,6 +83,9 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 		return tweet, err
 	}
 	if err = txn.Set(sortableKey, data); err != nil {
+		return tweet, err
+	}
+	if _, err := txn.Increment(countKey); err != nil {
 		return tweet, err
 	}
 	return tweet, txn.Commit()
@@ -105,8 +116,34 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err erro
 	return tweet, nil
 }
 
+func (repo *TweetRepo) TweetsCount(userID string) (uint64, error) {
+	countKey := storage.NewPrefixBuilder(TweetsNamespace).
+		AddSubPrefix(tweetsCountSubspace).
+		AddRootID(userID).
+		Build()
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+	bt, err := txn.Get(countKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	count := binary.BigEndian.Uint64(bt)
+	return count, txn.Commit()
+}
+
 // Delete removes a tweet by its ID
 func (repo *TweetRepo) Delete(userID, tweetID string) error {
+	countKey := storage.NewPrefixBuilder(TweetsNamespace).
+		AddSubPrefix(tweetsCountSubspace).
+		AddRootID(userID).
+		Build()
+
 	fixedKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddRootID(userID).
 		AddRange(storage.FixedRangeKey).
@@ -127,6 +164,9 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		return err
 	}
 	if err := txn.Delete(storage.DatabaseKey(sortableKeyBytes)); err != nil {
+		return err
+	}
+	if _, err := txn.Decrement(countKey); err != nil {
 		return err
 	}
 	return txn.Commit()

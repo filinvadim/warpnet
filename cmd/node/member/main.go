@@ -56,6 +56,12 @@ func main() {
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
 
+	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
+	if err != nil {
+		lvl = log.InfoLevel
+	}
+	log.SetLevel(lvl)
+
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
@@ -190,11 +196,11 @@ func main() {
 		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_REPLY,
+		event.PUBLIC_POST_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PRIVATE_DELETE_REPLY,
+		event.PUBLIC_DELETE_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
 	)
 	serverNode.SetStreamHandler(
@@ -207,7 +213,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USER,
-		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(tweetRepo, followRepo, userRepo)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
@@ -243,11 +249,11 @@ func main() {
 	)
 
 	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_LIKE,
+		event.PUBLIC_POST_LIKE,
 		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, pubsubService)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_UNLIKE,
+		event.PUBLIC_POST_UNLIKE,
 		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
 	)
 	serverNode.SetStreamHandler(

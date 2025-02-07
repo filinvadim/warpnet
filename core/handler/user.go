@@ -9,6 +9,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type UserTweetsCounter interface {
+	TweetsCount(userID string) (uint64, error)
+}
+
+type UserFollowsCounter interface {
+	GetFollowersCount(userId string) (uint64, error)
+	GetFolloweesCount(userId string) (uint64, error)
+}
+
 type UserFetcher interface {
 	Get(userID string) (user domain.User, err error)
 	List(limit *uint64, cursor *string) ([]domain.User, string, error)
@@ -19,7 +28,11 @@ type UserAuthStorer interface {
 	GetOwner() domain.Owner
 }
 
-func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
+func StreamGetUserHandler(
+	tweetRepo UserTweetsCounter,
+	followRepo UserFollowsCounter,
+	repo UserFetcher,
+) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
 		var ev event.GetUserEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -30,19 +43,36 @@ func StreamGetUserHandler(repo UserFetcher) middleware.WarpHandler {
 			return nil, errors.New("empty user id")
 		}
 
-		user, err := repo.Get(ev.UserId)
+		u, err := repo.Get(ev.UserId)
 		if err != nil {
 			return nil, err
 		}
 
-		if user.Id == "" {
+		if u.Id == "" {
 			return event.ErrorResponse{
 				Code:    404,
 				Message: "user not found",
 			}, nil
 		}
 
-		return user, nil
+		followersCount, err := followRepo.GetFollowersCount(u.Id)
+		if err != nil {
+			return nil, err
+		}
+		followeesCount, err := followRepo.GetFolloweesCount(u.Id)
+		if err != nil {
+			return nil, err
+		}
+		tweetsCount, err := tweetRepo.TweetsCount(u.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		u.TweetsCount = tweetsCount
+		u.FollowersCount = followersCount
+		u.FolloweesCount = followeesCount
+
+		return u, nil
 	}
 }
 

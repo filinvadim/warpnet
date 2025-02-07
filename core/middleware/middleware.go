@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -10,7 +9,6 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -100,12 +98,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
-		if strings.Contains(string(s.Protocol()), "login") ||
-			strings.Contains(string(s.Protocol()), "post/user") {
-			fmt.Println("OMITTED MESSAGE", string(s.Protocol()))
-		} else {
-			fmt.Println("MESSAGE", string(s.Protocol()), string(data))
-		}
+		log.Debugln(">>> STREAM REQUEST", string(s.Protocol()), string(data))
 
 		if response == nil {
 			response, err = fn(data)
@@ -114,6 +107,8 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 				response = domain.Error{Message: ErrInternalNodeError.Error()}
 			}
 		}
+
+		log.Debugf("<<< STREAM RESPONSE: %s %+v", string(s.Protocol()), response)
 
 		switch response.(type) {
 		case []byte:

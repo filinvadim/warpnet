@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.110
+  version: 0.1.111
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -122,7 +122,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/reply/{version}:
+  /public/post/reply/{version}:
     options:
       parameters:
         - in: path
@@ -139,7 +139,7 @@ paths:
               {
                 message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
                 node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/reply/1.0.0",
+                path: "public/post/reply/1.0.0",
                 timestamp: "2025-01-31T22:16:34.206155932+04:00",
                 version: "0.1.63",
                 body: {}
@@ -152,7 +152,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/delete/reply/{version}:
+  /public/delete/reply/{version}:
     options:
       parameters:
         - in: path
@@ -169,7 +169,7 @@ paths:
               {
                 message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
                 node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/delete/reply/1.0.0",
+                path: "public/delete/reply/1.0.0",
                 timestamp: "2025-01-31T22:16:34.206155932+04:00",
                 version: "0.1.63",
                 body: {}
@@ -632,7 +632,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/like/{version}:
+  /public/post/like/{version}:
     options:
       parameters:
         - in: path
@@ -649,7 +649,7 @@ paths:
               {
                 message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
                 node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/like/1.0.0",
+                path: "public/post/like/1.0.0",
                 timestamp: "2025-01-31T22:16:34.206155932+04:00",
                 version: "0.1.63",
                 body: {}
@@ -662,7 +662,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /private/post/unlike/{version}:
+  /public/post/unlike/{version}:
     options:
       parameters:
         - in: path
@@ -679,7 +679,7 @@ paths:
               {
                 message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
                 node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/unlike/1.0.0",
+                path: "public/post/unlike/1.0.0",
                 timestamp: "2025-01-31T22:16:34.206155932+04:00",
                 version: "0.1.63",
                 body: {}
@@ -756,7 +756,8 @@ components:
         - $ref: '#/components/schemas/FolloweesResponse'
         - $ref: '#/components/schemas/FollowersResponse'
         - $ref: '#/components/schemas/NewReplyResponse'
-        - $ref: '#/components/schemas/LikesNumResponse'
+        - $ref: '#/components/schemas/LikesCountResponse'
+        - $ref: '#/components/schemas/GetLikersResponse'
         - $ref: '#/components/schemas/AcceptedResponse'
 
     AcceptedResponse:
@@ -777,13 +778,13 @@ components:
         - token
         - owner
 
-    LikesNumResponse:
+    LikesCountResponse:
       properties:
-        num:
+        count:
           type: integer
-          format: int64
+          x-go-type: uint64
       required:
-        - num
+        - count
 
     ErrorResponse:
       properties:
@@ -843,7 +844,7 @@ components:
       properties:
         user_id:
           type: string
-        parent_reply_id:
+        parent_id:
           type: string
         root_id:
           type: string
@@ -851,7 +852,7 @@ components:
           type: string
       required:
         - root_id
-        - parent_reply_id
+        - parent_id
         - reply_id
         - user_id
 
@@ -861,7 +862,7 @@ components:
     GetAllRepliesEvent:
       type: object
       properties:
-        parent_reply_id:
+        parent_id:
           type: string
         root_id:
           type: string
@@ -872,7 +873,7 @@ components:
           type: string
       required:
         - root_id
-        - parent_reply_id
+        - parent_id
 
     NewTweetEvent:
       $ref: './domain.yml#/components/schemas/Tweet'
@@ -952,6 +953,9 @@ components:
           type: string
       required:
         - tweet_id
+
+    GetLikersResponse:
+      $ref: '#/components/schemas/UsersResponse'
 
     GetAllUsersEvent:
       type: object
