@@ -126,14 +126,14 @@ components:
           type: string
         root_id:
           type: string
-        retweet_id:
+        retweeted_by:
           type: string
+          description: retweeted user id
       required:
         - user_id
         - id
         - text
         - content
-        - parent_id
         - root_id
         - username
         - created_at

@@ -37,7 +37,7 @@ func (repo *ReplyRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) 
 	if reply.RootId == "" {
 		return reply, errors.New("empty root")
 	}
-	if reply.ParentId == "" {
+	if reply.ParentId == nil {
 		return reply, errors.New("empty parent")
 	}
 	if reply.Id == "" {
@@ -59,7 +59,7 @@ func (repo *ReplyRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) 
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(reply.RootId).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(reply.ParentId).
+		AddParentId(*reply.ParentId).
 		AddId(reply.Id).
 		Build()
 
@@ -161,12 +161,12 @@ func buildRepliesTree(replies []domainGen.Tweet) []domainGen.ReplyNode {
 			continue
 		}
 
-		if reply.ParentId == "" { // Если ParentId отсутствует, это корневой узел
+		if reply.ParentId == nil { // If ParentId is absent, it's reply for root tweet
 			roots = append(roots, node)
 			continue
 		}
 
-		parentNode, ok := nodeMap[reply.ParentId] // Если у твита есть ParentId, проверяем наличие родителя
+		parentNode, ok := nodeMap[*reply.ParentId] // Если у твита есть ParentId, проверяем наличие родителя
 		if !ok {
 			// Если родителя нет, добавляем твит как корневой
 			roots = append(roots, node)
@@ -178,7 +178,7 @@ func buildRepliesTree(replies []domainGen.Tweet) []domainGen.ReplyNode {
 		expandedChildren = append(expandedChildren, node)
 		parentNode.Children = expandedChildren // Добавляем в Children родителя
 
-		nodeMap[reply.ParentId] = parentNode
+		nodeMap[*reply.ParentId] = parentNode
 	}
 
 	sort.SliceStable(roots, func(i, j int) bool {

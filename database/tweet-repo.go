@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	TweetsNamespace     = "/TWEETS"
-	tweetsCountSubspace = "TWEETSCOUNT"
+	TweetsNamespace       = "/TWEETS"
+	tweetsCountSubspace   = "TWEETSCOUNT"
+	reTweetsCountSubspace = "RETWEETSCOUNT"
 )
 
 type TweetsStorer interface {
@@ -39,9 +40,6 @@ func NewTweetRepo(db TweetsStorer) *TweetRepo {
 func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, error) {
 	if tweet == (domain.Tweet{}) {
 		return tweet, errors.New("nil tweet")
-	}
-	if tweet.RetweetId != nil {
-		tweet.Id = ""
 	}
 	if tweet.Id == "" {
 		tweet.Id = uuid.New().String()
@@ -68,6 +66,22 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 		AddRootID(userID).
 		Build()
 
+	var (
+		retweetCountKey storage.DatabaseKey
+		isRetweeted     bool
+	)
+	if tweet.RetweetedBy != nil {
+		retweetCountKey = storage.NewPrefixBuilder(TweetsNamespace).
+			AddSubPrefix(reTweetsCountSubspace).
+			AddRootID(tweet.Id).
+			Build()
+
+		_, err := repo.db.Get(retweetCountKey)
+		if !errors.Is(err, storage.ErrKeyNotFound) {
+			isRetweeted = true // already retweeted exists
+		}
+	}
+
 	data, err := json.JSON.Marshal(tweet)
 	if err != nil {
 		return tweet, fmt.Errorf("tweet marshal: %w", err)
@@ -87,6 +101,12 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 	}
 	if _, err := txn.Increment(countKey); err != nil {
 		return tweet, err
+	}
+	if tweet.RetweetedBy != nil && !isRetweeted {
+		_, err = txn.Increment(retweetCountKey)
+		if err != nil {
+			return tweet, err
+		}
 	}
 	return tweet, txn.Commit()
 }
@@ -114,6 +134,32 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err erro
 	}
 	data = nil
 	return tweet, nil
+}
+
+func (repo *TweetRepo) ReTweetsCount(tweetId string) (uint64, error) {
+	if tweetId == "" {
+		return 0, errors.New("retweets count: empty tweet id")
+	}
+	retweetCountKey := storage.NewPrefixBuilder(TweetsNamespace).
+		AddSubPrefix(reTweetsCountSubspace).
+		AddRootID(tweetId).
+		Build()
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+
+	bt, err := txn.Get(retweetCountKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	count := binary.BigEndian.Uint64(bt)
+	return count, txn.Commit()
 }
 
 func (repo *TweetRepo) TweetsCount(userID string) (uint64, error) {
@@ -157,6 +203,25 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 		return err
 	}
 
+	bt, err := repo.db.Get(storage.DatabaseKey(sortableKeyBytes))
+	if err != nil {
+		return err
+	}
+
+	var tweet domain.Tweet
+	err = json.JSON.Unmarshal(bt, &tweet)
+	if err != nil {
+		return err
+	}
+
+	var retweetCountKey storage.DatabaseKey
+	if tweet.RetweetedBy != nil {
+		retweetCountKey = storage.NewPrefixBuilder(TweetsNamespace).
+			AddSubPrefix(reTweetsCountSubspace).
+			AddRootID(tweet.Id).
+			Build()
+	}
+
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return err
@@ -171,6 +236,12 @@ func (repo *TweetRepo) Delete(userID, tweetID string) error {
 	}
 	if _, err := txn.Decrement(countKey); err != nil {
 		return err
+	}
+	if tweet.RetweetedBy != nil {
+		_, err = txn.Decrement(retweetCountKey)
+		if err != nil {
+			return err
+		}
 	}
 	return txn.Commit()
 }

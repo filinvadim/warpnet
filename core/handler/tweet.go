@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -89,15 +90,12 @@ func StreamNewTweetHandler(
 			return nil, errors.New("empty user id")
 		}
 
-		tweet, err := tweetRepo.Create(ev.UserId, domain.Tweet{
-			CreatedAt: ev.CreatedAt,
-			Id:        ev.Id,
-			ParentId:  ev.ParentId,
-			RootId:    ev.RootId,
-			Text:      ev.Text,
-			UserId:    ev.UserId,
-			Username:  ev.Username,
-		})
+		userId := ev.UserId
+		if ev.RetweetedBy != nil { // it's retweet!
+			userId = *ev.RetweetedBy
+		}
+
+		tweet, err := tweetRepo.Create(userId, ev)
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +132,9 @@ func StreamNewTweetHandler(
 				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
 		}
+		if ev.RetweetedBy != nil && *ev.RetweetedBy != owner.UserId {
+			// TODO notify tweet owner about retweet
+		}
 		return tweet, nil
 	}
 }
@@ -156,10 +157,16 @@ func StreamDeleteTweetHandler(
 			return nil, errors.New("empty tweet id")
 		}
 
+		tweet, err := repo.Get(ev.UserId, ev.TweetId)
+		if err != nil {
+			return nil, fmt.Errorf("delete: get tweet: %w", err)
+		}
+
 		if err := repo.Delete(ev.UserId, ev.TweetId); err != nil {
 			return nil, err
 		}
-		if owner := authRepo.GetOwner(); owner.UserId == ev.UserId {
+		owner := authRepo.GetOwner()
+		if owner.UserId == ev.UserId {
 			respTweetEvent := event.DeleteTweetEvent{
 				UserId:  ev.UserId,
 				TweetId: ev.TweetId,
@@ -177,6 +184,9 @@ func StreamDeleteTweetHandler(
 			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
 				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
+		}
+		if tweet.RetweetedBy != nil && *tweet.RetweetedBy != owner.UserId {
+			// TODO notify tweet owner about retweet
 		}
 		return nil, nil
 	}
