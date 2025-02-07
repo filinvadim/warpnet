@@ -211,6 +211,9 @@ func (n *WarpNode) SupportedProtocols() []string {
 		if strings.HasPrefix(string(p), "/floodsub") {
 			continue
 		}
+		if strings.HasPrefix(string(p), "/private") { // hide it just in case
+			continue
+		}
 		filtered = append(filtered, string(p))
 	}
 	return filtered

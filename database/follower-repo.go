@@ -168,6 +168,9 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 }
 
 func (repo *FollowRepo) GetFollowersCount(userId string) (uint64, error) {
+	if userId == "" {
+		return 0, errors.New("followers count: empty userID")
+	}
 	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followerCountSubName).
 		AddRootID(userId).
@@ -189,6 +192,9 @@ func (repo *FollowRepo) GetFollowersCount(userId string) (uint64, error) {
 }
 
 func (repo *FollowRepo) GetFolloweesCount(userId string) (uint64, error) {
+	if userId == "" {
+		return 0, errors.New("followers count: empty userID")
+	}
 	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeCountSubName).
 		AddRootID(userId).

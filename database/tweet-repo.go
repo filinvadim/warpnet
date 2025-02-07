@@ -117,6 +117,9 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err erro
 }
 
 func (repo *TweetRepo) TweetsCount(userID string) (uint64, error) {
+	if userID == "" {
+		return 0, errors.New("tweet count: empty userID")
+	}
 	countKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddSubPrefix(tweetsCountSubspace).
 		AddRootID(userID).

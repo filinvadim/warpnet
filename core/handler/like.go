@@ -34,10 +34,10 @@ func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlewar
 		}
 
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, errors.New("like: empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, errors.New("like: empty tweet id")
 		}
 		num, err := repo.Like(ev.TweetId, ev.UserId)
 		if err != nil {
@@ -90,7 +90,7 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 
 func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
 	return func(buf []byte) (any, error) {
-		var ev event.GetLikesNumEvent
+		var ev event.GetLikesCountEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err

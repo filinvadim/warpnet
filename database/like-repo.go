@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/filinvadim/warpnet/database/storage"
-	"time"
 )
 
 const (
@@ -45,7 +44,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error
 	likerKey := storage.NewPrefixBuilder(LikeRepoName).
 		AddSubPrefix(LikerSubNamespace).
 		AddRootID(tweetId).
-		AddReversedTimestamp(time.Now()).
+		AddRange(storage.NoneRangeKey).
 		AddParentId(userId).
 		Build()
 
@@ -57,7 +56,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error
 
 	_, err = txn.Get(likerKey)
 	if !errors.Is(err, storage.ErrKeyNotFound) {
-		return 0, nil // like exists
+		return repo.LikesCount(tweetId) // like exists
 	}
 
 	if err = txn.Set(likerKey, []byte(userId)); err != nil {
@@ -86,7 +85,7 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err err
 	likerKey := storage.NewPrefixBuilder(LikeRepoName).
 		AddSubPrefix(LikerSubNamespace).
 		AddRootID(tweetId).
-		AddReversedTimestamp(time.Now()).
+		AddRange(storage.NoneRangeKey).
 		AddParentId(userId).
 		Build()
 
@@ -96,9 +95,9 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err err
 	}
 	defer txn.Rollback()
 
-	_, err = txn.Get(likeKey)
+	_, err = txn.Get(likerKey)
 	if errors.Is(err, storage.ErrKeyNotFound) { // already unliked
-		return 0, nil
+		return repo.LikesCount(tweetId)
 	}
 	if err = txn.Delete(likerKey); err != nil {
 		return 0, err

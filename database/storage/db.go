@@ -169,6 +169,9 @@ func (db *DB) runEventualGC() {
 }
 
 func (db *DB) Set(key DatabaseKey, value []byte) error {
+	if db == nil {
+		return ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
@@ -180,6 +183,9 @@ func (db *DB) Set(key DatabaseKey, value []byte) error {
 }
 
 func (db *DB) SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error {
+	if db == nil {
+		return ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
@@ -191,6 +197,9 @@ func (db *DB) SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error
 }
 
 func (db *DB) Get(key DatabaseKey) ([]byte, error) {
+	if db == nil {
+		return nil, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return nil, ErrNotRunning
 	}
@@ -216,6 +225,9 @@ func (db *DB) Get(key DatabaseKey) ([]byte, error) {
 }
 
 func (db *DB) GetExpiration(key DatabaseKey) (uint64, error) {
+	if db == nil {
+		return 0, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return 0, ErrNotRunning
 	}
@@ -237,6 +249,9 @@ func (db *DB) GetExpiration(key DatabaseKey) (uint64, error) {
 }
 
 func (db *DB) GetSize(key DatabaseKey) (int64, error) {
+	if db == nil {
+		return 0, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return 0, ErrNotRunning
 	}
@@ -258,6 +273,9 @@ func (db *DB) GetSize(key DatabaseKey) (int64, error) {
 }
 
 func (db *DB) Delete(key DatabaseKey) error {
+	if db == nil {
+		return ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return ErrNotRunning
 	}
@@ -281,6 +299,9 @@ type WarpReadTxn struct {
 }
 
 func (db *DB) NewWriteTxn() (*WarpWriteTxn, error) {
+	if db == nil {
+		return nil, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return nil, ErrNotRunning
 	}
@@ -290,7 +311,6 @@ func (db *DB) NewWriteTxn() (*WarpWriteTxn, error) {
 func (t *WarpWriteTxn) Set(key DatabaseKey, value []byte) error {
 	err := t.txn.Set(key.Bytes(), value)
 	if err != nil {
-		t.txn.Discard()
 		return err
 	}
 	return nil
@@ -300,13 +320,11 @@ func (t *WarpWriteTxn) Get(key DatabaseKey) ([]byte, error) {
 	var result []byte
 	item, err := t.txn.Get(key.Bytes())
 	if err != nil {
-		t.txn.Discard()
 		return nil, err
 	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {
-		t.txn.Discard()
 		return nil, err
 	}
 	result = append([]byte{}, val...)
@@ -320,7 +338,6 @@ func (t *WarpWriteTxn) SetWithTTL(key DatabaseKey, value []byte, ttl time.Durati
 
 	err := t.txn.SetEntry(e)
 	if err != nil {
-		t.txn.Discard()
 		return err
 	}
 	return nil
@@ -342,7 +359,6 @@ func (t *WarpWriteTxn) BatchSet(data []ListItem) (err error) {
 			break
 		}
 		if err != nil {
-			t.txn.Discard()
 			return err
 		}
 	}
@@ -356,7 +372,6 @@ func (t *WarpWriteTxn) BatchSet(data []ListItem) (err error) {
 
 func (t *WarpWriteTxn) Delete(key DatabaseKey) error {
 	if err := t.txn.Delete(key.Bytes()); err != nil {
-		t.txn.Discard()
 		return err
 	}
 	return t.txn.Delete([]byte(key))
@@ -379,13 +394,11 @@ func increment(txn *badger.Txn, key []byte, incVal int64) (uint64, error) {
 		return uint64(newValue), txn.Set(key, encodeInt64(newValue))
 	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		txn.Discard()
 		return uint64(newValue), err
 	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {
-		txn.Discard()
 		return uint64(newValue), err
 	}
 	newValue = decodeInt64(val) + incVal
@@ -408,6 +421,9 @@ func (t *WarpWriteTxn) Rollback() {
 // =========== READ ===============================
 
 func (db *DB) NewReadTxn() (*WarpReadTxn, error) {
+	if db == nil {
+		return nil, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return nil, ErrNotRunning
 	}
@@ -429,7 +445,6 @@ func (t *WarpReadTxn) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) erro
 		item := it.Item()
 		err := handler(string(item.KeyCopy(nil)))
 		if err != nil {
-			t.txn.Discard()
 			return err
 		}
 	}
@@ -475,7 +490,6 @@ func iterateKeysValues(
 	handler iterKeysValuesFunc,
 ) (cursor string, err error) {
 	if strings.Contains(prefix.String(), FixedKey) {
-		txn.Discard()
 		return "", errors.New("cannot iterate thru fixed keys")
 	}
 
@@ -510,11 +524,9 @@ func iterateKeysValues(
 
 		val, err := item.ValueCopy(nil)
 		if err != nil {
-			txn.Discard()
 			return "", err
 		}
 		if err := handler(key, val); err != nil {
-			txn.Discard()
 			return "", err
 		}
 	}
@@ -528,13 +540,11 @@ func (t *WarpReadTxn) Get(key DatabaseKey) ([]byte, error) {
 	var result []byte
 	item, err := t.txn.Get(key.Bytes())
 	if err != nil {
-		t.txn.Discard()
 		return nil, err
 	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {
-		t.txn.Discard()
 		return nil, err
 	}
 	result = append([]byte{}, val...)
@@ -551,12 +561,10 @@ func (t *WarpReadTxn) BatchGet(keys ...DatabaseKey) ([]ListItem, error) {
 			continue
 		}
 		if err != nil {
-			t.txn.Discard()
 			return nil, err
 		}
 		val, err := item.ValueCopy(nil)
 		if err != nil {
-			t.txn.Discard()
 			return nil, err
 		}
 		it := ListItem{
@@ -580,6 +588,9 @@ func (t *WarpReadTxn) Rollback() {
 // =====================================================
 
 func (db *DB) NextSequence() (uint64, error) {
+	if db == nil {
+		return 0, ErrNotRunning
+	}
 	if !db.isRunning.Load() {
 		return 0, ErrNotRunning
 	}
@@ -595,6 +606,9 @@ func (db *DB) NextSequence() (uint64, error) {
 }
 
 func (db *DB) GC() {
+	if db == nil {
+		panic(ErrNotRunning)
+	}
 	if !db.isRunning.Load() {
 		return
 	}
@@ -607,18 +621,30 @@ func (db *DB) GC() {
 }
 
 func (db *DB) InnerDB() *badger.DB {
+	if db == nil {
+		panic(ErrNotRunning)
+	}
 	return db.badger
 }
 
 func (db *DB) Sync() error {
+	if db == nil {
+		return ErrNotRunning
+	}
 	return db.badger.Sync()
 }
 
 func (db *DB) Path() string {
+	if db == nil {
+		return ""
+	}
 	return db.dbPath
 }
 
 func (db *DB) IsClosed() bool {
+	if db == nil {
+		return true
+	}
 	return !db.isRunning.Load()
 }
 
@@ -633,6 +659,9 @@ func decodeInt64(b []byte) int64 {
 }
 
 func (db *DB) Close() {
+	if db == nil {
+		return
+	}
 	log.Infoln("closing database...")
 	close(db.stopChan)
 	if db.sequence != nil {

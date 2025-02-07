@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.111
+  version: 0.1.112
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -602,7 +602,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/likesnum/{version}:
+  /public/get/likescount/{version}:
     options:
       parameters:
         - in: path
@@ -619,7 +619,7 @@ paths:
               {
                 message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
                 node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/likesnum/1.0.0",
+                path: "public/get/likescount/1.0.0",
                 timestamp: "2025-01-31T22:16:34.206155932+04:00",
                 version: "0.1.63",
                 body: {}
@@ -741,7 +741,7 @@ components:
         - $ref: '#/components/schemas/LogoutEvent'
         - $ref: '#/components/schemas/LikeEvent'
         - $ref: '#/components/schemas/UnlikeEvent'
-        - $ref: '#/components/schemas/GetLikesNumEvent'
+        - $ref: '#/components/schemas/GetLikesCountEvent'
         - $ref: '#/components/schemas/GetLikersEvent'
 
     ResponseBody:
@@ -933,7 +933,7 @@ components:
     UnlikeEvent:
       $ref: '#/components/schemas/LikeEvent'
 
-    GetLikesNumEvent:
+    GetLikesCountEvent:
       type: object
       properties:
         tweet_id:

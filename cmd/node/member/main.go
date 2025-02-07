@@ -257,7 +257,7 @@ func main() {
 		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_LIKESNUM,
+		event.PUBLIC_GET_LIKESCOUNT,
 		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
 	)
 	serverNode.SetStreamHandler(
