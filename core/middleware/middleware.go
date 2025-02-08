@@ -98,6 +98,11 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
+		// TODO remove
+		if len(data) > 200 {
+			data = data[:200]
+		}
+
 		log.Debugln(">>> STREAM REQUEST", string(s.Protocol()), string(data))
 
 		if response == nil {

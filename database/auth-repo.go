@@ -124,9 +124,6 @@ func (repo *AuthRepo) GetOwner() domainGen.Owner {
 }
 
 func (repo *AuthRepo) SetOwner(o domainGen.Owner) (_ domainGen.Owner, err error) {
-	if repo.owner.UserId != "" {
-		panic("cannot set owner twice")
-	}
 	ownerKey := storage.NewPrefixBuilder(AuthRepoName).
 		AddRootID(DefaultOwnerKey).
 		Build()

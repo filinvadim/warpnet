@@ -180,6 +180,10 @@ func main() {
 	unwrapMw := mw.UnwrapStreamMiddleware
 
 	serverNode.SetStreamHandler(
+		event.PUBLIC_GET_INFO,
+		logMw(handler.StreamGetInfoHandler(serverNode, discService.HandlePeerFound)),
+	)
+	serverNode.SetStreamHandler(
 		event.PRIVATE_POST_PAIR,
 		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(serverNodeAuthInfo)))),
 	)
@@ -223,10 +227,7 @@ func main() {
 		event.PUBLIC_GET_TWEETS,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
 	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_INFO,
-		logMw(authMw(unwrapMw(handler.StreamGetInfoHandler(serverNode)))),
-	)
+
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEET,
 		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),

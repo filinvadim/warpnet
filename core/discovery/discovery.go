@@ -2,12 +2,14 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -210,8 +212,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	user.Rtt = int64(rtt)
 	newUser, err := s.userRepo.Create(user)
+	if errors.Is(err, database.ErrUserAlreadyExists) {
+		return
+	}
 	if err != nil {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
+		return
 	}
 	bt, _ := json.JSON.MarshalIndent(newUser, "", "  ")
 	log.Infoln("new user added:", string(bt))

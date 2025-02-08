@@ -11,7 +11,10 @@ import (
 	"github.com/filinvadim/warpnet/json"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+var (
+	ErrUserNotFound      = errors.New("user not found")
+	ErrUserAlreadyExists = errors.New("user already exists")
+)
 
 const (
 	UsersRepoName    = "/USERS"
@@ -64,7 +67,7 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 
 	_, err = repo.db.Get(fixedKey)
 	if !errors.Is(err, storage.ErrKeyNotFound) {
-		return user, errors.New("user already exists")
+		return user, ErrUserAlreadyExists
 	}
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
