@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"strings"
 	"time"
@@ -154,25 +155,35 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	return dhTable, nil
 }
 
-// handle typos in bootstrap node ID
 func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
+	ctx, cancel := context.WithTimeout(d.ctx, 10*time.Second) // common timeout
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
 	for _, addr := range boostrapNodes {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := d.dht.Ping(ctx, addr.ID)
-		if err == nil {
-			cancel()
-			continue
-		}
-		var pidErr sec.ErrPeerIDMismatch
-		if !errors.As(err, &pidErr) {
-			cancel()
-			continue
-		}
-		cancel()
-		d.dht.RoutingTable().RemovePeer(pidErr.Expected)
-		d.dht.Host().Peerstore().ClearAddrs(pidErr.Expected)
-		d.dht.Host().Peerstore().AddAddrs(pidErr.Actual, addr.Addrs, warpnet.PermanentAddrTTL)
-		log.Infof("dht: peer id corrected from %s to %s", pidErr.Expected, pidErr.Actual)
+		addr := addr // this is important!
+		g.Go(func() error {
+			localCtx, localCancel := context.WithTimeout(ctx, 1*time.Second) // local timeout
+			defer localCancel()
+
+			err := d.dht.Ping(localCtx, addr.ID)
+			if err == nil {
+				return nil
+			}
+			var pidErr sec.ErrPeerIDMismatch
+			if !errors.As(err, &pidErr) {
+				return nil
+			}
+
+			d.dht.RoutingTable().RemovePeer(pidErr.Expected)
+			d.dht.Host().Peerstore().ClearAddrs(pidErr.Expected)
+			d.dht.Host().Peerstore().AddAddrs(pidErr.Actual, addr.Addrs, warpnet.PermanentAddrTTL)
+			log.Infof("dht: peer id corrected from %s to %s", pidErr.Expected, pidErr.Actual)
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		log.Errorf("dht: mismatch: waitgroup: %s", err)
 	}
 }
 
