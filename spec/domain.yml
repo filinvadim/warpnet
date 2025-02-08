@@ -169,7 +169,7 @@ components:
       properties:
         id:
           type: string
-        from_user_id:
+        owner_id:
           type: string
         to_user_id:
           type: string
@@ -181,7 +181,7 @@ components:
           format: date-time
       required:
         - id
-        - from_user_id
+        - owner_id
         - to_user_id
         - created_at
         - updated_at

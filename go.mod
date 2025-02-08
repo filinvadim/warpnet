@@ -5,7 +5,7 @@ go 1.23.5
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/filinvadim/warpnet-frontend v0.0.170
+	github.com/filinvadim/warpnet-frontend v0.0.175
 	github.com/getkin/kin-openapi v0.127.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3

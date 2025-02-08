@@ -3,7 +3,7 @@ const plugin = require("tailwindcss/plugin");
 
 module.exports = {
   purge: { content: ["./public/**/*.html", "./src/**/*.vue"] },
-  darkMode: 'media', // or 'media' or 'class'
+  darkMode: 'class', // or 'media' or 'class'
   theme: {
     container: {
       center: true,
@@ -23,6 +23,15 @@ module.exports = {
         light: "#AAB8C2",
         lighter: "#E1E8ED",
         lightest: "#F5F8FA",
+        darktheme: {
+          background: "#360124",
+          foreground: "#660142",
+          text: "#f6bcdc",
+          secondary: "#ffffff",
+          accent: "#C5007F",
+          input: "#ea86ac",       // Фон инпутов
+          card: "#ea86ac",        // Фон карточек (например, "Who to follow")
+        },
       },
     },
     screens: {
@@ -43,7 +52,11 @@ module.exports = {
     },
   },
   variants: {
-    extend: {},
+    extend: {
+      backgroundColor: ["dark"],
+      textColor: ["dark"],
+      borderColor: ["dark"],
+    },
   },
   plugins: [
     plugin(({ addUtilities }) => {

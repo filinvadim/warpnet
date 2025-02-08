@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
-	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/google/uuid"
 	"sort"
@@ -17,11 +17,8 @@ const (
 )
 
 type ChatStorer interface {
-	Set(key storage.DatabaseKey, value []byte) error
-	List(prefix storage.DatabaseKey, limit *uint64, cursor *string) ([]storage.ListItem, string, error)
-	Get(key storage.DatabaseKey) ([]byte, error)
-	Delete(key storage.DatabaseKey) error
 	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (*storage.WarpReadTxn, error)
 }
 
 type ChatRepo struct {
@@ -32,86 +29,156 @@ func NewChatRepo(db ChatStorer) *ChatRepo {
 	return &ChatRepo{db: db}
 }
 
-func (repo *ChatRepo) CreateChat(userId, otherUserId string) (string, error) {
-	chatId := uuid.New().String()
+type chatID = string
 
-	userKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(userId).
-		AddReversedTimestamp(time.Now()).
-		AddParentId(chatId).
-		Build()
-	chatKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(chatId).
-		AddReversedTimestamp(time.Now()).
-		AddParentId(userId).
-		Build()
-
-	chat := domainGen.Chat{
-		CreatedAt:  time.Now(),
-		Id:         chatId,
-		ToUserId:   otherUserId,
-		UpdatedAt:  time.Now(),
-		FromUserId: userId,
+func (repo *ChatRepo) CreateChat(chatId, ownerId, otherUserId string) (chatID, error) {
+	if ownerId == "" || otherUserId == "" {
+		return "", errors.New("user ID or other user ID is empty")
 	}
 
-	bt, err := json.JSON.Marshal(chat)
-	if err != nil {
-		return "", err
-	}
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return "", err
 	}
 	defer txn.Rollback()
 
-	err = txn.Set(userKey, bt)
+	nonceRootId := ownerId + otherUserId
+	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddSubPrefix(MessageSubNamespace).
+		AddRootID(nonceRootId).
+		Build()
+
+	if chatId == "" {
+		inc, err := txn.Get(nonceKey)
+		if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+			return chatId, err
+		}
+		chatId = generateUUIDv5ChatId(ownerId, otherUserId, string(inc))
+	}
+
+	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(chatId).
+		Build()
+
+	sortableUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddReversedTimestamp(time.Now()).
+		AddParentId(chatId).
+		Build()
+
+	chat := domain.Chat{
+		CreatedAt: time.Now(),
+		Id:        chatId,
+		ToUserId:  otherUserId,
+		UpdatedAt: time.Now(),
+		OwnerId:   ownerId,
+	}
+
+	bt, err := json.JSON.Marshal(chat)
 	if err != nil {
 		return "", err
 	}
-	err = repo.db.Set(chatKey, bt)
+	err = txn.Set(fixedUserChatKey, sortableUserChatKey.Bytes())
+	if err != nil {
+		return "", err
+	}
+	err = txn.Set(sortableUserChatKey, bt)
 	if err != nil {
 		return "", err
 	}
 	return chatId, txn.Commit()
 }
 
-// GetRoom returns the roomIDs for the given userID.
-func (repo *ChatRepo) GetChats(userID string) ([]domainGen.Chat, error) {
+func (repo *ChatRepo) DeleteChat(chatId, ownerId, otherUserId string) error {
+	if ownerId == "" || chatId == "" || otherUserId == "" {
+		return errors.New("user ID or other chat ID is empty")
+	}
+	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(chatId).
+		Build()
+
+	nonceRootId := ownerId + otherUserId
+	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddSubPrefix(MessageSubNamespace).
+		AddRootID(nonceRootId).
+		Build()
+
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	sortableKey, err := txn.Get(fixedUserChatKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := txn.Delete(fixedUserChatKey); err != nil {
+		return err
+	}
+	if err := txn.Delete(storage.DatabaseKey(sortableKey)); err != nil {
+		return err
+	}
+
+	if _, err = txn.Increment(nonceKey); err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+func (repo *ChatRepo) GetUserChats(userID string, limit *uint64, cursor *string) ([]domain.Chat, string, error) {
 	if userID == "" {
-		return nil, errors.New("ID cannot be blank")
+		return nil, "", errors.New("ID cannot be blank")
 	}
 
 	prefix := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(userID).
 		Build()
 
-	items, _, err := repo.db.List(prefix, nil, nil)
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
+	if err != nil {
+		return nil, cur, err
 	}
 
-	chats := make([]domainGen.Chat, 0, len(items))
+	if err := txn.Commit(); err != nil {
+		return nil, cur, err
+	}
+
+	chats := make([]domain.Chat, 0, len(items))
 	for _, item := range items {
-		var chat domainGen.Chat
+		var chat domain.Chat
 		err = json.JSON.Unmarshal(item.Value, &chat)
 		if err != nil {
-			return nil, err
+			return nil, cur, err
 		}
 		chats = append(chats, chat)
 	}
 
-	return chats, nil
+	return chats, cur, nil
 }
 
-func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMessage, error) {
-	if msg == (domainGen.ChatMessage{}) {
-		return msg, errors.New("nil message")
-	}
-	if msg.Id == "" {
-		msg.Id = uuid.New().String()
+func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage, error) {
+	if msg == (domain.ChatMessage{}) {
+		return msg, errors.New("empty message")
 	}
 	if msg.CreatedAt.IsZero() {
 		msg.CreatedAt = time.Now()
+	}
+	if msg.Id == "" {
+		msg.Id = uuid.New().String()
 	}
 
 	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
@@ -132,7 +199,7 @@ func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMe
 
 	data, err := json.JSON.Marshal(msg)
 	if err != nil {
-		return msg, fmt.Errorf("message marshal: %w", err)
+		return msg, fmt.Errorf("message: marshal: %w", err)
 	}
 
 	txn, err := repo.db.NewWriteTxn()
@@ -141,7 +208,7 @@ func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMe
 	}
 	defer txn.Rollback()
 
-	if err = txn.Set(fixedKey, data); err != nil {
+	if err = txn.Set(fixedKey, sortableKey.Bytes()); err != nil {
 		return msg, err
 	}
 	err = txn.Set(sortableKey, data)
@@ -151,36 +218,7 @@ func (repo *ChatRepo) CreateMessage(msg domainGen.ChatMessage) (domainGen.ChatMe
 	return msg, txn.Commit()
 }
 
-func (repo *ChatRepo) ListChats(userId string, limit *uint64, cursor *string) ([]domainGen.ChatMessage, string, error) {
-	if userId == "" {
-		return nil, "", errors.New("user ID cannot be blank")
-	}
-
-	prefix := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(userId).
-		Build()
-
-	items, cur, err := repo.db.List(prefix, limit, cursor)
-	if err != nil {
-		return nil, "", err
-	}
-
-	chatsMsgs := make([]domainGen.ChatMessage, 0, len(items))
-	for _, item := range items {
-		var chatMsg domainGen.ChatMessage
-		err = json.JSON.Unmarshal(item.Value, &chatMsg)
-		if err != nil {
-			return nil, "", err
-		}
-		chatsMsgs = append(chatsMsgs, chatMsg)
-	}
-	sort.SliceStable(chatsMsgs, func(i, j int) bool {
-		return chatsMsgs[i].CreatedAt.After(chatsMsgs[j].CreatedAt)
-	})
-	return chatsMsgs, cur, nil
-}
-
-func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string) ([]domainGen.ChatMessage, string, error) {
+func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string) ([]domain.ChatMessage, string, error) {
 	if chatId == "" {
 		return nil, "", errors.New("chat ID cannot be blank")
 	}
@@ -190,27 +228,35 @@ func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string)
 		AddRootID(chatId).
 		Build()
 
-	items, cur, err := repo.db.List(prefix, limit, cursor)
+	txn, err := repo.db.NewReadTxn()
+	if err != nil {
+		return nil, "", err
+	}
+	defer txn.Rollback()
+
+	items, cur, err := txn.List(prefix, limit, cursor)
 	if err != nil {
 		return nil, "", err
 	}
 
-	chatsMsgs := make([]domainGen.ChatMessage, 0, len(items))
+	if err := txn.Commit(); err != nil {
+		return nil, cur, err
+	}
+
+	chatsMsgs := make([]domain.ChatMessage, 0, len(items))
 	for _, item := range items {
-		var chatMsg domainGen.ChatMessage
+		var chatMsg domain.ChatMessage
 		err = json.JSON.Unmarshal(item.Value, &chatMsg)
 		if err != nil {
 			return nil, "", err
 		}
 		chatsMsgs = append(chatsMsgs, chatMsg)
 	}
-	sort.SliceStable(chatsMsgs, func(i, j int) bool {
-		return chatsMsgs[i].CreatedAt.After(chatsMsgs[j].CreatedAt)
-	})
+
 	return chatsMsgs, cur, nil
 }
 
-func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domainGen.ChatMessage, err error) {
+func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessage, err error) {
 	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddSubPrefix(MessageSubNamespace).
 		AddRootID(chatId).
@@ -218,8 +264,27 @@ func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domainGen.ChatMes
 		AddParentId(userId).
 		AddId(id).
 		Build()
-	data, err := repo.db.Get(fixedKey)
+
+	txn, err := repo.db.NewReadTxn()
 	if err != nil {
+		return m, err
+	}
+	defer txn.Rollback()
+
+	sortableKey, err := txn.Get(fixedKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return m, nil
+	}
+	if err != nil {
+		return m, err
+	}
+
+	data, err := txn.Get(storage.DatabaseKey(sortableKey))
+	if err != nil {
+		return m, err
+	}
+
+	if err := txn.Commit(); err != nil {
 		return m, err
 	}
 
@@ -227,26 +292,14 @@ func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domainGen.ChatMes
 	if err != nil {
 		return m, err
 	}
-	data = nil
 	return m, nil
 }
 
 func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
-	m, err := repo.GetMessage(userId, chatId, id)
-	if err != nil {
-		return err
-	}
 	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddSubPrefix(MessageSubNamespace).
 		AddRootID(chatId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
-		AddId(id).
-		Build()
-	sortableKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
-		AddRootID(chatId).
-		AddReversedTimestamp(m.CreatedAt).
 		AddParentId(userId).
 		AddId(id).
 		Build()
@@ -257,11 +310,28 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 	}
 	defer txn.Rollback()
 
-	if err = repo.db.Delete(fixedKey); err != nil {
+	sortableKey, err := txn.Get(fixedKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	if err = repo.db.Delete(sortableKey); err != nil {
+
+	if err = txn.Delete(fixedKey); err != nil {
 		return err
 	}
+	if err = txn.Delete(storage.DatabaseKey(sortableKey)); err != nil {
+		return err
+	}
+
 	return txn.Commit()
+}
+
+func generateUUIDv5ChatId(userId1, userId2, nonce string) string {
+	items := []string{userId1, userId2}
+	sort.Strings(items) // Упорядочиваем, чтобы избежать зависимости от порядка
+
+	namespace := uuid.NameSpaceDNS
+	return uuid.NewSHA1(namespace, []byte(items[0]+items[1]+nonce)).String()
 }
