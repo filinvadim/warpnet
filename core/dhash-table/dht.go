@@ -2,18 +2,22 @@ package dhash_table
 
 import (
 	"context"
+	"errors"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"strings"
 	"time"
 )
+
+var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
 
 /*
   Distributed Hash Table (DHT) is a distributed hash table used for decentralized
@@ -124,6 +128,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
+			log.Debugf("dht: peer added: %s", id)
 			d.addF(peer.AddrInfo{ID: id})
 		}
 	}
@@ -139,6 +144,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		if err := dhTable.Bootstrap(d.ctx); err != nil {
 			log.Errorf("dht: bootstrap: %s", err)
 		}
+		d.correctPeerIdMismatch(d.boostrapNodes)
 	}()
 
 	<-dhTable.RefreshRoutingTable()
@@ -146,6 +152,28 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	log.Infoln("dht: routing started")
 
 	return dhTable, nil
+}
+
+// handle typos in bootstrap node ID
+func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
+	for _, addr := range boostrapNodes {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := d.dht.Ping(ctx, addr.ID)
+		if err == nil {
+			cancel()
+			continue
+		}
+		var pidErr sec.ErrPeerIDMismatch
+		if !errors.As(err, &pidErr) {
+			cancel()
+			continue
+		}
+		cancel()
+		d.dht.RoutingTable().RemovePeer(pidErr.Expected)
+		d.dht.Host().Peerstore().ClearAddrs(pidErr.Expected)
+		d.dht.Host().Peerstore().AddAddrs(pidErr.Actual, addr.Addrs, warpnet.PermanentAddrTTL)
+		log.Infof("dht: peer id corrected from %s to %s", pidErr.Expected, pidErr.Actual)
+	}
 }
 
 func (d *DistributedHashTable) Close() {

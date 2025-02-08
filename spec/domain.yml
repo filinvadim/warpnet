@@ -128,7 +128,7 @@ components:
           type: string
         retweeted_by:
           type: string
-          description: retweeted user id
+          description: retweeted by user id
       required:
         - user_id
         - id

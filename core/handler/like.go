@@ -73,6 +73,9 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 			return nil, errors.New("empty tweet id")
 		}
 		num, err := repo.Unlike(ev.TweetId, ev.UserId)
+		if err != nil {
+			return nil, err
+		}
 
 		reqBody := event.RequestBody{}
 		_ = reqBody.FromUnlikeEvent(ev)

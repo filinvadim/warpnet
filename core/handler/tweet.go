@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -90,12 +89,7 @@ func StreamNewTweetHandler(
 			return nil, errors.New("empty user id")
 		}
 
-		userId := ev.UserId
-		if ev.RetweetedBy != nil { // it's retweet!
-			userId = *ev.RetweetedBy
-		}
-
-		tweet, err := tweetRepo.Create(userId, ev)
+		tweet, err := tweetRepo.Create(ev.UserId, ev)
 		if err != nil {
 			return nil, err
 		}
@@ -132,9 +126,6 @@ func StreamNewTweetHandler(
 				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
 		}
-		if ev.RetweetedBy != nil && *ev.RetweetedBy != owner.UserId {
-			// TODO notify tweet owner about retweet
-		}
 		return tweet, nil
 	}
 }
@@ -155,11 +146,6 @@ func StreamDeleteTweetHandler(
 		}
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
-		}
-
-		tweet, err := repo.Get(ev.UserId, ev.TweetId)
-		if err != nil {
-			return nil, fmt.Errorf("delete: get tweet: %w", err)
 		}
 
 		if err := repo.Delete(ev.UserId, ev.TweetId); err != nil {
@@ -185,9 +171,7 @@ func StreamDeleteTweetHandler(
 				log.Infoln("broadcaster publish owner tweet update:", err)
 			}
 		}
-		if tweet.RetweetedBy != nil && *tweet.RetweetedBy != owner.UserId {
-			// TODO notify tweet owner about retweet
-		}
+
 		return nil, nil
 	}
 }

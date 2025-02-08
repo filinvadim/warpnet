@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.113
+  version: 0.1.114
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -692,6 +692,126 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
+  /public/get/retweetscount/{version}:
+    options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/retweetscount/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/post/retweet/{version}:
+    options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/post/retweet/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/post/unretweet/{version}:
+    options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/post/unretweet/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /public/get/retweeters/{version}:
+    options:
+      parameters:
+        - in: path
+          name: version
+          schema:
+            type: string
+      description: NOTE! This is WS message identificator. Not a HTTP!
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+            example: |
+              {
+                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+                path: "public/get/retweeters/1.0.0",
+                timestamp: "2025-01-31T22:16:34.206155932+04:00",
+                version: "0.1.63",
+                body: {}
+              }
+      responses:
+        "200":
+          description: NOTE! This is WS response. Not a HTTP!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
 components:
   schemas:
     Message:
@@ -743,6 +863,10 @@ components:
         - $ref: '#/components/schemas/UnlikeEvent'
         - $ref: '#/components/schemas/GetLikesCountEvent'
         - $ref: '#/components/schemas/GetLikersEvent'
+        - $ref: '#/components/schemas/GetRetweetersEvent'
+        - $ref: '#/components/schemas/NewRetweetEvent'
+        - $ref: '#/components/schemas/GetReTweetsCountEvent'
+        - $ref: '#/components/schemas/UnretweetEvent'
 
     ResponseBody:
       anyOf:
@@ -758,6 +882,7 @@ components:
         - $ref: '#/components/schemas/NewReplyResponse'
         - $ref: '#/components/schemas/LikesCountResponse'
         - $ref: '#/components/schemas/GetLikersResponse'
+        - $ref: '#/components/schemas/GetRetweetersResponse'
         - $ref: '#/components/schemas/AcceptedResponse'
 
     AcceptedResponse:
@@ -777,6 +902,9 @@ components:
       required:
         - token
         - owner
+
+    ReTweetsCountResponse:
+      $ref: '#/components/schemas/LikesCountResponse'
 
     LikesCountResponse:
       properties:
@@ -875,6 +1003,12 @@ components:
         - root_id
         - parent_id
 
+    NewRetweetEvent:
+      $ref: './domain.yml#/components/schemas/Tweet'
+
+    GetRetweetersEvent:
+      $ref: '#/components/schemas/GetLikersEvent'
+
     NewTweetEvent:
       $ref: './domain.yml#/components/schemas/Tweet'
 
@@ -930,8 +1064,14 @@ components:
         - user_id
         - tweet_id
 
+    UnretweetEvent:
+      $ref: '#/components/schemas/LikeEvent'
+
     UnlikeEvent:
       $ref: '#/components/schemas/LikeEvent'
+
+    GetReTweetsCountEvent:
+      $ref: '#/components/schemas/GetLikesCountEvent'
 
     GetLikesCountEvent:
       type: object
@@ -953,6 +1093,9 @@ components:
           type: string
       required:
         - tweet_id
+
+    GetRetweetersResponse:
+      $ref: '#/components/schemas/UsersResponse'
 
     GetLikersResponse:
       $ref: '#/components/schemas/UsersResponse'

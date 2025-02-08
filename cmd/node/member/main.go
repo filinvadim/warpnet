@@ -268,6 +268,23 @@ func main() {
 		event.PRIVATE_POST_USER,
 		logMw(authMw(unwrapMw(handler.StreamUpdateProfileHandler(authRepo, userRepo)))),
 	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_GET_RETWEETSCOUNT,
+		logMw(authMw(unwrapMw(handler.StreamGetReTweetsCountHandler(tweetRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_POST_RETWEET,
+		logMw(authMw(unwrapMw(handler.StreamNewReTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
+	)
+
+	serverNode.SetStreamHandler(
+		event.PUBLIC_POST_UNRETWEET,
+		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, pubsubService)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_GET_RETWEETERS,
+		logMw(authMw(unwrapMw(handler.StreamGetRetweetersHandler(tweetRepo, userRepo)))),
+	)
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	nodeReadyChan <- serverNodeAuthInfo
