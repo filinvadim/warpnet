@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -164,7 +165,7 @@ func StreamGetRetweetersHandler(
 		}
 
 		users, err := userRepo.GetBatch(retweeters...)
-		if err != nil {
+		if err != nil && !errors.Is(err, database.ErrUserNotFound) {
 			return nil, err
 		}
 

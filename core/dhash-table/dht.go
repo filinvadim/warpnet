@@ -177,7 +177,7 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Errorf("dht: mismatch: waitgroup: %s", err)
+		log.Errorf("dht: mismatch: waitgroup: %v", err)
 	}
 }
 

@@ -280,7 +280,7 @@ func (repo *TweetRepo) NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error
 
 func (repo *TweetRepo) UnRetweet(userId, tweetId string) error {
 	if tweetId == "" || userId == "" {
-		return errors.New("unretweet: empty tweet ID/user ID")
+		return errors.New("unretweet: empty tweet ID or user ID")
 	}
 	retweetCountKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddSubPrefix(reTweetsCountSubspace).
@@ -351,7 +351,7 @@ type retweetersIDs = []string
 
 func (repo *TweetRepo) Retweeters(tweetId string, limit *uint64, cursor *string) (_ retweetersIDs, cur string, err error) {
 	if tweetId == "" {
-		return nil, "", errors.New("empty tweet id")
+		return nil, "", errors.New("retweeters: empty tweet id")
 	}
 
 	retweetersPrefix := storage.NewPrefixBuilder(TweetsNamespace).
