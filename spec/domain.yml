@@ -150,7 +150,7 @@ components:
           type: string
         chat_id:
           type: string
-        content:
+        text:
           type: string
           minLength: 1
         created_at:
@@ -160,7 +160,7 @@ components:
         - user_id
         - chat_id
         - id
-        - content
+        - text
         - username
         - created_at
 

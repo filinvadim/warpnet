@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.120
+  version: 0.1.121
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -61,427 +61,6 @@ paths:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
 
-  /private/post/pair/{version}: {}
-  /private/get/timeline/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/get/timeline/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /private/post/tweet/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/tweet/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/post/reply/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/post/reply/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/delete/reply/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/delete/reply/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /private/delete/tweet/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/delete/tweet/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /private/post/follow/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/follow/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /private/post/unfollow/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "private/post/unfollow/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /private/post/user/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/user/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/user/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/user/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/users/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/users/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/tweets/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/tweets/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/tweet/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/tweet/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/replies/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/replies/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/reply/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/reply/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
   /public/get/info/{version}:
     options:
       parameters:
@@ -504,6 +83,8 @@ paths:
                 version: "0.1.63",
                 body: {}
               }
+              
+              ... et cetera...
       responses:
         "200":
           description: NOTE! This is WS response. Not a HTTP!
@@ -512,308 +93,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
 
-  /public/get/followers/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/followers/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/followees/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/followees/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/likers/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/likers/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/likescount/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/likescount/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/post/like/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/post/like/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/post/unlike/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/post/unlike/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/retweetscount/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/retweetscount/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/post/retweet/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/post/retweet/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/post/unretweet/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/post/unretweet/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
-
-  /public/get/retweeters/{version}:
-    options:
-      parameters:
-        - in: path
-          name: version
-          schema:
-            type: string
-      description: NOTE! This is WS message identificator. Not a HTTP!
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Message"
-            example: |
-              {
-                message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-                node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-                path: "public/get/retweeters/1.0.0",
-                timestamp: "2025-01-31T22:16:34.206155932+04:00",
-                version: "0.1.63",
-                body: {}
-              }
-      responses:
-        "200":
-          description: NOTE! This is WS response. Not a HTTP!
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message"
+  /private/post/pair/{version}: {}
+  /private/get/timeline/{version}: {}
+  /private/post/tweet/{version}: {}
+  /public/post/reply/{version}: {}
+  /public/delete/reply/{version}: {}
+  /private/delete/tweet/{version}: {}
+  /private/post/follow/{version}: {}
+  /private/post/unfollow/{version}: {}
+  /private/post/user/{version}: {}
+  /public/get/user/{version}: {}
+  /public/get/users/{version}: {}
+  /public/get/tweets/{version}: {}
+  /public/get/tweet/{version}: {}
+  /public/get/replies/{version}: {}
+  /public/get/reply/{version}: {}
+  /public/get/followers/{version}: {}
+  /public/get/followees/{version}: {}
+  /public/get/likers/{version}: {}
+  /public/get/likescount/{version}: {}
+  /public/post/like/{version}: {}
+  /public/post/unlike/{version}: {}
+  /public/get/retweetscount/{version}: {}
+  /public/post/retweet/{version}: {}
+  /public/post/unretweet/{version}: {}
+  /public/get/retweeters/{version}: {}
+  /public/post/message/{version}: {}
+  /public/get/message/{version}: {}
+  /public/delete/message/{version}: {}
+  /public/get/messages/{version}: {}
+  /public/post/chat/{version}: {}
+  /public/delete/chat/{version}: {}
+  /public/get/chats/{version}: {}
 
 components:
   schemas:
+    RequestDescription:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Message"
+          example: |
+            {
+              message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
+              node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
+              path: "public/get/chats/1.0.0",
+              timestamp: "2025-01-31T22:16:34.206155932+04:00",
+              version: "0.1.63",
+              body: {}
+            }
+
     Message:
       type: object
       properties:
@@ -867,6 +196,12 @@ components:
         - $ref: '#/components/schemas/NewRetweetEvent'
         - $ref: '#/components/schemas/GetReTweetsCountEvent'
         - $ref: '#/components/schemas/UnretweetEvent'
+        - $ref: '#/components/schemas/NewChatEvent'
+        - $ref: '#/components/schemas/DeleteChatEvent'
+        - $ref: '#/components/schemas/GetAllChatsEvent'
+        - $ref: '#/components/schemas/GetAllMessagesEvent'
+        - $ref: '#/components/schemas/GetMessageEvent'
+        - $ref: '#/components/schemas/DeleteMessageEvent'
 
     ResponseBody:
       anyOf:
@@ -884,6 +219,9 @@ components:
         - $ref: '#/components/schemas/GetLikersResponse'
         - $ref: '#/components/schemas/GetRetweetersResponse'
         - $ref: '#/components/schemas/AcceptedResponse'
+        - $ref: '#/components/schemas/ChatCreatedResponse'
+        - $ref: '#/components/schemas/MessagesResponse'
+        - $ref: '#/components/schemas/MessageResponse'
 
     AcceptedResponse:
       type: string
@@ -925,35 +263,30 @@ components:
         - message
 
     NewMessageEvent:
-      type: object
-      properties:
-        created_at:
-          type: string
-          format: date-time
-        message:
-          $ref: './domain.yml#/components/schemas/ChatMessage'
+      $ref: './domain.yml#/components/schemas/ChatMessage'
+
+    DeleteMessageEvent:
+      $ref: '#/components/schemas/GetMessageEvent'
 
     GetMessageEvent:
-      allOf:
-        - type: object
-          properties:
-            user_id:
-              type: string
-              minLength: 1
-            username:
-              type: string
-            id:
-              type: string
-            chat_id:
-              type: string
-          required:
-            - user_id
-            - chat_id
-            - id
+      type: object
+      properties:
+        user_id:
+          type: string
+        id:
+          type: string
+        chat_id:
+          type: string
+      required:
+        - user_id
+        - chat_id
+        - id
 
     GetAllMessagesEvent:
       type: object
       properties:
+        user_id:
+          type: string
         chat_id:
           type: string
         limit:
@@ -963,6 +296,7 @@ components:
           type: string
       required:
         - chat_id
+        - user_id
 
     NewReplyEvent:
       $ref: './domain.yml#/components/schemas/Tweet'
@@ -1116,19 +450,33 @@ components:
     NewChatEvent:
       type: object
       properties:
-        created_at:
+        chat_id:
           type: string
-          format: date-time
-        from_user_id:
+        owner_id:
           type: string
           minLength: 1
-        to_user_id:
+        other_user_id:
           type: string
           minLength: 1
       required:
-        - from_user_id
-        - to_user_id
-        - created_at
+        - owner_id
+        - other_user_id
+
+    DeleteChatEvent:
+      type: object
+      properties:
+        chat_id:
+          type: string
+      required:
+        - chat_id
+
+    ChatCreatedResponse:
+      type: object
+      properties:
+        chat_id:
+          type: string
+      required:
+        - chat_id
 
     GetChatEvent:
       type: object
@@ -1156,12 +504,8 @@ components:
           type: string
         limit:
           type: integer
-        chats:
-          type: array
-          items:
-            $ref: './domain.yml#/components/schemas/Chat'
+          x-go-type: uint64
       required:
-        - chats
         - user_id
 
     NewFollowEvent:
@@ -1295,9 +639,12 @@ components:
           items:
             $ref: './domain.yml#/components/schemas/Chat'
       required:
+        - user_id
         - cursor
         - chats
 
+    MessageResponse:
+      $ref: './domain.yml#/components/schemas/ChatMessage'
     MessagesResponse:
       type: object
       properties:
@@ -1312,6 +659,8 @@ components:
           items:
             $ref: './domain.yml#/components/schemas/ChatMessage'
       required:
+        - chat_id
+        - user_id
         - cursor
         - messages
 

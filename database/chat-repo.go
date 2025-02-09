@@ -7,7 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/google/uuid"
-	"sort"
+	"strings"
 	"time"
 )
 
@@ -31,9 +31,12 @@ func NewChatRepo(db ChatStorer) *ChatRepo {
 
 type chatID = string
 
-func (repo *ChatRepo) CreateChat(chatId, ownerId, otherUserId string) (chatID, error) {
+func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (chatID, error) {
 	if ownerId == "" || otherUserId == "" {
 		return "", errors.New("user ID or other user ID is empty")
+	}
+	if err := uuid.Validate(ownerId); err != nil {
+		return "", err
 	}
 
 	txn, err := repo.db.NewWriteTxn()
@@ -48,29 +51,30 @@ func (repo *ChatRepo) CreateChat(chatId, ownerId, otherUserId string) (chatID, e
 		AddRootID(nonceRootId).
 		Build()
 
-	if chatId == "" {
+	if chatId == nil || *chatId == "" {
+		chatId = new(chatID)
 		inc, err := txn.Get(nonceKey)
 		if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
-			return chatId, err
+			return *chatId, err
 		}
-		chatId = generateUUIDv5ChatId(ownerId, otherUserId, string(inc))
+		*chatId = composeChatId(ownerId, otherUserId, string(inc))
 	}
 
 	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(ownerId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(chatId).
+		AddParentId(*chatId).
 		Build()
 
 	sortableUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(ownerId).
 		AddReversedTimestamp(time.Now()).
-		AddParentId(chatId).
+		AddParentId(*chatId).
 		Build()
 
 	chat := domain.Chat{
 		CreatedAt: time.Now(),
-		Id:        chatId,
+		Id:        *chatId,
 		ToUserId:  otherUserId,
 		UpdatedAt: time.Now(),
 		OwnerId:   ownerId,
@@ -88,13 +92,15 @@ func (repo *ChatRepo) CreateChat(chatId, ownerId, otherUserId string) (chatID, e
 	if err != nil {
 		return "", err
 	}
-	return chatId, txn.Commit()
+	return *chatId, txn.Commit()
 }
 
-func (repo *ChatRepo) DeleteChat(chatId, ownerId, otherUserId string) error {
-	if ownerId == "" || chatId == "" || otherUserId == "" {
-		return errors.New("user ID or other chat ID is empty")
+func (repo *ChatRepo) DeleteChat(chatId string) error {
+	if chatId == "" {
+		return errors.New("chat ID is empty")
 	}
+
+	ownerId, otherUserId, _ := decomposeChatId(chatId)
 	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(ownerId).
 		AddRange(storage.FixedRangeKey).
@@ -328,10 +334,14 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 	return txn.Commit()
 }
 
-func generateUUIDv5ChatId(userId1, userId2, nonce string) string {
-	items := []string{userId1, userId2}
-	sort.Strings(items) // Упорядочиваем, чтобы избежать зависимости от порядка
+// TODO access this approach
+func composeChatId(ownerId, otherUserId, nonce string) string {
+	ownerIdTrimmed := strings.ReplaceAll(ownerId, "-", "")
+	userIdTrimmed := strings.ReplaceAll(otherUserId, "-", "")
+	return fmt.Sprintf("%s-%s-%s", ownerIdTrimmed, userIdTrimmed, nonce)
+}
 
-	namespace := uuid.NameSpaceDNS
-	return uuid.NewSHA1(namespace, []byte(items[0]+items[1]+nonce)).String()
+func decomposeChatId(chatId string) (ownerId, otherUserId, nonce string) {
+	split := strings.Split(chatId, "-")
+	return split[1], split[2], split[3]
 }

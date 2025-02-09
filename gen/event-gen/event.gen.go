@@ -27,12 +27,25 @@ const (
 // AcceptedResponse defines model for AcceptedResponse.
 type AcceptedResponse string
 
+// ChatCreatedResponse defines model for ChatCreatedResponse.
+type ChatCreatedResponse struct {
+	ChatId string `json:"chat_id"`
+}
+
 // ChatsResponse defines model for ChatsResponse.
 type ChatsResponse struct {
 	Chats  []externalRef0.Chat `json:"chats"`
 	Cursor string              `json:"cursor"`
-	UserId *string             `json:"user_id,omitempty"`
+	UserId string              `json:"user_id"`
 }
+
+// DeleteChatEvent defines model for DeleteChatEvent.
+type DeleteChatEvent struct {
+	ChatId string `json:"chat_id"`
+}
+
+// DeleteMessageEvent defines model for DeleteMessageEvent.
+type DeleteMessageEvent = GetMessageEvent
 
 // DeleteReplyEvent defines model for DeleteReplyEvent.
 type DeleteReplyEvent = GetReplyEvent
@@ -68,10 +81,9 @@ type FollowersResponse struct {
 
 // GetAllChatsEvent defines model for GetAllChatsEvent.
 type GetAllChatsEvent struct {
-	Chats  []externalRef0.Chat `json:"chats"`
-	Cursor *string             `json:"cursor,omitempty"`
-	Limit  *int                `json:"limit,omitempty"`
-	UserId string              `json:"user_id"`
+	Cursor *string `json:"cursor,omitempty"`
+	Limit  *uint64 `json:"limit,omitempty"`
+	UserId string  `json:"user_id"`
 }
 
 // GetAllMessagesEvent defines model for GetAllMessagesEvent.
@@ -79,6 +91,7 @@ type GetAllMessagesEvent struct {
 	ChatId string  `json:"chat_id"`
 	Cursor *string `json:"cursor,omitempty"`
 	Limit  *uint64 `json:"limit,omitempty"`
+	UserId string  `json:"user_id"`
 }
 
 // GetAllRepliesEvent defines model for GetAllRepliesEvent.
@@ -138,10 +151,9 @@ type GetLikesCountEvent struct {
 
 // GetMessageEvent defines model for GetMessageEvent.
 type GetMessageEvent struct {
-	ChatId   string  `json:"chat_id"`
-	Id       string  `json:"id"`
-	UserId   string  `json:"user_id"`
-	Username *string `json:"username,omitempty"`
+	ChatId string `json:"chat_id"`
+	Id     string `json:"id"`
+	UserId string `json:"user_id"`
 }
 
 // GetReTweetsCountEvent defines model for GetReTweetsCountEvent.
@@ -218,29 +230,29 @@ type Message_Body struct {
 	union json.RawMessage
 }
 
+// MessageResponse defines model for MessageResponse.
+type MessageResponse = externalRef0.ChatMessage
+
 // MessagesResponse defines model for MessagesResponse.
 type MessagesResponse struct {
-	ChatId   *string                    `json:"chat_id,omitempty"`
+	ChatId   string                     `json:"chat_id"`
 	Cursor   string                     `json:"cursor"`
 	Messages []externalRef0.ChatMessage `json:"messages"`
-	UserId   *string                    `json:"user_id,omitempty"`
+	UserId   string                     `json:"user_id"`
 }
 
 // NewChatEvent defines model for NewChatEvent.
 type NewChatEvent struct {
-	CreatedAt  time.Time `json:"created_at"`
-	FromUserId string    `json:"from_user_id"`
-	ToUserId   string    `json:"to_user_id"`
+	ChatId      *string `json:"chat_id,omitempty"`
+	OtherUserId string  `json:"other_user_id"`
+	OwnerId     string  `json:"owner_id"`
 }
 
 // NewFollowEvent defines model for NewFollowEvent.
 type NewFollowEvent = externalRef0.Following
 
 // NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	CreatedAt *time.Time                `json:"created_at,omitempty"`
-	Message   *externalRef0.ChatMessage `json:"message,omitempty"`
-}
+type NewMessageEvent = externalRef0.ChatMessage
 
 // NewReplyEvent defines model for NewReplyEvent.
 type NewReplyEvent = externalRef0.Tweet
@@ -278,6 +290,9 @@ type RequestBody struct {
 	union json.RawMessage
 }
 
+// RequestDescription defines model for RequestDescription.
+type RequestDescription = interface{}
+
 // ResponseBody defines model for ResponseBody.
 type ResponseBody struct {
 	union json.RawMessage
@@ -302,86 +317,14 @@ type UsersResponse struct {
 	Users  []externalRef0.User `json:"users"`
 }
 
-// OptionsPrivateDeleteTweetVersionJSONRequestBody defines body for OptionsPrivateDeleteTweetVersion for application/json ContentType.
-type OptionsPrivateDeleteTweetVersionJSONRequestBody = Message
-
-// OptionsPrivateGetTimelineVersionJSONRequestBody defines body for OptionsPrivateGetTimelineVersion for application/json ContentType.
-type OptionsPrivateGetTimelineVersionJSONRequestBody = Message
-
-// OptionsPrivatePostFollowVersionJSONRequestBody defines body for OptionsPrivatePostFollowVersion for application/json ContentType.
-type OptionsPrivatePostFollowVersionJSONRequestBody = Message
-
 // OptionsPrivatePostLoginVersionJSONRequestBody defines body for OptionsPrivatePostLoginVersion for application/json ContentType.
 type OptionsPrivatePostLoginVersionJSONRequestBody = Message
 
 // OptionsPrivatePostLogoutVersionJSONRequestBody defines body for OptionsPrivatePostLogoutVersion for application/json ContentType.
 type OptionsPrivatePostLogoutVersionJSONRequestBody = Message
 
-// OptionsPrivatePostTweetVersionJSONRequestBody defines body for OptionsPrivatePostTweetVersion for application/json ContentType.
-type OptionsPrivatePostTweetVersionJSONRequestBody = Message
-
-// OptionsPrivatePostUnfollowVersionJSONRequestBody defines body for OptionsPrivatePostUnfollowVersion for application/json ContentType.
-type OptionsPrivatePostUnfollowVersionJSONRequestBody = Message
-
-// OptionsPrivatePostUserVersionJSONRequestBody defines body for OptionsPrivatePostUserVersion for application/json ContentType.
-type OptionsPrivatePostUserVersionJSONRequestBody = Message
-
-// OptionsPublicDeleteReplyVersionJSONRequestBody defines body for OptionsPublicDeleteReplyVersion for application/json ContentType.
-type OptionsPublicDeleteReplyVersionJSONRequestBody = Message
-
-// OptionsPublicGetFolloweesVersionJSONRequestBody defines body for OptionsPublicGetFolloweesVersion for application/json ContentType.
-type OptionsPublicGetFolloweesVersionJSONRequestBody = Message
-
-// OptionsPublicGetFollowersVersionJSONRequestBody defines body for OptionsPublicGetFollowersVersion for application/json ContentType.
-type OptionsPublicGetFollowersVersionJSONRequestBody = Message
-
 // OptionsPublicGetInfoVersionJSONRequestBody defines body for OptionsPublicGetInfoVersion for application/json ContentType.
 type OptionsPublicGetInfoVersionJSONRequestBody = Message
-
-// OptionsPublicGetLikersVersionJSONRequestBody defines body for OptionsPublicGetLikersVersion for application/json ContentType.
-type OptionsPublicGetLikersVersionJSONRequestBody = Message
-
-// OptionsPublicGetLikescountVersionJSONRequestBody defines body for OptionsPublicGetLikescountVersion for application/json ContentType.
-type OptionsPublicGetLikescountVersionJSONRequestBody = Message
-
-// OptionsPublicGetRepliesVersionJSONRequestBody defines body for OptionsPublicGetRepliesVersion for application/json ContentType.
-type OptionsPublicGetRepliesVersionJSONRequestBody = Message
-
-// OptionsPublicGetReplyVersionJSONRequestBody defines body for OptionsPublicGetReplyVersion for application/json ContentType.
-type OptionsPublicGetReplyVersionJSONRequestBody = Message
-
-// OptionsPublicGetRetweetersVersionJSONRequestBody defines body for OptionsPublicGetRetweetersVersion for application/json ContentType.
-type OptionsPublicGetRetweetersVersionJSONRequestBody = Message
-
-// OptionsPublicGetRetweetscountVersionJSONRequestBody defines body for OptionsPublicGetRetweetscountVersion for application/json ContentType.
-type OptionsPublicGetRetweetscountVersionJSONRequestBody = Message
-
-// OptionsPublicGetTweetVersionJSONRequestBody defines body for OptionsPublicGetTweetVersion for application/json ContentType.
-type OptionsPublicGetTweetVersionJSONRequestBody = Message
-
-// OptionsPublicGetTweetsVersionJSONRequestBody defines body for OptionsPublicGetTweetsVersion for application/json ContentType.
-type OptionsPublicGetTweetsVersionJSONRequestBody = Message
-
-// OptionsPublicGetUserVersionJSONRequestBody defines body for OptionsPublicGetUserVersion for application/json ContentType.
-type OptionsPublicGetUserVersionJSONRequestBody = Message
-
-// OptionsPublicGetUsersVersionJSONRequestBody defines body for OptionsPublicGetUsersVersion for application/json ContentType.
-type OptionsPublicGetUsersVersionJSONRequestBody = Message
-
-// OptionsPublicPostLikeVersionJSONRequestBody defines body for OptionsPublicPostLikeVersion for application/json ContentType.
-type OptionsPublicPostLikeVersionJSONRequestBody = Message
-
-// OptionsPublicPostReplyVersionJSONRequestBody defines body for OptionsPublicPostReplyVersion for application/json ContentType.
-type OptionsPublicPostReplyVersionJSONRequestBody = Message
-
-// OptionsPublicPostRetweetVersionJSONRequestBody defines body for OptionsPublicPostRetweetVersion for application/json ContentType.
-type OptionsPublicPostRetweetVersionJSONRequestBody = Message
-
-// OptionsPublicPostUnlikeVersionJSONRequestBody defines body for OptionsPublicPostUnlikeVersion for application/json ContentType.
-type OptionsPublicPostUnlikeVersionJSONRequestBody = Message
-
-// OptionsPublicPostUnretweetVersionJSONRequestBody defines body for OptionsPublicPostUnretweetVersion for application/json ContentType.
-type OptionsPublicPostUnretweetVersionJSONRequestBody = Message
 
 // AsRequestBody returns the union data inside the Message_Body as a RequestBody
 func (t Message_Body) AsRequestBody() (RequestBody, error) {
@@ -1095,6 +1038,162 @@ func (t *RequestBody) MergeUnretweetEvent(v UnretweetEvent) error {
 	return err
 }
 
+// AsNewChatEvent returns the union data inside the RequestBody as a NewChatEvent
+func (t RequestBody) AsNewChatEvent() (NewChatEvent, error) {
+	var body NewChatEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewChatEvent overwrites any union data inside the RequestBody as the provided NewChatEvent
+func (t *RequestBody) FromNewChatEvent(v NewChatEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewChatEvent performs a merge with any union data inside the RequestBody, using the provided NewChatEvent
+func (t *RequestBody) MergeNewChatEvent(v NewChatEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteChatEvent returns the union data inside the RequestBody as a DeleteChatEvent
+func (t RequestBody) AsDeleteChatEvent() (DeleteChatEvent, error) {
+	var body DeleteChatEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteChatEvent overwrites any union data inside the RequestBody as the provided DeleteChatEvent
+func (t *RequestBody) FromDeleteChatEvent(v DeleteChatEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteChatEvent performs a merge with any union data inside the RequestBody, using the provided DeleteChatEvent
+func (t *RequestBody) MergeDeleteChatEvent(v DeleteChatEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAllChatsEvent returns the union data inside the RequestBody as a GetAllChatsEvent
+func (t RequestBody) AsGetAllChatsEvent() (GetAllChatsEvent, error) {
+	var body GetAllChatsEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAllChatsEvent overwrites any union data inside the RequestBody as the provided GetAllChatsEvent
+func (t *RequestBody) FromGetAllChatsEvent(v GetAllChatsEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAllChatsEvent performs a merge with any union data inside the RequestBody, using the provided GetAllChatsEvent
+func (t *RequestBody) MergeGetAllChatsEvent(v GetAllChatsEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAllMessagesEvent returns the union data inside the RequestBody as a GetAllMessagesEvent
+func (t RequestBody) AsGetAllMessagesEvent() (GetAllMessagesEvent, error) {
+	var body GetAllMessagesEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAllMessagesEvent overwrites any union data inside the RequestBody as the provided GetAllMessagesEvent
+func (t *RequestBody) FromGetAllMessagesEvent(v GetAllMessagesEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAllMessagesEvent performs a merge with any union data inside the RequestBody, using the provided GetAllMessagesEvent
+func (t *RequestBody) MergeGetAllMessagesEvent(v GetAllMessagesEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetMessageEvent returns the union data inside the RequestBody as a GetMessageEvent
+func (t RequestBody) AsGetMessageEvent() (GetMessageEvent, error) {
+	var body GetMessageEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetMessageEvent overwrites any union data inside the RequestBody as the provided GetMessageEvent
+func (t *RequestBody) FromGetMessageEvent(v GetMessageEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetMessageEvent performs a merge with any union data inside the RequestBody, using the provided GetMessageEvent
+func (t *RequestBody) MergeGetMessageEvent(v GetMessageEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteMessageEvent returns the union data inside the RequestBody as a DeleteMessageEvent
+func (t RequestBody) AsDeleteMessageEvent() (DeleteMessageEvent, error) {
+	var body DeleteMessageEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteMessageEvent overwrites any union data inside the RequestBody as the provided DeleteMessageEvent
+func (t *RequestBody) FromDeleteMessageEvent(v DeleteMessageEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteMessageEvent performs a merge with any union data inside the RequestBody, using the provided DeleteMessageEvent
+func (t *RequestBody) MergeDeleteMessageEvent(v DeleteMessageEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t RequestBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1469,6 +1568,84 @@ func (t *ResponseBody) MergeAcceptedResponse(v AcceptedResponse) error {
 	return err
 }
 
+// AsChatCreatedResponse returns the union data inside the ResponseBody as a ChatCreatedResponse
+func (t ResponseBody) AsChatCreatedResponse() (ChatCreatedResponse, error) {
+	var body ChatCreatedResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromChatCreatedResponse overwrites any union data inside the ResponseBody as the provided ChatCreatedResponse
+func (t *ResponseBody) FromChatCreatedResponse(v ChatCreatedResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeChatCreatedResponse performs a merge with any union data inside the ResponseBody, using the provided ChatCreatedResponse
+func (t *ResponseBody) MergeChatCreatedResponse(v ChatCreatedResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMessagesResponse returns the union data inside the ResponseBody as a MessagesResponse
+func (t ResponseBody) AsMessagesResponse() (MessagesResponse, error) {
+	var body MessagesResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMessagesResponse overwrites any union data inside the ResponseBody as the provided MessagesResponse
+func (t *ResponseBody) FromMessagesResponse(v MessagesResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMessagesResponse performs a merge with any union data inside the ResponseBody, using the provided MessagesResponse
+func (t *ResponseBody) MergeMessagesResponse(v MessagesResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMessageResponse returns the union data inside the ResponseBody as a MessageResponse
+func (t ResponseBody) AsMessageResponse() (MessageResponse, error) {
+	var body MessageResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMessageResponse overwrites any union data inside the ResponseBody as the provided MessageResponse
+func (t *ResponseBody) FromMessageResponse(v MessageResponse) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMessageResponse performs a merge with any union data inside the ResponseBody, using the provided MessageResponse
+func (t *ResponseBody) MergeMessageResponse(v MessageResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ResponseBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1482,50 +1659,47 @@ func (t *ResponseBody) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"wBwDTfBgu/1/AAAA//9pHFvmO5MAAA==",
+	"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",
+	"WT6SGlcAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
