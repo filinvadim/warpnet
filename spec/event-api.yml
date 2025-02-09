@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.122
+  version: 0.1.123
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -207,6 +207,7 @@ components:
         - $ref: '#/components/schemas/AcceptedResponse'
         - $ref: '#/components/schemas/ChatCreatedResponse'
         - $ref: '#/components/schemas/ChatMessageResponse'
+        - $ref: '#/components/schemas/NewMessageResponse'
 
     AcceptedResponse:
       type: string
@@ -248,6 +249,9 @@ components:
         - message
 
     NewMessageEvent:
+      $ref: './domain.yml#/components/schemas/ChatMessage'
+
+    NewMessageResponse:
       $ref: './domain.yml#/components/schemas/ChatMessage'
 
     DeleteMessageEvent:

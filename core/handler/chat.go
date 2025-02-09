@@ -37,11 +37,7 @@ func StreamCreateChatHandler(repo ChatStorer) middleware.WarpHandler {
 		}
 
 		chat, err := repo.CreateChat(ev.ChatId, ev.OwnerId, ev.OtherUserId)
-		if err != nil {
-			return nil, err
-		}
-
-		return event.ChatCreatedResponse(chat), nil
+		return event.ChatCreatedResponse(chat), err
 	}
 }
 
@@ -57,11 +53,7 @@ func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 			return nil, errors.New("owner ID, chat ID or other user ID is empty")
 		}
 
-		err = repo.DeleteChat(ev.ChatId)
-		if err != nil {
-			return nil, err
-		}
-		return event.Accepted, nil
+		return event.Accepted, repo.DeleteChat(ev.ChatId)
 	}
 }
 
@@ -134,11 +126,7 @@ func StreamSendMessageHandler(repo ChatStorer) middleware.WarpHandler {
 		}
 
 		msg, err = repo.CreateMessage(msg)
-		if err != nil {
-			return nil, err
-		}
-
-		return event.Accepted, nil
+		return event.NewMessageResponse(msg), err
 	}
 }
 
@@ -239,10 +227,6 @@ func StreamDeleteMessageHandler(repo ChatStorer) middleware.WarpHandler {
 			return nil, errors.New("chat ID, user ID, or message ID cannot be blank")
 		}
 
-		err = repo.DeleteMessage(ev.UserId, ev.ChatId, ev.Id)
-		if err != nil {
-			return nil, err
-		}
-		return event.Accepted, nil
+		return event.Accepted, repo.DeleteMessage(ev.UserId, ev.ChatId, ev.Id)
 	}
 }

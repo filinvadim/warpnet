@@ -92,13 +92,12 @@ func (g *Gossip) Run(
 	}
 	g.clientNode = clientNode
 	g.serverNode = serverNode
-	g.owner = authRepo.GetOwner()
 
 	if err := g.run(serverNode); err != nil {
 		log.Fatalf("failed to create Gossip sub: %s", err)
 	}
 
-	if err := g.preSubscribe(g.owner, followRepo); err != nil {
+	if err := g.preSubscribe(authRepo, followRepo); err != nil {
 		log.Fatalf("failed to presubscribe: %s", err)
 	}
 	for {
@@ -178,17 +177,18 @@ func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 	return nil
 }
 
-func (g *Gossip) preSubscribe(owner domain.Owner, followRepo PubsubFollowingStorer) error {
-	if owner.UserId == "" {
+func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer) error {
+	if authRepo == nil {
 		return nil
 	}
 	var (
 		nextCursor string
 		limit      = uint64(20)
 	)
+	g.owner = authRepo.GetOwner()
 
 	for {
-		followees, cur, _ := followRepo.GetFollowees(owner.UserId, &limit, &nextCursor)
+		followees, cur, _ := followRepo.GetFollowees(g.owner.UserId, &limit, &nextCursor)
 		for _, f := range followees {
 			if err := g.SubscribeUserUpdate(f.Followee); err != nil {
 				return err
