@@ -76,11 +76,11 @@ type DistributedHashTable struct {
 }
 
 func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
-	log.Infoln("dht: node removed", info.ID)
+	log.Debugln("dht: node removed", info.ID)
 }
 
 func DefaultNodeAddedCallback(info warpnet.PeerAddrInfo) {
-	log.Infoln("dht: node added", info.ID)
+	log.Debugln("dht: node added", info.ID)
 }
 
 func NewDHTable(
@@ -123,13 +123,16 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
-			log.Debugf("dht: peer added: %s", id)
-			d.addF(peer.AddrInfo{ID: id})
+			info := peer.AddrInfo{ID: id}
+			d.addF(info)
+			DefaultNodeAddedCallback(info)
 		}
 	}
 	if d.removeF != nil {
 		dhTable.RoutingTable().PeerRemoved = func(id peer.ID) {
-			d.removeF(peer.AddrInfo{ID: id})
+			info := peer.AddrInfo{ID: id}
+			d.removeF(info)
+			DefaultNodeRemovedCallback(info)
 		}
 	}
 
