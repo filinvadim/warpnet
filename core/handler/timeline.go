@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -13,7 +14,7 @@ type TimelineFetcher interface {
 }
 
 func StreamTimelineHandler(repo TimelineFetcher) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTimelineEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

@@ -42,7 +42,7 @@ func StreamFollowHandler(
 	authRepo FollowingAuthStorer,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewFollowEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -73,7 +73,7 @@ func StreamUnfollowHandler(
 	broadcaster FollowingBroadcaster,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewUnfollowEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -102,7 +102,7 @@ func StreamGetFollowersHandler(
 	followRepo FollowingStorer,
 	streamer FollowNodeStreamer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetFollowersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -139,7 +139,7 @@ func StreamGetFolloweesHandler(
 	followRepo FollowingStorer,
 	streamer FollowNodeStreamer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetFolloweesEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

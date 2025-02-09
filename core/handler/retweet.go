@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -40,7 +41,7 @@ func StreamNewReTweetHandler(
 	tweetRepo ReTweetsStorer,
 	timelineRepo RetweetTimelineUpdater,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var retweetEvent event.NewRetweetEvent
 		err := json.JSON.Unmarshal(buf, &retweetEvent)
 		if err != nil {
@@ -89,7 +90,7 @@ func StreamNewReTweetHandler(
 }
 
 func StreamUnretweetHandler(authRepo OwnerReTweetStorer, tweetRepo ReTweetsStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.UnretweetEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -127,7 +128,7 @@ func StreamUnretweetHandler(authRepo OwnerReTweetStorer, tweetRepo ReTweetsStore
 }
 
 func StreamGetReTweetsCountHandler(repo ReTweetsStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetReTweetsCountEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -149,7 +150,7 @@ func StreamGetRetweetersHandler(
 	retweetRepo ReTweetsStorer,
 	userRepo RetweetedUserFetcher,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetRetweetersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

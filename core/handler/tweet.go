@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -30,7 +31,7 @@ type TimelineUpdater interface {
 }
 
 func StreamGetTweetsHandler(repo TweetsStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllTweetsEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -56,7 +57,7 @@ func StreamGetTweetsHandler(repo TweetsStorer) middleware.WarpHandler {
 }
 
 func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTweetEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -79,7 +80,7 @@ func StreamNewTweetHandler(
 	tweetRepo TweetsStorer,
 	timelineRepo TimelineUpdater,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewTweetEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -135,7 +136,7 @@ func StreamDeleteTweetHandler(
 	authRepo OwnerTweetStorer,
 	repo TweetsStorer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteTweetEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

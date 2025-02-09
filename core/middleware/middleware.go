@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -27,7 +26,7 @@ const (
 	ErrInternalNodeError middlewareError = "internal node error"
 )
 
-type WarpHandler func([]byte) (any, error)
+type WarpHandler func(msg []byte, s warpnet.WarpStream) (any, error)
 
 type WarpMiddleware struct {
 	clientNodeID warpnet.WarpPeerID
@@ -62,13 +61,13 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 		route := stream.FromPrIDToRoute(s.Protocol())
 		if route.IsPrivate() && p.clientNodeID == "" {
 			log.Errorf("middleware: client peer ID not set, ignoring private route:", route)
-			s.Write(ErrUnknownClientPeer.Bytes())
+			_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 			return
 		}
 		if route.IsPrivate() && p.clientNodeID != "" { // not private == no auth
 			if !(p.clientNodeID == s.Conn().RemotePeer()) { // only own client node can do private requests
 				log.Errorf("middleware: client peer id mismatch:", s.Conn().RemotePeer())
-				s.Write(ErrUnknownClientPeer.Bytes())
+				_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 				return
 			}
 		}
@@ -98,15 +97,15 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
-		// TODO remove
-		if len(data) > 200 {
-			data = data[:200]
+		if log.GetLevel() == log.DebugLevel {
+			if len(data) > 200 {
+				printData := data[:200]
+				log.Debugln(">>> STREAM REQUEST", string(s.Protocol()), string(printData))
+			}
 		}
 
-		log.Debugln(">>> STREAM REQUEST", string(s.Protocol()), string(data))
-
 		if response == nil {
-			response, err = fn(data)
+			response, err = fn(data, s)
 			if err != nil {
 				log.Errorf("handling %s message: %v\n", s.Protocol(), err)
 				response = domain.Error{Message: ErrInternalNodeError.Error()}
@@ -126,10 +125,6 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 				log.Errorf("middleware: writing string to stream: %v", err)
 			}
 			return
-		case p2p.NodeInfo:
-			info := response.(p2p.NodeInfo)
-			info.StreamStats = s.Stat()
-			response = info
 		default:
 		}
 		if err := encoder.Encode(response); err != nil {

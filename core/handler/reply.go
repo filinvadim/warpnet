@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -26,7 +27,7 @@ type ReplyStorer interface {
 }
 
 func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllRepliesEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -51,7 +52,7 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 }
 
 func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetReplyEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -69,7 +70,7 @@ func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
 }
 
 func StreamNewReplyHandler(broadcaster ReplyBroadcaster, authRepo OwnerReplyStorer, repo ReplyStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewReplyEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -127,7 +128,7 @@ func StreamDeleteReplyHandler(
 	authRepo OwnerReplyStorer,
 	repo ReplyStorer,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteReplyEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

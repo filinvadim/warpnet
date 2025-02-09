@@ -2,13 +2,15 @@ package handler
 
 import (
 	"errors"
+	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 )
 
-func StreamNodesPairingHandler(serverAuthInfo domain.AuthNodeInfo) func(buf []byte) (any, error) {
-	return func(buf []byte) (any, error) {
+func StreamNodesPairingHandler(serverAuthInfo domain.AuthNodeInfo) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var clientInfo domain.AuthNodeInfo
 		if err := json.JSON.Unmarshal(buf, &clientInfo); err != nil {
 			log.Errorf("pair: unmarshaling from stream: %v", err)

@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -26,7 +27,7 @@ type LikesStorer interface {
 }
 
 func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.LikeEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -59,7 +60,7 @@ func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlewar
 }
 
 func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.UnlikeEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -92,7 +93,7 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 }
 
 func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetLikesCountEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -110,7 +111,7 @@ func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
 }
 
 func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetLikersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

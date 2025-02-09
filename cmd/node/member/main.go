@@ -85,6 +85,7 @@ func main() {
 	replyRepo := database.NewRepliesRepo(db)
 	consensusRepo := database.NewConsensusRepo(db)
 	likeRepo := database.NewLikeRepo(db)
+	chatRepo := database.NewChatRepo(db)
 
 	var (
 		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
@@ -285,6 +286,34 @@ func main() {
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_RETWEETERS,
 		logMw(authMw(unwrapMw(handler.StreamGetRetweetersHandler(tweetRepo, userRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_POST_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PRIVATE_DELETE_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamDeleteChatHandler(chatRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PRIVATE_GET_CHATS,
+		logMw(authMw(unwrapMw(handler.StreamGetUserChatsHandler(chatRepo, userRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_POST_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamSendMessageHandler(chatRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PUBLIC_DELETE_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PRIVATE_GET_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamGetMessageHandler(chatRepo, userRepo)))),
+	)
+	serverNode.SetStreamHandler(
+		event.PRIVATE_GET_MESSAGES,
+		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, userRepo)))),
 	)
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 

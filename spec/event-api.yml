@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.121
+  version: 0.1.122
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -119,30 +119,15 @@ paths:
   /public/post/unretweet/{version}: {}
   /public/get/retweeters/{version}: {}
   /public/post/message/{version}: {}
-  /public/get/message/{version}: {}
+  /private/get/message/{version}: {}
   /public/delete/message/{version}: {}
-  /public/get/messages/{version}: {}
+  /private/get/messages/{version}: {}
   /public/post/chat/{version}: {}
-  /public/delete/chat/{version}: {}
-  /public/get/chats/{version}: {}
+  /private/delete/chat/{version}: {}
+  /private/get/chats/{version}: {}
 
 components:
   schemas:
-    RequestDescription:
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Message"
-          example: |
-            {
-              message_id: "079a770a-a203-4d6b-9d45-4faa9274c1ca",
-              node_id: "12D3KooWCyEYA3aXWpnTe9GZU6Bh3C6ScunVRxdP77UZ8X2W5FhE",
-              path: "public/get/chats/1.0.0",
-              timestamp: "2025-01-31T22:16:34.206155932+04:00",
-              version: "0.1.63",
-              body: {}
-            }
-
     Message:
       type: object
       properties:
@@ -202,6 +187,7 @@ components:
         - $ref: '#/components/schemas/GetAllMessagesEvent'
         - $ref: '#/components/schemas/GetMessageEvent'
         - $ref: '#/components/schemas/DeleteMessageEvent'
+        - $ref: '#/components/schemas/NewMessageEvent'
 
     ResponseBody:
       anyOf:
@@ -210,7 +196,7 @@ components:
         - $ref: '#/components/schemas/UsersResponse'
         - $ref: '#/components/schemas/TweetsResponse'
         - $ref: '#/components/schemas/ChatsResponse'
-        - $ref: '#/components/schemas/MessagesResponse'
+        - $ref: '#/components/schemas/ChatMessagesResponse'
         - $ref: '#/components/schemas/RepliesTreeResponse'
         - $ref: '#/components/schemas/FolloweesResponse'
         - $ref: '#/components/schemas/FollowersResponse'
@@ -220,8 +206,7 @@ components:
         - $ref: '#/components/schemas/GetRetweetersResponse'
         - $ref: '#/components/schemas/AcceptedResponse'
         - $ref: '#/components/schemas/ChatCreatedResponse'
-        - $ref: '#/components/schemas/MessagesResponse'
-        - $ref: '#/components/schemas/MessageResponse'
+        - $ref: '#/components/schemas/ChatMessageResponse'
 
     AcceptedResponse:
       type: string
@@ -285,7 +270,7 @@ components:
     GetAllMessagesEvent:
       type: object
       properties:
-        user_id:
+        owner_id:
           type: string
         chat_id:
           type: string
@@ -296,7 +281,7 @@ components:
           type: string
       required:
         - chat_id
-        - user_id
+        - owner_id
 
     NewReplyEvent:
       $ref: './domain.yml#/components/schemas/Tweet'
@@ -471,12 +456,7 @@ components:
         - chat_id
 
     ChatCreatedResponse:
-      type: object
-      properties:
-        chat_id:
-          type: string
-      required:
-        - chat_id
+      $ref: './domain.yml#/components/schemas/Chat'
 
     GetChatEvent:
       type: object
@@ -643,12 +623,13 @@ components:
         - cursor
         - chats
 
-    MessageResponse:
+    ChatMessageResponse:
       $ref: './domain.yml#/components/schemas/ChatMessage'
-    MessagesResponse:
+
+    ChatMessagesResponse:
       type: object
       properties:
-        user_id:
+        owner_id:
           type: string
         chat_id:
           type: string
@@ -660,7 +641,7 @@ components:
             $ref: './domain.yml#/components/schemas/ChatMessage'
       required:
         - chat_id
-        - user_id
+        - owner_id
         - cursor
         - messages
 

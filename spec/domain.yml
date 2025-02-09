@@ -141,10 +141,10 @@ components:
     ChatMessage:
       type: object
       properties:
-        user_id:
+        owner_id:
           type: string
           minLength: 1
-        username:
+        other_user_id:
           type: string
         id:
           type: string
@@ -157,11 +157,11 @@ components:
           type: string
           format: date-time
       required:
-        - user_id
+        - owner_id
         - chat_id
         - id
         - text
-        - username
+        - other_user_id
         - created_at
 
     Chat:
@@ -171,7 +171,7 @@ components:
           type: string
         owner_id:
           type: string
-        to_user_id:
+        other_user_id:
           type: string
         created_at:
           type: string
@@ -182,7 +182,7 @@ components:
       required:
         - id
         - owner_id
-        - to_user_id
+        - other_user_id
         - created_at
         - updated_at
 

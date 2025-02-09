@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -33,7 +34,7 @@ func StreamGetUserHandler(
 	followRepo UserFollowsCounter,
 	repo UserFetcher,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetUserEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -79,7 +80,7 @@ func StreamGetUserHandler(
 func StreamGetUsersHandler(
 	userRepo UserFetcher,
 ) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllUsersEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
@@ -99,7 +100,7 @@ func StreamGetUsersHandler(
 }
 
 func StreamUpdateProfileHandler(authRepo UserAuthStorer, userRepo UserFetcher) middleware.WarpHandler {
-	return func(buf []byte) (any, error) {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewUserEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {

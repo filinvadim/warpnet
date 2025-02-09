@@ -115,7 +115,6 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		user.Username = owner.Username
 		user.CreatedAt = owner.CreatedAt
 		user.Rtt = math.MaxInt64 // put your user at the end of a who-to-follow list
-
 		user.NodeId = nodeInfo.Identity.Owner.NodeId
 		owner.NodeId = nodeInfo.Identity.Owner.NodeId
 	}

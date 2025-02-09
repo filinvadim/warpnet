@@ -28,8 +28,17 @@ const (
 type AcceptedResponse string
 
 // ChatCreatedResponse defines model for ChatCreatedResponse.
-type ChatCreatedResponse struct {
-	ChatId string `json:"chat_id"`
+type ChatCreatedResponse = externalRef0.Chat
+
+// ChatMessageResponse defines model for ChatMessageResponse.
+type ChatMessageResponse = externalRef0.ChatMessage
+
+// ChatMessagesResponse defines model for ChatMessagesResponse.
+type ChatMessagesResponse struct {
+	ChatId   string                     `json:"chat_id"`
+	Cursor   string                     `json:"cursor"`
+	Messages []externalRef0.ChatMessage `json:"messages"`
+	OwnerId  string                     `json:"owner_id"`
 }
 
 // ChatsResponse defines model for ChatsResponse.
@@ -88,10 +97,10 @@ type GetAllChatsEvent struct {
 
 // GetAllMessagesEvent defines model for GetAllMessagesEvent.
 type GetAllMessagesEvent struct {
-	ChatId string  `json:"chat_id"`
-	Cursor *string `json:"cursor,omitempty"`
-	Limit  *uint64 `json:"limit,omitempty"`
-	UserId string  `json:"user_id"`
+	ChatId  string  `json:"chat_id"`
+	Cursor  *string `json:"cursor,omitempty"`
+	Limit   *uint64 `json:"limit,omitempty"`
+	OwnerId string  `json:"owner_id"`
 }
 
 // GetAllRepliesEvent defines model for GetAllRepliesEvent.
@@ -230,17 +239,6 @@ type Message_Body struct {
 	union json.RawMessage
 }
 
-// MessageResponse defines model for MessageResponse.
-type MessageResponse = externalRef0.ChatMessage
-
-// MessagesResponse defines model for MessagesResponse.
-type MessagesResponse struct {
-	ChatId   string                     `json:"chat_id"`
-	Cursor   string                     `json:"cursor"`
-	Messages []externalRef0.ChatMessage `json:"messages"`
-	UserId   string                     `json:"user_id"`
-}
-
 // NewChatEvent defines model for NewChatEvent.
 type NewChatEvent struct {
 	ChatId      *string `json:"chat_id,omitempty"`
@@ -289,9 +287,6 @@ type RepliesTreeResponse struct {
 type RequestBody struct {
 	union json.RawMessage
 }
-
-// RequestDescription defines model for RequestDescription.
-type RequestDescription = interface{}
 
 // ResponseBody defines model for ResponseBody.
 type ResponseBody struct {
@@ -1194,6 +1189,32 @@ func (t *RequestBody) MergeDeleteMessageEvent(v DeleteMessageEvent) error {
 	return err
 }
 
+// AsNewMessageEvent returns the union data inside the RequestBody as a NewMessageEvent
+func (t RequestBody) AsNewMessageEvent() (NewMessageEvent, error) {
+	var body NewMessageEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNewMessageEvent overwrites any union data inside the RequestBody as the provided NewMessageEvent
+func (t *RequestBody) FromNewMessageEvent(v NewMessageEvent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNewMessageEvent performs a merge with any union data inside the RequestBody, using the provided NewMessageEvent
+func (t *RequestBody) MergeNewMessageEvent(v NewMessageEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t RequestBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -1334,22 +1355,22 @@ func (t *ResponseBody) MergeChatsResponse(v ChatsResponse) error {
 	return err
 }
 
-// AsMessagesResponse returns the union data inside the ResponseBody as a MessagesResponse
-func (t ResponseBody) AsMessagesResponse() (MessagesResponse, error) {
-	var body MessagesResponse
+// AsChatMessagesResponse returns the union data inside the ResponseBody as a ChatMessagesResponse
+func (t ResponseBody) AsChatMessagesResponse() (ChatMessagesResponse, error) {
+	var body ChatMessagesResponse
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromMessagesResponse overwrites any union data inside the ResponseBody as the provided MessagesResponse
-func (t *ResponseBody) FromMessagesResponse(v MessagesResponse) error {
+// FromChatMessagesResponse overwrites any union data inside the ResponseBody as the provided ChatMessagesResponse
+func (t *ResponseBody) FromChatMessagesResponse(v ChatMessagesResponse) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeMessagesResponse performs a merge with any union data inside the ResponseBody, using the provided MessagesResponse
-func (t *ResponseBody) MergeMessagesResponse(v MessagesResponse) error {
+// MergeChatMessagesResponse performs a merge with any union data inside the ResponseBody, using the provided ChatMessagesResponse
+func (t *ResponseBody) MergeChatMessagesResponse(v ChatMessagesResponse) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1594,48 +1615,22 @@ func (t *ResponseBody) MergeChatCreatedResponse(v ChatCreatedResponse) error {
 	return err
 }
 
-// AsMessagesResponse returns the union data inside the ResponseBody as a MessagesResponse
-func (t ResponseBody) AsMessagesResponse() (MessagesResponse, error) {
-	var body MessagesResponse
+// AsChatMessageResponse returns the union data inside the ResponseBody as a ChatMessageResponse
+func (t ResponseBody) AsChatMessageResponse() (ChatMessageResponse, error) {
+	var body ChatMessageResponse
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromMessagesResponse overwrites any union data inside the ResponseBody as the provided MessagesResponse
-func (t *ResponseBody) FromMessagesResponse(v MessagesResponse) error {
+// FromChatMessageResponse overwrites any union data inside the ResponseBody as the provided ChatMessageResponse
+func (t *ResponseBody) FromChatMessageResponse(v ChatMessageResponse) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeMessagesResponse performs a merge with any union data inside the ResponseBody, using the provided MessagesResponse
-func (t *ResponseBody) MergeMessagesResponse(v MessagesResponse) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsMessageResponse returns the union data inside the ResponseBody as a MessageResponse
-func (t ResponseBody) AsMessageResponse() (MessageResponse, error) {
-	var body MessageResponse
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromMessageResponse overwrites any union data inside the ResponseBody as the provided MessageResponse
-func (t *ResponseBody) FromMessageResponse(v MessageResponse) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeMessageResponse performs a merge with any union data inside the ResponseBody, using the provided MessageResponse
-func (t *ResponseBody) MergeMessageResponse(v MessageResponse) error {
+// MergeChatMessageResponse performs a merge with any union data inside the ResponseBody, using the provided ChatMessageResponse
+func (t *ResponseBody) MergeChatMessageResponse(v ChatMessageResponse) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1659,47 +1654,46 @@ func (t *ResponseBody) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"WT6SGlcAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -31,17 +31,17 @@ func NewChatRepo(db ChatStorer) *ChatRepo {
 
 type chatID = string
 
-func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (chatID, error) {
+func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (domain.Chat, error) {
 	if ownerId == "" || otherUserId == "" {
-		return "", errors.New("user ID or other user ID is empty")
+		return domain.Chat{}, errors.New("user ID or other user ID is empty")
 	}
 	if err := uuid.Validate(ownerId); err != nil {
-		return "", err
+		return domain.Chat{}, err
 	}
 
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
-		return "", err
+		return domain.Chat{}, err
 	}
 	defer txn.Rollback()
 
@@ -55,7 +55,7 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (c
 		chatId = new(chatID)
 		inc, err := txn.Get(nonceKey)
 		if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
-			return *chatId, err
+			return domain.Chat{}, err
 		}
 		*chatId = composeChatId(ownerId, otherUserId, string(inc))
 	}
@@ -73,26 +73,26 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (c
 		Build()
 
 	chat := domain.Chat{
-		CreatedAt: time.Now(),
-		Id:        *chatId,
-		ToUserId:  otherUserId,
-		UpdatedAt: time.Now(),
-		OwnerId:   ownerId,
+		CreatedAt:   time.Now(),
+		Id:          *chatId,
+		OtherUserId: otherUserId,
+		UpdatedAt:   time.Now(),
+		OwnerId:     ownerId,
 	}
 
 	bt, err := json.JSON.Marshal(chat)
 	if err != nil {
-		return "", err
+		return chat, err
 	}
 	err = txn.Set(fixedUserChatKey, sortableUserChatKey.Bytes())
 	if err != nil {
-		return "", err
+		return chat, err
 	}
 	err = txn.Set(sortableUserChatKey, bt)
 	if err != nil {
-		return "", err
+		return chat, err
 	}
-	return *chatId, txn.Commit()
+	return chat, txn.Commit()
 }
 
 func (repo *ChatRepo) DeleteChat(chatId string) error {
@@ -191,7 +191,7 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 		AddSubPrefix(MessageSubNamespace).
 		AddRootID(msg.ChatId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(msg.UserId).
+		AddParentId(msg.OwnerId).
 		AddId(msg.Id).
 		Build()
 
@@ -199,7 +199,7 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 		AddSubPrefix(MessageSubNamespace).
 		AddRootID(msg.ChatId).
 		AddReversedTimestamp(msg.CreatedAt).
-		AddParentId(msg.UserId).
+		AddParentId(msg.OwnerId).
 		AddId(msg.Id).
 		Build()
 

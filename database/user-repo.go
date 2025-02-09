@@ -18,7 +18,8 @@ var (
 
 const (
 	UsersRepoName    = "/USERS"
-	UserSubNamespace = "USER"
+	userSubNamespace = "USER"
+	nodeSubNamespace = "NODE"
 
 	defaultAverageRTT int64 = 250000
 )
@@ -59,7 +60,7 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	rttRange := storage.RangePrefix(strconv.FormatInt(user.Rtt, 10))
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
+		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(user.Id).
@@ -71,7 +72,7 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	}
 
 	sortableKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
+		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(rttRange).
 		AddParentId(user.Id).
@@ -82,6 +83,16 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 		return user, err
 	}
 	defer txn.Rollback()
+
+	if user.NodeId != "" {
+		nodeUserKey := storage.NewPrefixBuilder(UsersRepoName).
+			AddSubPrefix(nodeSubNamespace).
+			AddRootID(user.NodeId).
+			Build()
+		if err = txn.Set(nodeUserKey, sortableKey.Bytes()); err != nil {
+			return user, err
+		}
+	}
 
 	if err = txn.Set(fixedKey, sortableKey.Bytes()); err != nil {
 		return user, err
@@ -96,7 +107,7 @@ func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.U
 	var existingUser domainGen.User
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
+		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userId).
@@ -152,10 +163,22 @@ func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.U
 	if err != nil {
 		return existingUser, err
 	}
+	if err = txn.Set(fixedKey, sortableKeyBytes); err != nil {
+		return existingUser, err
+	}
 	if err = txn.Set(storage.DatabaseKey(sortableKeyBytes), bt); err != nil {
 		return existingUser, err
 	}
 
+	if newUser.NodeId != "" {
+		nodeUserKey := storage.NewPrefixBuilder(UsersRepoName).
+			AddSubPrefix(nodeSubNamespace).
+			AddRootID(newUser.NodeId).
+			Build()
+		if err = txn.Set(nodeUserKey, sortableKeyBytes); err != nil {
+			return existingUser, err
+		}
+	}
 	return existingUser, txn.Commit()
 }
 
@@ -165,7 +188,7 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 		return user, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
+		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
@@ -194,10 +217,43 @@ func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
 	return user, nil
 }
 
+func (repo *UserRepo) GetByNodeID(nodeID string) (user domainGen.User, err error) {
+	if nodeID == "" {
+		return user, ErrUserNotFound
+	}
+	nodeUserKey := storage.NewPrefixBuilder(UsersRepoName).
+		AddSubPrefix(nodeSubNamespace).
+		AddRootID(nodeID).
+		Build()
+
+	sortableKeyBytes, err := repo.db.Get(nodeUserKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return user, ErrUserNotFound
+	}
+	if err != nil {
+		return user, err
+	}
+
+	data, err := repo.db.Get(storage.DatabaseKey(sortableKeyBytes))
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return user, ErrUserNotFound
+	}
+	if err != nil {
+		return user, err
+	}
+
+	err = json.JSON.Unmarshal(data, &user)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
 // Delete removes a user by their ID
 func (repo *UserRepo) Delete(userID string) error {
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-		AddSubPrefix(UserSubNamespace).
+		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userID).
@@ -217,17 +273,38 @@ func (repo *UserRepo) Delete(userID string) error {
 		return err
 	}
 
+	data, err := txn.Get(storage.DatabaseKey(sortableKeyBytes))
+	if err != nil {
+		return err
+	}
+
+	var u domainGen.User
+	err = json.JSON.Unmarshal(data, &u)
+	if err != nil {
+		return err
+	}
+
 	if err = txn.Delete(fixedKey); err != nil {
 		return err
 	}
 	if err = txn.Delete(storage.DatabaseKey(sortableKeyBytes)); err != nil {
 		return err
 	}
+	if u.NodeId != "" {
+		nodeUserKey := storage.NewPrefixBuilder(UsersRepoName).
+			AddSubPrefix(nodeSubNamespace).
+			AddRootID(u.NodeId).
+			Build()
+
+		if err = txn.Delete(nodeUserKey); err != nil {
+			return err
+		}
+	}
 	return txn.Commit()
 }
 
 func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
-	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(UserSubNamespace).Build()
+	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(userSubNamespace).Build()
 
 	txn, err := repo.db.NewReadTxn()
 	if err != nil {
@@ -272,7 +349,7 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err e
 
 	for _, userID := range userIDs {
 		fixedKey := storage.NewPrefixBuilder(UsersRepoName).
-			AddSubPrefix(UserSubNamespace).
+			AddSubPrefix(userSubNamespace).
 			AddRootID("None").
 			AddRange(storage.FixedRangeKey).
 			AddParentId(userID).
