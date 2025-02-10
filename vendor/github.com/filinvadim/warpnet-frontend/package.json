@@ -1,14 +1,13 @@
 {
   "name": "warpnet-frontend",
-  "version": "0.0.175",
+  "version": "0.0.176",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build"
   },
   "dependencies": {
-    "@tailwindcss/postcss7-compat": "^2.0.2",
-    "axios": "^1.7.9",
+    "tailwindcss": "4.0.5",
     "base64-js": "^1.5.1",
     "buffer": "^6.0.3",
     "core-js": "^3.6.5",
