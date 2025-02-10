@@ -2,21 +2,23 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
-	"time"
 )
 
 type LikedUserFetcher interface {
 	GetBatch(userIDs ...string) (users []domain.User, err error)
+	Get(userID string) (users domain.User, err error)
 }
 
-type LikesBroadcaster interface {
-	PublishOwnerUpdate(ownerId string, msg event.Message) (err error)
+type LikeStreamer interface {
+	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type LikesStorer interface {
@@ -26,7 +28,7 @@ type LikesStorer interface {
 	Likers(tweetId string, limit *uint64, cursor *string) (likers []string, cur string, err error)
 }
 
-func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
+func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer LikeStreamer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.LikeEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -40,26 +42,39 @@ func StreamLikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlewar
 		if ev.TweetId == "" {
 			return nil, errors.New("like: empty tweet id")
 		}
+
+		likedUser, err := userRepo.Get(ev.UserId)
+		if err != nil {
+			return nil, err
+		}
+
 		num, err := repo.Like(ev.TweetId, ev.UserId)
 		if err != nil {
 			return nil, err
 		}
 
-		reqBody := event.RequestBody{}
-		_ = reqBody.FromLikeEvent(ev)
-		msgBody := &event.Message_Body{}
-		_ = msgBody.FromRequestBody(reqBody)
-		msg := event.Message{
-			Body:      msgBody,
-			Path:      event.PUBLIC_POST_LIKE,
-			Timestamp: time.Now(),
+		likeDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(likedUser.NodeId),
+			event.PUBLIC_POST_LIKE,
+			event.LikeEvent{
+				TweetId: ev.TweetId,
+				UserId:  ev.UserId,
+			},
+		)
+		if err != nil {
+			return nil, err
 		}
 
-		return event.LikesCountResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
+		var possibleError event.ErrorResponse
+		if err := json.JSON.Unmarshal(likeDataResp, &possibleError); err == nil {
+			return nil, fmt.Errorf("unlike stream: %s", possibleError.Message)
+		}
+
+		return event.LikesCountResponse{num}, nil
 	}
 }
 
-func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
+func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer LikeStreamer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.UnlikeEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -73,22 +88,35 @@ func StreamUnlikeHandler(repo LikesStorer, broadcaster LikesBroadcaster) middlew
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
 		}
+
+		unlikedUser, err := userRepo.Get(ev.UserId)
+		if err != nil {
+			return nil, err
+		}
+
 		num, err := repo.Unlike(ev.TweetId, ev.UserId)
 		if err != nil {
 			return nil, err
 		}
 
-		reqBody := event.RequestBody{}
-		_ = reqBody.FromUnlikeEvent(ev)
-		msgBody := &event.Message_Body{}
-		_ = msgBody.FromRequestBody(reqBody)
-		msg := event.Message{
-			Body:      msgBody,
-			Path:      event.PUBLIC_POST_UNLIKE,
-			Timestamp: time.Now(),
+		unlikeDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(unlikedUser.NodeId),
+			event.PUBLIC_POST_LIKE,
+			event.UnlikeEvent{
+				TweetId: ev.TweetId,
+				UserId:  ev.UserId,
+			},
+		)
+		if err != nil {
+			return nil, err
 		}
 
-		return event.LikesCountResponse{num}, broadcaster.PublishOwnerUpdate(ev.UserId, msg)
+		var possibleError event.ErrorResponse
+		if err := json.JSON.Unmarshal(unlikeDataResp, &possibleError); err == nil {
+			return nil, fmt.Errorf("unlike stream: %s", possibleError.Message)
+		}
+
+		return event.LikesCountResponse{num}, nil
 	}
 }
 

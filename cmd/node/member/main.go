@@ -202,19 +202,19 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(pubsubService, authRepo, replyRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(replyRepo, userRepo, tweetRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_DELETE_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(pubsubService, authRepo, replyRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(tweetRepo, userRepo, replyRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_FOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, authRepo, followRepo)))),
+		event.PUBLIC_POST_FOLLOW,
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, serverNode, userRepo, followRepo)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_UNFOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, followRepo)))),
+		event.PUBLIC_POST_UNFOLLOW,
+		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, serverNode, userRepo, followRepo)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USER,
@@ -222,7 +222,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo, authRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
@@ -252,11 +252,11 @@ func main() {
 
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_LIKE,
-		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, pubsubService)))),
+		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_UNLIKE,
-		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, pubsubService)))),
+		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_LIKESCOUNT,
@@ -276,12 +276,12 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_RETWEET,
-		logMw(authMw(unwrapMw(handler.StreamNewReTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamNewReTweetHandler(authRepo, userRepo, tweetRepo, timelineRepo, serverNode)))),
 	)
 
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_UNRETWEET,
-		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, pubsubService)))),
+		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_RETWEETERS,
@@ -289,7 +289,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PRIVATE_DELETE_CHAT,
@@ -301,11 +301,11 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_POST_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamSendMessageHandler(chatRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamSendMessageHandler(chatRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
-		event.PUBLIC_DELETE_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo)))),
+		event.PRIVATE_DELETE_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo, userRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PRIVATE_GET_MESSAGE,

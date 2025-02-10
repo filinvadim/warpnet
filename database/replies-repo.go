@@ -59,18 +59,18 @@ func (repo *ReplyRepo) AddReply(reply domainGen.Tweet) (domainGen.Tweet, error) 
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(reply.RootId).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(*reply.ParentId).
+		AddParentId("None").
 		AddId(reply.Id).
 		Build()
 
 	return reply, repo.db.Set(treeKey, metaData)
 }
 
-func (repo *ReplyRepo) GetReply(rootID, parentID, replyID string) (tweet domainGen.Tweet, err error) {
+func (repo *ReplyRepo) GetReply(rootID, replyID string) (tweet domainGen.Tweet, err error) {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(parentID).
+		AddParentId("None").
 		AddId(replyID).
 		Build()
 	data, err := repo.db.Get(treeKey)
@@ -85,17 +85,17 @@ func (repo *ReplyRepo) GetReply(rootID, parentID, replyID string) (tweet domainG
 	return tweet, nil
 }
 
-func (repo *ReplyRepo) DeleteReply(rootID, parentID, replyID string) error {
+func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(parentID).
+		AddParentId("None").
 		AddId(replyID).
 		Build()
 	return repo.db.Delete(treeKey)
 }
 
-func (repo *ReplyRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
+func (repo *ReplyRepo) GetRepliesTree(rootID string, limit *uint64, cursor *string) ([]domainGen.ReplyNode, string, error) {
 	if rootID == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
@@ -103,7 +103,6 @@ func (repo *ReplyRepo) GetRepliesTree(rootID, parentID string, limit *uint64, cu
 	prefix := storage.NewPrefixBuilder(RepliesNamespace).
 		AddRootID(rootID).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(parentID).
 		Build()
 
 	txn, err := repo.db.NewReadTxn()

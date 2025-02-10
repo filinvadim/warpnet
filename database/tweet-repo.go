@@ -278,8 +278,8 @@ func (repo *TweetRepo) NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error
 	return newTweet, txn.Commit()
 }
 
-func (repo *TweetRepo) UnRetweet(userId, tweetId string) error {
-	if tweetId == "" || userId == "" {
+func (repo *TweetRepo) UnRetweet(retweetedByUserID, tweetId string) error {
+	if tweetId == "" || retweetedByUserID == "" {
 		return errors.New("unretweet: empty tweet ID or user ID")
 	}
 	retweetCountKey := storage.NewPrefixBuilder(TweetsNamespace).
@@ -291,7 +291,7 @@ func (repo *TweetRepo) UnRetweet(userId, tweetId string) error {
 		AddSubPrefix(reTweetersSubspace).
 		AddRootID(tweetId).
 		AddRange(storage.NoneRangeKey).
-		AddParentId(userId).
+		AddParentId(retweetedByUserID).
 		Build()
 
 	_, err := repo.db.Get(retweetCountKey)
@@ -314,7 +314,7 @@ func (repo *TweetRepo) UnRetweet(userId, tweetId string) error {
 		return err
 	}
 
-	if err := deleteTweet(txn, userId, tweetId); err != nil {
+	if err := deleteTweet(txn, retweetedByUserID, tweetId); err != nil {
 		return err
 	}
 

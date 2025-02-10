@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.125
+  version: 0.1.126
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -99,8 +99,8 @@ paths:
   /public/post/reply/{version}: {}
   /public/delete/reply/{version}: {}
   /private/delete/tweet/{version}: {}
-  /private/post/follow/{version}: {}
-  /private/post/unfollow/{version}: {}
+  /public/post/follow/{version}: {}
+  /public/post/unfollow/{version}: {}
   /private/post/user/{version}: {}
   /public/get/user/{version}: {}
   /public/get/users/{version}: {}
@@ -120,7 +120,7 @@ paths:
   /public/get/retweeters/{version}: {}
   /public/post/message/{version}: {}
   /private/get/message/{version}: {}
-  /public/delete/message/{version}: {}
+  /private/delete/message/{version}: {}
   /private/get/messages/{version}: {}
   /public/post/chat/{version}: {}
   /private/delete/chat/{version}: {}
@@ -295,15 +295,12 @@ components:
       properties:
         user_id:
           type: string
-        parent_id:
-          type: string
         root_id:
           type: string
         reply_id:
           type: string
       required:
         - root_id
-        - parent_id
         - reply_id
         - user_id
 
@@ -426,15 +423,14 @@ components:
     GetAllUsersEvent:
       type: object
       properties:
+        user_id:
+          type: string
+          description: default owner
         limit:
           type: integer
           x-go-type: uint64
         cursor:
           type: string
-        is_following:
-          type: boolean
-        is_followed:
-          type: boolean
 
     NewChatEvent:
       type: object

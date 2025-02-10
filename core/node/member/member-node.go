@@ -157,7 +157,7 @@ func setupMemberNode(
 	}
 
 	n.ipv4, n.ipv6 = parseAddresses(node)
-	
+
 	println()
 	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %s\033[0m\n", n.ID(), n.ipv4, n.ipv6)
 	println()
@@ -293,6 +293,10 @@ func (n *WarpNode) IPv6() string {
 func (n *WarpNode) GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, nil
+	}
+
+	if n.ID() == nodeId {
+		return nil, nil // self request discarded
 	}
 
 	var bt []byte

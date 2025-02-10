@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -39,7 +40,8 @@ type FollowingStorer interface {
 
 func StreamFollowHandler(
 	broadcaster FollowingBroadcaster,
-	authRepo FollowingAuthStorer,
+	streamer FollowNodeStreamer,
+	userRepo FollowingUserStorer,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
@@ -52,7 +54,8 @@ func StreamFollowHandler(
 			return nil, errors.New("empty follower or followee id")
 		}
 
-		if err := broadcaster.SubscribeUserUpdate(ev.Followee); err != nil {
+		followeeUser, err := userRepo.Get(ev.Followee)
+		if err != nil {
 			return nil, err
 		}
 
@@ -61,8 +64,32 @@ func StreamFollowHandler(
 			Follower:         ev.Follower,
 			FollowerUsername: ev.FollowerUsername,
 		}); err != nil {
-			_ = broadcaster.UnsubscribeUserUpdate(ev.Followee)
 			return nil, err
+		}
+
+		if err := broadcaster.SubscribeUserUpdate(ev.Followee); err != nil {
+			return nil, err
+		}
+
+		followDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(followeeUser.NodeId),
+			event.PUBLIC_POST_FOLLOW,
+			event.NewFollowEvent{
+				Followee:         ev.Followee,
+				Follower:         ev.Follower,
+				FollowerUsername: ev.FollowerUsername,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if event.AcceptedResponse(followDataResp) != event.Accepted {
+			var errorResp event.ErrorResponse
+			if err := json.JSON.Unmarshal(followDataResp, &errorResp); err == nil {
+				return nil, fmt.Errorf("follow stream: %s", errorResp.Message)
+			}
+			return nil, fmt.Errorf("follow stream: %s %w", followDataResp, err)
 		}
 
 		return event.Accepted, nil
@@ -71,6 +98,8 @@ func StreamFollowHandler(
 
 func StreamUnfollowHandler(
 	broadcaster FollowingBroadcaster,
+	streamer FollowNodeStreamer,
+	userRepo FollowingUserStorer,
 	followRepo FollowingStorer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
@@ -83,13 +112,39 @@ func StreamUnfollowHandler(
 			return nil, errors.New("empty follower or followee id")
 		}
 
-		if err := broadcaster.UnsubscribeUserUpdate(ev.Followee); err != nil {
-			log.Infoln("unfollow unsubscribe:", err)
+		followeeUser, err := userRepo.Get(ev.Followee)
+		if err != nil {
+			return nil, err
 		}
 
 		err = followRepo.Unfollow(ev.Follower, ev.Followee)
 		if err != nil {
 			return nil, err
+		}
+
+		if err := broadcaster.UnsubscribeUserUpdate(ev.Followee); err != nil {
+			log.Infoln("unfollow unsubscribe:", err)
+		}
+
+		unfollowDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(followeeUser.NodeId),
+			event.PUBLIC_POST_UNFOLLOW,
+			event.NewUnfollowEvent{
+				Followee:         ev.Followee,
+				Follower:         ev.Follower,
+				FollowerUsername: ev.FollowerUsername,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if event.AcceptedResponse(unfollowDataResp) != event.Accepted {
+			var errorResp event.ErrorResponse
+			if err := json.JSON.Unmarshal(unfollowDataResp, &errorResp); err == nil {
+				return nil, fmt.Errorf("unfollow stream: %s", errorResp.Message)
+			}
+			return nil, fmt.Errorf("unfollow stream: %s %w", unfollowDataResp, err)
 		}
 
 		return event.Accepted, nil

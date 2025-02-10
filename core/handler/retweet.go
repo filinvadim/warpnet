@@ -2,31 +2,34 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
+
+type RetweetStreamer interface {
+	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+}
 
 type RetweetedUserFetcher interface {
 	GetBatch(retweetersIds ...string) (users []domain.User, err error)
+	Get(userId string) (users domain.User, err error)
 }
 
 type OwnerReTweetStorer interface {
 	GetOwner() domain.Owner
 }
 
-type ReTweetBroadcaster interface {
-	PublishOwnerUpdate(ownerId string, msg event.Message) (err error)
-}
-
 type ReTweetsStorer interface {
+	Get(userID, tweetID string) (tweet domain.Tweet, err error)
 	NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error)
-	UnRetweet(userId, tweetId string) error
+	UnRetweet(retweetedByUserID, tweetId string) error
 	RetweetsCount(tweetId string) (uint64, error)
 	Retweeters(tweetId string, limit *uint64, cursor *string) (_ []string, cur string, err error)
 }
@@ -36,10 +39,11 @@ type RetweetTimelineUpdater interface {
 }
 
 func StreamNewReTweetHandler(
-	broadcaster ReTweetBroadcaster,
 	authRepo OwnerReTweetStorer,
+	userRepo RetweetedUserFetcher,
 	tweetRepo ReTweetsStorer,
 	timelineRepo RetweetTimelineUpdater,
+	streamer RetweetStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var retweetEvent event.NewRetweetEvent
@@ -60,36 +64,41 @@ func StreamNewReTweetHandler(
 		}
 
 		owner := authRepo.GetOwner()
-
-		if owner.UserId != *retweetEvent.RetweetedBy {
-			// TODO notify tweet owner about retweet
-			return retweet, nil
+		tweetOwner, err := userRepo.Get(retweetEvent.UserId)
+		if err != nil {
+			return nil, err
 		}
 
-		// owner retweeted it
-		if err = timelineRepo.AddTweetToTimeline(owner.UserId, retweet); err != nil {
-			log.Infof("fail adding retweet to timeline: %v", err)
+		if owner.UserId == *retweetEvent.RetweetedBy {
+			// owner retweeted it
+			if err = timelineRepo.AddTweetToTimeline(owner.UserId, retweet); err != nil {
+				log.Infof("fail adding retweet to timeline: %v", err)
+			}
 		}
 
-		reqBody := event.RequestBody{}
-		_ = reqBody.FromNewRetweetEvent(retweet)
-		msgBody := &event.Message_Body{}
-		_ = msgBody.FromRequestBody(reqBody)
-		msg := event.Message{
-			Body:      msgBody,
-			NodeId:    owner.NodeId,
-			Path:      event.PUBLIC_POST_RETWEET,
-			Timestamp: time.Now(),
+		retweetDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(tweetOwner.NodeId),
+			event.PUBLIC_POST_RETWEET,
+			event.NewRetweetEvent(retweet),
+		)
+		if err != nil {
+			return nil, err
 		}
-		if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-			log.Infoln("broadcaster publish owner tweet update:", err)
+		var possibleError event.ErrorResponse
+		if err := json.JSON.Unmarshal(retweetDataResp, &possibleError); err == nil {
+			return nil, fmt.Errorf("new retweet stream: %s", possibleError.Message)
 		}
 
 		return retweet, nil
 	}
 }
 
-func StreamUnretweetHandler(authRepo OwnerReTweetStorer, tweetRepo ReTweetsStorer, broadcaster LikesBroadcaster) middleware.WarpHandler {
+func StreamUnretweetHandler(
+	authRepo OwnerReTweetStorer,
+	tweetRepo ReTweetsStorer,
+	userRepo RetweetedUserFetcher,
+	streamer RetweetStreamer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.UnretweetEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -103,27 +112,43 @@ func StreamUnretweetHandler(authRepo OwnerReTweetStorer, tweetRepo ReTweetsStore
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
 		}
-		err = tweetRepo.UnRetweet(ev.UserId, ev.TweetId)
+
+		retweetedBy := ev.UserId
+
+		tweet, err := tweetRepo.Get(retweetedBy, ev.TweetId)
+		if err != nil {
+			return nil, err
+		}
+		err = tweetRepo.UnRetweet(retweetedBy, ev.TweetId)
 		if err != nil {
 			return nil, err
 		}
 
 		owner := authRepo.GetOwner()
-		if ev.UserId != owner.UserId {
-			// TODO notify tweet owner about unretweet
+		if tweet.UserId == owner.UserId {
+			// tweet belongs to owner, unretweet themself
 			return event.Accepted, nil
 		}
-		reqBody := event.RequestBody{}
-		_ = reqBody.FromUnretweetEvent(ev)
-		msgBody := &event.Message_Body{}
-		_ = msgBody.FromRequestBody(reqBody)
-		msg := event.Message{
-			Body:      msgBody,
-			Path:      event.PUBLIC_POST_UNRETWEET,
-			Timestamp: time.Now(),
+
+		tweetOwner, err := userRepo.Get(tweet.UserId)
+		if err != nil {
+			return nil, err
 		}
 
-		return event.Accepted, broadcaster.PublishOwnerUpdate(owner.UserId, msg)
+		unretweetDataResp, err := streamer.GenericStream(
+			warpnet.WarpPeerID(tweetOwner.NodeId),
+			event.PUBLIC_POST_UNRETWEET,
+			ev,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var possibleError event.ErrorResponse
+		if err := json.JSON.Unmarshal(unretweetDataResp, &possibleError); err == nil {
+			return nil, fmt.Errorf("unretweet stream: %s", possibleError.Message)
+		}
+
+		return event.Accepted, nil
 	}
 }
 
