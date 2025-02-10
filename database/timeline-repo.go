@@ -27,8 +27,8 @@ func NewTimelineRepo(db TimelineStorer) *TimelineRepo {
 	return &TimelineRepo{db: db}
 }
 
-func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Tweet) error {
-	if userID == "" {
+func (repo *TimelineRepo) AddTweetToTimeline(userId string, tweet domain_gen.Tweet) error {
+	if userId == "" {
 		return errors.New("userID cannot be blank")
 	}
 	if tweet.Id == "" {
@@ -39,7 +39,7 @@ func (repo *TimelineRepo) AddTweetToTimeline(userID string, tweet domain_gen.Twe
 	}
 
 	key := storage.NewPrefixBuilder(TimelineRepoName).
-		AddRootID(userID).
+		AddRootID(userId).
 		AddReversedTimestamp(tweet.CreatedAt).
 		AddParentId(tweet.Id).
 		Build()

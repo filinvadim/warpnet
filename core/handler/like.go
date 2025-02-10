@@ -13,8 +13,8 @@ import (
 )
 
 type LikedUserFetcher interface {
-	GetBatch(userIDs ...string) (users []domain.User, err error)
-	Get(userID string) (users domain.User, err error)
+	GetBatch(userIds ...string) (users []domain.User, err error)
+	Get(userId string) (users domain.User, err error)
 }
 
 type LikeStreamer interface {

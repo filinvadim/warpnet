@@ -161,13 +161,13 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 	return txn.Commit()
 }
 
-func (repo *ChatRepo) GetUserChats(userID string, limit *uint64, cursor *string) ([]domain.Chat, string, error) {
-	if userID == "" {
+func (repo *ChatRepo) GetUserChats(userId string, limit *uint64, cursor *string) ([]domain.Chat, string, error) {
+	if userId == "" {
 		return nil, "", errors.New("ID cannot be blank")
 	}
 
 	prefix := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(userID).
+		AddRootID(userId).
 		Build()
 
 	txn, err := repo.db.NewReadTxn()

@@ -38,7 +38,7 @@ func NewTweetRepo(db TweetsStorer) *TweetRepo {
 }
 
 // Create adds a new tweet to the database
-func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, error) {
+func (repo *TweetRepo) Create(userId string, tweet domain.Tweet) (domain.Tweet, error) {
 	if tweet == (domain.Tweet{}) {
 		return tweet, errors.New("nil tweet")
 	}
@@ -56,7 +56,7 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 	}
 	defer txn.Rollback()
 
-	newTweet, err := storeTweet(txn, userID, tweet)
+	newTweet, err := storeTweet(txn, userId, tweet)
 	if err != nil {
 		return tweet, err
 	}
@@ -65,23 +65,23 @@ func (repo *TweetRepo) Create(userID string, tweet domain.Tweet) (domain.Tweet, 
 }
 
 func storeTweet(
-	txn *storage.WarpWriteTxn, userID string, tweet domain.Tweet,
+	txn *storage.WarpWriteTxn, userId string, tweet domain.Tweet,
 ) (domain.Tweet, error) {
 	fixedKey := storage.NewPrefixBuilder(TweetsNamespace).
-		AddRootID(userID).
+		AddRootID(userId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(tweet.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(TweetsNamespace).
-		AddRootID(userID).
+		AddRootID(userId).
 		AddReversedTimestamp(tweet.CreatedAt).
 		AddParentId(tweet.Id).
 		Build()
 
 	countKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddSubPrefix(tweetsCountSubspace).
-		AddRootID(userID).
+		AddRootID(userId).
 		Build()
 
 	data, err := json.JSON.Marshal(tweet)
@@ -126,13 +126,13 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err erro
 	return tweet, nil
 }
 
-func (repo *TweetRepo) TweetsCount(userID string) (uint64, error) {
-	if userID == "" {
+func (repo *TweetRepo) TweetsCount(userId string) (uint64, error) {
+	if userId == "" {
 		return 0, errors.New("tweet count: empty userID")
 	}
 	countKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddSubPrefix(tweetsCountSubspace).
-		AddRootID(userID).
+		AddRootID(userId).
 		Build()
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {

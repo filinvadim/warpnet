@@ -195,7 +195,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
+	getUserEvent := event.GetUserEvent{UserId: &info.OwnerId}
 	now := time.Now()
 	userResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {

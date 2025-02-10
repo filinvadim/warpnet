@@ -218,7 +218,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USER,
-		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(tweetRepo, followRepo, userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(tweetRepo, followRepo, userRepo, authRepo, serverNode)))),
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_USERS,

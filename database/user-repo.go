@@ -183,15 +183,15 @@ func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.U
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userID string) (user domainGen.User, err error) {
-	if userID == "" {
+func (repo *UserRepo) Get(userId string) (user domainGen.User, err error) {
+	if userId == "" {
 		return user, ErrUserNotFound
 	}
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
-		AddParentId(userID).
+		AddParentId(userId).
 		Build()
 	sortableKeyBytes, err := repo.db.Get(fixedKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
@@ -251,12 +251,12 @@ func (repo *UserRepo) GetByNodeID(nodeID string) (user domainGen.User, err error
 }
 
 // Delete removes a user by their ID
-func (repo *UserRepo) Delete(userID string) error {
+func (repo *UserRepo) Delete(userId string) error {
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddSubPrefix(userSubNamespace).
 		AddRootID("None").
 		AddRange(storage.FixedRangeKey).
-		AddParentId(userID).
+		AddParentId(userId).
 		Build()
 
 	txn, err := repo.db.NewWriteTxn()

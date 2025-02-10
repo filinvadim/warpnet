@@ -24,7 +24,7 @@ type ChatUserFetcher interface {
 type ChatStorer interface {
 	CreateChat(chatId *string, ownerId, otherUserId string) (domain.Chat, error)
 	DeleteChat(chatId string) error
-	GetUserChats(userID string, limit *uint64, cursor *string) ([]domain.Chat, string, error)
+	GetUserChats(userId string, limit *uint64, cursor *string) ([]domain.Chat, string, error)
 	CreateMessage(msg domain.ChatMessage) (domain.ChatMessage, error)
 	ListMessages(chatId string, limit *uint64, cursor *string) ([]domain.ChatMessage, string, error)
 	GetMessage(userId, chatId, id string) (domain.ChatMessage, error)

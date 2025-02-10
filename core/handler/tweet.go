@@ -27,7 +27,7 @@ type TweetsStorer interface {
 }
 
 type TimelineUpdater interface {
-	AddTweetToTimeline(userID string, tweet domain.Tweet) error
+	AddTweetToTimeline(userId string, tweet domain.Tweet) error
 }
 
 func StreamGetTweetsHandler(repo TweetsStorer) middleware.WarpHandler {

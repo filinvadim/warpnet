@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
@@ -27,7 +26,7 @@ type UserFollowsCounter interface {
 
 type UserFetcher interface {
 	Create(user domain.User) (domain.User, error)
-	Get(userID string) (user domain.User, err error)
+	Get(userId string) (user domain.User, err error)
 	List(limit *uint64, cursor *string) ([]domain.User, string, error)
 	Update(userId string, newUser domain.User) (updatedUser domain.User, err error)
 }
@@ -40,6 +39,8 @@ func StreamGetUserHandler(
 	tweetRepo UserTweetsCounter,
 	followRepo UserFollowsCounter,
 	repo UserFetcher,
+	authRepo UserAuthStorer,
+	streamer UserStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetUserEvent
@@ -47,40 +48,50 @@ func StreamGetUserHandler(
 		if err != nil {
 			return nil, err
 		}
-		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
-		}
 
-		u, err := repo.Get(ev.UserId)
+		var u domain.User
+		if ev.UserId == nil {
+			u, err = repo.Get(authRepo.GetOwner().UserId)
+			if err != nil {
+				return nil, err
+			}
+			followersCount, err := followRepo.GetFollowersCount(u.Id)
+			if err != nil {
+				return nil, err
+			}
+			followeesCount, err := followRepo.GetFolloweesCount(u.Id)
+			if err != nil {
+				return nil, err
+			}
+			tweetsCount, err := tweetRepo.TweetsCount(u.Id)
+			if err != nil {
+				return nil, err
+			}
+
+			u.TweetsCount = tweetsCount
+			u.FollowersCount = followersCount
+			u.FolloweesCount = followeesCount
+
+			return u, nil
+		}
+		otherUser, err := repo.Get(*ev.UserId)
+		if err != nil {
+			return nil, err
+		}
+		otherUserData, err := streamer.GenericStream(
+			warpnet.WarpPeerID(otherUser.NodeId),
+			event.PUBLIC_GET_USER,
+			ev,
+		)
 		if err != nil {
 			return nil, err
 		}
 
-		if u.Id == "" {
-			return event.ErrorResponse{
-				Code:    404,
-				Message: "user not found",
-			}, nil
-		}
-
-		followersCount, err := followRepo.GetFollowersCount(u.Id)
-		if err != nil {
+		if err = json.JSON.Unmarshal(otherUserData, &u); err != nil {
 			return nil, err
 		}
-		followeesCount, err := followRepo.GetFolloweesCount(u.Id)
-		if err != nil {
-			return nil, err
-		}
-		tweetsCount, err := tweetRepo.TweetsCount(u.Id)
-		if err != nil {
-			return nil, err
-		}
-
-		u.TweetsCount = tweetsCount
-		u.FollowersCount = followersCount
-		u.FolloweesCount = followeesCount
-
-		return u, nil
+		_, err = repo.Update(u.Id, u)
+		return u, err
 	}
 }
 

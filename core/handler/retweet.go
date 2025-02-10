@@ -35,7 +35,7 @@ type ReTweetsStorer interface {
 }
 
 type RetweetTimelineUpdater interface {
-	AddTweetToTimeline(userID string, tweet domain.Tweet) error
+	AddTweetToTimeline(userId string, tweet domain.Tweet) error
 }
 
 func StreamNewReTweetHandler(
