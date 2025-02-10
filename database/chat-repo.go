@@ -29,7 +29,9 @@ func NewChatRepo(db ChatStorer) *ChatRepo {
 	return &ChatRepo{db: db}
 }
 
-type chatID = string
+type (
+	chatID = string
+)
 
 func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (domain.Chat, error) {
 	if ownerId == "" || otherUserId == "" {
@@ -45,10 +47,10 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 	}
 	defer txn.Rollback()
 
-	nonceRootId := ownerId + otherUserId
+	chatters := ownerId + ":" + otherUserId
 	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddSubPrefix(MessageSubNamespace).
-		AddRootID(nonceRootId).
+		AddRootID(chatters).
 		Build()
 
 	if chatId == nil || *chatId == "" {
@@ -59,6 +61,10 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 		}
 		*chatId = composeChatId(ownerId, otherUserId, string(inc))
 	}
+
+	chatIdKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(*chatId).
+		Build()
 
 	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(ownerId).
@@ -92,6 +98,10 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 	if err != nil {
 		return chat, err
 	}
+	err = txn.Set(chatIdKey, []byte(chatters))
+	if err != nil {
+		return chat, err
+	}
 	return chat, txn.Commit()
 }
 
@@ -100,24 +110,30 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 		return errors.New("chat ID is empty")
 	}
 
-	ownerId, otherUserId, _ := decomposeChatId(chatId)
-	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(ownerId).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(chatId).
-		Build()
-
-	nonceRootId := ownerId + otherUserId
-	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
-		AddRootID(nonceRootId).
-		Build()
+	//ownerId, otherUserId, _ := decomposeChatId(chatId)
 
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return err
 	}
 	defer txn.Rollback()
+
+	chatIdKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(chatId).
+		Build()
+	data, err := txn.Get(chatIdKey)
+	if err != nil {
+		return err
+	}
+
+	split := strings.Split(string(data), ":")
+	ownerId := split[0]
+
+	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(chatId).
+		Build()
 
 	sortableKey, err := txn.Get(fixedUserChatKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
@@ -132,6 +148,12 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 	if err := txn.Delete(storage.DatabaseKey(sortableKey)); err != nil {
 		return err
 	}
+
+	chatters := string(data)
+	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddSubPrefix(MessageSubNamespace).
+		AddRootID(chatters).
+		Build()
 
 	if _, err = txn.Increment(nonceKey); err != nil {
 		return err
@@ -336,12 +358,6 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 
 // TODO access this approach
 func composeChatId(ownerId, otherUserId, nonce string) string {
-	ownerIdTrimmed := strings.ReplaceAll(ownerId, "-", "")
-	userIdTrimmed := strings.ReplaceAll(otherUserId, "-", "")
-	return fmt.Sprintf("%s-%s-%s", ownerIdTrimmed, userIdTrimmed, nonce)
-}
-
-func decomposeChatId(chatId string) (ownerId, otherUserId, nonce string) {
-	split := strings.Split(chatId, "-")
-	return split[1], split[2], split[3]
+	composed := fmt.Sprintf("%s:%s:%s", ownerId, otherUserId, nonce)
+	return uuid.NewSHA1(uuid.NameSpaceDNS, []byte(composed)).String()
 }

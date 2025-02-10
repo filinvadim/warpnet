@@ -1,4 +1,4 @@
-version: 0.1.123
+version: 0.1.124
 node:
   bootstrap:
     - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
