@@ -107,7 +107,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		if response == nil {
 			response, err = fn(data, s)
 			if err != nil {
-				log.Errorf("handling %s message: %v\n", s.Protocol(), err)
+				log.Errorf("middleware: handling %s message: %v\n", s.Protocol(), err)
 				response = event.ErrorResponse{Code: 500, Message: ErrInternalNodeError.Error()}
 			}
 		}

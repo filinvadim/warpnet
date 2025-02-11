@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/multiformats/go-multiaddr"
-	mh "github.com/multiformats/go-multihash"
 )
 
 const PermanentAddrTTL = peerstore.PermanentAddrTTL
@@ -35,13 +34,6 @@ type WarpAddrInfo struct {
 	Addrs []string   `json:"addrs"`
 }
 
-func IDFromBytes(b []byte) (WarpPeerID, error) {
-	if _, err := mh.Cast(b); err != nil {
-		return WarpPeerID(""), err
-	}
-	return WarpPeerID(b), nil
-}
-
 type WarpPrivateKey crypto.PrivKey
 
 type (
@@ -61,6 +53,14 @@ type (
 	WarpDHT            = dht.IpfsDHT
 	WarpAddress        = multiaddr.Multiaddr
 )
+
+func FromStringToPeerID(s string) WarpPeerID {
+	peerID, err := peer.Decode(s)
+	if err != nil {
+		return ""
+	}
+	return peerID
+}
 
 func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {
 	return multiaddr.NewMultiaddr(s)

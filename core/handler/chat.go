@@ -13,7 +13,7 @@ import (
 )
 
 type ChatStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type ChatUserFetcher interface {
@@ -54,7 +54,7 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 		}
 
 		otherChatData, err := streamer.GenericStream(
-			warpnet.WarpPeerID(otherUser.NodeId),
+			otherUser.NodeId,
 			event.PUBLIC_POST_CHAT,
 			domain.Chat{
 				CreatedAt:   time.Now(),
@@ -168,7 +168,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		msg, err = repo.CreateMessage(msg)
 
 		otherMsgData, err := streamer.GenericStream(
-			warpnet.WarpPeerID(otherUser.NodeId),
+			otherUser.NodeId,
 			event.PUBLIC_POST_MESSAGE,
 			event.NewMessageEvent{
 				CreatedAt:   time.Now(),

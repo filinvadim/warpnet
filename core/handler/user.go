@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
 	"github.com/filinvadim/warpnet/json"
@@ -12,7 +14,7 @@ import (
 )
 
 type UserStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type UserTweetsCounter interface {
@@ -46,12 +48,18 @@ func StreamGetUserHandler(
 		var ev event.GetUserEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get user: event unmarshal: %v %s", err, buf)
 		}
 
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+
+		ownerId := authRepo.GetOwner().UserId
+
 		var u domain.User
-		if ev.UserId == nil {
-			u, err = repo.Get(authRepo.GetOwner().UserId)
+		if ev.UserId == ownerId {
+			u, err = repo.Get(ownerId)
 			if err != nil {
 				return nil, err
 			}
@@ -74,12 +82,13 @@ func StreamGetUserHandler(
 
 			return u, nil
 		}
-		otherUser, err := repo.Get(*ev.UserId)
+		otherUser, err := repo.Get(ev.UserId)
 		if err != nil {
 			return nil, err
 		}
+
 		otherUserData, err := streamer.GenericStream(
-			warpnet.WarpPeerID(otherUser.NodeId),
+			otherUser.NodeId,
 			event.PUBLIC_GET_USER,
 			ev,
 		)
@@ -88,7 +97,7 @@ func StreamGetUserHandler(
 		}
 
 		if err = json.JSON.Unmarshal(otherUserData, &u); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get other user: response unmarshal: %v %s", err, otherUserData)
 		}
 		_, err = repo.Update(u.Id, u)
 		return u, err
@@ -107,7 +116,13 @@ func StreamGetUsersHandler(
 			return nil, err
 		}
 
-		if ev.UserId == nil {
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+
+		ownerId := authRepo.GetOwner().UserId
+
+		if ev.UserId == ownerId {
 			users, cursor, err := userRepo.List(ev.Limit, ev.Cursor)
 			if err != nil {
 				return nil, err
@@ -119,13 +134,13 @@ func StreamGetUsersHandler(
 			}, nil
 		}
 
-		otherUser, err := userRepo.Get(*ev.UserId)
+		otherUser, err := userRepo.Get(ev.UserId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("other user get: %v", err)
 		}
 
 		usersDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(otherUser.NodeId),
+			otherUser.NodeId,
 			event.PUBLIC_GET_USERS,
 			ev,
 		)
@@ -143,13 +158,16 @@ func StreamGetUsersHandler(
 			return nil, err
 		}
 
-		owner := authRepo.GetOwner()
-
 		for _, user := range usersResp.Users {
-			if user.Id == owner.UserId {
+			if user.Id == ownerId {
 				continue
 			}
-			if _, err := userRepo.Create(user); err != nil {
+			_, err := userRepo.Create(user)
+			if errors.Is(err, database.ErrUserAlreadyExists) {
+				_, _ = userRepo.Update(user.Id, user)
+				continue
+			}
+			if err != nil {
 				return nil, err
 			}
 		}

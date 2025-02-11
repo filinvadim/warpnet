@@ -18,7 +18,7 @@ type LikedUserFetcher interface {
 }
 
 type LikeStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type LikesStorer interface {
@@ -54,7 +54,7 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 		}
 
 		likeDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(likedUser.NodeId),
+			likedUser.NodeId,
 			event.PUBLIC_POST_LIKE,
 			event.LikeEvent{
 				TweetId: ev.TweetId,
@@ -100,7 +100,7 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 		}
 
 		unlikeDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(unlikedUser.NodeId),
+			unlikedUser.NodeId,
 			event.PUBLIC_POST_LIKE,
 			event.UnlikeEvent{
 				TweetId: ev.TweetId,

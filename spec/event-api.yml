@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warp Network
-  version: 0.1.127
+  version: 0.1.128
   description: Events for a distributed Twitter-like application
 
 paths:
@@ -370,6 +370,8 @@ components:
       properties:
         user_id:
           type: string
+      required:
+        - user_id
 
     LikeEvent:
       type: object
@@ -429,6 +431,8 @@ components:
           x-go-type: uint64
         cursor:
           type: string
+      required:
+        - user_id
 
     NewChatEvent:
       type: object

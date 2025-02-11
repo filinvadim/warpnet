@@ -27,7 +27,7 @@ type DiscoveryInfoStorer interface {
 	Mux() warpnet.WarpProtocolSwitch
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type NodeStorer interface {
@@ -168,7 +168,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	infoResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_INFO, nil)
+	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
@@ -195,9 +195,9 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	getUserEvent := event.GetUserEvent{UserId: &info.OwnerId}
+	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
 	now := time.Now()
-	userResp, err := s.node.GenericStream(pi.ID, event.PUBLIC_GET_USER, getUserEvent)
+	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return

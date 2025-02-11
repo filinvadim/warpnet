@@ -16,7 +16,7 @@ type ReplyTweetStorer interface {
 }
 
 type ReplyStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type ReplyUserFetcher interface {
@@ -78,7 +78,7 @@ func StreamNewReplyHandler(
 		}
 
 		replyDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(parentUser.NodeId),
+			parentUser.NodeId,
 			event.PUBLIC_POST_REPLY,
 			event.NewReplyEvent(reply),
 		)
@@ -142,7 +142,7 @@ func StreamDeleteReplyHandler(
 		}
 
 		replyDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(parentUser.NodeId),
+			parentUser.NodeId,
 			event.PUBLIC_DELETE_REPLY,
 			event.DeleteReplyEvent{
 				ReplyId: ev.ReplyId,

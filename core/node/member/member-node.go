@@ -3,6 +3,7 @@ package member
 import (
 	"context"
 	go_crypto "crypto"
+	"errors"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
@@ -290,11 +291,17 @@ func (n *WarpNode) IPv6() string {
 	return n.ipv6
 }
 
-func (n *WarpNode) GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error) {
+type streamNodeID = string
+
+func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
-		return nil, nil
+		return nil, errors.New("node is not initialized")
 	}
 
+	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
+	if nodeId == "" {
+		return nil, errors.New("invalid node id")
+	}
 	if n.ID() == nodeId {
 		return nil, nil // self request discarded
 	}
@@ -306,14 +313,14 @@ func (n *WarpNode) GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRout
 		if !ok {
 			bt, err = json.JSON.Marshal(data)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
 			}
 		}
 	}
 
 	peerInfo := n.Peerstore().PeerInfo(nodeId)
 	if len(peerInfo.Addrs) == 0 {
-		return nil, fmt.Errorf("peer %s does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		return nil, fmt.Errorf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
 	}
 	for _, addr := range peerInfo.Addrs {
 		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))

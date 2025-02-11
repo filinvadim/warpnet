@@ -14,7 +14,7 @@ import (
 )
 
 type RetweetStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type RetweetedUserFetcher interface {
@@ -77,7 +77,7 @@ func StreamNewReTweetHandler(
 		}
 
 		retweetDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(tweetOwner.NodeId),
+			tweetOwner.NodeId,
 			event.PUBLIC_POST_RETWEET,
 			event.NewRetweetEvent(retweet),
 		)
@@ -136,7 +136,7 @@ func StreamUnretweetHandler(
 		}
 
 		unretweetDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(tweetOwner.NodeId),
+			tweetOwner.NodeId,
 			event.PUBLIC_POST_UNRETWEET,
 			ev,
 		)

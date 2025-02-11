@@ -267,7 +267,7 @@ func (repo *UserRepo) Delete(userId string) error {
 
 	sortableKeyBytes, err := txn.Get(fixedKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
-		return ErrUserNotFound
+		return nil
 	}
 	if err != nil {
 		return err
@@ -336,7 +336,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 
 func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err error) {
 	if len(userIDs) == 0 {
-		return nil, ErrUserNotFound
+		return users, nil
 	}
 
 	txn, err := repo.db.NewReadTxn()

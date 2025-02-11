@@ -31,7 +31,7 @@ func NewStreamPool(
 
 func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byte) ([]byte, error) {
 	if p == nil {
-		return nil, nil
+		return nil, errors.New("nil stream pool")
 	}
 
 	return send(p.ctx, p.n, peerAddr, r, data)
@@ -43,6 +43,10 @@ func send(
 ) ([]byte, error) {
 	if n == nil || serverInfo.String() == "" || r == "" {
 		return nil, errors.New("stream: parameters improperly configured")
+	}
+
+	if len(serverInfo.ID) > 52 {
+		return nil, fmt.Errorf("node id is too long: %v", serverInfo.ID)
 	}
 
 	if err := serverInfo.ID.Validate(); err != nil {
@@ -77,6 +81,9 @@ func send(
 	}
 	log.Infof("stream: received response from %s, size %d\n", r, buf.Len())
 
+	if buf.Len() == 0 {
+		return nil, fmt.Errorf("stream: empty response")
+	}
 	return buf.Bytes(), nil
 }
 

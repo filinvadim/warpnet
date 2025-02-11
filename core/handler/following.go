@@ -13,7 +13,7 @@ import (
 )
 
 type FollowNodeStreamer interface {
-	GenericStream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) ([]byte, error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
 }
 
 type FollowingAuthStorer interface {
@@ -72,7 +72,7 @@ func StreamFollowHandler(
 		}
 
 		followDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(followeeUser.NodeId),
+			followeeUser.NodeId,
 			event.PUBLIC_POST_FOLLOW,
 			event.NewFollowEvent{
 				Followee:         ev.Followee,
@@ -127,7 +127,7 @@ func StreamUnfollowHandler(
 		}
 
 		unfollowDataResp, err := streamer.GenericStream(
-			warpnet.WarpPeerID(followeeUser.NodeId),
+			followeeUser.NodeId,
 			event.PUBLIC_POST_UNFOLLOW,
 			event.NewUnfollowEvent{
 				Followee:         ev.Followee,
@@ -172,7 +172,7 @@ func StreamGetFollowersHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(warpnet.WarpPeerID(user.NodeId), event.PUBLIC_GET_FOLLOWERS, buf)
+			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWERS, buf)
 		}
 
 		followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
@@ -209,7 +209,7 @@ func StreamGetFolloweesHandler(
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(warpnet.WarpPeerID(user.NodeId), event.PUBLIC_GET_FOLLOWEES, buf)
+			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWEES, buf)
 		}
 
 		followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
