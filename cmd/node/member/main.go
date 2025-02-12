@@ -226,7 +226,7 @@ func main() {
 	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
-		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo, authRepo, userRepo, serverNode)))),
 	)
 
 	serverNode.SetStreamHandler(

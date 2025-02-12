@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
@@ -97,22 +98,15 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
-		if log.GetLevel() == log.DebugLevel {
-			if len(data) > 200 {
-				printData := data[:200]
-				log.Debugln(">>> STREAM REQUEST", string(s.Protocol()), string(printData))
-			}
-		}
-
 		if response == nil {
 			response, err = fn(data, s)
-			if err != nil {
+			if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+				log.Debugf(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(data))
+				log.Debugf("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), response)
 				log.Errorf("middleware: handling %s message: %v\n", s.Protocol(), err)
 				response = event.ErrorResponse{Code: 500, Message: ErrInternalNodeError.Error()}
 			}
 		}
-
-		log.Debugf("<<< STREAM RESPONSE: %s %+v", string(s.Protocol()), response)
 
 		switch response.(type) {
 		case []byte:

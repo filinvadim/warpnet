@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/gen/domain-gen"
 	"github.com/filinvadim/warpnet/gen/event-gen"
@@ -10,6 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"time"
 )
+
+type TweetUserFetcher interface {
+	Get(userId string) (user domain.User, err error)
+}
+
+type TweetStreamer interface {
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+}
 
 type OwnerTweetStorer interface {
 	GetOwner() domain.Owner
@@ -30,7 +40,12 @@ type TimelineUpdater interface {
 	AddTweetToTimeline(userId string, tweet domain.Tweet) error
 }
 
-func StreamGetTweetsHandler(repo TweetsStorer) middleware.WarpHandler {
+func StreamGetTweetsHandler(
+	repo TweetsStorer,
+	authRepo OwnerTweetStorer,
+	userRepo TweetUserFetcher,
+	streamer TweetStreamer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllTweetsEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -40,19 +55,59 @@ func StreamGetTweetsHandler(repo TweetsStorer) middleware.WarpHandler {
 		if ev.UserId == "" {
 			return nil, errors.New("empty user id")
 		}
-		tweets, cursor, err := repo.List(ev.UserId, ev.Limit, ev.Cursor)
+
+		ownerId := authRepo.GetOwner().UserId
+		if ev.UserId == ownerId {
+			tweets, cursor, err := repo.List(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
+
+			if tweets != nil {
+				return event.TweetsResponse{
+					Cursor: cursor,
+					Tweets: tweets,
+					UserId: ev.UserId,
+				}, nil
+			}
+		}
+
+		otherUser, err := userRepo.Get(ev.UserId)
 		if err != nil {
+			return nil, fmt.Errorf("other user get: %v", err)
+		}
+
+		tweetsDataResp, err := streamer.GenericStream(
+			otherUser.NodeId,
+			event.PUBLIC_GET_TWEETS,
+			ev,
+		)
+		if err != nil {
+			tweets, cursor, err := repo.List(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
+
+			if tweets != nil {
+				return event.TweetsResponse{
+					Cursor: cursor,
+					Tweets: tweets,
+					UserId: ev.UserId,
+				}, nil
+			}
+		}
+
+		var possibleError event.ErrorResponse
+		if _ = json.JSON.Unmarshal(tweetsDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other tweets error response: %s", possibleError.Message)
+		}
+
+		var tweetsResp event.TweetsResponse
+		if err := json.JSON.Unmarshal(tweetsDataResp, &tweetsResp); err != nil {
 			return nil, err
 		}
 
-		if tweets != nil {
-			return event.TweetsResponse{
-				Cursor: cursor,
-				Tweets: tweets,
-				UserId: ev.UserId,
-			}, nil
-		}
-		return nil, nil
+		return tweetsResp, nil
 	}
 }
 

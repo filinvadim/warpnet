@@ -92,8 +92,21 @@ func StreamGetUserHandler(
 			event.PUBLIC_GET_USER,
 			ev,
 		)
+		if errors.Is(err, warpnet.ErrNodeIsOffline) {
+			u, err = repo.Get(otherUser.Id)
+			if err != nil {
+				return nil, err
+			}
+			u.IsOffline = true
+			return u, nil
+		}
 		if err != nil {
 			return nil, err
+		}
+
+		var possibleError event.ErrorResponse
+		if _ = json.JSON.Unmarshal(otherUserData, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other user error response: %s", possibleError.Message)
 		}
 
 		if err = json.JSON.Unmarshal(otherUserData, &u); err != nil {
@@ -145,12 +158,15 @@ func StreamGetUsersHandler(
 			ev,
 		)
 		if err != nil {
-			return nil, err
+			return event.UsersResponse{
+				Cursor: "",
+				Users:  []domain.User{},
+			}, nil
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(usersDataResp, &possibleError); err == nil {
-			return nil, fmt.Errorf("create other chat stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(usersDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other users error response: %s", possibleError.Message)
 		}
 
 		var usersResp event.UsersResponse

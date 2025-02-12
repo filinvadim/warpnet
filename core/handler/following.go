@@ -167,24 +167,49 @@ func StreamGetFollowersHandler(
 			return nil, errors.New("empty user id")
 		}
 		owner := authRepo.GetOwner()
-		if ev.UserId != owner.UserId { // redirect
-			user, err := userRepo.Get(ev.UserId)
+		if ev.UserId == owner.UserId {
+			followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWERS, buf)
+
+			return event.FollowersResponse{
+				Cursor:    cursor,
+				Followee:  ev.UserId,
+				Followers: followers,
+			}, nil
 		}
 
-		followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
+		user, err := userRepo.Get(ev.UserId)
 		if err != nil {
 			return nil, err
 		}
+		followersData, err := streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWERS, buf)
+		if errors.Is(err, warpnet.ErrNodeIsOffline) {
+			followers, cursor, err := followRepo.GetFollowers(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
 
-		return event.FollowersResponse{
-			Cursor:    cursor,
-			Followee:  ev.UserId,
-			Followers: followers,
-		}, nil
+			return event.FollowersResponse{
+				Cursor:    cursor,
+				Followee:  ev.UserId,
+				Followers: followers,
+			}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var possibleError event.ErrorResponse
+		if _ = json.JSON.Unmarshal(followersData, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other followers error response: %s", possibleError.Message)
+		}
+
+		var followersResp event.FollowersResponse
+		if err := json.JSON.Unmarshal(followersData, &followersResp); err != nil {
+			return nil, err
+		}
+		return followersResp, nil
 	}
 }
 
@@ -204,23 +229,48 @@ func StreamGetFolloweesHandler(
 			return nil, errors.New("empty user id")
 		}
 		owner := authRepo.GetOwner()
-		if ev.UserId != owner.UserId { // redirect
-			user, err := userRepo.Get(ev.UserId)
+		if ev.UserId == owner.UserId {
+			followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
 			if err != nil {
 				return nil, err
 			}
-			return streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWEES, buf)
+
+			return event.FolloweesResponse{
+				Cursor:    cursor,
+				Follower:  ev.UserId,
+				Followees: followees,
+			}, nil
 		}
 
-		followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
+		user, err := userRepo.Get(ev.UserId)
 		if err != nil {
 			return nil, err
 		}
+		followeesData, err := streamer.GenericStream(user.NodeId, event.PUBLIC_GET_FOLLOWEES, buf)
+		if errors.Is(err, warpnet.ErrNodeIsOffline) {
+			followees, cursor, err := followRepo.GetFollowees(ev.UserId, ev.Limit, ev.Cursor)
+			if err != nil {
+				return nil, err
+			}
 
-		return event.FolloweesResponse{
-			Cursor:    cursor,
-			Follower:  ev.UserId,
-			Followees: followees,
-		}, nil
+			return event.FolloweesResponse{
+				Cursor:    cursor,
+				Follower:  ev.UserId,
+				Followees: followees,
+			}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var possibleError event.ErrorResponse
+		if _ = json.JSON.Unmarshal(followeesData, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other followees error response: %s", possibleError.Message)
+		}
+
+		var followeesResp event.FolloweesResponse
+		if err := json.JSON.Unmarshal(followeesData, &followeesResp); err != nil {
+			return nil, err
+		}
+		return followeesResp, nil
 	}
 }

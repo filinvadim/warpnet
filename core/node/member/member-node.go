@@ -300,7 +300,7 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 
 	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
 	if nodeId == "" {
-		return nil, errors.New("invalid node id")
+		return nil, fmt.Errorf("invalid node id: %v", nodeIdStr)
 	}
 	if n.ID() == nodeId {
 		return nil, nil // self request discarded
@@ -320,7 +320,8 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 
 	peerInfo := n.Peerstore().PeerInfo(nodeId)
 	if len(peerInfo.Addrs) == 0 {
-		return nil, fmt.Errorf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		log.Debugf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		return nil, warpnet.ErrNodeIsOffline
 	}
 	for _, addr := range peerInfo.Addrs {
 		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))

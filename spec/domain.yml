@@ -92,6 +92,8 @@ components:
         birthdate:
           type: string
           format: date
+        isOffline:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -106,6 +108,7 @@ components:
         - tweets_count
         - birthdate
         - rtt
+        - isOffline
 
     Tweet:
       type: object

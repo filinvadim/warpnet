@@ -53,7 +53,6 @@ func send(
 		return nil, err
 	}
 
-	log.Infof("stream: opening %s to %s...", r.ProtocolID(), serverInfo.ID)
 	stream, err := n.NewStream(ctx, serverInfo.ID, r.ProtocolID())
 	if err != nil {
 		return nil, fmt.Errorf("stream: new: %s", err)
@@ -72,14 +71,12 @@ func send(
 		return nil, fmt.Errorf("stream: writing: %s", err)
 	}
 
-	log.Infoln("stream: waiting for response...", r.ProtocolID(), serverInfo.ID)
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(rw)
 	if err != nil {
 		log.Errorf("stream: reading response: %v", err)
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
-	log.Infof("stream: received response from %s, size %d\n", r, buf.Len())
 
 	if buf.Len() == 0 {
 		return nil, fmt.Errorf("stream: empty response")
@@ -89,18 +86,18 @@ func send(
 
 func closeStream(stream warpnet.WarpStream) {
 	if err := stream.Close(); err != nil {
-		log.Infof("closing stream: %s", err)
+		log.Errorf("closing stream: %s", err)
 	}
 }
 
 func flush(rw *bufio.ReadWriter) {
 	if err := rw.Flush(); err != nil {
-		log.Infof("flush: %s", err)
+		log.Errorf("flush: %s", err)
 	}
 }
 
 func closeWrite(s warpnet.WarpStream) {
 	if err := s.CloseWrite(); err != nil {
-		log.Infof("close write: %s", err)
+		log.Errorf("close write: %s", err)
 	}
 }

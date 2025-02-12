@@ -1,6 +1,7 @@
 package warpnet
 
 import (
+	"errors"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -13,6 +14,8 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/multiformats/go-multiaddr"
 )
+
+var ErrNodeIsOffline = errors.New("node is offline")
 
 const PermanentAddrTTL = peerstore.PermanentAddrTTL
 

@@ -68,8 +68,8 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(otherChatData, &possibleError); err == nil {
-			return nil, fmt.Errorf("create other chat stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(otherChatData, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other chat error response: %s", possibleError.Message)
 		}
 
 		return event.ChatCreatedResponse(ownerChat), err
@@ -184,8 +184,8 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(otherMsgData, &possibleError); err == nil {
-			return nil, fmt.Errorf("create other message stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(otherMsgData, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other message error response: %s", possibleError.Message)
 		}
 
 		return event.NewMessageResponse(msg), err

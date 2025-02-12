@@ -66,8 +66,8 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(likeDataResp, &possibleError); err == nil {
-			return nil, fmt.Errorf("unlike stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(likeDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other like error response: %s", possibleError.Message)
 		}
 
 		return event.LikesCountResponse{num}, nil
@@ -112,8 +112,8 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(unlikeDataResp, &possibleError); err == nil {
-			return nil, fmt.Errorf("unlike stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(unlikeDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other unlike error response: %s", possibleError.Message)
 		}
 
 		return event.LikesCountResponse{num}, nil

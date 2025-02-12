@@ -87,8 +87,8 @@ func StreamNewReplyHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(replyDataResp, &possibleError); err == nil {
-			return nil, fmt.Errorf("new reply stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other reply error response: %s", possibleError.Message)
 		}
 
 		return reply, nil
@@ -155,8 +155,8 @@ func StreamDeleteReplyHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if err := json.JSON.Unmarshal(replyDataResp, &possibleError); err == nil {
-			return nil, fmt.Errorf("new reply stream: %s", possibleError.Message)
+		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other delete reply error response: %s", possibleError.Message)
 		}
 
 		return event.Accepted, nil
