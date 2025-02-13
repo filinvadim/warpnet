@@ -3,13 +3,13 @@ package handlers
 import (
 	"bytes"
 	"context"
-	standardJSON "encoding/json"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/websocket"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -82,7 +82,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	switch wsMsg.Path {
 	case event.PRIVATE_POST_LOGIN:
 		var ev event.LoginEvent
-		err = json.JSON.Unmarshal(*wsMsg.Body, &ev)
+		err = json.JSON.Unmarshal(*wsMsg.Body, ev)
 		if err != nil {
 			log.Errorf("websocket: message body as login event: %v %s", err, *wsMsg.Body)
 			response = newErrorResp(err.Error())
@@ -101,7 +101,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			log.Errorf("websocket: login FromLoginResponse: %v", err)
 			break
 		}
-		msgBody := standardJSON.RawMessage(bt)
+		msgBody := jsoniter.RawMessage(bt)
 		response.Body = &msgBody
 	case event.PRIVATE_POST_LOGOUT:
 		defer c.upgrader.Close()
@@ -135,7 +135,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(err.Error())
 			break
 		}
-		msgBody := standardJSON.RawMessage(respData)
+		msgBody := jsoniter.RawMessage(respData)
 		response.Body = &msgBody
 	}
 	if response.Body == nil {
@@ -161,7 +161,7 @@ func newErrorResp(message string) event.Message {
 	}
 
 	bt, _ := json.JSON.Marshal(errResp)
-	msgBody := standardJSON.RawMessage(bt)
+	msgBody := jsoniter.RawMessage(bt)
 	resp := event.Message{
 		Body: &msgBody,
 	}

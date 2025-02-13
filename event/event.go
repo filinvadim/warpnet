@@ -1,8 +1,8 @@
 package event
 
 import (
-	"encoding/json"
 	"github.com/filinvadim/warpnet/domain"
+	json "github.com/json-iterator/go"
 	"time"
 )
 

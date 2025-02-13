@@ -1,7 +1,6 @@
 package handler
 
 import (
-	standardJSON "encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
@@ -10,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -170,7 +170,7 @@ func StreamNewTweetHandler(
 				Username:  tweet.Username,
 			}
 			bt, _ := json.JSON.Marshal(respTweetEvent)
-			msgBody := standardJSON.RawMessage(bt)
+			msgBody := jsoniter.RawMessage(bt)
 			msg := event.Message{
 				Body:      &msgBody,
 				NodeId:    owner.NodeId,
@@ -213,7 +213,7 @@ func StreamDeleteTweetHandler(
 				TweetId: ev.TweetId,
 			}
 			bt, _ := json.JSON.Marshal(respTweetEvent)
-			msgBody := standardJSON.RawMessage(bt)
+			msgBody := jsoniter.RawMessage(bt)
 			msg := event.Message{
 				Body:      &msgBody,
 				NodeId:    owner.NodeId,
