@@ -14,6 +14,7 @@ import (
 const (
 	ChatNamespace       = "/CHATS"
 	MessageSubNamespace = "MESSAGES"
+	NonceSubNamespace   = "NONCE"
 )
 
 type ChatStorer interface {
@@ -49,7 +50,7 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 
 	chatters := ownerId + ":" + otherUserId
 	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+		AddSubPrefix(NonceSubNamespace).
 		AddRootID(chatters).
 		Build()
 
@@ -110,8 +111,6 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 		return errors.New("chat ID is empty")
 	}
 
-	//ownerId, otherUserId, _ := decomposeChatId(chatId)
-
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return err
@@ -151,7 +150,7 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 
 	chatters := string(data)
 	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+		AddSubPrefix(NonceSubNamespace).
 		AddRootID(chatters).
 		Build()
 
@@ -159,6 +158,56 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 		return err
 	}
 	return txn.Commit()
+}
+
+func (repo *ChatRepo) GetChatByUsers(ownerId, otherUserId string) (chat domain.Chat, err error) {
+	if otherUserId == "" {
+		return chat, errors.New("user ID is empty")
+	}
+
+	txn, err := repo.db.NewReadTxn()
+	if err != nil {
+		return chat, err
+	}
+	defer txn.Rollback()
+
+	chatters := ownerId + ":" + otherUserId
+	nonceKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddSubPrefix(NonceSubNamespace).
+		AddRootID(chatters).
+		Build()
+
+	inc, err := txn.Get(nonceKey)
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		return domain.Chat{}, err
+	}
+	chatId := composeChatId(ownerId, otherUserId, string(inc))
+
+	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(chatId).
+		Build()
+
+	sortableKey, err := txn.Get(fixedUserChatKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return chat, nil
+	}
+	if err != nil {
+		return chat, err
+	}
+
+	bt, err := txn.Get(storage.DatabaseKey(sortableKey))
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return chat, nil
+	}
+	if err != nil {
+		return chat, err
+	}
+	if err = json.JSON.Unmarshal(bt, &chat); err != nil {
+		return chat, err
+	}
+	return chat, txn.Commit()
 }
 
 func (repo *ChatRepo) GetUserChats(userId string, limit *uint64, cursor *string) ([]domain.Chat, string, error) {

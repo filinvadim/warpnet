@@ -315,6 +315,11 @@ func main() {
 		event.PRIVATE_GET_MESSAGES,
 		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, userRepo)))),
 	)
+
+	serverNode.SetStreamHandler(
+		event.PRIVATE_GET_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
+	)
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	nodeReadyChan <- serverNodeAuthInfo

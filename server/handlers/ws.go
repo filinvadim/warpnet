@@ -82,7 +82,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	switch wsMsg.Path {
 	case event.PRIVATE_POST_LOGIN:
 		var ev event.LoginEvent
-		err = json.JSON.Unmarshal(*wsMsg.Body, ev)
+		err = json.JSON.Unmarshal(*wsMsg.Body, &ev)
 		if err != nil {
 			log.Errorf("websocket: message body as login event: %v %s", err, *wsMsg.Body)
 			response = newErrorResp(err.Error())

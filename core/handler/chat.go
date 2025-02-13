@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+type ChatAuthStorer interface {
+	GetOwner() domain.Owner
+}
+
 type ChatStreamer interface {
 	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
@@ -29,6 +33,7 @@ type ChatStorer interface {
 	ListMessages(chatId string, limit *uint64, cursor *string) ([]domain.ChatMessage, string, error)
 	GetMessage(userId, chatId, id string) (domain.ChatMessage, error)
 	DeleteMessage(userId, chatId, id string) error
+	GetChatByUsers(ownerId, otherUserId string) (chat domain.Chat, err error)
 }
 
 // Handler for creating a new chat
@@ -76,7 +81,32 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 	}
 }
 
-// Handler for deleting a chat
+func StreamGetUserChatHandler(
+	repo ChatStorer,
+	authRepo ChatAuthStorer,
+) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetChatEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.OwnerId == "" {
+			ev.OwnerId = authRepo.GetOwner().UserId
+		}
+		if ev.OtherUserId == "" {
+			return nil, errors.New("empty other user ID")
+		}
+
+		chat, err := repo.GetChatByUsers(ev.OwnerId, ev.OtherUserId)
+		if err != nil {
+			return nil, err
+		}
+
+		return event.GetChatResponse(chat), nil
+	}
+}
+
 func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteChatEvent
@@ -92,7 +122,6 @@ func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 	}
 }
 
-// Handler for getting user chats
 func StreamGetUserChatsHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllChatsEvent

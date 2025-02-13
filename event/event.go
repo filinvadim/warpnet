@@ -17,6 +17,8 @@ type AcceptedResponse string
 // ChatCreatedResponse defines model for ChatCreatedResponse.
 type ChatCreatedResponse = domain.Chat
 
+type GetChatResponse = domain.Chat
+
 // ChatMessageResponse defines model for ChatMessageResponse.
 type ChatMessageResponse = domain.ChatMessage
 
@@ -116,9 +118,9 @@ type GetAllUsersEvent struct {
 
 // GetChatEvent defines model for GetChatEvent.
 type GetChatEvent struct {
-	CreatedAt  time.Time `json:"created_at"`
-	FromUserId string    `json:"from_user_id"`
-	ToUserId   string    `json:"to_user_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	OwnerId     string    `json:"owner_id"`
+	OtherUserId string    `json:"other_user_id"`
 }
 
 // GetFolloweesEvent defines model for GetFolloweesEvent.
