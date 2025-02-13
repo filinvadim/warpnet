@@ -3,8 +3,8 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"math"

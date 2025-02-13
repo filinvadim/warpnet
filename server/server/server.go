@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	api_gen "github.com/filinvadim/warpnet/gen/api-gen"
+	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/browser"
@@ -18,8 +18,8 @@ var (
 )
 
 type (
-	Router            = api_gen.EchoRouter
-	HandlersInterface = api_gen.ServerInterface
+	Router            = api.EchoRouter
+	HandlersInterface = api.ServerInterface
 )
 
 type PublicServer interface {
@@ -36,7 +36,7 @@ type interfaceServer struct {
 
 func NewInterfaceServer() (PublicServer, error) {
 	conf := config.ConfigFile
-	swagger, err := api_gen.GetSwagger()
+	swagger, err := api.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)
 	}
@@ -75,7 +75,7 @@ func (p *interfaceServer) Start() {
 }
 
 func (p *interfaceServer) RegisterHandlers(publicAPI HandlersInterface) {
-	api_gen.RegisterHandlers(p.e, publicAPI)
+	api.RegisterHandlers(p.e, publicAPI)
 }
 
 func (p *interfaceServer) Router() Router {

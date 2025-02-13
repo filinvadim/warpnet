@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/gen/api-gen"
+	"github.com/filinvadim/warpnet/server/api-gen"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 	"io"

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/database/storage"
-	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"math/big"
@@ -33,7 +33,7 @@ type AuthStorer interface {
 
 type AuthRepo struct {
 	db           AuthStorer
-	owner        domainGen.Owner
+	owner        domain.Owner
 	sessionToken string
 	privateKey   crypto.PrivateKey
 }
@@ -94,7 +94,7 @@ func (repo *AuthRepo) PrivateKey() crypto.PrivateKey {
 	return repo.privateKey
 }
 
-func (repo *AuthRepo) GetOwner() domainGen.Owner {
+func (repo *AuthRepo) GetOwner() domain.Owner {
 	if repo == nil {
 		panic(ErrNilAuthRepo)
 	}
@@ -111,10 +111,10 @@ func (repo *AuthRepo) GetOwner() domainGen.Owner {
 		panic(err)
 	}
 	if len(data) == 0 {
-		return domainGen.Owner{}
+		return domain.Owner{}
 	}
 
-	var owner domainGen.Owner
+	var owner domain.Owner
 	err = json.JSON.Unmarshal(data, &owner)
 	if err != nil {
 		panic(err)
@@ -123,7 +123,7 @@ func (repo *AuthRepo) GetOwner() domainGen.Owner {
 
 }
 
-func (repo *AuthRepo) SetOwner(o domainGen.Owner) (_ domainGen.Owner, err error) {
+func (repo *AuthRepo) SetOwner(o domain.Owner) (_ domain.Owner, err error) {
 	ownerKey := storage.NewPrefixBuilder(AuthRepoName).
 		AddRootID(DefaultOwnerKey).
 		Build()

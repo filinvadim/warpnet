@@ -2,7 +2,7 @@ package database
 
 import (
 	"errors"
-	domainGen "github.com/filinvadim/warpnet/gen/domain-gen"
+	"github.com/filinvadim/warpnet/domain"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"time"
@@ -41,7 +41,7 @@ func NewUserRepo(db UserStorer) *UserRepo {
 }
 
 // Create adds a new user to the database
-func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
+func (repo *UserRepo) Create(user domain.User) (domain.User, error) {
 	if user.Id == "" {
 		return user, errors.New("user id is empty")
 	}
@@ -103,8 +103,8 @@ func (repo *UserRepo) Create(user domainGen.User) (domainGen.User, error) {
 	return user, txn.Commit()
 }
 
-func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.User, error) {
-	var existingUser domainGen.User
+func (repo *UserRepo) Update(userId string, newUser domain.User) (domain.User, error) {
+	var existingUser domain.User
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddSubPrefix(userSubNamespace).
@@ -137,7 +137,7 @@ func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.U
 		return existingUser, err
 	}
 
-	if !newUser.Birthdate.IsZero() {
+	if newUser.Birthdate != "" {
 		existingUser.Birthdate = newUser.Birthdate
 	}
 	if newUser.Bio != "" {
@@ -183,7 +183,7 @@ func (repo *UserRepo) Update(userId string, newUser domainGen.User) (domainGen.U
 }
 
 // Get retrieves a user by their ID
-func (repo *UserRepo) Get(userId string) (user domainGen.User, err error) {
+func (repo *UserRepo) Get(userId string) (user domain.User, err error) {
 	if userId == "" {
 		return user, ErrUserNotFound
 	}
@@ -217,7 +217,7 @@ func (repo *UserRepo) Get(userId string) (user domainGen.User, err error) {
 	return user, nil
 }
 
-func (repo *UserRepo) GetByNodeID(nodeID string) (user domainGen.User, err error) {
+func (repo *UserRepo) GetByNodeID(nodeID string) (user domain.User, err error) {
 	if nodeID == "" {
 		return user, ErrUserNotFound
 	}
@@ -278,7 +278,7 @@ func (repo *UserRepo) Delete(userId string) error {
 		return err
 	}
 
-	var u domainGen.User
+	var u domain.User
 	err = json.JSON.Unmarshal(data, &u)
 	if err != nil {
 		return err
@@ -303,7 +303,7 @@ func (repo *UserRepo) Delete(userId string) error {
 	return txn.Commit()
 }
 
-func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, string, error) {
+func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domain.User, string, error) {
 	prefix := storage.NewPrefixBuilder(UsersRepoName).AddRootID(userSubNamespace).Build()
 
 	txn, err := repo.db.NewReadTxn()
@@ -321,9 +321,9 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 		return nil, "", err
 	}
 
-	users := make([]domainGen.User, 0, len(items))
+	users := make([]domain.User, 0, len(items))
 	for _, item := range items {
-		var u domainGen.User
+		var u domain.User
 		err = json.JSON.Unmarshal(item.Value, &u)
 		if err != nil {
 			return nil, "", err
@@ -334,7 +334,7 @@ func (repo *UserRepo) List(limit *uint64, cursor *string) ([]domainGen.User, str
 	return users, cur, nil
 }
 
-func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err error) {
+func (repo *UserRepo) GetBatch(userIDs ...string) (users []domain.User, err error) {
 	if len(userIDs) == 0 {
 		return users, nil
 	}
@@ -345,7 +345,7 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err e
 	}
 	defer txn.Rollback()
 
-	users = make([]domainGen.User, 0, len(userIDs))
+	users = make([]domain.User, 0, len(userIDs))
 
 	for _, userID := range userIDs {
 		fixedKey := storage.NewPrefixBuilder(UsersRepoName).
@@ -370,7 +370,7 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domainGen.User, err e
 			return nil, err
 		}
 
-		var u domainGen.User
+		var u domain.User
 		err = json.JSON.Unmarshal(data, &u)
 		if err != nil {
 			log.Errorln("cannot unmarshal batch user data:", string(data))

@@ -3,11 +3,11 @@ package handlers
 import (
 	"bytes"
 	"context"
+	standardJSON "encoding/json"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/stream"
-	"github.com/filinvadim/warpnet/gen/event-gen"
-
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/websocket"
 	"github.com/labstack/echo/v4"
@@ -81,15 +81,10 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 
 	switch wsMsg.Path {
 	case event.PRIVATE_POST_LOGIN:
-		req, err := wsMsg.Body.AsRequestBody()
+		var ev event.LoginEvent
+		err = json.JSON.Unmarshal(*wsMsg.Body, &ev)
 		if err != nil {
-			log.Errorf("websocket: login as request: %v", err)
-			response = newErrorResp(err.Error())
-			break
-		}
-		ev, err := req.AsLoginEvent()
-		if err != nil {
-			log.Errorf("websocket: login as event: %v", err)
+			log.Errorf("websocket: message body as login event: %v %s", err, *wsMsg.Body)
 			response = newErrorResp(err.Error())
 			break
 		}
@@ -101,17 +96,13 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		}
 		c.upgrader.SetNewSalt(loginResp.Token) // make conn more secure after successful auth
 
-		respBody := event.ResponseBody{}
-		if err = respBody.FromLoginResponse(loginResp); err != nil {
+		bt, err := json.JSON.Marshal(loginResp)
+		if err != nil {
 			log.Errorf("websocket: login FromLoginResponse: %v", err)
 			break
 		}
-		msgBody := &event.Message_Body{}
-		if err = msgBody.FromResponseBody(respBody); err != nil {
-			log.Errorf("websocket: login FromResponseBody: %v", err)
-			break
-		}
-		response.Body = msgBody
+		msgBody := standardJSON.RawMessage(bt)
+		response.Body = &msgBody
 	case event.PRIVATE_POST_LOGOUT:
 		defer c.upgrader.Close()
 		return nil, c.auth.AuthLogout()
@@ -144,10 +135,8 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(err.Error())
 			break
 		}
-		respBody := event.ResponseBody{}
-		_ = respBody.UnmarshalJSON(respData)
-		response.Body = new(event.Message_Body)
-		_ = response.Body.FromResponseBody(respBody)
+		msgBody := standardJSON.RawMessage(respData)
+		response.Body = &msgBody
 	}
 	if response.Body == nil {
 		log.Errorf("websocket response body is empty")
@@ -170,10 +159,9 @@ func newErrorResp(message string) event.Message {
 		Code:    http.StatusInternalServerError,
 		Message: message,
 	}
-	respBody := event.ResponseBody{}
-	_ = respBody.FromErrorResponse(errResp)
-	msgBody := event.Message_Body{}
-	_ = msgBody.FromResponseBody(respBody)
+
+	bt, _ := json.JSON.Marshal(errResp)
+	msgBody := standardJSON.RawMessage(bt)
 	resp := event.Message{
 		Body: &msgBody,
 	}

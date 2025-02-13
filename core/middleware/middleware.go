@@ -4,8 +4,7 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -94,7 +93,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		data, err := io.ReadAll(reader)
 		if err != nil && err != io.EOF {
 			log.Errorf("middleware: reading from stream: %v", err)
-			response = domain.Error{Message: ErrStreamReadError.Error()}
+			response = event.ErrorResponse{Message: ErrStreamReadError.Error()}
 			return
 		}
 

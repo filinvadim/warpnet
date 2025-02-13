@@ -1,13 +1,14 @@
 package handler
 
 import (
+	standardJSON "encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"time"
@@ -168,12 +169,10 @@ func StreamNewTweetHandler(
 				UserId:    tweet.UserId,
 				Username:  tweet.Username,
 			}
-			reqBody := event.RequestBody{}
-			_ = reqBody.FromNewTweetEvent(respTweetEvent)
-			msgBody := &event.Message_Body{}
-			_ = msgBody.FromRequestBody(reqBody)
+			bt, _ := json.JSON.Marshal(respTweetEvent)
+			msgBody := standardJSON.RawMessage(bt)
 			msg := event.Message{
-				Body:      msgBody,
+				Body:      &msgBody,
 				NodeId:    owner.NodeId,
 				Path:      event.PRIVATE_POST_TWEET,
 				Timestamp: time.Now(),
@@ -213,12 +212,10 @@ func StreamDeleteTweetHandler(
 				UserId:  ev.UserId,
 				TweetId: ev.TweetId,
 			}
-			reqBody := event.RequestBody{}
-			_ = reqBody.FromDeleteTweetEvent(respTweetEvent)
-			msgBody := &event.Message_Body{}
-			_ = msgBody.FromRequestBody(reqBody)
+			bt, _ := json.JSON.Marshal(respTweetEvent)
+			msgBody := standardJSON.RawMessage(bt)
 			msg := event.Message{
-				Body:      msgBody,
+				Body:      &msgBody,
 				NodeId:    owner.NodeId,
 				Path:      event.PRIVATE_DELETE_TWEET,
 				Timestamp: time.Now(),

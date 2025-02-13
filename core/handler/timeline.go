@@ -4,8 +4,8 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 )
 

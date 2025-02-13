@@ -9,8 +9,8 @@ import (
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/gen/domain-gen"
-	"github.com/filinvadim/warpnet/gen/event-gen"
+	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/sirupsen/logrus"
 	"slices"
@@ -353,17 +353,15 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	if stream.WarpRoute(simulatedMessage.Path).IsGet() { // only store data
 		return nil
 	}
-	body, err := simulatedMessage.Body.AsRequestBody()
-	if err != nil {
-		return err
-	}
+
 	if g.clientNode == nil {
 		return nil
 	}
-	_, err = g.clientNode.ClientStream( // send to self
+
+	_, err := g.clientNode.ClientStream( // send to self
 		g.serverNode.ID().String(),
 		simulatedMessage.Path,
-		body,
+		*simulatedMessage.Body,
 	)
 	return err
 }

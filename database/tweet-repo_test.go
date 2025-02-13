@@ -2,7 +2,7 @@ package database_test
 
 import (
 	"fmt"
-	domain_gen "github.com/filinvadim/warpnet/gen/domain-gen"
+	domain_gen "github.com/filinvadim/warpnet/domain"
 	"os"
 	"testing"
 	"time"

@@ -1,11 +1,11 @@
-version: 0.2.1
+version: 0.2.2
 node:
   bootstrap:
     - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
   port: 4001
-  network_prefix: 'warpnet'
+  network_prefix: testnet
 database:
-  dirName: "storage"
+  dirName: storage
 server:
   host: localhost
   port: 4002

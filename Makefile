@@ -8,10 +8,8 @@ oapi-codegen-install:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
 ggen:
-	tools/oapi-codegen -generate types,spec,skip-prune -package domain ./spec/domain.yml > gen/domain-gen/domain.gen.go
-	tools/oapi-codegen -import-mapping ./domain.yml:github.com/filinvadim/warpnet/gen/domain-gen -generate types,spec,skip-prune -package event ./spec/event-api.yml > gen/event-gen/event.gen.go
-	tools/oapi-codegen -import-mapping ./event.yml:github.com/filinvadim/warpnet/gen/event-gen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > gen/api-gen/api.gen.go
-	go run tools/routes-gen.go
+	oapi-codegen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > server/api-gen/api.gen.go
+
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
 

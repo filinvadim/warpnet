@@ -43,4 +43,3 @@ as described in previous chapter.
 ## Warpnet API
 [HTTP REST API specification](spec/local-api.yml)
 
-[WS event API specification](spec/event-api.yml)
