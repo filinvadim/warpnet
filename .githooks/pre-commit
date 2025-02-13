@@ -3,7 +3,6 @@
 echo "Pre-commit hook started..."
 
 CONFIG="config.yml"
-SPEC_EVENT="spec/event-api.yml"
 SPEC_LOCAL="spec/local-api.yml"
 
 if [ ! -f "$CONFIG" ]; then
@@ -16,10 +15,8 @@ IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 PATCH=$((PATCH + 1))
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 sed -i "s/^version: .*/version: $NEW_VERSION/" "$CONFIG"
-sed -i "s/\(version:\) [0-9]\+\.[0-9]\+\.[0-9]\+/\1 $NEW_VERSION/" "$SPEC_EVENT"
 sed -i "s/\(version:\) [0-9]\+\.[0-9]\+\.[0-9]\+/\1 $NEW_VERSION/" "$SPEC_LOCAL"
 git add "$CONFIG"
 git add "$SPEC_LOCAL"
-git add "$SPEC_EVENT"
 git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
 echo "Version updated to $NEW_VERSION and tag created."
