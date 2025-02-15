@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	pubSubDiscoveryTopic = "peer-discovery"
+	pubSubDiscoveryTopic     = "peer-discovery"
+	leaderAnnouncementsTopic = "leader-announcements"
 )
 
 const (
@@ -101,6 +102,10 @@ func (g *Gossip) Run(
 		log.Fatalf("failed to presubscribe: %s", err)
 	}
 	for {
+		if !g.isRunning.Load() {
+			return
+		}
+
 		g.mx.RLock()
 		subscriptions := g.subs
 		g.mx.RUnlock()
@@ -154,24 +159,16 @@ func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 	g.isRunning.Store(true)
 	log.Infoln("started pubsub service")
 
-	discTopic, err := g.pubsub.Join(pubSubDiscoveryTopic)
-	if err != nil {
-		log.Errorf("failed to join discovery topic: %s", err)
+	if err := g.GenericSubscribe(pubSubDiscoveryTopic); err != nil {
+		return err
+	}
+	if err := g.GenericSubscribe(leaderAnnouncementsTopic); err != nil {
 		return err
 	}
 
-	if _, err = discTopic.Relay(); err != nil {
-		log.Errorf("failed to relay discovery topic: %s", err)
-	}
-
-	discoverySub, err := discTopic.Subscribe()
-	if err != nil {
-		log.Errorf("pubsub discovery: failed to subscribe to topic: %s", err)
-		return err
-	}
-	g.mx.Lock()
-	g.subs = append(g.subs, discoverySub)
-	g.mx.Unlock()
+	g.mx.RLock()
+	discTopic := g.topics[pubSubDiscoveryTopic]
+	g.mx.RUnlock()
 
 	go g.publishPeerInfo(discTopic)
 	return nil
@@ -227,6 +224,7 @@ func (g *Gossip) Close() (err error) {
 			errs = append(errs, err)
 		}
 	}
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
@@ -267,6 +265,43 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 		return err
 	}
 	return
+}
+
+func (g *Gossip) GenericSubscribe(topicName string) (err error) {
+	if g == nil || !g.isRunning.Load() {
+		return errors.New("pubsub service not initialized")
+	}
+	if topicName == "" {
+		return errors.New("can't subscribe to own user")
+	}
+
+	g.mx.RLock()
+	topic, ok := g.topics[topicName]
+	g.mx.RUnlock()
+	if !ok {
+		topic, err = g.pubsub.Join(topicName)
+		if err != nil {
+			return err
+		}
+	}
+
+	g.mx.Lock()
+	g.topics[topicName] = topic
+	g.mx.Unlock()
+
+	if _, err := topic.Relay(); err != nil {
+		return err
+	}
+
+	sub, err := topic.Subscribe()
+	if err != nil {
+		return err
+	}
+	log.Infof("pubsub discovery: subscribed to topic: %s", topicName)
+	g.mx.Lock()
+	g.subs = append(g.subs, sub)
+	g.mx.Unlock()
+	return nil
 }
 
 // SubscribeUserUpdate - follow someone
@@ -395,7 +430,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 			log.Errorf("pubsub discovery: failed to connect to peer: %v", err)
 			return
 		}
-		log.Infof("pubsub: connected to peer: %s", discoveryMsg.Addrs, discoveryMsg.ID)
+		log.Infof("pubsub: connected to peer: %s %s", discoveryMsg.Addrs, discoveryMsg.ID)
 		return
 	}
 	g.discoveryHandler(peerInfo) // add new user

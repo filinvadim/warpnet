@@ -176,7 +176,7 @@ type GetTimelineEvent = GetAllTweetsEvent
 
 // GetTweetEvent defines model for GetTweetEvent.
 type GetTweetEvent struct {
-	TweetId string `json:"tweetId"`
+	TweetId string `json:"tweet_id"`
 	UserId  string `json:"user_id"`
 }
 

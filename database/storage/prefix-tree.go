@@ -80,6 +80,14 @@ func (l ParentLayer) AddRange(mandatoryPrefix RangePrefix) RangeLayer {
 	return RangeLayer(key)
 }
 
+func (l ParentLayer) AddParentId(mandatoryPrefix string) IdLayer {
+	if mandatoryPrefix == "" {
+		panic("id prefix must not be empty")
+	}
+	key := fmt.Sprintf("%s%s%s", l, Delimeter, mandatoryPrefix)
+	return IdLayer(key)
+}
+
 func (l ParentLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
 	key := string(l)
 	key = fmt.Sprintf("%s%s%019d", key, Delimeter, math.MaxInt64-tm.Unix())
@@ -103,6 +111,11 @@ func (l IdLayer) AddId(mandatoryPrefix string) IdLayer {
 	}
 	key := fmt.Sprintf("%s%s%s", l, Delimeter, mandatoryPrefix)
 	return IdLayer(key)
+}
+func (l IdLayer) AddReversedTimestamp(tm time.Time) RangeLayer {
+	key := string(l)
+	key = fmt.Sprintf("%s%s%019d", key, Delimeter, math.MaxInt64-tm.Unix())
+	return RangeLayer(key)
 }
 
 func (l IdLayer) Build() DatabaseKey {

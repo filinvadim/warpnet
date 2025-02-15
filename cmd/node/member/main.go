@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	embedded "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -42,17 +41,12 @@ type API struct {
 }
 
 func main() {
-	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
-	if !isValid {
-		log.Infoln("invalid binary signature - TODO") // TODO
-	}
-
-	selfHash, err := security.GetSelfHash(security.Member)
+	codeHash, err := security.GetCodebaseHash()
 	if err != nil {
-		log.Fatalf("fail to get self hash: %v", err)
+		panic(err)
 	}
-	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
 
+	log.Infof("codebase hash: %x", codeHash)
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
 
@@ -152,7 +146,7 @@ func main() {
 	defer providerStore.Close()
 
 	dHashTable := dht.NewDHTable(
-		ctx, persLayer, providerStore,
+		ctx, persLayer, providerStore, codeHash,
 		discService.HandlePeerFound,
 		dht.DefaultNodeRemovedCallback,
 	)
@@ -161,7 +155,7 @@ func main() {
 	serverNode, err := member.NewMemberNode(
 		ctx,
 		privKey,
-		selfHash,
+		string(codeHash),
 		persLayer,
 		dHashTable.StartRouting,
 	)
@@ -169,6 +163,11 @@ func main() {
 		log.Fatalf("failed to init node: %v", err)
 	}
 	defer serverNode.Stop()
+
+	if db.IsFirstRun() {
+		psk, err := dHashTable.RequestPSK()
+		log.Infoln("PSK", psk, err)
+	}
 
 	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.ID().String()
 	serverNodeAuthInfo.Identity.Owner.Ipv6 = serverNode.IPv6()

@@ -8,6 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
@@ -17,14 +18,14 @@ import (
 )
 
 type NodeInfo struct {
-	Addrs        []string          `json:"addrs"`
-	Latency      time.Duration     `json:"latency"`
-	NetworkState string            `json:"network_state"`
-	Version      *semver.Version   `json:"version"`
-	StreamStats  network.Stats     `json:"stream_stats"`
-	OwnerId      string            `json:"owner_id"`
-	SelfHash     security.SelfHash `json:"self_hash"`
-	Protocols    []string          `json:"protocols"`
+	Addrs        []string        `json:"addrs"`
+	Latency      time.Duration   `json:"latency"`
+	NetworkState string          `json:"network_state"`
+	Version      *semver.Version `json:"version"`
+	StreamStats  network.Stats   `json:"stream_stats"`
+	OwnerId      string          `json:"owner_id"`
+	SelfHash     string          `json:"self_hash"`
+	Protocols    []string        `json:"protocols"`
 }
 
 const (
@@ -38,9 +39,30 @@ func NewP2PNode(
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
-	rm network.ResourceManager,
-	manager *connmgr.BasicConnMgr,
 ) (warpnet.P2PNode, error) {
+	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
+
+	manager, err := connmgr.NewConnManager(
+		100,
+		limiter.GetConnLimits().GetConnTotalLimit(),
+		connmgr.WithGracePeriod(time.Hour*12),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	peersList := store.PeersWithAddrs()
+	staticRelaysList := make([]warpnet.PeerAddrInfo, 0, len(peersList))
+	for _, p := range peersList {
+		info := store.PeerInfo(p)
+		staticRelaysList = append(staticRelaysList, info)
+	}
+
+	rm, err := rcmgr.NewResourceManager(limiter)
+	if err != nil {
+		return nil, err
+	}
+
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
@@ -67,6 +89,7 @@ func NewP2PNode(
 		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
+		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 	)

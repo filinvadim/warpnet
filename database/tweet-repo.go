@@ -271,7 +271,7 @@ func (repo *TweetRepo) NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error
 	}
 
 	if tweet.UserId == *tweet.RetweetedBy {
-		tweet.Id = uuid.New().String()
+		tweet.Id = uuid.New().String() // TODO self retweet
 	}
 
 	newTweet, err := storeTweet(txn, *tweet.RetweetedBy, tweet)

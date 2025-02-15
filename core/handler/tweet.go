@@ -225,6 +225,6 @@ func StreamDeleteTweetHandler(
 			}
 		}
 
-		return nil, nil
+		return event.Accepted, nil
 	}
 }

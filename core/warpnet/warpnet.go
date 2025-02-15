@@ -1,9 +1,11 @@
 package warpnet
 
 import (
+	"context"
 	"errors"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -12,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -44,6 +47,7 @@ type (
 	WarpStream        = network.Stream
 	WarpStreamHandler = network.StreamHandler
 	WarpBatching      = datastore.Batching
+	WarpProviderStore = providers.ProviderStore
 	PeerAddrInfo      = peer.AddrInfo
 	WarpStreamStats   = network.Stats
 	WarpPeerRouting   = routing.PeerRouting
@@ -75,4 +79,9 @@ func IDFromPrivateKey(sk crypto.PrivKey) (WarpPeerID, error) {
 
 func AddrInfoFromP2pAddr(m multiaddr.Multiaddr) (*PeerAddrInfo, error) {
 	return peer.AddrInfoFromP2pAddr(m)
+}
+
+func NewPeerstore(ctx context.Context, db datastore.Batching) (WarpPeerstore, error) {
+	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
+	return WarpPeerstore(store), err
 }

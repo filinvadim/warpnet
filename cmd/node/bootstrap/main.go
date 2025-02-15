@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	embedded "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
@@ -24,16 +23,12 @@ import (
 )
 
 func main() {
-	isValid := security.VerifySelfSignature(embedded.GetSignature(), embedded.GetPublicKey())
-	if !isValid {
-		log.Errorln("invalid binary signature - TODO") // TODO
+	codeHash, err := security.GetCodebaseHash()
+	if err != nil {
+		panic(err)
 	}
 
-	selfHash, err := security.GetSelfHash(security.Bootstrap)
-	if err != nil {
-		log.Fatalf("fail to get self hash: %v", err)
-	}
-	log.Infoln("self hash:", selfHash) // TODO verify with network consensus
+	log.Infof("codebase hash: %x", codeHash)
 
 	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
@@ -61,7 +56,6 @@ func main() {
 	mdnsService := mdns.NewMulticastDNS(ctx, nil)
 	defer mdnsService.Close()
 	pubsubService := pubsub.NewPubSub(ctx, nil)
-	defer pubsubService.Close()
 
 	memoryStore, err := pstoremem.NewPeerstore()
 	if err != nil {
@@ -79,14 +73,14 @@ func main() {
 	defer providersCache.Close()
 
 	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache,
+		ctx, mapStore, providersCache, codeHash,
 		dht.DefaultNodeAddedCallback,
 		dht.DefaultNodeRemovedCallback,
 	)
 	defer dHashTable.Close()
 
 	n, err := bootstrap.NewBootstrapNode(
-		ctx, warpPrivKey, selfHash, memoryStore, dHashTable.StartRouting,
+		ctx, warpPrivKey, string(codeHash), memoryStore, dHashTable.StartRouting,
 	)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
@@ -95,6 +89,7 @@ func main() {
 
 	go mdnsService.Start(n)
 	go pubsubService.Run(n, nil, nil, nil)
+	defer pubsubService.Close()
 
 	raft, err := consensus.NewRaft(ctx, n, nil, true)
 	if err != nil {

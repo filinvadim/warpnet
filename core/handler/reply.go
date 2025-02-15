@@ -25,7 +25,7 @@ type ReplyUserFetcher interface {
 
 type ReplyStorer interface {
 	GetReply(rootID, replyID string) (tweet domain.Tweet, err error)
-	GetRepliesTree(rootID string, limit *uint64, cursor *string) ([]domain.ReplyNode, string, error)
+	GetRepliesTree(rootID, parentId string, limit *uint64, cursor *string) ([]domain.ReplyNode, string, error)
 	AddReply(reply domain.Tweet) (domain.Tweet, error)
 	DeleteReply(rootID, replyID string) error
 }
@@ -92,6 +92,21 @@ func StreamNewReplyHandler(
 		}
 
 		return reply, nil
+	}
+}
+
+func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetReplyEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.RootId == "" {
+			return nil, errors.New("empty root id")
+		}
+
+		return repo.GetReply(ev.RootId, ev.ReplyId)
 	}
 }
 
@@ -176,7 +191,7 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		if ev.RootId == "" {
 			return nil, errors.New("empty root id")
 		}
-		replies, cursor, err := repo.GetRepliesTree(ev.RootId, ev.Limit, ev.Cursor)
+		replies, cursor, err := repo.GetRepliesTree(ev.RootId, ev.ParentId, ev.Limit, ev.Cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -185,20 +200,5 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 			Replies: replies,
 		}, nil
 
-	}
-}
-
-func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetReplyEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.RootId == "" {
-			return nil, errors.New("empty root id")
-		}
-
-		return repo.GetReply(ev.RootId, ev.ReplyId)
 	}
 }

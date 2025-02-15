@@ -2,7 +2,7 @@ package member
 
 import (
 	"context"
-	go_crypto "crypto"
+	"crypto"
 	"errors"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
@@ -14,12 +14,6 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/filinvadim/warpnet/security"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync/atomic"
@@ -28,10 +22,10 @@ import (
 
 type PersistentLayer interface {
 	warpnet.WarpBatching
-	providers.ProviderStore
+	warpnet.WarpProviderStore
 	GetOwner() domain.Owner
 	SessionToken() string
-	PrivateKey() go_crypto.PrivateKey
+	PrivateKey() crypto.PrivateKey
 	ListProviders() (_ map[string][]warpnet.PeerAddrInfo, err error)
 	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
@@ -66,17 +60,17 @@ type WarpNode struct {
 	retrier  retrier.Retrier
 	ownerId  string
 	version  *semver.Version
-	selfHash security.SelfHash
+	selfHash string
 }
 
 func NewMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash security.SelfHash,
+	selfHash string,
 	db PersistentLayer,
 	routingFn routingFunc,
 ) (_ *WarpNode, err error) {
-	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
+	store, err := warpnet.NewPeerstore(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -104,38 +98,18 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func setupMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash security.SelfHash,
+	selfHash string,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn routingFunc,
 ) (*WarpNode, error) {
-	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
-
-	manager, err := connmgr.NewConnManager(
-		100,
-		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Hour*12),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	rm, err := rcmgr.NewResourceManager(limiter)
-	if err != nil {
-		return nil, err
-	}
-
-	basichost.DefaultNegotiationTimeout = p2p.DefaultTimeout
-
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
 		addrInfos,
 		conf,
 		routingFn,
-		rm,
-		manager,
 	)
 	if err != nil {
 		return nil, err
@@ -244,7 +218,7 @@ func (n *WarpNode) NodeInfo() p2p.NodeInfo {
 	}
 }
 
-func (n *WarpNode) SelfHash() security.SelfHash {
+func (n *WarpNode) SelfHash() string {
 	return n.selfHash
 }
 

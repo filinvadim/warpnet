@@ -10,11 +10,6 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/filinvadim/warpnet/security"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -25,7 +20,7 @@ type WarpBootstrapNode struct {
 	relay    warpnet.WarpRelayCloser
 	retrier  retrier.Retrier
 	version  *semver.Version
-	selfHash security.SelfHash
+	selfHash string
 }
 
 type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
@@ -33,7 +28,7 @@ type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
 func NewBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash security.SelfHash,
+	selfHash string,
 	memoryStore warpnet.WarpPeerstore,
 	routingF routingFunc,
 ) (_ *WarpBootstrapNode, err error) {
@@ -57,38 +52,18 @@ func NewBootstrapNode(
 func setupBootstrapNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash security.SelfHash,
+	selfHash string,
 	store warpnet.WarpPeerstore,
 	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpBootstrapNode, error) {
-	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
-
-	manager, err := connmgr.NewConnManager(
-		100,
-		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Hour*24*30),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	rm, err := rcmgr.NewResourceManager(limiter)
-	if err != nil {
-		return nil, err
-	}
-
-	basichost.DefaultNegotiationTimeout = 360 * time.Second
-
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
 		addrInfos,
 		conf,
 		routingFn,
-		rm,
-		manager,
 	)
 	if err != nil {
 		return nil, err
@@ -131,7 +106,7 @@ func (n *WarpBootstrapNode) Addrs() (addrs []string) {
 	return addrs
 }
 
-func (n *WarpBootstrapNode) SelfHash() security.SelfHash {
+func (n *WarpBootstrapNode) SelfHash() string {
 	return n.selfHash
 }
 
@@ -151,8 +126,7 @@ func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
 }
 
 func (n *WarpBootstrapNode) GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error) {
-	// just a stub
-	return nil, nil
+	panic("just a stub")
 }
 
 func (n *WarpBootstrapNode) Stop() {
@@ -162,5 +136,6 @@ func (n *WarpBootstrapNode) Stop() {
 	if err := n.node.Close(); err != nil {
 		log.Infoln("bootstrap node stop fail:", err)
 	}
+	log.Infoln("bootstrap node stopped")
 	n.node = nil
 }
