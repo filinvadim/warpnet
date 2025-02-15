@@ -68,14 +68,14 @@ type ProviderStorer interface {
 }
 
 type DistributedHashTable struct {
-	ctx              context.Context
-	db               RoutingStorer
-	providerStore    ProviderStorer
-	boostrapNodes    []warpnet.PeerAddrInfo
-	addF             discovery.DiscoveryHandler
-	removeF          discovery.DiscoveryHandler
-	dht              *dht.IpfsDHT
-	reHashedCodeHash []byte
+	ctx           context.Context
+	db            RoutingStorer
+	providerStore ProviderStorer
+	boostrapNodes []warpnet.PeerAddrInfo
+	addF          discovery.DiscoveryHandler
+	removeF       discovery.DiscoveryHandler
+	dht           *dht.IpfsDHT
+	codeHash      []byte
 }
 
 func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
@@ -94,16 +94,15 @@ func NewDHTable(
 	addF discovery.DiscoveryHandler,
 	removeF discovery.DiscoveryHandler,
 ) *DistributedHashTable {
-	reHashedCodeHash := security.ConvertToSHA256(codeHash)
 	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
 	return &DistributedHashTable{
-		ctx:              ctx,
-		db:               db,
-		providerStore:    providerStore,
-		boostrapNodes:    bootstrapAddrs,
-		addF:             addF,
-		removeF:          removeF,
-		reHashedCodeHash: reHashedCodeHash,
+		ctx:           ctx,
+		db:            db,
+		providerStore: providerStore,
+		boostrapNodes: bootstrapAddrs,
+		addF:          addF,
+		removeF:       removeF,
+		codeHash:      codeHash,
 	}
 }
 
@@ -219,6 +218,8 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 		}
 	}()
 
+	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
+
 	ctx, cancel := context.WithTimeout(d.ctx, 10*time.Second*time.Duration(len(d.boostrapNodes)))
 	defer cancel()
 
@@ -227,7 +228,7 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 		requestKey := fmt.Sprintf(requestPrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
 		responseKey := fmt.Sprintf(responsePrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
 
-		if err := d.dht.PutValue(ctx, requestKey, d.reHashedCodeHash); err != nil {
+		if err := d.dht.PutValue(ctx, requestKey, reHashedCodeHash); err != nil {
 			return "", fmt.Errorf("dht: request psk: %v\n", err)
 		}
 
@@ -241,7 +242,7 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 		if bytes.ContainsRune(value, Rejected) {
 			return "", errors.New("dht: PSK request rejected")
 		}
-		data, err := security.DecryptAES(value, d.reHashedCodeHash)
+		data, err := security.DecryptAES(value, d.codeHash)
 		if err != nil {
 			return "", err
 		}
@@ -289,14 +290,16 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return // already serviced
 	}
 
-	if !bytes.Equal(value, d.reHashedCodeHash) {
+	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
+
+	if !bytes.Equal(value, reHashedCodeHash) {
 		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
 			log.Errorf("dht: respond psk: %v\n", err)
 		}
 		return
 	}
 
-	ecryptedPSK, err := security.EncryptAES(currentPSK, d.reHashedCodeHash)
+	ecryptedPSK, err := security.EncryptAES(currentPSK, d.codeHash)
 	if err != nil {
 		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
 			log.Errorf("dht: respond psk: %v\n", err)
