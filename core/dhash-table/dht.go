@@ -191,8 +191,8 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 }
 
 const (
-	requestPrefix        = "/request-psk/%s/%s"
-	responsePrefix       = "/response-psk/%s/%s"
+	requestPrefix        = "/%s/request-psk/%s/%s"
+	responsePrefix       = "/%s/response-psk/%s/%s"
 	Rejected       int32 = -1
 	Expired        int32 = -2
 )
@@ -224,8 +224,8 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 
 	for _, info := range d.boostrapNodes {
 		bootstrapID := info.ID.String()
-		requestKey := fmt.Sprintf(requestPrefix, bootstrapID, ownID)
-		responseKey := fmt.Sprintf(responsePrefix, bootstrapID, ownID)
+		requestKey := fmt.Sprintf(requestPrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
+		responseKey := fmt.Sprintf(responsePrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
 
 		if err := d.dht.PutValue(ctx, requestKey, d.reHashedCodeHash); err != nil {
 			return "", fmt.Errorf("dht: request psk: %v\n", err)
@@ -265,7 +265,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 
 	var bootstrapID = d.dht.PeerID().String()
 
-	requestKey := fmt.Sprintf(requestPrefix, bootstrapID, id.String())
+	requestKey := fmt.Sprintf(requestPrefix, config.ConfigFile.Node.Prefix, bootstrapID, id.String())
 	value, err := d.dht.GetValue(ctx, requestKey)
 	if errors.Is(err, context.DeadlineExceeded) {
 		return
@@ -279,7 +279,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return
 	}
 
-	responseKey := fmt.Sprintf(responsePrefix, bootstrapID, id.String())
+	responseKey := fmt.Sprintf(responsePrefix, config.ConfigFile.Node.Prefix, bootstrapID, id.String())
 	existingResp, err := d.dht.GetValue(ctx, responseKey)
 	if err != nil {
 		log.Errorf("dht: find existing psk response : %v\n", err)
