@@ -150,11 +150,15 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		return nil, err
 	}
 
-	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
 			info := peer.AddrInfo{ID: id}
 			d.addF(info)
+
+		}
+	} else {
+		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
+			defaultNodeAddedCallback(id)
 			d.sharePSK(id, []byte(config.ConfigFile.Node.Prefix))
 		}
 	}
@@ -288,7 +292,7 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 				}
 				data, err := security.DecryptAES(value, d.codeHash)
 				if err != nil {
-					return "", err
+					return "", fmt.Errorf("decrypt psk: %w", err)
 				}
 				return string(data), nil
 			}
