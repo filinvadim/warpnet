@@ -48,7 +48,7 @@ func main() {
 
 	log.Infof("codebase hash: %x", codeHash)
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
-	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
+	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
 	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
 	if err != nil {

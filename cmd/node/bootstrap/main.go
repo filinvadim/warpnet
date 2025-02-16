@@ -30,7 +30,7 @@ func main() {
 
 	log.Infof("codebase hash: %x", codeHash)
 
-	log.Infoln("Warpnet Version:", config.ConfigFile.Version)
+	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
