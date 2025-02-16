@@ -263,6 +263,9 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 			return "", errors.New("request PSK timed out")
 		default:
 			for _, info := range d.boostrapNodes {
+				if ctx.Err() != nil {
+					return "", ctx.Err()
+				}
 				bootstrapID := info.ID.String()
 				requestKey := buildDHTKey(requestPrefix, bootstrapID, ownID)
 				responseKey := buildDHTKey(responsePrefix, bootstrapID, ownID)
@@ -289,6 +292,10 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 				}
 				if bytes.ContainsRune(value, Rejected) {
 					return "", errors.New("dht: PSK request rejected")
+				}
+				if len(value) == 0 {
+					log.Warnf("dht: request psk from %s: empty psk", value)
+					continue
 				}
 				data, err := security.DecryptAES(value, d.codeHash)
 				if err != nil {
