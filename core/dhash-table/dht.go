@@ -312,7 +312,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(d.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(d.ctx, time.Minute)
 	defer cancel()
 
 	log.Infof("dht: share PSK called for %s", id)
