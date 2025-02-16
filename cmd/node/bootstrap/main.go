@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
@@ -10,7 +11,6 @@ import (
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
-	_ "github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	codeHash, err := security.GetCodebaseHash()
+	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
 	}
@@ -74,8 +74,7 @@ func main() {
 
 	dHashTable := dht.NewDHTable(
 		ctx, mapStore, providersCache, codeHash,
-		dht.DefaultNodeAddedCallback,
-		dht.DefaultNodeRemovedCallback,
+		nil, nil,
 	)
 	defer dHashTable.Close()
 

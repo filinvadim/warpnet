@@ -54,6 +54,7 @@ func (v NamespacedValidator) ValidatorByKey(key string) Validator {
 func (v NamespacedValidator) Validate(key string, value []byte) error {
 	vi := v.ValidatorByKey(key)
 	if vi == nil {
+		fmt.Println(key, "VALIDATE")
 		return ErrInvalidRecordType
 	}
 	return vi.Validate(key, value)
@@ -66,6 +67,8 @@ func (v NamespacedValidator) Select(key string, values [][]byte) (int, error) {
 	}
 	vi := v.ValidatorByKey(key)
 	if vi == nil {
+		fmt.Println(key, "VALIDATE BY KEY")
+
 		return 0, ErrInvalidRecordType
 	}
 	return vi.Select(key, values)

@@ -10,18 +10,18 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"strings"
 	"time"
 )
-
-var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
 
 /*
   Distributed Hash Table (DHT) is a distributed hash table used for decentralized
@@ -57,6 +57,8 @@ var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
   implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
+var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
+
 type RoutingStorer interface {
 	warpnet.WarpBatching
 }
@@ -78,12 +80,12 @@ type DistributedHashTable struct {
 	codeHash      []byte
 }
 
-func DefaultNodeRemovedCallback(info warpnet.PeerAddrInfo) {
-	log.Debugln("dht: node removed", info.ID)
+func defaultNodeRemovedCallback(id warpnet.WarpPeerID) {
+	log.Debugln("dht: node removed", id)
 }
 
-func DefaultNodeAddedCallback(info warpnet.PeerAddrInfo) {
-	log.Debugln("dht: node added", info.ID)
+func defaultNodeAddedCallback(id warpnet.WarpPeerID) {
+	log.Debugln("dht: node added", id)
 }
 
 func NewDHTable(
@@ -106,9 +108,32 @@ func NewDHTable(
 	}
 }
 
+type customPrefixValidator struct {
+	customPrefix string
+}
+
+func (v customPrefixValidator) Validate(key string, value []byte) error {
+	// 🔥 Здесь можно добавить любую валидацию данных перед записью
+	if len(value) == 0 {
+		return errors.New("empty value")
+	}
+	if !strings.Contains(key, v.customPrefix) {
+		return errors.New("invalid prefix")
+	}
+	return nil
+}
+
+func (v customPrefixValidator) Select(key string, values [][]byte) (int, error) {
+	if len(values) == 0 {
+		return -1, errors.New("empty values")
+	}
+	return 0, nil
+}
+
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
 	dhTable, err := dht.New(
 		d.ctx, n,
+		dht.NamespacedValidator(config.ConfigFile.Node.Prefix, &customPrefixValidator{config.ConfigFile.Node.Prefix}),
 		dht.Mode(dht.ModeServer),
 		dht.AddressFilter(localHostAddressFilter),
 		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
@@ -125,19 +150,19 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		return nil, err
 	}
 
+	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
 			info := peer.AddrInfo{ID: id}
 			d.addF(info)
 			d.sharePSK(id, []byte(config.ConfigFile.Node.Prefix))
-			DefaultNodeAddedCallback(info)
 		}
 	}
+	dhTable.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
 	if d.removeF != nil {
 		dhTable.RoutingTable().PeerRemoved = func(id peer.ID) {
 			info := peer.AddrInfo{ID: id}
 			d.removeF(info)
-			DefaultNodeRemovedCallback(info)
 		}
 	}
 
@@ -190,8 +215,8 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 }
 
 const (
-	requestPrefix        = "/%s/request-psk/%s/%s"
-	responsePrefix       = "/%s/response-psk/%s/%s"
+	requestPrefix        = "request-psk"
+	responsePrefix       = "response-psk"
 	Rejected       int32 = -1
 	Expired        int32 = -2
 )
@@ -207,10 +232,13 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 	}
 
 	var (
+		timeout   = 30 * time.Second
 		exchanges []pskExchange
-		psk       string
 		ownID     = d.dht.PeerID().String()
+		timer     = time.NewTimer(timeout)
 	)
+	defer timer.Stop()
+
 	defer func() {
 		for _, ex := range exchanges {
 			_ = d.dht.PutValue(d.ctx, ex.requestKey, []byte(string(Expired)))
@@ -220,37 +248,52 @@ func (d *DistributedHashTable) RequestPSK() (string, error) {
 
 	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
 
-	ctx, cancel := context.WithTimeout(d.ctx, 10*time.Second*time.Duration(len(d.boostrapNodes)))
+	ctx, cancel := context.WithTimeout(d.ctx, timeout*time.Duration(len(d.boostrapNodes)))
 	defer cancel()
 
-	for _, info := range d.boostrapNodes {
-		bootstrapID := info.ID.String()
-		requestKey := fmt.Sprintf(requestPrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
-		responseKey := fmt.Sprintf(responsePrefix, config.ConfigFile.Node.Prefix, bootstrapID, ownID)
+	for {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-timer.C:
+			return "", errors.New("request PSK timed out")
+		default:
+			for _, info := range d.boostrapNodes {
+				bootstrapID := info.ID.String()
+				requestKey := buildDHTKey(requestPrefix, bootstrapID, ownID)
+				responseKey := buildDHTKey(responsePrefix, bootstrapID, ownID)
 
-		if err := d.dht.PutValue(ctx, requestKey, reHashedCodeHash); err != nil {
-			return "", fmt.Errorf("dht: request psk: %v\n", err)
-		}
+				err := d.dht.PutValue(ctx, requestKey, reHashedCodeHash)
+				if errors.Is(err, kbucket.ErrLookupFailure) {
+					time.Sleep(time.Millisecond * 100)
+					continue
+				}
+				if err != nil {
+					if strings.Contains(err.Error(), "can't replace a newer value with an older value") {
+						return "", err
+					}
+					log.Errorf("dht: psk request put: %v\n", err)
+					continue
+				}
 
-		exchanges = append(exchanges, pskExchange{requestKey, responseKey})
+				exchanges = append(exchanges, pskExchange{requestKey, responseKey})
 
-		value, err := d.dht.GetValue(ctx, responseKey)
-		if err != nil {
-			log.Warnf("dht: request psk from %s: %v\n", bootstrapID, err)
-			continue
+				value, err := d.dht.GetValue(ctx, responseKey)
+				if err != nil {
+					log.Warnf("dht: request psk from %s: %v\n", bootstrapID, err)
+					continue
+				}
+				if bytes.ContainsRune(value, Rejected) {
+					return "", errors.New("dht: PSK request rejected")
+				}
+				data, err := security.DecryptAES(value, d.codeHash)
+				if err != nil {
+					return "", err
+				}
+				return string(data), nil
+			}
 		}
-		if bytes.ContainsRune(value, Rejected) {
-			return "", errors.New("dht: PSK request rejected")
-		}
-		data, err := security.DecryptAES(value, d.codeHash)
-		if err != nil {
-			return "", err
-		}
-		psk = string(data)
-		break
 	}
-
-	return psk, nil
 }
 
 func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte) {
@@ -266,7 +309,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 
 	var bootstrapID = d.dht.PeerID().String()
 
-	requestKey := fmt.Sprintf(requestPrefix, config.ConfigFile.Node.Prefix, bootstrapID, id.String())
+	requestKey := buildDHTKey(requestPrefix, bootstrapID, id.String())
 	value, err := d.dht.GetValue(ctx, requestKey)
 	if errors.Is(err, context.DeadlineExceeded) {
 		return
@@ -280,7 +323,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return
 	}
 
-	responseKey := fmt.Sprintf(responsePrefix, config.ConfigFile.Node.Prefix, bootstrapID, id.String())
+	responseKey := buildDHTKey(responsePrefix, bootstrapID, id.String())
 	existingResp, err := d.dht.GetValue(ctx, responseKey)
 	if err != nil {
 		log.Errorf("dht: find existing psk response : %v\n", err)
@@ -324,6 +367,12 @@ func (d *DistributedHashTable) Close() {
 	}
 	d.dht = nil
 	log.Infoln("dht: table closed")
+}
+
+func buildDHTKey(rawKeys ...string) string {
+	joined := strings.Join(rawKeys, "/")
+	mh, _ := multihash.Sum([]byte(joined), multihash.SHA2_256, -1)
+	return fmt.Sprintf("/%s/%s", config.ConfigFile.Node.Prefix, mh.B58String())
 }
 
 func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multiaddr.Multiaddr) {

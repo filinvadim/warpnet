@@ -1,95 +1,78 @@
 package security
 
 import (
-	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"io"
-	"os"
-	"path/filepath"
+	"io/fs"
 	"sort"
 )
 
-func hashDirectory(dirPath string) ([]byte, error) {
-	hasher := sha256.New()
-	files := []string{}
+type FileSystem interface {
+	ReadDir(name string) ([]fs.DirEntry, error)
+	ReadFile(name string) ([]byte, error)
+	Open(name string) (fs.File, error)
+}
 
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			files = append(files, path)
-		}
-		return nil
+func walkAndHash(fsys FileSystem, dir string, h io.Writer) error {
+	entries, err := fsys.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read dir %s: %w", dir, err)
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	sort.Strings(files)
-
-	for _, file := range files {
-		f, err := os.Open(file)
-		if err != nil {
-			return nil, err
+	for _, entry := range entries {
+		path := dir + "/" + entry.Name()
+		if dir == "." {
+			path = entry.Name()
 		}
 
-		_, err = io.Copy(hasher, f)
-		f.Close()
-		if err != nil {
-			return nil, err
+		pathHash := sha256.Sum256([]byte(path))
+		h.Write(pathHash[:])
+
+		if entry.IsDir() {
+			err := walkAndHash(fsys, path, h)
+			if err != nil {
+				return fmt.Errorf("walk and hash %s: %w", path, err)
+			}
+		} else {
+			fileHash, err := hashFile(fsys, path)
+			if err != nil {
+				return fmt.Errorf("file hash %s: %w", path, err)
+			}
+			h.Write(fileHash)
 		}
 	}
 
-	return hasher.Sum(nil), nil
+	return nil
 }
 
-func hashFile(file string) ([]byte, error) {
-	hasher := sha256.New()
-
-	f, err := os.Open(file)
+func hashFile(fsys FileSystem, path string) ([]byte, error) {
+	file, err := fsys.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	_, err = io.Copy(hasher, f)
-
+	h := sha256.New()
+	_, err = io.Copy(h, file)
 	if err != nil {
 		return nil, err
 	}
 
-	return hasher.Sum(nil), nil
+	return h.Sum(nil), nil
 }
 
-// TODO access this approach
-func GetCodebaseHash() ([]byte, error) {
-	cmdHash, err := hashDirectory("./cmd")
-	if err != nil {
-		return nil, err
-	}
-	dbHash, err := hashDirectory("./database")
-	if err != nil {
-		return nil, err
-	}
-	coreHash, err := hashDirectory("./core")
-	if err != nil {
-		return nil, err
-	}
-	secHash, err := hashDirectory("./security")
-	if err != nil {
-		return nil, err
-	}
-	serverHash, err := hashDirectory("./server")
-	if err != nil {
-		return nil, err
-	}
-	gosumHash, err := hashFile("go.sum")
+func GetCodebaseHash(codebase FileSystem) ([]byte, error) {
+	h := sha256.New()
+
+	err := walkAndHash(codebase, ".", h)
 	if err != nil {
 		return nil, err
 	}
 
-	orderedHashes := bytes.Join([][]byte{cmdHash, dbHash, coreHash, secHash, serverHash, gosumHash}, []byte{})
-
-	return ConvertToSHA256(orderedHashes), nil
+	return h.Sum(nil), nil
 }

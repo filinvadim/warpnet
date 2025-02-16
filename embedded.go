@@ -2,6 +2,7 @@
 package warpnet
 
 import (
+	"embed"
 	_ "embed"
 )
 
@@ -10,4 +11,11 @@ var configFile []byte
 
 func GetConfigFile() []byte {
 	return configFile
+}
+
+//go:embed *.go */*.go */*/*.go */*/*/*.go */*/*/*/*.go
+var codeBase embed.FS
+
+func GetCodeBase() embed.FS {
+	return codeBase
 }

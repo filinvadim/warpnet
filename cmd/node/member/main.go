@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	root "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -22,7 +23,6 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/security"
-	_ "github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
@@ -41,7 +41,7 @@ type API struct {
 }
 
 func main() {
-	codeHash, err := security.GetCodebaseHash()
+	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
 	}
@@ -147,8 +147,7 @@ func main() {
 
 	dHashTable := dht.NewDHTable(
 		ctx, persLayer, providerStore, codeHash,
-		discService.HandlePeerFound,
-		dht.DefaultNodeRemovedCallback,
+		discService.HandlePeerFound, nil,
 	)
 	defer dHashTable.Close()
 
