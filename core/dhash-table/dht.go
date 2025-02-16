@@ -323,6 +323,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 	requestKey := buildDHTKey(requestPrefix, bootstrapID, id.String())
 	value, err := d.dht.GetValue(ctx, requestKey)
 	if errors.Is(err, context.DeadlineExceeded) {
+		log.Warnf("dht: PSK request timed out")
 		return
 	}
 	if err != nil {
@@ -331,6 +332,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 	}
 
 	if bytes.ContainsRune(value, Expired) {
+		log.Infoln("expired psk request")
 		return
 	}
 
@@ -341,6 +343,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return
 	}
 	if len(existingResp) > 0 && !bytes.ContainsRune(existingResp, Rejected) && !bytes.ContainsRune(existingResp, Expired) {
+		log.Infoln("dht: found existing psk response", string(existingResp))
 		return // already serviced
 	}
 
@@ -355,6 +358,7 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 
 	ecryptedPSK, err := security.EncryptAES(currentPSK, d.codeHash)
 	if err != nil {
+		log.Errorf("dht: encrypt psk: %v\n", err)
 		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
 			log.Errorf("dht: respond psk: %v\n", err)
 		}

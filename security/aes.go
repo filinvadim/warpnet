@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -42,6 +43,9 @@ func DecryptAES(ciphertext, key []byte) ([]byte, error) {
 	if len(key) != keySize {
 		return nil, errors.New("key must be 32 bytes for AES-256")
 	}
+
+	fmt.Printf("%x\n", ciphertext)
+	fmt.Println(len(ciphertext), string(key))
 
 	if len(ciphertext) < nonceSize {
 		return nil, errors.New("ciphertext too short")
