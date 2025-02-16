@@ -356,6 +356,10 @@ func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte
 		return
 	}
 
+	if currentPSK == nil || d.codeHash == nil {
+		panic("invalid codeHash or psk")
+	}
+
 	ecryptedPSK, err := security.EncryptAES(currentPSK, d.codeHash)
 	if err != nil {
 		log.Errorf("dht: encrypt psk: %v\n", err)
