@@ -37,9 +37,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DO_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.DO_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H 67.207.72.168 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 167.99.29.177 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 188.166.204.43 >> ~/.ssh/known_hosts
 
       - name: Deploy to Droplet
         run: |
-          scp ./deploy.sh root@${{ secrets.DO_HOST }}:/root
-          ssh root@${{ secrets.DO_HOST }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
+          scp ./deploy.sh root@67.207.72.168:/root
+          scp ./deploy.sh root@167.99.29.177:/root
+          scp ./deploy.sh root@188.166.204.43:/root
+          ssh root@67.207.72.168 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
+          ssh root@167.99.29.177 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
+          ssh root@188.166.204.43 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
