@@ -430,7 +430,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 			log.Errorf("pubsub discovery: failed to connect to peer: %v", err)
 			return
 		}
-		log.Infof("pubsub: connected to peer: %s %s", discoveryMsg.Addrs, discoveryMsg.ID)
+		log.Debugf("pubsub: connected to peer: %s %s", discoveryMsg.Addrs, discoveryMsg.ID)
 		return
 	}
 	g.discoveryHandler(peerInfo) // add new user

@@ -205,6 +205,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
+	log.Infof("consensus: adding new voter to %s", info.ID.String())
 	wait := c.raft.VerifyLeader()
 	if wait.Error() != nil {
 		log.Infof("consensus: failed to add voter: %s", wait.Error())
@@ -243,7 +244,6 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	}
 	wait := c.raft.VerifyLeader()
 	if wait.Error() != nil {
-		log.Infof("consensus: failed to add voter: %s", wait.Error())
 		return
 	}
 
