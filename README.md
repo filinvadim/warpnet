@@ -39,7 +39,6 @@ as described in previous chapter.
     - change `node/network_prefix` to different one.
 2. Run multiple nodes as described in previous chapter.
 
-
 ## Warpnet API
 [HTTP REST API specification](spec/local-api.yml)
 
