@@ -12,4 +12,6 @@ docker stop $(docker ps -a -q)
 docker system prune -f -a
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
-docker run --restart=always -d --name warpnet -h do-bootstrap -p 4001:4001 -p 4002:4002 ghcr.io/filinvadim/warpnet:latest
+docker run --restart=always -d --name warpnet1 -h bootstrap1 -p 4001:4001 ghcr.io/filinvadim/warpnet:latest
+docker run --restart=always -d --name warpnet2 -h bootstrap2 -p 4002:4001 ghcr.io/filinvadim/warpnet:latest
+docker run --restart=always -d --name warpnet3 -h bootstrap3 -p 4003:4001 ghcr.io/filinvadim/warpnet:latest

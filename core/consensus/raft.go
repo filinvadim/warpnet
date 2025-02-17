@@ -191,7 +191,6 @@ func (c *consensusService) listenEvents() {
 // leader was elected because observations are set before
 // setting the Leader and only when the RaftState has changed.
 // Therefore, we need a ticker.
-
 func waitForLeader(r *raft.Raft) {
 	obsCh := make(chan raft.Observation, 1)
 	observer := raft.NewObserver(obsCh, false, nil)
