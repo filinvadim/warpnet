@@ -190,7 +190,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 
 	err = c.waitForClusterReady(c.raft, time.Minute)
 	if err != nil {
-		return fmt.Errorf("consensus: cluster did not stabilize: %w", err)
+		log.Errorf("consensus: cluster did not stabilize: %v", err)
 	}
 
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())

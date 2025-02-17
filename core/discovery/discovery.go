@@ -106,7 +106,7 @@ func printPeers(n DiscoveryInfoStorer) {
 func (s *discoveryService) Close() {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Errorf("discovery: close recovered from panic:", r)
+			log.Errorf("discovery: close recovered from panic: %v", r)
 		}
 	}()
 	close(s.stopChan)
@@ -159,7 +159,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.ID.String(), peerState)
 
 	if err := s.node.Connect(pi); err != nil {
-		log.Errorf("discovery: failed to connect to new peer: %s, removing...", err)
+		log.Errorf("discovery: failed to connect to new peer: %s...", err)
 		return
 	}
 	log.Infof("discovery: connected to new peer: %s", pi.ID)

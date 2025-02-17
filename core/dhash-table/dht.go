@@ -215,7 +215,7 @@ func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multia
 		if strings.Contains(addr.String(), "localhost") {
 			continue
 		}
-		if strings.Contains(addr.String(), "127.0.0.1") {
+		if strings.HasPrefix(addr.String(), "127.0.0.1") {
 			continue
 		}
 
