@@ -33,7 +33,6 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type API struct {
@@ -145,6 +144,11 @@ func main() {
 		log.Fatalf("failed to init providers: %v", err)
 	}
 	defer providerStore.Close()
+
+	raft, err := consensus.NewRaft(ctx, consensusRepo, false)
+	if err != nil {
+		log.Fatalf("raft initialization: %v", err)
+	}
 
 	dHashTable := dht.NewDHTable(
 		ctx, persLayer, providerStore, codeHash,
@@ -327,16 +331,9 @@ func main() {
 	go mdnsService.Start(serverNode)
 	go pubsubService.Run(serverNode, clientNode, authRepo, followRepo)
 
-	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
-	raft, err := consensus.NewRaft(ctx, serverNode, consensusRepo, false)
-	if err != nil {
-		log.Fatal(err)
-	}
-	raft.Negotiate(bootstrapAddrs)
+	raft.Negotiate(serverNode)
 	defer raft.Shutdown()
 
-	newState, err := raft.Commit(consensus.ConsensusDefaultState{"test": time.Now().String()})
-	fmt.Println(newState, err, "???????????????????????")
 	<-interruptChan
 	log.Infoln("interrupted...")
 }

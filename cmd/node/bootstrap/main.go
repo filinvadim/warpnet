@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -16,23 +15,22 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
+	_ "go.uber.org/automaxprocs" // DO NOT remove
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	_ "go.uber.org/automaxprocs" // DO NOT remove
 )
 
 func main() {
+	log.Infoln("Warpnet version:", config.ConfigFile.Version)
+
 	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
 	}
 
 	log.Infof("codebase hash: %x", codeHash)
-	log.Infoln("Warpnet version:", config.ConfigFile.Version)
-	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
+	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -73,9 +71,14 @@ func main() {
 	}
 	defer providersCache.Close()
 
+	raft, err := consensus.NewRaft(ctx, nil, true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	dHashTable := dht.NewDHTable(
 		ctx, mapStore, providersCache, codeHash,
-		nil, nil,
+		raft.AddVoter, raft.RemoveVoter,
 	)
 	defer dHashTable.Close()
 
@@ -91,15 +94,9 @@ func main() {
 	go pubsubService.Run(n, nil, nil, nil)
 	defer pubsubService.Close()
 
-	raft, err := consensus.NewRaft(ctx, n, nil, true)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	raft.Negotiate(nil)
+	raft.Negotiate(n)
 	defer raft.Shutdown()
 
-	newState, err := raft.Commit(consensus.ConsensusDefaultState{"test": time.Now().String()})
-	fmt.Println(newState, err, "???????????????????????")
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")
 }
