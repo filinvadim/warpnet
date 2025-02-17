@@ -1,9 +1,9 @@
-version: 0.2.29
+version: 0.2.30
 node:
   bootstrap:
-    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAhKDDne1FzUwv6YPSh9puiXYXDF8TShuqEEEEBcphy1j"
-    - "/ip4/167.99.29.177/tcp/4001/p2p/12D3KooWJrsV1rBUAWfDKQHha33a9anJirBGWJQirFUNpr4kTcP7"
-    - "/ip4/188.166.204.43/tcp/4001/p2p/12D3KooWSDabe8gkFANTuVoYswYKkimAhA7JUG8vUiM4pJTd6aux"
+    - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWFUASCJ2cnXUF4oJ1WivPFgpSDUkJ9pPMVnxZehK67n6c"
+    - "/ip4/167.99.29.177/tcp/4001/p2p/12D3KooWHMbdTtoBU1k9cN6jdxqNwXaVub8XoYNKjYqb96egzXKc"
+    - "/ip4/188.166.204.43/tcp/4001/p2p/12D3KooWBjmsi5CnpW7P98yykZSLZSCYAcUPxPww87KpsUWi9CVm"
   port: 4001
   network_prefix: testnet
 database:
