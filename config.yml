@@ -1,9 +1,7 @@
-version: 0.2.23
+version: 0.2.24
 node:
   bootstrap:
     - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAh5T7rRdZRy9HobBN9RBfy5UZwevuR5QsqriSiyzehEg"
-    - "/ip4/67.207.72.168/tcp/4002/p2p/12D3KooWBb3B1vUJ1vyqx4b3VREUDGNdUecqdXR62d8E6gV5fhkt"
-    - "/ip4/67.207.72.168/tcp/4003/p2p/12D3KooWFonGnZ5jDwFYhcxnz6aLRTrQKMqQ8Bkvjw3LxvDovtJZ"
   port: 4001
   network_prefix: testnet
 database:
@@ -12,5 +10,5 @@ server:
   host: localhost
   port: 4002
 logging:
-  level: info
+  level: debug
 

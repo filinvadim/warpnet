@@ -91,14 +91,15 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 func printPeers(n DiscoveryInfoStorer) {
 	defer func() {
 		if r := recover(); r != nil { // could panic
-			log.Errorf("discovery: print peers: recovered from panic:", r)
+			log.Errorf("discovery: print peers: recovered from panic: %v", r)
 		}
 	}()
 	for _, id := range n.Peerstore().Peers() {
 		if n.ID() == id {
 			continue
 		}
-		fmt.Printf("\033[1mknown peer: %s \033[0m\n", id.String())
+
+		fmt.Printf("\033[1mknown peer: %s \033[0m\n", id)
 	}
 }
 

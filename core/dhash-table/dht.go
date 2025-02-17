@@ -2,15 +2,14 @@ package dhash_table
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -105,31 +104,18 @@ func NewDHTable(
 	}
 }
 
-type customPrefixValidator struct {
-	customPrefix string
-}
-
-func (v customPrefixValidator) Validate(key string, value []byte) error {
-	if len(value) == 0 {
-		return errors.New("empty value")
-	}
-	if !strings.Contains(key, v.customPrefix) {
-		return errors.New("invalid prefix")
-	}
-	return nil
-}
-
-func (v customPrefixValidator) Select(key string, values [][]byte) (int, error) {
-	if len(values) == 0 {
-		return -1, errors.New("empty values")
-	}
-	return 0, nil
-}
-
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
+	infos, err := config.ConfigFile.Node.AddrInfos()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, info := range infos {
+		fmt.Printf("dht: bootstrap node %s\n", info.String())
+	}
+
 	dhTable, err := dht.New(
 		d.ctx, n,
-		dht.NamespacedValidator(config.ConfigFile.Node.Prefix, customPrefixValidator{config.ConfigFile.Node.Prefix}),
 		dht.Mode(dht.ModeServer),
 		dht.AddressFilter(localHostAddressFilter),
 		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
@@ -137,7 +123,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour*24),
 		dht.RoutingTableRefreshQueryTimeout(time.Hour*24),
-		dht.BootstrapPeers(dht.GetDefaultBootstrapPeerAddrInfos()...),
+		dht.BootstrapPeers(infos...),
 		dht.ProviderStore(d.providerStore),
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
 	)
@@ -149,9 +135,9 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
+			log.Infof("dht: new peer added: %s", id)
 			info := peer.AddrInfo{ID: id}
 			d.addF(info)
-
 		}
 	}
 	dhTable.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
@@ -210,8 +196,6 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 	}
 }
 
-//
-
 func (d *DistributedHashTable) Close() {
 	if d == nil || d.dht == nil {
 		return
@@ -221,21 +205,6 @@ func (d *DistributedHashTable) Close() {
 	}
 	d.dht = nil
 	log.Infoln("dht: table closed")
-}
-
-func buildDHTKey(rawKeys ...string) string {
-	joined := strings.Join(rawKeys, "")
-	hash := sha256.Sum256([]byte(joined))
-
-	// Создаем peer.ID из хеша
-	id, err := peer.IDFromBytes(hash[:])
-	if err != nil {
-		log.Errorf("failed to create peer ID: %v", err)
-		return ""
-	}
-
-	// Используем этот ID для создания ключа
-	return routing.KeyForPublicKey(id)
 }
 
 func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multiaddr.Multiaddr) {
@@ -249,6 +218,7 @@ func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multia
 		if strings.Contains(addr.String(), "127.0.0.1") {
 			continue
 		}
+
 		filtered = append(filtered, addr)
 	}
 	return filtered

@@ -41,6 +41,7 @@ type API struct {
 }
 
 func main() {
+	//log2.SetDebugLogging()
 	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
@@ -331,9 +332,11 @@ func main() {
 	go mdnsService.Start(serverNode)
 	go pubsubService.Run(serverNode, clientNode, authRepo, followRepo)
 
-	raft.Negotiate(serverNode)
+	if err := raft.Negotiate(serverNode); err != nil {
+		log.Fatalf("failed to negotiate: %v", err)
+	}
 	defer raft.Shutdown()
-
+	log.Infoln("Warpnet started")
 	<-interruptChan
 	log.Infoln("interrupted...")
 }

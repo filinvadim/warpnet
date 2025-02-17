@@ -2,9 +2,11 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -95,6 +97,30 @@ func NewRaft(
 		snapshotStore, err = raft.NewFileSnapshotStore(consRepo.SnapshotPath(), 5, os.Stdout)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
+		}
+	}
+
+	_, err = stableStore.Get([]byte("CurrentTerm"))
+	if errors.Is(err, database.ErrKeyNotFound) {
+		_ = stableStore.SetUint64([]byte("CurrentTerm"), 1)
+	}
+
+	last, err := logStore.LastIndex()
+	if err != nil {
+		return nil, fmt.Errorf("consensus: failed to get last log index: %v", err)
+	}
+
+	if last == 0 {
+		err = logStore.StoreLog(&raft.Log{
+			Index:      1,
+			Term:       1,
+			Type:       raft.LogCommand,
+			Data:       []byte("genesis-log"),
+			AppendedAt: time.Now(),
+			Extensions: []byte("ext"),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to store genesis log: %v", err)
 		}
 	}
 
