@@ -188,37 +188,33 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	err = c.waitForClusterReady(c.raft, time.Minute)
-	if err != nil {
-		log.Errorf("consensus: cluster did not stabilize: %v", err)
-	}
+	//err = c.waitForClusterReady(c.raft)
+	//if err != nil {
+	//	log.Errorf("consensus: cluster did not stabilize: %v", err)
+	//}
 
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 	go c.listenEvents()
 	return nil
 }
 
-func (c *consensusService) waitForClusterReady(r *raft.Raft, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(2 * time.Second)
+func (c *consensusService) waitForClusterReady(r *raft.Raft) error {
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.ctx.Done():
 			return fmt.Errorf("timed out waiting for cluster to be ready")
-
 		case <-ticker.C:
+			if c.ctx.Err() != nil {
+				return fmt.Errorf("timed out waiting for cluster to be ready")
+			}
 			leaderAddr, leaderID := r.LeaderWithID()
-			log.Infof("DEBUG: LeaderWithID() returned leaderAddr=%s, leaderID=%s", leaderAddr, leaderID)
-
 			if leaderAddr != "" {
-				log.Infof("consensus: raft leader elected: %s", leaderAddr)
+				log.Infof("consensus: raft leader elected: %s", leaderID)
 				return nil
 			}
-
 			log.Infof("consensus: waiting for leader election...")
 		}
 	}
