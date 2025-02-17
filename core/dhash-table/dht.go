@@ -3,7 +3,6 @@ package dhash_table
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -108,10 +107,6 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	infos, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
 		return nil, err
-	}
-
-	for _, info := range infos {
-		fmt.Printf("dht: bootstrap node %s\n", info.String())
 	}
 
 	dhTable, err := dht.New(
