@@ -128,7 +128,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 
-		log.Infof("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
+		log.Debugf("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
 		respData, err := c.clientNode.ClientStream(wsMsg.NodeId, wsMsg.Path, *wsMsg.Body)
 		if err != nil {
 			log.Errorf("websocket: send stream: %v", err)

@@ -61,7 +61,7 @@ func send(
 
 	var rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 	if data != nil {
-		log.Infof("stream: sent to %s data with size %d\n", r, len(data))
+		log.Debugf("stream: sent to %s data with size %d\n", r, len(data))
 		_, err = rw.Write(data)
 	}
 	flush(rw)

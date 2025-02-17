@@ -12,6 +12,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
+	log2 "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
@@ -23,6 +24,7 @@ import (
 )
 
 func main() {
+	log2.SetDebugLogging()
 	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)

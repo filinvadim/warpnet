@@ -38,11 +38,11 @@ func NewWarpMiddleware() *WarpMiddleware {
 
 func (p *WarpMiddleware) LoggingMiddleware(next warpnet.WarpStreamHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		log.Infof("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
+		log.Debugf("middleware: server stream opened: %s %s\n", s.Protocol(), s.Conn().RemotePeer())
 		before := time.Now()
 		next(s)
 		after := time.Now()
-		log.Infof(
+		log.Debugf(
 			"middleware: server stream closed: %s %s, elapsed: %s\n",
 			s.Protocol(),
 			s.Conn().RemotePeer(),

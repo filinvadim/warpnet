@@ -1,4 +1,4 @@
-version: 0.2.16
+version: 0.2.17
 node:
   bootstrap:
     - "/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWNoJgU3hkxQRdFCWwTYLAj7MmaZ1fnyBvHWhdbTyney6W"
@@ -10,5 +10,5 @@ server:
   host: localhost
   port: 4002
 logging:
-  level: debug
+  level: info
 

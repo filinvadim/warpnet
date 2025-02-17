@@ -1,21 +1,18 @@
 package dhash_table
 
 import (
-	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/security"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -113,7 +110,6 @@ type customPrefixValidator struct {
 }
 
 func (v customPrefixValidator) Validate(key string, value []byte) error {
-	// 🔥 Здесь можно добавить любую валидацию данных перед записью
 	if len(value) == 0 {
 		return errors.New("empty value")
 	}
@@ -133,7 +129,7 @@ func (v customPrefixValidator) Select(key string, values [][]byte) (int, error) 
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
 	dhTable, err := dht.New(
 		d.ctx, n,
-		dht.NamespacedValidator(config.ConfigFile.Node.Prefix, &customPrefixValidator{config.ConfigFile.Node.Prefix}),
+		dht.NamespacedValidator(config.ConfigFile.Node.Prefix, customPrefixValidator{config.ConfigFile.Node.Prefix}),
 		dht.Mode(dht.ModeServer),
 		dht.AddressFilter(localHostAddressFilter),
 		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
@@ -141,7 +137,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour*24),
 		dht.RoutingTableRefreshQueryTimeout(time.Hour*24),
-		dht.BootstrapPeers(d.boostrapNodes...),
+		dht.BootstrapPeers(dht.GetDefaultBootstrapPeerAddrInfos()...),
 		dht.ProviderStore(d.providerStore),
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
 	)
@@ -150,16 +146,12 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		return nil, err
 	}
 
+	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addF != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
 			info := peer.AddrInfo{ID: id}
 			d.addF(info)
 
-		}
-	} else {
-		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
-			defaultNodeAddedCallback(id)
-			d.sharePSK(id, []byte(config.ConfigFile.Node.Prefix))
 		}
 	}
 	dhTable.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
@@ -218,164 +210,7 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 	}
 }
 
-const (
-	requestPrefix        = "request-psk"
-	responsePrefix       = "response-psk"
-	Rejected       int32 = -1
-	Expired        int32 = -2
-)
-
-type pskExchange struct {
-	requestKey  string
-	responseKey string
-}
-
-func (d *DistributedHashTable) RequestPSK() (string, error) {
-	if d == nil || d.dht == nil {
-		return "", nil
-	}
-
-	var (
-		timeout   = 30 * time.Second
-		exchanges []pskExchange
-		ownID     = d.dht.PeerID().String()
-		timer     = time.NewTimer(timeout)
-	)
-	defer timer.Stop()
-
-	defer func() {
-		for _, ex := range exchanges {
-			_ = d.dht.PutValue(d.ctx, ex.requestKey, []byte(string(Expired)))
-			_ = d.dht.PutValue(d.ctx, ex.responseKey, []byte(string(Expired)))
-		}
-	}()
-
-	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
-
-	ctx, cancel := context.WithTimeout(d.ctx, timeout*time.Duration(len(d.boostrapNodes)))
-	defer cancel()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-timer.C:
-			return "", errors.New("request PSK timed out")
-		default:
-			for _, info := range d.boostrapNodes {
-				if ctx.Err() != nil {
-					return "", ctx.Err()
-				}
-				bootstrapID := info.ID.String()
-				requestKey := buildDHTKey(requestPrefix, bootstrapID, ownID)
-				responseKey := buildDHTKey(responsePrefix, bootstrapID, ownID)
-
-				err := d.dht.PutValue(ctx, requestKey, reHashedCodeHash)
-				if errors.Is(err, kbucket.ErrLookupFailure) {
-					time.Sleep(time.Millisecond * 100)
-					continue
-				}
-				if err != nil {
-					if strings.Contains(err.Error(), "can't replace a newer value with an older value") {
-						return "", err
-					}
-					log.Errorf("dht: psk request put: %v\n", err)
-					continue
-				}
-
-				exchanges = append(exchanges, pskExchange{requestKey, responseKey})
-
-				value, err := d.dht.GetValue(ctx, responseKey)
-				if err != nil {
-					log.Warnf("dht: request psk from %s: %v\n", bootstrapID, err)
-					continue
-				}
-				if bytes.ContainsRune(value, Rejected) {
-					return "", errors.New("dht: PSK request rejected")
-				}
-				if len(value) == 0 {
-					log.Warnf("dht: request psk from %s: empty psk", value)
-					continue
-				}
-				data, err := security.DecryptAES(value, d.codeHash)
-				if err != nil {
-					return "", fmt.Errorf("decrypt psk: %w", err)
-				}
-				return string(data), nil
-			}
-		}
-	}
-}
-
-func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte) {
-	if d == nil || d.dht == nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(d.ctx, time.Minute)
-	defer cancel()
-
-	log.Infof("dht: share PSK called for %s", id)
-	defer log.Infoln("dht: share PSK call finished")
-
-	var bootstrapID = d.dht.PeerID().String()
-
-	requestKey := buildDHTKey(requestPrefix, bootstrapID, id.String())
-	value, err := d.dht.GetValue(ctx, requestKey)
-	if errors.Is(err, context.DeadlineExceeded) {
-		log.Warnf("dht: PSK request timed out")
-		return
-	}
-	if err != nil {
-		log.Errorf("dht: find psk request : %v\n", err)
-		return
-	}
-
-	if bytes.ContainsRune(value, Expired) {
-		log.Infoln("expired psk request")
-		return
-	}
-
-	responseKey := buildDHTKey(responsePrefix, bootstrapID, id.String())
-	existingResp, err := d.dht.GetValue(ctx, responseKey)
-	if err != nil {
-		log.Errorf("dht: find existing psk response : %v\n", err)
-		return
-	}
-	if len(existingResp) > 0 && !bytes.ContainsRune(existingResp, Rejected) && !bytes.ContainsRune(existingResp, Expired) {
-		log.Infoln("dht: found existing psk response", string(existingResp))
-		return // already serviced
-	}
-
-	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
-
-	if !bytes.Equal(value, reHashedCodeHash) {
-		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
-			log.Errorf("dht: respond psk: %v\n", err)
-		}
-		return
-	}
-
-	if currentPSK == nil || d.codeHash == nil {
-		panic("invalid codeHash or psk")
-	}
-
-	ecryptedPSK, err := security.EncryptAES(currentPSK, d.codeHash)
-	if err != nil {
-		log.Errorf("dht: encrypt psk: %v\n", err)
-		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
-			log.Errorf("dht: respond psk: %v\n", err)
-		}
-		return
-	}
-
-	if err := d.dht.PutValue(ctx, responseKey, ecryptedPSK); err != nil {
-		log.Errorf("dht: respond psk: %v\n", err)
-	}
-
-	log.Infof("dht: PSK shared for %s", id)
-	return
-}
+//
 
 func (d *DistributedHashTable) Close() {
 	if d == nil || d.dht == nil {
@@ -389,9 +224,18 @@ func (d *DistributedHashTable) Close() {
 }
 
 func buildDHTKey(rawKeys ...string) string {
-	joined := strings.Join(rawKeys, "/")
-	mh, _ := multihash.Sum([]byte(joined), multihash.SHA2_256, -1)
-	return fmt.Sprintf("/%s/%s", config.ConfigFile.Node.Prefix, mh.B58String())
+	joined := strings.Join(rawKeys, "")
+	hash := sha256.Sum256([]byte(joined))
+
+	// Создаем peer.ID из хеша
+	id, err := peer.IDFromBytes(hash[:])
+	if err != nil {
+		log.Errorf("failed to create peer ID: %v", err)
+		return ""
+	}
+
+	// Используем этот ID для создания ключа
+	return routing.KeyForPublicKey(id)
 }
 
 func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multiaddr.Multiaddr) {
@@ -409,3 +253,166 @@ func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multia
 	}
 	return filtered
 }
+
+//const (
+//	requestPrefix        = "request-psk"
+//	responsePrefix       = "response-psk"
+//	Rejected       int32 = -1
+//	Expired        int32 = -2
+//)
+//
+//type pskExchange struct {
+//	requestKey  string
+//	responseKey string
+//}
+//
+//func (d *DistributedHashTable) RequestPSK() (string, error) {
+//	if d == nil || d.dht == nil {
+//		return "", nil
+//	}
+//
+//	var (
+//		timeout   = 30 * time.Second
+//		exchanges []pskExchange
+//		ownID     = d.dht.PeerID().String()
+//		timer     = time.NewTimer(timeout)
+//	)
+//	defer timer.Stop()
+//
+//	defer func() {
+//		for _, ex := range exchanges {
+//			_ = d.dht.PutValue(d.ctx, ex.requestKey, []byte(string(Expired)))
+//			_ = d.dht.PutValue(d.ctx, ex.responseKey, []byte(string(Expired)))
+//		}
+//	}()
+//
+//	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
+//
+//	ctx, cancel := context.WithTimeout(d.ctx, timeout*time.Duration(len(d.boostrapNodes)))
+//	defer cancel()
+//
+//	for {
+//		select {
+//		case <-ctx.Done():
+//			return "", ctx.Err()
+//		case <-timer.C:
+//			return "", errors.New("request PSK timed out")
+//		default:
+//			for _, info := range d.boostrapNodes {
+//				if ctx.Err() != nil {
+//					return "", ctx.Err()
+//				}
+//				bootstrapID := info.ID.String()
+//				requestKey := buildDHTKey(requestPrefix, bootstrapID, ownID)
+//				responseKey := buildDHTKey(responsePrefix, bootstrapID, ownID)
+//
+//				log.Infof("DHT key components: prefix=%s, bootstrapID=%s, ownID=%s",
+//					requestPrefix, bootstrapID, ownID)
+//				log.Infof("Generated DHT key: %s", requestKey)
+//				err := d.dht.PutValue(ctx, requestKey, reHashedCodeHash)
+//				if errors.Is(err, kbucket.ErrLookupFailure) {
+//					time.Sleep(time.Millisecond * 100)
+//					continue
+//				}
+//				if err != nil {
+//					log.Errorf("dht: psk request put: %v \n", err)
+//					return "", err
+//				}
+//
+//				log.Infoln("dht: psk request put successfully")
+//
+//				exchanges = append(exchanges, pskExchange{requestKey, responseKey})
+//
+//				value, err := d.dht.GetValue(ctx, responseKey)
+//				if err != nil {
+//					log.Warnf("dht: request psk from %s: %v\n", bootstrapID, err)
+//					continue
+//				}
+//				if bytes.ContainsRune(value, Rejected) {
+//					return "", errors.New("dht: PSK request rejected")
+//				}
+//				if len(value) == 0 {
+//					log.Warnf("dht: request psk from %s: empty psk", value)
+//					continue
+//				}
+//				log.Infoln("dht: psk response collected successfully")
+//
+//				data, err := security.DecryptAES(value, d.codeHash)
+//				if err != nil {
+//					return "", fmt.Errorf("decrypt psk: %w", err)
+//				}
+//				return string(data), nil
+//			}
+//		}
+//	}
+//}
+//
+//func (d *DistributedHashTable) sharePSK(id warpnet.WarpPeerID, currentPSK []byte) {
+//	if d == nil || d.dht == nil {
+//		return
+//	}
+//
+//	ctx, cancel := context.WithTimeout(d.ctx, time.Minute)
+//	defer cancel()
+//
+//	log.Infof("dht: share PSK called for %s", id)
+//	defer log.Infof("dht: share PSK call finished for %s", id)
+//
+//	var bootstrapID = d.dht.PeerID().String()
+//
+//	requestKey := buildDHTKey(requestPrefix, bootstrapID, id.String())
+//	value, err := d.dht.GetValue(ctx, requestKey)
+//	if errors.Is(err, context.DeadlineExceeded) {
+//		log.Warnf("dht: PSK collect request timed out")
+//		return
+//	}
+//	if err != nil {
+//		log.Errorf("dht: find psk request : %v\n", err)
+//		return
+//	}
+//
+//	if bytes.ContainsRune(value, Expired) {
+//		log.Infoln("expired psk request")
+//		return
+//	}
+//
+//	responseKey := buildDHTKey(responsePrefix, bootstrapID, id.String())
+//	existingResp, err := d.dht.GetValue(ctx, responseKey)
+//	if err != nil {
+//		log.Errorf("dht: find existing psk response : %v\n", err)
+//		return
+//	}
+//	if len(existingResp) > 0 && !bytes.ContainsRune(existingResp, Rejected) && !bytes.ContainsRune(existingResp, Expired) {
+//		log.Infoln("dht: found existing psk response", string(existingResp))
+//		return // already serviced
+//	}
+//
+//	reHashedCodeHash := security.ConvertToSHA256(d.codeHash)
+//
+//	if !bytes.Equal(value, reHashedCodeHash) {
+//		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
+//			log.Errorf("dht: respond psk: %v\n", err)
+//		}
+//		return
+//	}
+//
+//	if currentPSK == nil || d.codeHash == nil {
+//		panic("invalid codeHash or psk")
+//	}
+//
+//	ecryptedPSK, err := security.EncryptAES(currentPSK, d.codeHash)
+//	if err != nil {
+//		log.Errorf("dht: encrypt psk: %v\n", err)
+//		if err := d.dht.PutValue(ctx, responseKey, []byte(string(Rejected))); err != nil {
+//			log.Errorf("dht: respond psk: %v\n", err)
+//		}
+//		return
+//	}
+//
+//	if err := d.dht.PutValue(ctx, responseKey, ecryptedPSK); err != nil {
+//		log.Errorf("dht: respond psk: %v\n", err)
+//	}
+//
+//	log.Infof("dht: PSK shared for %s", id)
+//	return
+//}

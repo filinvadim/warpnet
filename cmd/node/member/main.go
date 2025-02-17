@@ -163,11 +163,6 @@ func main() {
 	}
 	defer serverNode.Stop()
 
-	//if db.IsFirstRun() {
-	psk, err := dHashTable.RequestPSK()
-	log.Infoln("PSK", psk, err)
-	//}
-
 	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.ID().String()
 	serverNodeAuthInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
 	serverNodeAuthInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
