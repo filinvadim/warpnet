@@ -175,7 +175,6 @@ func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	waitForLeader(c.raft)
 	go c.listenEvents()
 	log.Infof("consensus: started  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 }
@@ -183,45 +182,6 @@ func (c *consensusService) Negotiate(bootstrapAddrs []warpnet.PeerAddrInfo) {
 func (c *consensusService) listenEvents() {
 	for range c.consensus.Subscribe() {
 		log.Infoln("consensus: state was updated")
-	}
-}
-
-// New Raft does not allow leader observation directy
-// What's worse, there will be no notification that a new
-// leader was elected because observations are set before
-// setting the Leader and only when the RaftState has changed.
-// Therefore, we need a ticker.
-func waitForLeader(r *raft.Raft) {
-	obsCh := make(chan raft.Observation, 1)
-	observer := raft.NewObserver(obsCh, false, nil)
-	r.RegisterObserver(observer)
-	defer r.DeregisterObserver(observer)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case obs := <-obsCh:
-			_, ok := obs.Data.(raft.RaftState)
-			if !ok {
-				continue
-			}
-			if leaderAddr, _ := r.LeaderWithID(); leaderAddr != "" {
-				log.Infof("consensus: raft leader found with address: %s", leaderAddr)
-				return
-			}
-
-		case <-ticker.C:
-			if leaderAddr, _ := r.LeaderWithID(); leaderAddr != "" {
-				log.Infof("consensus: raft leader found with address: %s", leaderAddr)
-				return
-			}
-		case <-ctx.Done():
-			log.Errorln("timed out waiting for raft leader")
-			return
-		}
 	}
 }
 
