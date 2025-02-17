@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -19,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "go.uber.org/automaxprocs" // DO NOT remove
 )
@@ -98,6 +100,9 @@ func main() {
 	}
 	raft.Negotiate(nil)
 	defer raft.Shutdown()
+
+	newState, err := raft.Commit(consensus.ConsensusDefaultState{"test": time.Now().String()})
+	fmt.Println(newState, err, "???????????????????????")
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")
 }

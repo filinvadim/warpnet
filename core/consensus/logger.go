@@ -8,7 +8,10 @@ import (
 	"os"
 )
 
-const INFO = hclog.Info
+const (
+	INFO  = hclog.Info
+	DEBUG = hclog.Debug
+)
 
 type defaultConsensusLogger struct {
 	level hclog.Level

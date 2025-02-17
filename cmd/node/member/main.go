@@ -33,6 +33,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type API struct {
@@ -333,6 +334,9 @@ func main() {
 	}
 	raft.Negotiate(bootstrapAddrs)
 	defer raft.Shutdown()
+
+	newState, err := raft.Commit(consensus.ConsensusDefaultState{"test": time.Now().String()})
+	fmt.Println(newState, err, "???????????????????????")
 	<-interruptChan
 	log.Infoln("interrupted...")
 }
