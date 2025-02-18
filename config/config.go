@@ -22,7 +22,8 @@ func init() {
 	pflag.String("node.network.prefix", "testnet", "Private network prefix")
 	pflag.String(
 		"node.bootstrap",
-		"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg",
+		"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,"+
+			"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,",
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
 	pflag.String("logging.level", "INFO", "Logging level")

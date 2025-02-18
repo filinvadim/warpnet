@@ -38,7 +38,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	privKey, err := security.GenerateKeyFromSeed([]byte(config.ConfigFile.Node.Host))
+	seed := []byte("bootstrap")
+	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
+		seed = []byte(hostname)
+	}
+	privKey, err := security.GenerateKeyFromSeed(seed)
 	if err != nil {
 		log.Fatalf("fail generating key: %v", err)
 	}

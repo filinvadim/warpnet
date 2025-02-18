@@ -41,6 +41,7 @@ type API struct {
 }
 
 func main() {
+	//log2.SetDebugLogging()
 	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
