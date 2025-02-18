@@ -2,7 +2,7 @@
 
 echo "Pre-push hook started..."
 
-FILE="config.yml"
+FILE="version"
 
 if [ ! -f "$FILE" ]; then
     echo "Version file not found!"
