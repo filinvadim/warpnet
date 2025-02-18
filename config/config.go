@@ -23,8 +23,8 @@ func init() {
 	pflag.String(
 		"node.bootstrap",
 		"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWPn8MyXNAgWdGivV6aM34nQt7FZ2Ai4tujS2NcSnhR9fw,"+
-			"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,"+
-			"/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS",
+			"/ip4/67.207.72.168/tcp/4002/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,"+
+			"/ip4/67.207.72.168/tcp/4003/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS",
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
 	pflag.String("logging.level", "INFO", "Logging level")

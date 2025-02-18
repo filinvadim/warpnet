@@ -11,7 +11,7 @@ services:
       - NODE_HOST=0.0.0.0
       - NODE_PORT=4001
       - NODE_NETWORK_PREFIX=testnet
-      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS
+      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,/ip4/67.207.72.168/tcp/4002/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,/ip4/67.207.72.168/tcp/4003/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS
       - LOGGING_LEVEL=INFO
 
   warpnet2:
@@ -26,7 +26,7 @@ services:
       - NODE_HOST=0.0.0.0
       - NODE_PORT=4002
       - NODE_NETWORK_PREFIX=testnet
-      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS
+      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg,/ip4/67.207.72.168/tcp/4002/p2p/12D3KooWMp4ddFBPxm3XfvgBgW5dSUKiPWbzDd8f4vDCqu8gepBb,/ip4/67.207.72.168/tcp/4003/p2p/12D3KooWC7TjzaPbBp8N5JDvJrTehGixVwWJhceQxbZb4T5zLjzS
       - LOGGING_LEVEL=INFO
 
   warpnet3:
