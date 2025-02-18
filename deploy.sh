@@ -9,7 +9,7 @@ if [ -z "$GITHUB_TOKEN" ]; then
   exit 1
 fi
 docker stop $(docker ps -a -q)
-docker system prune -f -a
+docker container prune
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
 docker run --restart=always -d --network=host -h "$HOST" --name warpnet --privileged ghcr.io/filinvadim/warpnet:latest
