@@ -159,6 +159,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		log.Errorf("failed to create raft transport: %v", err)
 		return
 	}
+	time.Sleep(30 * time.Second)
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
 	c.raftConf.Servers = append(
@@ -166,7 +167,6 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		raft.Server{Suffrage: raft.Voter, ID: config.LocalID, Address: raft.ServerAddress(config.LocalID)},
 	)
 
-	//if c.isBootstrap {
 	_ = raft.BootstrapCluster(
 		config,
 		c.logStore,
@@ -175,7 +175,6 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		c.transport,
 		c.raftConf.Clone(),
 	)
-	//}
 
 	log.Infoln("consensus: raft starting...")
 
@@ -201,23 +200,6 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		}
 	}
 
-	configFuture := c.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		log.Errorf("Raft configuration error: %v", err)
-	}
-	for _, srv := range configFuture.Configuration().Servers {
-		log.Infof("Raft peer: ID=%s, Addr=%s", srv.ID, srv.Address)
-	}
-
-	peers := node.Node().Peerstore().Peers()
-	if len(peers) == 0 {
-		log.Warn("No libp2p peers found! Raft cannot form a cluster.")
-	} else {
-		for _, p := range peers {
-			log.Infof("Connected libp2p peer: %s", p)
-		}
-	}
-
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 	go c.listenEvents()
 	return nil
@@ -227,9 +209,12 @@ func (c *consensusService) waitForClusterReady(r *raft.Raft) error {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
+	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
+	defer cancel()
+
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return fmt.Errorf("timed out waiting for cluster to be ready")
 		case <-ticker.C:
 			if c.ctx.Err() != nil {
