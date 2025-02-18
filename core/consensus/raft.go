@@ -176,7 +176,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		c.raftConf.Clone(),
 	)
 	//}
-	
+
 	log.Infoln("consensus: raft starting...")
 
 	c.raft, err = raft.NewRaft(
@@ -194,9 +194,11 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	err = c.waitForClusterReady(c.raft)
-	if err != nil {
-		log.Errorf("consensus: cluster did not stabilize: %v", err)
+	if !c.isBootstrap {
+		err = c.waitForClusterReady(c.raft)
+		if err != nil {
+			log.Errorf("consensus: cluster did not stabilize: %v", err)
+		}
 	}
 
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
