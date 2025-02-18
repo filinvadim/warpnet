@@ -75,13 +75,8 @@ func NewMemberNode(
 		return nil, err
 	}
 
-	bootstrapAddrs, err := config.ConfigFile.Node.AddrInfos()
-	if err != nil {
-		return nil, err
-	}
-
 	n, err := setupMemberNode(
-		ctx, privKey, selfHash, store, bootstrapAddrs, config.ConfigFile, routingFn,
+		ctx, privKey, selfHash, store, config.ConfigFile, routingFn,
 	)
 	if err != nil {
 		return nil, err
@@ -100,14 +95,13 @@ func setupMemberNode(
 	privKey warpnet.WarpPrivateKey,
 	selfHash string,
 	store warpnet.WarpPeerstore,
-	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn routingFunc,
 ) (*WarpNode, error) {
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
-		addrInfos,
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
 		conf,
 		routingFn,
 	)

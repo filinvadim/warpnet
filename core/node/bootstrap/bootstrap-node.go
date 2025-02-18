@@ -10,7 +10,9 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"time"
 )
 
@@ -32,18 +34,11 @@ func NewBootstrapNode(
 	memoryStore warpnet.WarpPeerstore,
 	routingF routingFunc,
 ) (_ *WarpBootstrapNode, err error) {
-
-	bootstrapAddrs, err := config.ConfigFile.Node.AddrInfos()
-	if err != nil {
-		return nil, err
-	}
-
 	return setupBootstrapNode(
 		ctx,
 		privKey,
 		selfHash,
 		memoryStore,
-		bootstrapAddrs,
 		config.ConfigFile,
 		routingF,
 	)
@@ -54,14 +49,23 @@ func setupBootstrapNode(
 	privKey warpnet.WarpPrivateKey,
 	selfHash string,
 	store warpnet.WarpPeerstore,
-	addrInfos []warpnet.PeerAddrInfo,
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpBootstrapNode, error) {
+	publicIP := "0.0.0.0"
+	hostEnv := os.Getenv("HOST")
+	if hostEnv != "" {
+		publicIP = hostEnv
+	}
+
+	// Создаём multiaddr с публичным IP
+	publicAddr, _ := multiaddr.NewMultiaddr(
+		fmt.Sprintf("/ip4/%s/tcp/%s", publicIP, conf.Node.Port),
+	)
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
-		addrInfos,
+		publicAddr.String(),
 		conf,
 		routingFn,
 	)

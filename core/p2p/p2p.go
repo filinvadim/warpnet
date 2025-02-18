@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -36,7 +35,7 @@ const (
 func NewP2PNode(
 	privKey warpnet.WarpPrivateKey,
 	store warpnet.WarpPeerstore,
-	addrInfos []warpnet.PeerAddrInfo,
+	listenAddr string,
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (warpnet.P2PNode, error) {
@@ -66,7 +65,8 @@ func NewP2PNode(
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
+			//fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
+			listenAddr,
 		),
 		libp2p.SwarmOpts(
 			swarm.WithDialTimeout(DefaultTimeout),
