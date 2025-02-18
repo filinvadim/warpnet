@@ -170,7 +170,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		c.transport,
 		c.raftConf.Clone(),
 	)
-	
+
 	c.raft, err = raft.NewRaft(
 		config,
 		c.consensus.FSM(),
