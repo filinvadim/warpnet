@@ -78,17 +78,13 @@ func NewP2PNode(
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
 		libp2p.ForceReachabilityPrivate(),
-		// TODO shuffle name thru consensus. "warpnet" now
-		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.Prefix))),
+		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(conf.Node.Prefix))), // TODO shuffle name thru consensus. "warpnet" now
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelay(),
-		libp2p.EnableAutoNATv2(),
-		libp2p.EnableHolePunching(),
-		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
