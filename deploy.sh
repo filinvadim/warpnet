@@ -12,4 +12,4 @@ docker stop $(docker ps -a -q)
 docker system prune -f -a
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
-docker run --restart=always -d --network=host -h "$HOSTNAME" --name warpnet ghcr.io/filinvadim/warpnet:latest
+docker run --restart=always -d --network=host -h "$HOSTNAME" --name warpnet --privileged ghcr.io/filinvadim/warpnet:latest
