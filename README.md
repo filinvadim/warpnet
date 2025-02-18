@@ -28,14 +28,14 @@ go run cmd/node/member/main.go
 ```
 
 ## How to run multiple nodes (dev mode)
-1. Update [config](./config.yml) file:
+1. Update [config](./version) file:
    - change all ports to different ones;
    - change `database/dirName` to different one.
 2. Run every node as independent OS process
 as described in previous chapter.
 
 ## How to run multiple nodes in isolated network (dev mode)
-1. In addition to previous chapter update [config](./config.yml) file:
+1. In addition to previous chapter update [config](./version) file:
     - change `node/network_prefix` to different one.
 2. Run multiple nodes as described in previous chapter.
 

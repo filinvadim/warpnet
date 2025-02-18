@@ -2,7 +2,7 @@
 
 echo "Pre-commit hook started..."
 
-CONFIG="config.yml"
+CONFIG="version"
 SPEC_LOCAL="spec/local-api.yml"
 
 if [ ! -f "$CONFIG" ]; then
