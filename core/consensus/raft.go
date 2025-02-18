@@ -162,14 +162,16 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 	log.Infoln("consensus: raft starting...")
 
-	_ = raft.BootstrapCluster(
-		config,
-		c.logStore,
-		c.stableStore,
-		c.snapshotStore,
-		c.transport,
-		c.raftConf.Clone(),
-	)
+	if c.isBootstrap {
+		_ = raft.BootstrapCluster(
+			config,
+			c.logStore,
+			c.stableStore,
+			c.snapshotStore,
+			c.transport,
+			c.raftConf.Clone(),
+		)
+	}
 
 	c.raft, err = raft.NewRaft(
 		config,
@@ -186,10 +188,10 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	//err = c.waitForClusterReady(c.raft)
-	//if err != nil {
-	//	log.Errorf("consensus: cluster did not stabilize: %v", err)
-	//}
+	err = c.waitForClusterReady(c.raft)
+	if err != nil {
+		log.Errorf("consensus: cluster did not stabilize: %v", err)
+	}
 
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 	go c.listenEvents()
