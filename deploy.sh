@@ -8,8 +8,8 @@ if [ -z "$GITHUB_TOKEN" ]; then
   echo "Error: GITHUB_TOKEN is not set"
   exit 1
 fi
-docker stop $(docker ps -a -q)
-docker container prune
+docker stop $(docker ps -aq) || true
+docker container prune -f
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
 docker run --restart=always -d --network=host -h "$HOST" --name warpnet --privileged ghcr.io/filinvadim/warpnet:latest
