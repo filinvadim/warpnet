@@ -86,6 +86,8 @@ func NewP2PNode(
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelay(),
+		libp2p.EnableAutoNATv2(),
+		libp2p.EnableHolePunching(),
 		libp2p.EnableAutoRelayWithStaticRelays(addrInfos),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
