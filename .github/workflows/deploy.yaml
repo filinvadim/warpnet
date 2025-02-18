@@ -49,6 +49,6 @@ jobs:
           scp ./deploy.sh root@67.207.72.168:/root
           scp ./deploy.sh root@167.99.29.177:/root
           scp ./deploy.sh root@188.166.204.43:/root
-          ssh root@67.207.72.168 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
-          ssh root@167.99.29.177 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
-          ssh root@188.166.204.43 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
+          ssh root@67.207.72.168 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOSTNAME=1 bash /root/deploy.sh'
+          ssh root@167.99.29.177 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOSTNAME=2 bash /root/deploy.sh'
+          ssh root@188.166.204.43 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOSTNAME=3 bash /root/deploy.sh'
