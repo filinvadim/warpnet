@@ -144,6 +144,11 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	if n == nil || n.node == nil {
 		return nil
 	}
+
+	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), "127.0.0.1") {
+		return nil
+	}
+
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
