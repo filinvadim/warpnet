@@ -160,18 +160,24 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		return
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
-	log.Infoln("consensus: raft starting...")
 
-	if c.isBootstrap {
-		_ = raft.BootstrapCluster(
-			config,
-			c.logStore,
-			c.stableStore,
-			c.snapshotStore,
-			c.transport,
-			c.raftConf.Clone(),
-		)
-	}
+	c.raftConf.Servers = append(
+		c.raftConf.Servers,
+		raft.Server{Suffrage: raft.Voter, ID: config.LocalID, Address: raft.ServerAddress(config.LocalID)},
+	)
+
+	//if c.isBootstrap {
+	_ = raft.BootstrapCluster(
+		config,
+		c.logStore,
+		c.stableStore,
+		c.snapshotStore,
+		c.transport,
+		c.raftConf.Clone(),
+	)
+	//}
+	
+	log.Infoln("consensus: raft starting...")
 
 	c.raft, err = raft.NewRaft(
 		config,
