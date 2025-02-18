@@ -201,6 +201,23 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		}
 	}
 
+	configFuture := c.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		log.Errorf("Raft configuration error: %v", err)
+	}
+	for _, srv := range configFuture.Configuration().Servers {
+		log.Infof("Raft peer: ID=%s, Addr=%s", srv.ID, srv.Address)
+	}
+
+	peers := node.Node().Peerstore().Peers()
+	if len(peers) == 0 {
+		log.Warn("No libp2p peers found! Raft cannot form a cluster.")
+	} else {
+		for _, p := range peers {
+			log.Infof("Connected libp2p peer: %s", p)
+		}
+	}
+
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 	go c.listenEvents()
 	return nil
