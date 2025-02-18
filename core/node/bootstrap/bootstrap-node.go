@@ -11,7 +11,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	log "github.com/sirupsen/logrus"
-	"os"
 	"time"
 )
 
@@ -51,15 +50,10 @@ func setupBootstrapNode(
 	conf config.Config,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpBootstrapNode, error) {
-	publicIP := "0.0.0.0"
-	if os.Getenv("PUBLIC_IP") != "" {
-		publicIP = os.Getenv("PUBLIC_IP")
-	}
-
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
-		fmt.Sprintf("/ip4/%s/tcp/%s", publicIP, conf.Node.Port),
+		fmt.Sprintf("/ip4/%s/tcp/%s", conf.Node.Host, conf.Node.Port),
 		conf,
 		routingFn,
 	)

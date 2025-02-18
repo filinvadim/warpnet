@@ -1,14 +1,49 @@
 services:
-  bootstrap-node-vadim: # change host name
-    build:
-      context: .
-      dockerfile: Dockerfile
+  warpnet1:
+    image: ghcr.io/filinvadim/warpnet:latest
     ports:
-      - "4011:4001"
-      - "4012:4002"
+      - "4001:4001"
     networks:
-      - warpnet-network
+      - warpnet
+    restart: always
+    environment:
+      - DATABASE_DIR=storage
+      - NODE_HOST=0.0.0.0
+      - NODE_PORT=4001
+      - NODE_NETWORK_PREFIX=testnet
+      - NODE_BOOTSTRAP='/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q'
+      - LOGGING_LEVEL=INFO
+
+  warpnet2:
+    image: ghcr.io/filinvadim/warpnet:latest
+    ports:
+      - "4002:4002"
+    networks:
+      - warpnet
+    restart: always
+    environment:
+      - DATABASE_DIR=storage
+      - NODE_HOST=0.0.0.0
+      - NODE_PORT=4002
+      - NODE_NETWORK_PREFIX=testnet
+      - NODE_BOOTSTRAP='/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q'
+      - LOGGING_LEVEL=INFO
+
+  warpnet3:
+    image: ghcr.io/filinvadim/warpnet:latest
+    ports:
+      - "4003:4003"
+    networks:
+      - warpnet
+    restart: always
+    environment:
+      - DATABASE_DIR=storage
+      - NODE_HOST=0.0.0.0
+      - NODE_PORT=4002
+      - NODE_NETWORK_PREFIX=testnet
+      - NODE_BOOTSTRAP='/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q'
+      - LOGGING_LEVEL=INFO
 
 networks:
-  warpnet-network:
+  warpnet:
     driver: bridge

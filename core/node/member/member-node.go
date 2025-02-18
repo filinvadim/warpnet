@@ -101,7 +101,7 @@ func setupMemberNode(
 	node, err := p2p.NewP2PNode(
 		privKey,
 		store,
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
+		fmt.Sprintf("/ip4/%s/tcp/%s", conf.Node.Host, conf.Node.Port),
 		conf,
 		routingFn,
 	)

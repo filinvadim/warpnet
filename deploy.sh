@@ -10,6 +10,7 @@ if [ -z "$GITHUB_TOKEN" ]; then
 fi
 docker stop $(docker ps -aq) || true
 docker container prune -f
+docker compose down
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
-docker run --restart=always -d --network=host -h "$HOST" -e PUBLIC_IP="$HOST" --name warpnet --privileged ghcr.io/filinvadim/warpnet:latest
+docker compose up -d

@@ -65,7 +65,6 @@ func NewP2PNode(
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
-			//fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", conf.Node.Port),
 			listenAddr,
 		),
 		libp2p.SwarmOpts(

@@ -40,15 +40,10 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.HOST_1 }} >> ~/.ssh/known_hosts
-          ssh-keyscan -H ${{ secrets.HOST_2 }} >> ~/.ssh/known_hosts
-          ssh-keyscan -H ${{ secrets.HOST_3 }} >> ~/.ssh/known_hosts
       
 
       - name: Deploy to Droplet
         run: |
           scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
-          scp ./deploy.sh root@${{ secrets.HOST_2 }}:/root
-          scp ./deploy.sh root@${{ secrets.HOST_3 }}:/root
-          ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOST=${{ secrets.HOST_1 }} bash /root/deploy.sh'
-          ssh root@${{ secrets.HOST_2 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOST=${{ secrets.HOST_2 }} bash /root/deploy.sh'
-          ssh root@${{ secrets.HOST_3 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} HOST=${{ secrets.HOST_3 }} bash /root/deploy.sh'
+          scp ./docker-compose.yml root@${{ secrets.HOST_1 }}:/root
+          ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
