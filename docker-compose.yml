@@ -11,7 +11,7 @@ services:
       - NODE_HOST=0.0.0.0
       - NODE_PORT=4001
       - NODE_NETWORK_PREFIX=testnet
-      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q
+      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg
       - LOGGING_LEVEL=INFO
 
   warpnet2:
@@ -26,7 +26,7 @@ services:
       - NODE_HOST=0.0.0.0
       - NODE_PORT=4002
       - NODE_NETWORK_PREFIX=testnet
-      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q
+      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg
       - LOGGING_LEVEL=INFO
 
   warpnet3:
@@ -41,7 +41,7 @@ services:
       - NODE_HOST=0.0.0.0
       - NODE_PORT=4002
       - NODE_NETWORK_PREFIX=testnet
-      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWEsnREonjwEsyVHcMpKaAzFQTQchcF5G12SzWhd4Jw79Q
+      - NODE_BOOTSTRAP=/ip4/67.207.72.168/tcp/4001/p2p/12D3KooWAJHnjq59vsy8h2jtu5tTC7tGS3D5DBdFdogxC5e7nDpg
       - LOGGING_LEVEL=INFO
 
 networks:
