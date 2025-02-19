@@ -91,9 +91,14 @@ func NewRaft(
 		stableStore = raft.NewInmemStore()
 		snapshotStore = raft.NewInmemSnapshotStore()
 	} else {
+		path := consRepo.SnapshotPath()
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+		if err != nil {
+			return nil, err
+		}
 		logStore = consRepo
 		stableStore = consRepo
-		snapshotStore, err = raft.NewFileSnapshotStore(consRepo.SnapshotPath(), 5, os.Stdout)
+		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}

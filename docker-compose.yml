@@ -28,7 +28,7 @@ services:
       - warpnet
     restart: always
     environment:
-      - NODE_PORT=4002
+      - NODE_PORT=4003
 
 
 networks:

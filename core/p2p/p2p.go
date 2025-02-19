@@ -1,8 +1,6 @@
 package p2p
 
 import (
-	"context"
-	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -15,7 +13,6 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -65,7 +62,7 @@ func NewP2PNode(
 		return nil, err
 	}
 
-	node, err := libp2p.New(
+	return libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
 			listenAddr,
@@ -93,29 +90,4 @@ func NewP2PNode(
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 	)
-	if err != nil {
-		return nil, err
-	}
-	return node, waitForLibp2pReady(node, time.Minute)
-}
-
-func waitForLibp2pReady(node warpnet.P2PNode, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			peers := node.Peerstore().Peers()
-			if len(peers) > 0 {
-				log.Infof("libp2p is ready, connected peers: %d", len(peers))
-				return nil
-			}
-			log.Warn("waiting for libp2p to initialize...")
-		case <-ctx.Done():
-			return fmt.Errorf("timeout: libp2p did not initialize in time")
-		}
-	}
 }
