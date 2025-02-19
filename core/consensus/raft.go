@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"os"
 	"time"
 
@@ -50,7 +51,7 @@ type (
 type ConsensusStorer interface {
 	raft.LogStore
 	raft.StableStore
-	SnapshotPath() string
+	SnapshotFilestore() (file io.Writer, path string)
 }
 
 type StateCommitter interface {
@@ -64,12 +65,13 @@ type NodeServicesProvider interface {
 
 type consensusService struct {
 	ctx           context.Context
+	consensus     *Consensus
+	fsm           *FSM
 	raft          *raft.Raft
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
 	snapshotStore raft.SnapshotStore
 	transport     *raft.NetworkTransport
-	consensus     *Consensus
 	raftConf      raft.Configuration
 	raftID        raft.ServerID
 	isBootstrap   bool
@@ -91,11 +93,7 @@ func NewRaft(
 		stableStore = raft.NewInmemStore()
 		snapshotStore = raft.NewInmemSnapshotStore()
 	} else {
-		path := consRepo.SnapshotPath()
-		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
-		if err != nil {
-			return nil, err
-		}
+		f, path := consRepo.SnapshotFilestore()
 		logStore = consRepo
 		stableStore = consRepo
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
@@ -103,7 +101,9 @@ func NewRaft(
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 	}
-	cons := libp2praft.NewConsensus(&ConsensusDefaultState{"genesis": ""})
+
+	fsm := newFSM()
+	cons := libp2praft.NewConsensus(fsm.state)
 
 	var (
 		bootstrapAddrs, _ = confFile.ConfigFile.Node.AddrInfos()
@@ -122,6 +122,7 @@ func NewRaft(
 		logStore:      logStore,
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
+		fsm:           fsm,
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
 		isBootstrap:   isBootstrap,
@@ -161,7 +162,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 
 	c.raft, err = raft.NewRaft(
 		config,
-		c.consensus.FSM(),
+		c.fsm,
 		c.logStore,
 		c.stableStore,
 		c.snapshotStore,
@@ -174,7 +175,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	err = c.waitForSync(config.LocalID)
+	err = c.sync(config.LocalID)
 	if err != nil {
 		return err
 	}
@@ -182,7 +183,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	return nil
 }
 
-func (c *consensusService) waitForSync(id raft.ServerID) error {
+func (c *consensusService) sync(id raft.ServerID) error {
 	leaderCtx, cancel := context.WithTimeout(c.ctx, 5*time.Minute)
 	defer cancel()
 
@@ -371,6 +372,7 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ Consen
 	}
 
 	returnedState, err := c.consensus.CommitState(updatedState)
+
 	return returnedState.(ConsensusDefaultState), err
 }
 
@@ -390,6 +392,7 @@ func (c *consensusService) Shutdown() {
 	if c == nil || c.raft == nil {
 		return
 	}
+
 	_ = c.transport.Close()
 	wait := c.raft.Shutdown()
 	if wait != nil && wait.Error() != nil {

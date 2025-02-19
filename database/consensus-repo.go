@@ -8,6 +8,8 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/hashicorp/raft"
+	"io"
+	"os"
 )
 
 const (
@@ -17,7 +19,8 @@ const (
 
 var (
 	// ErrKeyNotFound is an error indicating a given key does not exist
-	ErrKeyNotFound = errors.New("consensus key not found")
+	ErrKeyNotFound   = errors.New("consensus key not found")
+	ErrStopIteration = errors.New("stop iteration")
 )
 
 type ConsensusStorer interface {
@@ -31,58 +34,71 @@ type ConsensusStorer interface {
 }
 
 type ConsensusRepo struct {
-	db ConsensusStorer
+	db        ConsensusStorer
+	fileStore *os.File
 }
 
-func NewConsensusRepo(db ConsensusStorer) *ConsensusRepo {
-	return &ConsensusRepo{db: db}
+func NewConsensusRepo(db ConsensusStorer) (*ConsensusRepo, error) {
+	fullPath := db.Path() + "/snapshot"
+	f, err := os.OpenFile(fullPath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		if f != nil {
+			f.Close()
+		}
+		return nil, err
+	}
+	return &ConsensusRepo{db: db, fileStore: f}, nil
 }
 
 func (cr *ConsensusRepo) Sync() error {
 	return cr.db.Sync()
 }
 
-func (cr *ConsensusRepo) SnapshotPath() string {
-	return cr.db.Path() + "/snapshot"
+func (cr *ConsensusRepo) SnapshotFilestore() (file io.Writer, path string) {
+	return cr.fileStore, cr.db.Path()
 }
 
 // FirstIndex returns the first known index from the Raft log.
 func (cr *ConsensusRepo) FirstIndex() (uint64, error) {
 	var value uint64
-	err := cr.db.InnerDB().View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchValues: false,
-			Reverse:        false,
-		})
-		defer it.Close()
 
-		it.Seek([]byte(ConsensusLogsNamespace))
-		if it.ValidForPrefix([]byte(ConsensusLogsNamespace)) {
-			value = bytesToUint64(it.Item().Key()[len(ConsensusLogsNamespace):])
-		}
-		return nil
+	txn, err := cr.db.NewReadTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
+
+	err = txn.IterateKeys(ConsensusLogsNamespace, func(key string) error {
+		value = bytesToUint64([]byte(key[len(ConsensusLogsNamespace):]))
+		return ErrStopIteration
 	})
+	if err != nil && !errors.Is(err, ErrStopIteration) {
+		return 0, err
+	}
+
 	return value, err
 }
 
 // LastIndex returns the last known index from the Raft log.
 func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 	var value uint64
-	err := cr.db.InnerDB().View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchValues: false,
-			Reverse:        true, // Идем в обратном порядке
-		})
-		defer it.Close()
+	txn, err := cr.db.NewReadTxn()
+	if err != nil {
+		return 0, err
+	}
+	defer txn.Rollback()
 
-		prefix := []byte(ConsensusLogsNamespace)
-		it.Seek(append(prefix, 0xff)) // Ищем последний возможный ключ
-
-		if it.ValidForPrefix(prefix) {
-			value = bytesToUint64(it.Item().Key()[len(prefix):])
-		}
-		return nil
+	prefixMask := append([]byte(ConsensusLogsNamespace), 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
+	err = txn.ReverseIterateKeys(storage.DatabaseKey(prefixMask), func(key string) error {
+		value = bytesToUint64([]byte(key[len(ConsensusLogsNamespace):]))
+		return ErrStopIteration
 	})
+	if err != nil && !errors.Is(err, ErrStopIteration) {
+		return 0, err
+	}
+	if value == 0 {
+		return 0, ErrKeyNotFound
+	}
 	return value, err
 }
 
@@ -148,7 +164,7 @@ func (cr *ConsensusRepo) DeleteRange(min, max uint64) error {
 	if err != nil {
 		return err
 	}
-	defer txn.Rollback()
+	defer readTxn.Rollback()
 
 	var keysToDelete [][]byte
 	err = readTxn.IterateKeys(storage.DatabaseKey(start), func(key string) error {
@@ -219,7 +235,7 @@ func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
 }
 
 func (cr *ConsensusRepo) Close() error {
-	return nil
+	return cr.fileStore.Close()
 }
 
 // ======================= UTILS =========================

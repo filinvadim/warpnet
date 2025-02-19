@@ -451,6 +451,26 @@ func (t *WarpReadTxn) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) erro
 	return nil
 }
 
+func (t *WarpReadTxn) ReverseIterateKeys(prefix DatabaseKey, handler IterKeysFunc) error {
+	if strings.Contains(prefix.String(), FixedKey) {
+		return errors.New("cannot iterate thru fixed key")
+	}
+	opts := badger.DefaultIteratorOptions
+	opts.Reverse = true
+	it := t.txn.NewIterator(opts)
+	defer it.Close()
+	p := []byte(prefix)
+
+	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
+		item := it.Item()
+		err := handler(string(item.KeyCopy(nil)))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type ListItem struct {
 	Key   string
 	Value []byte

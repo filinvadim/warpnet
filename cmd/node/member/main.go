@@ -78,7 +78,10 @@ func main() {
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
-	consensusRepo := database.NewConsensusRepo(db)
+	consensusRepo, err := database.NewConsensusRepo(db)
+	if err != nil {
+		log.Fatalf("failed to init consensus repo: %v", err)
+	}
 	likeRepo := database.NewLikeRepo(db)
 	chatRepo := database.NewChatRepo(db)
 
