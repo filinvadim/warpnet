@@ -48,6 +48,7 @@ func NewConsensusRepo(db ConsensusStorer) (*ConsensusRepo, error) {
 		return nil, err
 	}
 	repo := &ConsensusRepo{db: db, fileStore: f}
+
 	return repo, nil
 }
 
@@ -98,7 +99,7 @@ func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 		return 0, err
 	}
 	if value == 0 {
-		return 0, nil // intentionally!
+		return 1, nil // intentionally!
 	}
 	return value, err
 }

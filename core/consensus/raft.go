@@ -2,12 +2,15 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"math/rand"
 	"os"
 	"time"
 
@@ -156,14 +159,23 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		c.raftConf.Clone(),
 	)
 	if err != nil {
-		_ = c.stableStore.SetUint64([]byte("CurrentTerm"), 1)
-		entry := &raft.Log{
-			Type:  raft.LogConfiguration,
-			Index: 1,
-			Term:  1,
-			Data:  raft.EncodeConfiguration(c.raftConf),
+		// random wait to avoid cluster nodes simultaneous setup
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)))
+
+		termKey := []byte("CurrentTerm")
+		if term, _ := c.stableStore.GetUint64(termKey); term == 0 {
+			_ = c.stableStore.SetUint64(termKey, 1)
 		}
-		_ = c.logStore.StoreLog(entry)
+		err := c.logStore.GetLog(2, &raft.Log{})
+		if errors.Is(err, database.ErrConsensusKeyNotFound) {
+			entry := &raft.Log{
+				Type:  raft.LogConfiguration,
+				Index: 1,
+				Term:  1,
+				Data:  raft.EncodeConfiguration(c.raftConf),
+			}
+			_ = c.logStore.StoreLog(entry)
+		}
 	}
 
 	log.Infoln("consensus: raft starting...")
