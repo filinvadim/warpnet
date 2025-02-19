@@ -2,11 +2,9 @@ package consensus
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -73,6 +71,7 @@ type consensusService struct {
 	transport     *raft.NetworkTransport
 	consensus     *Consensus
 	raftConf      raft.Configuration
+	raftID        raft.ServerID
 	isBootstrap   bool
 }
 
@@ -99,31 +98,6 @@ func NewRaft(
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 	}
-
-	_, err = stableStore.Get([]byte("CurrentTerm"))
-	if errors.Is(err, database.ErrKeyNotFound) {
-		_ = stableStore.SetUint64([]byte("CurrentTerm"), 1)
-	}
-
-	last, err := logStore.LastIndex()
-	if err != nil {
-		return nil, fmt.Errorf("consensus: failed to get last log index: %v", err)
-	}
-
-	if last == 0 {
-		err = logStore.StoreLog(&raft.Log{
-			Index:      1,
-			Term:       1,
-			Type:       raft.LogCommand,
-			Data:       []byte("genesis-log"),
-			AppendedAt: time.Now(),
-			Extensions: []byte("ext"),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to store genesis log: %v", err)
-		}
-	}
-
 	cons := libp2praft.NewConsensus(&ConsensusDefaultState{"genesis": ""})
 
 	var (
@@ -154,12 +128,13 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	config.ElectionTimeout = time.Minute
 	config.Logger = &defaultConsensusLogger{DEBUG}
 	config.LocalID = raft.ServerID(node.ID().String())
+
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
 	if err != nil {
 		log.Errorf("failed to create raft transport: %v", err)
 		return
 	}
-	time.Sleep(30 * time.Second)
+
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
 	c.raftConf.Servers = append(
@@ -193,41 +168,117 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	if !c.isBootstrap {
-		err = c.waitForClusterReady(c.raft)
-		if err != nil {
-			log.Errorf("consensus: cluster did not stabilize: %v", err)
-		}
+	err = c.waitForSync(config.LocalID)
+	if err != nil {
+		return err
 	}
-
 	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
-	go c.listenEvents()
 	return nil
 }
 
-func (c *consensusService) waitForClusterReady(r *raft.Raft) error {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
+func (c *consensusService) waitForSync(id raft.ServerID) error {
+	leaderCtx, cancel := context.WithTimeout(c.ctx, 5*time.Minute)
 	defer cancel()
+
+	cs := consensusSync{
+		ctx:    c.ctx,
+		raft:   c.raft,
+		raftID: id,
+	}
+
+	leaderID, err := cs.waitForLeader(leaderCtx)
+	if err != nil {
+		return fmt.Errorf("waiting for leader: %w", err)
+	}
+
+	log.Infof("current raft leader: %s", leaderID)
+
+	err = cs.waitForVoter()
+	if err != nil {
+		return fmt.Errorf("waiting to become a voter: %w", err)
+	}
+
+	err = cs.waitForUpdates()
+	if err != nil {
+		return fmt.Errorf("waiting for consensus updates: %w", err)
+	}
+	return nil
+}
+
+type consensusSync struct {
+	ctx    context.Context
+	raft   *raft.Raft
+	raftID raft.ServerID
+}
+
+func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timed out waiting for cluster to be ready")
 		case <-ticker.C:
-			if c.ctx.Err() != nil {
-				return fmt.Errorf("timed out waiting for cluster to be ready")
+			if addr, id := c.raft.LeaderWithID(); addr != "" {
+
+				return string(id), nil
 			}
-			leaderAddr, leaderID := r.LeaderWithID()
-			if leaderAddr != "" {
-				log.Infof("consensus: raft leader elected: %s", leaderID)
-				return nil
-			}
-			log.Infof("consensus: waiting for leader election...")
+		case <-ctx.Done():
+			return "", ctx.Err()
 		}
 	}
+}
+
+func (c *consensusSync) waitForVoter() error {
+	log.Debugln("waiting until we are promoted to a voter")
+	ticker := time.NewTicker(time.Second / 2)
+	defer ticker.Stop()
+
+	id := c.raftID
+	for {
+		select {
+		case <-c.ctx.Done():
+			return c.ctx.Err()
+		case <-ticker.C:
+			wait := c.raft.GetConfiguration()
+			if err := wait.Error(); err != nil {
+				return err
+			}
+
+			if isVoter(id, wait.Configuration()) {
+				return nil
+			}
+			log.Debugf("not voter yet: %s", id)
+		}
+	}
+}
+
+func (c *consensusSync) waitForUpdates() error {
+	log.Debugln("raft state is catching up to the latest known version. Please wait...")
+	ticker := time.NewTicker(time.Second / 2)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return c.ctx.Err()
+		case <-ticker.C:
+			lastAppliedIndex := c.raft.AppliedIndex()
+			lastIndex := c.raft.LastIndex()
+			log.Debugf("current raft index: %d/%d", lastAppliedIndex, lastIndex)
+			if lastAppliedIndex == lastIndex {
+				return nil
+			}
+		}
+	}
+}
+
+func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
+	for _, server := range cfg.Servers {
+		if server.ID == srvID && server.Suffrage == raft.Voter {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
@@ -295,13 +346,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	return
 }
 
-func (c *consensusService) listenEvents() {
-	for range c.consensus.Subscribe() {
-		log.Infoln("consensus: state was updated")
-	}
-}
-
-func (c *consensusService) Commit(newState ConsensusDefaultState) (_ ConsensusDefaultState, err error) {
+func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ ConsensusDefaultState, err error) {
 	state, err := c.consensus.GetCurrentState()
 	if err != nil {
 		return nil, fmt.Errorf("consensus: commit: failed to get current state: %v", err)
