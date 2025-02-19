@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/sec"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"strings"
 	"time"
@@ -149,25 +148,23 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		if err := dhTable.Bootstrap(d.ctx); err != nil {
 			log.Errorf("dht: bootstrap: %s", err)
 		}
-		d.correctPeerIdMismatch(d.boostrapNodes)
 	}()
 
 	<-dhTable.RefreshRoutingTable()
 
 	log.Infoln("dht: routing started")
-
-	return dhTable, nil
+	return dhTable, d.correctPeerIdMismatch(d.boostrapNodes)
 }
 
-func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
-	ctx, cancel := context.WithTimeout(d.ctx, 10*time.Second) // common timeout
+func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) error {
+	ctx, cancel := context.WithTimeout(d.ctx, 30*time.Second) // common timeout
 	defer cancel()
 
-	g, ctx := errgroup.WithContext(ctx)
+	var errs []error
+
 	for _, addr := range boostrapNodes {
-		addr := addr // this is important!
-		g.Go(func() error {
-			localCtx, localCancel := context.WithTimeout(ctx, 1*time.Second) // local timeout
+		f := func(addr warpnet.PeerAddrInfo) error {
+			localCtx, localCancel := context.WithTimeout(ctx, 5*time.Second) // local timeout
 			defer localCancel()
 
 			err := d.dht.Ping(localCtx, addr.ID)
@@ -175,8 +172,11 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 				return nil
 			}
 			var pidErr sec.ErrPeerIDMismatch
-			if !errors.As(err, &pidErr) {
+			if err == nil {
 				return nil
+			}
+			if !errors.As(err, &pidErr) {
+				return err
 			}
 
 			d.dht.RoutingTable().RemovePeer(pidErr.Expected)
@@ -184,11 +184,13 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 			d.dht.Host().Peerstore().AddAddrs(pidErr.Actual, addr.Addrs, warpnet.PermanentAddrTTL)
 			log.Infof("dht: peer id corrected from %s to %s", pidErr.Expected, pidErr.Actual)
 			return nil
-		})
+		}
+
+		if err := f(addr); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	if err := g.Wait(); err != nil {
-		log.Errorf("dht: mismatch: waitgroup: %v", err)
-	}
+	return errors.Join(errs...)
 }
 
 func (d *DistributedHashTable) Close() {

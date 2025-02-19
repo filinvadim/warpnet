@@ -132,6 +132,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	config := raft.DefaultConfig()
 	config.ElectionTimeout = time.Minute
 	config.Logger = &defaultConsensusLogger{DEBUG}
+	config.LogOutput = os.Stdout
 	config.LocalID = raft.ServerID(node.ID().String())
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
