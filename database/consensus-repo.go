@@ -19,8 +19,8 @@ const (
 
 var (
 	// ErrKeyNotFound is an error indicating a given key does not exist
-	ErrKeyNotFound   = errors.New("consensus key not found")
-	ErrStopIteration = errors.New("stop iteration")
+	ErrConsensusKeyNotFound = errors.New("consensus key not found")
+	ErrStopIteration        = errors.New("stop iteration")
 )
 
 type ConsensusStorer interface {
@@ -47,7 +47,8 @@ func NewConsensusRepo(db ConsensusStorer) (*ConsensusRepo, error) {
 		}
 		return nil, err
 	}
-	return &ConsensusRepo{db: db, fileStore: f}, nil
+	repo := &ConsensusRepo{db: db, fileStore: f}
+	return repo, nil
 }
 
 func (cr *ConsensusRepo) Sync() error {
@@ -73,10 +74,10 @@ func (cr *ConsensusRepo) FirstIndex() (uint64, error) {
 		return ErrStopIteration
 	})
 	if err != nil && !errors.Is(err, ErrStopIteration) {
-		return 0, err
+		return 0, nil // intentionally
 	}
 
-	return value, err
+	return value, nil
 }
 
 // LastIndex returns the last known index from the Raft log.
@@ -97,7 +98,7 @@ func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 		return 0, err
 	}
 	if value == 0 {
-		return 0, ErrKeyNotFound
+		return 0, nil // intentionally!
 	}
 	return value, err
 }
@@ -107,7 +108,7 @@ func (cr *ConsensusRepo) GetLog(index uint64, log *raft.Log) error {
 	prefix := append([]byte(ConsensusLogsNamespace), uint64ToBytes(index)...)
 	val, err := cr.db.Get(storage.DatabaseKey(prefix))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return ErrKeyNotFound
+		return ErrConsensusKeyNotFound
 	}
 	if err != nil {
 		return err
@@ -212,7 +213,7 @@ func (cr *ConsensusRepo) Get(key []byte) ([]byte, error) {
 	prefix := append([]byte(ConsensusConfigNamespace), key...)
 	val, err := cr.db.Get(storage.DatabaseKey(prefix))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return nil, ErrKeyNotFound
+		return nil, ErrConsensusKeyNotFound
 	}
 	return val, err
 }
@@ -229,8 +230,9 @@ func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
 	fullKey := append([]byte(ConsensusConfigNamespace), key...)
 	val, err := cr.db.Get(storage.DatabaseKey(fullKey))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return 0, ErrKeyNotFound
+		return 0, nil // intentionally!
 	}
+
 	return bytesToUint64(val), err
 }
 

@@ -132,6 +132,9 @@ func NewRaft(
 func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 	config := raft.DefaultConfig()
 	config.ElectionTimeout = time.Minute
+	config.HeartbeatTimeout = time.Second * 5
+	config.LeaderLeaseTimeout = time.Second * 5
+	config.CommitTimeout = time.Second * 5
 	config.Logger = &defaultConsensusLogger{DEBUG}
 	config.LogOutput = os.Stdout
 	config.LocalID = raft.ServerID(node.ID().String())
@@ -144,12 +147,7 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	c.raftConf.Servers = append(
-		c.raftConf.Servers,
-		raft.Server{Suffrage: raft.Voter, ID: config.LocalID, Address: raft.ServerAddress(config.LocalID)},
-	)
-
-	_ = raft.BootstrapCluster(
+	err = raft.BootstrapCluster(
 		config,
 		c.logStore,
 		c.stableStore,
@@ -157,6 +155,16 @@ func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
 		c.transport,
 		c.raftConf.Clone(),
 	)
+	if err != nil {
+		_ = c.stableStore.SetUint64([]byte("CurrentTerm"), 1)
+		entry := &raft.Log{
+			Type:  raft.LogConfiguration,
+			Index: 1,
+			Term:  1,
+			Data:  raft.EncodeConfiguration(c.raftConf),
+		}
+		_ = c.logStore.StoreLog(entry)
+	}
 
 	log.Infoln("consensus: raft starting...")
 
@@ -296,9 +304,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 	log.Infof("consensus: adding new voter to %s", info.ID.String())
-	wait := c.raft.VerifyLeader()
-	if wait.Error() != nil {
-		log.Infof("consensus: failed to add voter: %s", wait.Error())
+	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
 
@@ -309,7 +315,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	}
 	prevIndex := configFuture.Index()
 
-	wait = c.raft.RemoveServer(
+	wait := c.raft.RemoveServer(
 		raft.ServerID(info.ID.String()), prevIndex, 30*time.Second,
 	)
 	if err := wait.Error(); err != nil {
@@ -332,8 +338,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
-	wait := c.raft.VerifyLeader()
-	if wait.Error() != nil {
+	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
 
@@ -344,7 +349,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	}
 	prevIndex := configFuture.Index()
 
-	wait = c.raft.RemoveServer(
+	wait := c.raft.RemoveServer(
 		raft.ServerID(info.ID.String()), prevIndex, 30*time.Second,
 	)
 	if err := wait.Error(); err != nil {
@@ -353,35 +358,29 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	return
 }
 
-func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ ConsensusDefaultState, err error) {
-	state, err := c.consensus.GetCurrentState()
-	if err != nil {
-		return nil, fmt.Errorf("consensus: commit: failed to get current state: %v", err)
+func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVState, err error) {
+	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
+		return
 	}
-	currentState, ok := state.(ConsensusDefaultState)
-	if !ok {
-		return nil, fmt.Errorf("consensus: commit: failed to assert state type")
-	}
-
 	updatedState := make(ConsensusDefaultState)
-	for k, v := range currentState {
-		updatedState[k] = v
-	}
 	for k, v := range newState {
 		updatedState[k] = v
 	}
 
 	returnedState, err := c.consensus.CommitState(updatedState)
+	if err != nil {
+		return nil, err
+	}
 
-	return returnedState.(ConsensusDefaultState), err
+	return returnedState.(*KVState), nil
 }
 
-func (c *consensusService) CurrentState() (ConsensusDefaultState, error) {
+func (c *consensusService) CurrentState() (*KVState, error) {
 	currentState, err := c.consensus.GetCurrentState()
 	if err != nil {
 		return nil, fmt.Errorf("consensus: get: failed to get current state: %v", err)
 	}
-	defaultState, ok := currentState.(ConsensusDefaultState)
+	defaultState, ok := currentState.(*KVState)
 	if !ok {
 		return nil, fmt.Errorf("consensus: get: failed to assert state type")
 	}

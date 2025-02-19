@@ -108,7 +108,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	if err != nil {
 		return nil, err
 	}
-
+	
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),

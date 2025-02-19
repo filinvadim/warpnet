@@ -42,12 +42,12 @@ type API struct {
 
 func main() {
 	//log2.SetDebugLogging()
-	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
+	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
 	}
 
-	log.Infof("codebase hash: %x", codeHash)
+	log.Infof("codebase hash: %x", selfhash)
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
@@ -155,7 +155,7 @@ func main() {
 	}
 
 	dHashTable := dht.NewDHTable(
-		ctx, persLayer, providerStore, codeHash,
+		ctx, persLayer, providerStore, selfhash,
 		discService.HandlePeerFound, nil,
 	)
 	defer dHashTable.Close()
@@ -163,7 +163,7 @@ func main() {
 	serverNode, err := member.NewMemberNode(
 		ctx,
 		privKey,
-		string(codeHash),
+		string(selfhash),
 		persLayer,
 		dHashTable.StartRouting,
 	)
@@ -339,6 +339,9 @@ func main() {
 		log.Fatalf("failed to negotiate: %v", err)
 	}
 	defer raft.Shutdown()
+
+	state, err := raft.CommitState(map[string]string{"selfhash": string(selfhash)})
+	fmt.Println("raft state:", state, "err:", err)
 	log.Infoln("Warpnet started")
 	<-interruptChan
 	log.Infoln("interrupted...")

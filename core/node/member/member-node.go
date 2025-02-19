@@ -134,19 +134,25 @@ func setupMemberNode(
 	return n, nil
 }
 
+const localhost = "127.0.0.1"
+
 func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	if n == nil || n.node == nil {
 		return nil
 	}
 
-	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), "127.0.0.1") {
+	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), localhost) {
 		return nil
+	}
+
+	if len(p.Addrs) > 1 && strings.Contains(p.Addrs[0].String(), localhost) {
+		p.Addrs = p.Addrs[1:]
 	}
 
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
-			log.Infoln("connect attempt to node:", p.ID.String())
+			log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
 			if err := n.node.Connect(n.ctx, p); err != nil {
 				log.Errorf("node connect attempt error: %v", err)
 				return false, nil
@@ -154,7 +160,7 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 			log.Infoln("connect attempt successful:", p.ID.String())
 			return true, nil
 		},
-		now.Add(time.Minute*2),
+		now.Add(time.Minute/2),
 	)
 	return err
 }
