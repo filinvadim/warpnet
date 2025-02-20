@@ -94,7 +94,9 @@ func main() {
 	go pubsubService.Run(n, nil, nil, nil)
 	defer pubsubService.Close()
 
-	raft.Negotiate(n)
+	if err := raft.Sync(n); err != nil {
+		log.Fatalf("consensus: failed to sync: %v", err)
+	}
 	defer raft.Shutdown()
 
 	<-interruptChan

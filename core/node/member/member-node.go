@@ -154,7 +154,6 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		func() (bool, error) {
 			log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
 			if err := n.node.Connect(n.ctx, p); err != nil {
-				log.Errorf("node connect attempt error: %v", err)
 				return false, nil
 			}
 			log.Infoln("connect attempt successful:", p.ID.String())
@@ -162,6 +161,7 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		},
 		now.Add(time.Minute/2),
 	)
+	log.Errorf("node connect attempt error: %v", err)
 	return err
 }
 

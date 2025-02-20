@@ -335,8 +335,8 @@ func main() {
 	go mdnsService.Start(serverNode)
 	go pubsubService.Run(serverNode, clientNode, authRepo, followRepo)
 
-	if err := raft.Negotiate(serverNode); err != nil {
-		log.Fatalf("failed to negotiate: %v", err)
+	if err := raft.Sync(serverNode); err != nil {
+		log.Fatalf("consensus: failed to sync: %v", err)
 	}
 	defer raft.Shutdown()
 

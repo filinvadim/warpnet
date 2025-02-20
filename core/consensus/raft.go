@@ -132,12 +132,12 @@ func NewRaft(
 	}, nil
 }
 
-func (c *consensusService) Negotiate(node NodeServicesProvider) (err error) {
+func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config := raft.DefaultConfig()
 	config.ElectionTimeout = time.Minute
-	config.HeartbeatTimeout = time.Second * 5
-	config.LeaderLeaseTimeout = time.Second * 5
-	config.CommitTimeout = time.Second * 5
+	config.HeartbeatTimeout = time.Second * 30
+	config.LeaderLeaseTimeout = time.Second * 30
+	config.CommitTimeout = time.Second * 30
 	config.Logger = &defaultConsensusLogger{DEBUG}
 	config.LogOutput = os.Stdout
 	config.LocalID = raft.ServerID(node.ID().String())

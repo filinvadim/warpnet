@@ -72,7 +72,7 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 		return // node already stored
 	}
 
-	fmt.Printf("\033[1mmdns: found new peer: %s\033[0m\n", p.ID.String())
+	fmt.Printf("\033[1mmdns: found new peer: %s\033[0m\n", p.String())
 
 	m.mx.Lock()
 	defer m.mx.Unlock()

@@ -156,7 +156,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if peerState == network.Connected || peerState == network.Limited {
 		return
 	}
-	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.ID.String(), peerState)
+	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Errorf("discovery: failed to connect to new peer: %s...", err)
@@ -233,7 +233,6 @@ func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {
 	mineProtocols := s.node.Mux().Protocols()
 	if len(otherProtocols) < len(mineProtocols) {
 		// bootstrap node supports only routing protocols
-		log.Infof("protocols num comparison: %d < %d", len(mineProtocols), len(otherProtocols))
 		return true
 	}
 	return false

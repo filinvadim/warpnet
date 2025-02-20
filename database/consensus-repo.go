@@ -101,7 +101,7 @@ func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 	if value == 0 {
 		return 1, nil // intentionally!
 	}
-	return value, err
+	return value, nil
 }
 
 // GetLog gets a log entry from Badger at a given index.

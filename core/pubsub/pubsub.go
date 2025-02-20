@@ -408,7 +408,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 		return
 	}
 	if discoveryMsg.ID == "" {
-		log.Errorf("pubsub discovery: message has no ID", string(msg.Data))
+		log.Errorf("pubsub discovery: message has no ID: %s", string(msg.Data))
 		return
 	}
 	if discoveryMsg.ID == g.serverNode.ID() {
