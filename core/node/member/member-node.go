@@ -14,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync/atomic"
@@ -57,10 +58,11 @@ type WarpNode struct {
 
 	ipv4, ipv6 string
 
-	retrier  retrier.Retrier
-	ownerId  string
-	version  *semver.Version
-	selfHash string
+	retrier        retrier.Retrier
+	ownerId        string
+	version        *semver.Version
+	selfHash       string
+	bootstrapAddrs map[warpnet.WarpPeerID][]warpnet.WarpAddress
 }
 
 func NewMemberNode(
@@ -115,17 +117,23 @@ func setupMemberNode(
 	}
 
 	n := &WarpNode{
-		ctx:      ctx,
-		node:     node,
-		relay:    nodeRelay,
-		isClosed: new(atomic.Bool),
-		retrier:  retrier.New(time.Second * 5),
-		version:  conf.Version,
-		streamer: stream.NewStreamPool(ctx, node),
-		selfHash: selfHash,
+		ctx:            ctx,
+		node:           node,
+		relay:          nodeRelay,
+		isClosed:       new(atomic.Bool),
+		retrier:        retrier.New(time.Second * 5),
+		version:        conf.Version,
+		streamer:       stream.NewStreamPool(ctx, node),
+		selfHash:       selfHash,
+		bootstrapAddrs: make(map[warpnet.WarpPeerID][]warpnet.WarpAddress),
 	}
 
 	n.ipv4, n.ipv6 = parseAddresses(node)
+
+	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	for _, info := range addrInfos {
+		n.bootstrapAddrs[info.ID] = info.Addrs
+	}
 
 	println()
 	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %s\033[0m\n", n.ID(), n.ipv4, n.ipv6)
@@ -149,6 +157,13 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		p.Addrs = p.Addrs[1:]
 	}
 
+	bAddrs, ok := n.bootstrapAddrs[p.ID]
+	if ok {
+		// update local MDNS bootstrap addresses with public ones
+		p.Addrs = append(p.Addrs, bAddrs...)
+		n.Peerstore().AddAddrs(p.ID, p.Addrs, peerstore.PermanentAddrTTL)
+	}
+
 	now := time.Now()
 	err := n.retrier.Try(
 		func() (bool, error) {
@@ -161,7 +176,6 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		},
 		now.Add(time.Minute/2),
 	)
-	log.Errorf("node connect attempt error: %v", err)
 	return err
 }
 

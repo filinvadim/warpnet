@@ -10,17 +10,20 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	log "github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
 type WarpBootstrapNode struct {
-	ctx      context.Context
-	node     warpnet.P2PNode
-	relay    warpnet.WarpRelayCloser
-	retrier  retrier.Retrier
-	version  *semver.Version
-	selfHash string
+	ctx            context.Context
+	node           warpnet.P2PNode
+	relay          warpnet.WarpRelayCloser
+	retrier        retrier.Retrier
+	version        *semver.Version
+	selfHash       string
+	bootstrapAddrs map[warpnet.WarpPeerID][]warpnet.WarpAddress
 }
 
 type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
@@ -66,12 +69,18 @@ func setupBootstrapNode(
 	}
 
 	n := &WarpBootstrapNode{
-		ctx:      ctx,
-		node:     node,
-		relay:    nodeRelay,
-		retrier:  retrier.New(time.Second * 5),
-		version:  conf.Version,
-		selfHash: selfHash,
+		ctx:            ctx,
+		node:           node,
+		relay:          nodeRelay,
+		retrier:        retrier.New(time.Second * 5),
+		version:        conf.Version,
+		selfHash:       selfHash,
+		bootstrapAddrs: make(map[warpnet.WarpPeerID][]warpnet.WarpAddress),
+	}
+
+	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	for _, info := range addrInfos {
+		n.bootstrapAddrs[info.ID] = info.Addrs
 	}
 
 	println()
@@ -109,9 +118,26 @@ func (n *WarpBootstrapNode) ID() warpnet.WarpPeerID {
 	return n.node.ID()
 }
 
+const localhost = "127.0.0.1"
+
 func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
 	if n == nil || n.node == nil {
 		return nil
+	}
+
+	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), localhost) {
+		return nil
+	}
+
+	if len(p.Addrs) > 1 && strings.Contains(p.Addrs[0].String(), localhost) {
+		p.Addrs = p.Addrs[1:]
+	}
+
+	bAddrs, ok := n.bootstrapAddrs[p.ID]
+	if ok {
+		// update local MDNS bootstrap addresses with public ones
+		p.Addrs = append(p.Addrs, bAddrs...)
+		n.node.Peerstore().AddAddrs(p.ID, p.Addrs, peerstore.PermanentAddrTTL)
 	}
 
 	return n.node.Connect(n.ctx, p)

@@ -3,11 +3,9 @@ package mdns
 import (
 	"context"
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -59,7 +57,6 @@ type mdnsDiscoveryService struct {
 	discoveryHandler discovery.DiscoveryHandler
 	node             NodeConnector
 	mx               *sync.Mutex
-	bootstrapAddrs   map[warpnet.WarpPeerID][]warpnet.WarpAddress
 }
 
 func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
@@ -77,13 +74,6 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 
 	fmt.Printf("\033[1mmdns: found new peer: %s\033[0m\n", p.String())
 
-	bAddrs, ok := m.bootstrapAddrs[p.ID]
-	if ok {
-		// update local MDNS bootstrap addresses with public ones
-		addrs = append(addrs, bAddrs...)
-		m.node.Node().Peerstore().AddAddrs(p.ID, addrs, peerstore.PermanentAddrTTL)
-	}
-
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.discoveryHandler == nil {
@@ -97,18 +87,12 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 }
 
 func NewMulticastDNS(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *MulticastDNS {
-	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
-	bootstrapAddrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress, len(addrInfos))
-	for _, info := range addrInfos {
-		bootstrapAddrs[info.ID] = info.Addrs
-	}
 
 	service := &mdnsDiscoveryService{
 		ctx:              ctx,
 		discoveryHandler: discoveryHandler,
 		node:             nil,
 		mx:               new(sync.Mutex),
-		bootstrapAddrs:   bootstrapAddrs,
 	}
 
 	return &MulticastDNS{nil, service, new(atomic.Bool)}
