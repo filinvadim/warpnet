@@ -15,6 +15,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -43,11 +44,13 @@ type UserStorer interface {
 }
 
 type discoveryService struct {
-	ctx           context.Context
-	node          DiscoveryInfoStorer
-	userRepo      UserStorer
-	nodeRepo      NodeStorer
-	version       *semver.Version
+	ctx            context.Context
+	node           DiscoveryInfoStorer
+	userRepo       UserStorer
+	nodeRepo       NodeStorer
+	version        *semver.Version
+	bootstrapAddrs map[warpnet.WarpPeerID][]warpnet.WarpAddress
+
 	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
 }
@@ -58,9 +61,14 @@ func NewDiscoveryService(
 	userRepo UserStorer,
 	nodeRepo NodeStorer,
 ) *discoveryService {
+	addrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress)
+	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	for _, info := range addrInfos {
+		addrs[info.ID] = info.Addrs
+	}
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version,
-		make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
+		addrs, make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }
 
@@ -157,6 +165,13 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
+
+	bAddrs, ok := s.bootstrapAddrs[pi.ID]
+	if ok {
+		// update local bootstrap addresses with public ones
+		pi.Addrs = append(pi.Addrs, bAddrs...)
+		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, peerstore.PermanentAddrTTL)
+	}
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Errorf("discovery: failed to connect to new peer: %s...", err)
