@@ -70,14 +70,17 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 		panic("mdns: node is nil")
 	}
 
-	if addrs := m.node.Node().Peerstore().Addrs(p.ID); len(addrs) > 0 {
+	addrs := m.node.Node().Peerstore().Addrs(p.ID)
+	if len(addrs) > 0 {
 		return // node already stored
 	}
 
 	fmt.Printf("\033[1mmdns: found new peer: %s\033[0m\n", p.String())
 
-	if addrs, ok := m.bootstrapAddrs[p.ID]; ok {
+	bAddrs, ok := m.bootstrapAddrs[p.ID]
+	if ok {
 		// update local MDNS bootstrap addresses with public ones
+		addrs = append(addrs, bAddrs...)
 		m.node.Node().Peerstore().AddAddrs(p.ID, addrs, peerstore.PermanentAddrTTL)
 	}
 
