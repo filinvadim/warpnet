@@ -201,7 +201,7 @@ func buildRepliesTree(replies []domain.Tweet) []domain.ReplyNode {
 		}
 		nodeMap[reply.Id] = domain.ReplyNode{
 			Reply:    reply,
-			Children: make([]domain.ReplyNode, 0, 0),
+			Children: make([]domain.ReplyNode, 0, 3),
 		}
 	}
 

@@ -1,11 +1,13 @@
 services:
   warpnet1:
+    container_name: warpnet1
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet1
     network_mode: host
     restart: always
 
   warpnet2:
+    container_name: warpnet2
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet2
     network_mode: host
@@ -14,6 +16,7 @@ services:
       - NODE_PORT=4002
 
   warpnet3:
+    container_name: warpnet3
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet3
     network_mode: host

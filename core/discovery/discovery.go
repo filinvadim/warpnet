@@ -15,7 +15,6 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	log "github.com/sirupsen/logrus"
 	"time"
 )

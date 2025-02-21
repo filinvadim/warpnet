@@ -40,7 +40,7 @@ func (m *mockConsensusStorer) NewReadTxn() (*storage.WarpReadTxn, error)   { ret
 
 func TestConsensusRepo_StoreAndGetLog(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	// Создаем Raft Log
 	logEntry := &raft.Log{
@@ -67,7 +67,7 @@ func TestConsensusRepo_StoreAndGetLog(t *testing.T) {
 
 func TestConsensusRepo_FirstLastIndex(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	// Добавляем несколько логов
 	for i := uint64(1); i <= 5; i++ {
@@ -91,7 +91,7 @@ func TestConsensusRepo_FirstLastIndex(t *testing.T) {
 
 func TestConsensusRepo_DeleteRange(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	// Добавляем логи
 	for i := uint64(1); i <= 10; i++ {
@@ -108,7 +108,7 @@ func TestConsensusRepo_DeleteRange(t *testing.T) {
 		var log raft.Log
 		err := repo.GetLog(i, &log)
 		if i >= 3 && i <= 7 {
-			assert.ErrorIs(t, err, ErrKeyNotFound)
+			assert.ErrorIs(t, err, ErrConsensusKeyNotFound)
 		} else {
 			assert.NoError(t, err)
 		}
@@ -117,7 +117,7 @@ func TestConsensusRepo_DeleteRange(t *testing.T) {
 
 func TestConsensusRepo_SetGet(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	err := repo.Set([]byte("test-key"), []byte("test-value"))
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestConsensusRepo_SetGet(t *testing.T) {
 
 func TestConsensusRepo_SetGetUint64(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	err := repo.SetUint64([]byte("counter"), 42)
 	require.NoError(t, err)
@@ -141,24 +141,24 @@ func TestConsensusRepo_SetGetUint64(t *testing.T) {
 
 func TestConsensusRepo_GetLog_NotFound(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	var log raft.Log
 	err := repo.GetLog(99, &log)
-	assert.ErrorIs(t, err, ErrKeyNotFound)
+	assert.ErrorIs(t, err, ErrConsensusKeyNotFound)
 }
 
 func TestConsensusRepo_Get_NotFound(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	_, err := repo.Get([]byte("unknown-key"))
-	assert.ErrorIs(t, err, ErrKeyNotFound)
+	assert.ErrorIs(t, err, ErrConsensusKeyNotFound)
 }
 
 func TestConsensusRepo_DeleteRange_EmptyDB(t *testing.T) {
 	mockDB := newMockConsensusStorer()
-	repo := NewConsensusRepo(mockDB)
+	repo, _ := NewConsensusRepo(mockDB)
 
 	err := repo.DeleteRange(1, 10)
 	assert.NoError(t, err)
