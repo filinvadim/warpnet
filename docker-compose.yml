@@ -3,7 +3,7 @@ services:
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet1
     ports:
-      - "4001:4001"
+      - "67.207.72.168:4001:4001"
     networks:
       - warpnet
     restart: always
@@ -12,7 +12,7 @@ services:
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet2
     ports:
-      - "4002:4002"
+      - "67.207.72.168:4002:4002"
     networks:
       - warpnet
     restart: always
@@ -23,7 +23,7 @@ services:
     image: ghcr.io/filinvadim/warpnet:latest
     hostname: warpnet3
     ports:
-      - "4003:4003"
+      - "67.207.72.168:4003:4003"
     networks:
       - warpnet
     restart: always

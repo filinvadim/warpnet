@@ -148,6 +148,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		d.correctPeerIdMismatch(d.boostrapNodes)
 	}()
 
+	// force node to know it's external address (in case of local network)
 	for _, info := range d.boostrapNodes {
 		if d.dht.PeerID() == info.ID {
 			d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
