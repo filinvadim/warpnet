@@ -110,19 +110,9 @@ func (n *WarpBootstrapNode) ID() warpnet.WarpPeerID {
 	return n.node.ID()
 }
 
-const localhost = "127.0.0.1"
-
 func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
 	if n == nil || n.node == nil {
 		return nil
-	}
-
-	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), localhost) {
-		return nil
-	}
-
-	if len(p.Addrs) > 1 && strings.Contains(p.Addrs[0].String(), localhost) {
-		p.Addrs = p.Addrs[1:]
 	}
 
 	return n.node.Connect(n.ctx, p)
