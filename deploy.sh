@@ -21,4 +21,4 @@ iptables -A FORWARD -i docker0 -o docker0 -j ACCEPT
 iptables -A FORWARD -i br-6383b19e4979 -o br-6383b19e4979 -j ACCEPT
 iptables -P FORWARD ACCEPT
 iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-docker compose up -d
+docker compose up -d --build
