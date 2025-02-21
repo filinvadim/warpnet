@@ -164,7 +164,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if peerState == network.Connected || peerState == network.Limited {
 		return
 	}
-	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 	bAddrs, ok := s.bootstrapAddrs[pi.ID]
 	if ok {
@@ -172,6 +171,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		pi.Addrs = append(pi.Addrs, bAddrs...)
 		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, peerstore.PermanentAddrTTL)
 	}
+	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Errorf("discovery: failed to connect to new peer: %s...", err)

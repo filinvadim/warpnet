@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -138,8 +137,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.HeartbeatTimeout = time.Second * 30
 	config.LeaderLeaseTimeout = time.Second * 30
 	config.CommitTimeout = time.Second * 30
-	config.Logger = &defaultConsensusLogger{DEBUG}
-	config.LogOutput = os.Stdout
+	config.LogLevel = "DEBUG"
 	config.LocalID = raft.ServerID(node.ID().String())
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
@@ -204,7 +202,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 }
 
 func (c *consensusService) sync(id raft.ServerID) error {
-	leaderCtx, cancel := context.WithTimeout(c.ctx, 5*time.Minute)
+	leaderCtx, cancel := context.WithTimeout(c.ctx, time.Minute)
 	defer cancel()
 
 	cs := consensusSync{

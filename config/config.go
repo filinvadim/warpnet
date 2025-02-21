@@ -30,7 +30,6 @@ func init() {
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
 	pflag.String("logging.level", "INFO", "Logging level")
-	pflag.String("version", "0.0.0", "App version")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -43,7 +42,7 @@ func init() {
 	bootstrap := viper.GetString("node.bootstrap")
 
 	ConfigFile = Config{
-		Version: semver.MustParse(strings.TrimSpace(viper.GetString("version"))),
+		Version: semver.MustParse(strings.TrimSpace("0.0.0")),
 		Node: Node{
 			Bootstrap: strings.Split(bootstrap, ","),
 			Host:      viper.GetString("node.host"),

@@ -26,6 +26,7 @@ import (
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
+	ipfslog "github.com/ipfs/go-log/v2"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -35,13 +36,15 @@ import (
 	"syscall"
 )
 
+var _ = ipfslog.LevelInfo
+
 type API struct {
 	*handlers.StaticController
 	*handlers.WSController
 }
 
 func main() {
-	//log2.SetDebugLogging()
+	//ipfslog.SetDebugLogging()
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
