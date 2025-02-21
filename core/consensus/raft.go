@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -77,6 +78,7 @@ type consensusService struct {
 	raftConf      raft.Configuration
 	raftID        raft.ServerID
 	isBootstrap   bool
+	syncMx        *sync.Mutex
 }
 
 func NewRaft(
@@ -128,10 +130,14 @@ func NewRaft(
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
 		isBootstrap:   isBootstrap,
+		syncMx:        new(sync.Mutex),
 	}, nil
 }
 
 func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
+	c.syncMx.Lock()
+	defer c.syncMx.Unlock()
+
 	config := raft.DefaultConfig()
 	config.ElectionTimeout = time.Minute
 	config.HeartbeatTimeout = time.Second * 30
@@ -313,10 +319,13 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
-	log.Infof("consensus: adding new voter to %s", info.ID.String())
+	c.syncMx.Lock()
+	defer c.syncMx.Unlock()
+
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
+	log.Infof("consensus: adding new voter %s", info.ID.String())
 
 	configFuture := c.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -348,9 +357,14 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
+
+	c.syncMx.Lock()
+	defer c.syncMx.Unlock()
+
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
+	log.Infof("consensus: removing voter %s", info.ID.String())
 
 	configFuture := c.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -369,6 +383,13 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 }
 
 func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVState, err error) {
+	if c.raft == nil {
+		return nil, errors.New("consensus: nil raft service")
+	}
+
+	c.syncMx.Lock()
+	defer c.syncMx.Unlock()
+
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}

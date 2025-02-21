@@ -107,7 +107,9 @@ func printPeers(n DiscoveryInfoStorer) {
 			continue
 		}
 
-		fmt.Printf("\033[1mknown peer: %s \033[0m\n", id)
+		info := n.Peerstore().PeerInfo(id)
+
+		fmt.Printf("\033[1mknown peer: %s \033[0m\n", info.String())
 	}
 }
 

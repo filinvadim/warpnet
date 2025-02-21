@@ -104,11 +104,6 @@ func NewDHTable(
 }
 
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
-	infos, err := config.ConfigFile.Node.AddrInfos()
-	if err != nil {
-		return nil, err
-	}
-	
 	dhTable, err := dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
@@ -118,7 +113,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour*24),
 		dht.RoutingTableRefreshQueryTimeout(time.Hour*24),
-		dht.BootstrapPeers(infos...),
+		dht.BootstrapPeers(d.boostrapNodes...),
 		dht.ProviderStore(d.providerStore),
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
 	)
@@ -146,17 +141,24 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht = dhTable
 
 	go func() {
-		if err := dhTable.Bootstrap(d.ctx); err != nil {
+		if err := d.dht.Bootstrap(d.ctx); err != nil {
 			log.Errorf("dht: bootstrap: %s", err)
 		}
+
 		d.correctPeerIdMismatch(d.boostrapNodes)
 	}()
 
-	<-dhTable.RefreshRoutingTable()
+	for _, info := range d.boostrapNodes {
+		if d.dht.PeerID() == info.ID {
+			d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
+		}
+	}
+
+	<-d.dht.RefreshRoutingTable()
 
 	log.Infoln("dht: routing started")
 
-	return dhTable, nil
+	return d.dht, nil
 }
 
 func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
