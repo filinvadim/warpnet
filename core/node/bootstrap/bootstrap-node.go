@@ -11,7 +11,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	log "github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 

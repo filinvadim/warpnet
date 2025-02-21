@@ -80,7 +80,6 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 		libp2p.DisableMetrics(),
 		libp2p.DisableRelay(),
 		libp2p.Ping(false),
-		libp2p.ForceReachabilityPrivate(),
 		libp2p.DisableIdentifyAddressDiscovery(),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Transport(tcp.NewTCPTransport),
