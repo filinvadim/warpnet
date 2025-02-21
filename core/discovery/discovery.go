@@ -171,7 +171,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if ok {
 		// update local bootstrap addresses with public ones
 		pi.Addrs = append(pi.Addrs, bAddrs...)
-		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, peerstore.PermanentAddrTTL)
+		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour*24)
 	}
 	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
