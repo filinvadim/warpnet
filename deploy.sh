@@ -14,6 +14,7 @@ docker compose down
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
 docker pull ghcr.io/filinvadim/warpnet:latest
 ufw disable
+systemctl restart systemd-networkd
 iptables -I DOCKER-USER -j ACCEPT
 iptables -A INPUT -p tcp --match multiport --dports 4001:4003 -j ACCEPT
 iptables -A FORWARD -i docker0 -o docker0 -j ACCEPT
