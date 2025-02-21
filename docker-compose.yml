@@ -5,6 +5,8 @@ services:
     hostname: warpnet1
     network_mode: host
     restart: always
+    environment:
+      - NODE_HOST=207.154.221.44
 
   warpnet2:
     container_name: warpnet2
@@ -14,6 +16,7 @@ services:
     restart: always
     environment:
       - NODE_PORT=4002
+      - NODE_HOST=207.154.221.44
 
   warpnet3:
     container_name: warpnet3
@@ -23,4 +26,5 @@ services:
     restart: always
     environment:
       - NODE_PORT=4003
+      - NODE_HOST=207.154.221.44
 
