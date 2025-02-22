@@ -145,6 +145,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.CommitTimeout = time.Second * 30
 	config.LogLevel = "DEBUG"
 	config.LocalID = raft.ServerID(node.ID().String())
+	c.raftID = raft.ServerID(node.ID().String())
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
 	if err != nil {
