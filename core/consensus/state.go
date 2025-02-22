@@ -55,7 +55,8 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 			result = errors.New("apply panic: rollback")
 		}
 	}()
-	log.Infof("new state data: %s", rlog.Data)
+
+	log.Infof("new state data: %s %s %s", rlog.Type, rlog.Data, rlog.Extensions)
 
 	var newState = make(map[string]string, 1)
 

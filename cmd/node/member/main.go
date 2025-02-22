@@ -358,7 +358,7 @@ func main() {
 
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
-	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: string(selfhash)})
+	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: selfhash.String()})
 	if err != nil {
 		log.Fatalf("consensus: failed to commit state: %v", err)
 	}

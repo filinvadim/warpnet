@@ -20,11 +20,12 @@ type SelfHash []byte
 
 func (s SelfHash) Validate(m map[string]string) bool {
 	value, ok := m[SelfHashConsensusKey]
-	return !ok || value == string(s)
+	return !ok || value == s.String()
 }
 
 func (s SelfHash) String() string {
-	return string(s)
+	ss := s
+	return fmt.Sprintf("%x", ss)
 }
 
 func walkAndHash(fsys FileSystem, dir string, h io.Writer) error {

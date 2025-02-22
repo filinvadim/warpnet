@@ -406,8 +406,15 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 	if err != nil {
 		return nil, err
 	}
+	if kvState, ok := returnedState.(*KVState); ok {
+		return kvState, nil
+	}
 
-	return returnedState.(*KVState), nil
+	if err, ok := returnedState.(error); ok {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("consensus: failed to commit state: %v", returnedState)
 }
 
 func (c *consensusService) CurrentState() (*KVState, error) {
