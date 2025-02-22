@@ -24,8 +24,9 @@ func (s SelfHash) Validate(m map[string]string) bool {
 }
 
 func (s SelfHash) String() string {
-	ss := s
-	return fmt.Sprintf("%x", ss)
+	var dst = make([]byte, len(s))
+	copy(dst, s)
+	return fmt.Sprintf("%x", dst)
 }
 
 func walkAndHash(fsys FileSystem, dir string, h io.Writer) error {
