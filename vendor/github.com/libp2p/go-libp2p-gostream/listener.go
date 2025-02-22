@@ -7,7 +7,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"fmt"
 )
 
 // listener is an implementation of net.Listener which handles
@@ -61,15 +60,9 @@ func Listen(h host.Host, tag protocol.ID) (net.Listener, error) {
 	}
 
 	h.SetStreamHandler(tag, func(s network.Stream) {
-		fmt.Println("raft: new stream", s.Conn().RemotePeer().String())
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
 		select {
 		case l.streamCh <- s:
 		case <-ctx.Done():
-			fmt.Println("context done")
 			s.Reset()
 		}
 	})

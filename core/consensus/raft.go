@@ -320,10 +320,9 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
-	fmt.Println("adding voter func BEFORE")
+
 	c.syncMx.Lock()
 	defer c.syncMx.Unlock()
-	fmt.Println("adding voter func AFTER")
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
@@ -394,7 +393,7 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 	defer c.syncMx.Unlock()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		return
+		return nil, errors.New("consensus: commit: not a leader")
 	}
 	updatedState := make(ConsensusDefaultState)
 	for k, v := range newState {
