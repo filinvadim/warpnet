@@ -876,6 +876,8 @@ func (n *netPipeline) AppendEntries(args *AppendEntriesRequest, resp *AppendEntr
 	}
 
 	// Send the RPC
+	fmt.Println(n.trans.timeout, "???????")
+	fmt.Println(n.conn.conn.RemoteAddr().String(), future.args)
 	if err := sendRPC(n.conn, rpcAppendEntries, future.args); err != nil {
 		return nil, err
 	}

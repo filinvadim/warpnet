@@ -78,7 +78,7 @@ type consensusService struct {
 	raftConf      raft.Configuration
 	raftID        raft.ServerID
 	isBootstrap   bool
-	syncMx        *sync.Mutex
+	syncMx        *sync.RWMutex
 }
 
 func NewRaft(
@@ -130,7 +130,7 @@ func NewRaft(
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
 		isBootstrap:   isBootstrap,
-		syncMx:        new(sync.Mutex),
+		syncMx:        new(sync.RWMutex),
 	}, nil
 }
 
@@ -209,6 +209,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 }
 
 func (c *consensusService) sync(id raft.ServerID) error {
+	if c.raftID == "" {
+		panic("consensus: raft id not initialized")
+	}
 	leaderCtx, cancel := context.WithTimeout(c.ctx, time.Minute)
 	defer cancel()
 
@@ -277,6 +280,7 @@ func (c *consensusSync) waitForVoter() error {
 			}
 
 			if isVoter(id, wait.Configuration()) {
+				log.Infof("consensus: node is voter: %s", id)
 				return nil
 			}
 			log.Debugf("not voter yet: %s", id)
@@ -296,7 +300,7 @@ func (c *consensusSync) waitForUpdates() error {
 		case <-ticker.C:
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
-			log.Debugf("current raft index: %d/%d", lastAppliedIndex, lastIndex)
+			log.Infof("current raft index: %d/%d", lastAppliedIndex, lastIndex)
 			if lastAppliedIndex == lastIndex {
 				return nil
 			}
@@ -321,8 +325,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 
-	c.syncMx.Lock()
-	defer c.syncMx.Unlock()
+	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
@@ -360,8 +363,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 
-	c.syncMx.Lock()
-	defer c.syncMx.Unlock()
+	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
@@ -389,8 +391,7 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 		return nil, errors.New("consensus: nil raft service")
 	}
 
-	c.syncMx.Lock()
-	defer c.syncMx.Unlock()
+	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return nil, errors.New("consensus: commit: not a leader")
@@ -409,6 +410,12 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 }
 
 func (c *consensusService) CurrentState() (*KVState, error) {
+	if c.raft == nil {
+		return nil, errors.New("consensus: nil raft service")
+	}
+
+	c.waitSync()
+
 	currentState, err := c.consensus.GetCurrentState()
 	if err != nil {
 		return nil, fmt.Errorf("consensus: get: failed to get current state: %v", err)
@@ -418,6 +425,11 @@ func (c *consensusService) CurrentState() (*KVState, error) {
 		return nil, fmt.Errorf("consensus: get: failed to assert state type")
 	}
 	return defaultState, nil
+}
+
+func (c *consensusService) waitSync() {
+	c.syncMx.RLock()
+	c.syncMx.RUnlock()
 }
 
 func (c *consensusService) Shutdown() {
