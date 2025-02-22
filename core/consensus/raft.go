@@ -319,8 +319,10 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if info.ID.String() == "" {
 		return
 	}
+	fmt.Println("adding voter func BEFORE")
 	c.syncMx.Lock()
 	defer c.syncMx.Unlock()
+	fmt.Println("adding voter func AFTER")
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
