@@ -9,7 +9,9 @@ import (
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/libp2p/go-libp2p/core/network"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -73,6 +75,12 @@ func setupBootstrapNode(
 		version:  conf.Version,
 		selfHash: selfHash,
 	}
+
+	n.node.SetStreamHandler(event.PUBLIC_GET_PING, func(s network.Stream) {
+		defer s.Close()
+		log.Infof("new ping stream from %s", s.Conn().RemotePeer().String())
+		s.Write([]byte(event.Accepted))
+	})
 
 	println()
 	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.node.ID(), n.node.Addrs())

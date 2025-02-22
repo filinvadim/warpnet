@@ -44,7 +44,7 @@ type API struct {
 }
 
 func main() {
-	//ipfslog.SetDebugLogging()
+	ipfslog.SetDebugLogging()
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
@@ -179,6 +179,15 @@ func main() {
 	serverNodeAuthInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
 	serverNodeAuthInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
 	serverNodeAuthInfo.Version = config.ConfigFile.Version.String()
+
+	infos, _ := config.ConfigFile.Node.AddrInfos()
+	for _, info := range infos {
+		bt, err := serverNode.GenericStream(info.ID.String(), event.PUBLIC_GET_PING, []byte{})
+		if err != nil {
+			log.Fatalf("failed to init ping stream: %v", err)
+		}
+		log.Infof("ping to %s, response: %s", info.ID.String(), bt)
+	}
 
 	mw := middleware.NewWarpMiddleware()
 	logMw := mw.LoggingMiddleware
