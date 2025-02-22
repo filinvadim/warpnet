@@ -27,12 +27,12 @@ func main() {
 
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
-	codeHash, err := security.GetCodebaseHash(root.GetCodeBase())
+	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
 	}
 
-	log.Infof("codebase hash: %x", codeHash)
+	log.Infof("codebase hash: %x", selfhash)
 	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
@@ -74,19 +74,22 @@ func main() {
 	}
 	defer providersCache.Close()
 
-	raft, err := consensus.NewRaft(ctx, nil, true)
+	raft, err := consensus.NewRaft(
+		ctx, nil, true,
+		selfhash.Validate,
+	)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache, codeHash,
+		ctx, mapStore, providersCache, selfhash,
 		raft.AddVoter, raft.RemoveVoter,
 	)
 	defer dHashTable.Close()
 
 	n, err := bootstrap.NewBootstrapNode(
-		ctx, warpPrivKey, string(codeHash), memoryStore, dHashTable.StartRouting,
+		ctx, warpPrivKey, string(selfhash), memoryStore, dHashTable.StartRouting,
 	)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)

@@ -16,9 +16,7 @@ type knownKey string
 func (k knownKey) String() string { return string(k) }
 
 const (
-	genesis  knownKey = "genesis"
-	SelfHash knownKey = "selfHash"
-	UserId   knownKey = "userId"
+	genesis knownKey = "genesis"
 )
 
 type KVState map[string]string
@@ -30,15 +28,20 @@ type FSM struct {
 	initialized bool
 
 	mux *sync.Mutex
+
+	validators []ConsensusValidatorFunc
 }
 
-func newFSM() *FSM {
+type ConsensusValidatorFunc func(map[string]string) bool
+
+func newFSM(validators ...ConsensusValidatorFunc) *FSM {
 	state := KVState{genesis.String(): ""}
 	return &FSM{
 		state:       &state,
 		prevState:   KVState{},
 		initialized: false,
 		mux:         new(sync.Mutex),
+		validators:  validators,
 	}
 }
 
@@ -52,11 +55,18 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 			result = errors.New("apply panic: rollback")
 		}
 	}()
+	log.Infof("new state data: %s", rlog.Data)
 
 	var newState = make(map[string]string, 1)
 
 	if err := json.JSON.Unmarshal(rlog.Data, &newState); err != nil {
 		return fmt.Errorf("failed to decode log: %w", err)
+	}
+
+	for _, v := range fsm.validators {
+		if !v(newState) {
+			return errors.New("validation failed")
+		}
 	}
 
 	fsm.prevState = make(map[string]string, len(*fsm.state))

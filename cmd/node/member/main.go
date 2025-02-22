@@ -153,7 +153,11 @@ func main() {
 	}
 	defer providerStore.Close()
 
-	raft, err := consensus.NewRaft(ctx, consensusRepo, false)
+	raft, err := consensus.NewRaft(
+		ctx, consensusRepo, false,
+		selfhash.Validate,
+		userRepo.ValidateUserID,
+	)
 	if err != nil {
 		log.Fatalf("raft initialization: %v", err)
 	}
@@ -354,8 +358,11 @@ func main() {
 
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
-	state, err := raft.CommitState(map[string]string{"selfhash": string(selfhash)})
-	fmt.Println("raft state:", state, "err:", err)
+	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: string(selfhash)})
+	if err != nil {
+		log.Fatalf("consensus: failed to commit state: %v", err)
+	}
+	fmt.Println("selfhash raft state:", state)
 	log.Infoln("Warpnet started")
 	<-interruptChan
 	log.Infoln("interrupted...")

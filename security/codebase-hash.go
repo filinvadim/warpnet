@@ -8,10 +8,23 @@ import (
 	"sort"
 )
 
+const SelfHashConsensusKey = "selfhash"
+
 type FileSystem interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
 	ReadFile(name string) ([]byte, error)
 	Open(name string) (fs.File, error)
+}
+
+type SelfHash []byte
+
+func (s SelfHash) Validate(m map[string]string) bool {
+	value, ok := m[SelfHashConsensusKey]
+	return !ok || value == string(s)
+}
+
+func (s SelfHash) String() string {
+	return string(s)
 }
 
 func walkAndHash(fsys FileSystem, dir string, h io.Writer) error {
@@ -66,7 +79,7 @@ func hashFile(fsys FileSystem, path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func GetCodebaseHash(codebase FileSystem) ([]byte, error) {
+func GetCodebaseHash(codebase FileSystem) (SelfHash, error) {
 	h := sha256.New()
 
 	err := walkAndHash(codebase, ".", h)

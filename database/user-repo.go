@@ -381,3 +381,18 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domain.User, err erro
 
 	return users, txn.Commit()
 }
+
+const UserIdConsensusKey = "userId"
+
+// ValidateUserID if already taken
+func (repo *UserRepo) ValidateUserID(m map[string]string) bool {
+	value, ok := m[UserIdConsensusKey]
+	if !ok {
+		return true
+	}
+	_, err := repo.Get(value)
+	if !errors.Is(err, ErrUserNotFound) || err == nil {
+		return false
+	}
+	return true
+}

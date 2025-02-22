@@ -85,6 +85,7 @@ func NewRaft(
 	ctx context.Context,
 	consRepo ConsensusStorer,
 	isBootstrap bool,
+	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
 	var (
 		logStore      raft.LogStore
@@ -106,7 +107,7 @@ func NewRaft(
 		}
 	}
 
-	fsm := newFSM()
+	fsm := newFSM(validators...)
 	cons := libp2praft.NewConsensus(fsm.state)
 
 	var (
@@ -254,7 +255,6 @@ func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
 		select {
 		case <-ticker.C:
 			if addr, id := c.raft.LeaderWithID(); addr != "" {
-
 				return string(id), nil
 			}
 		case <-ctx.Done():
