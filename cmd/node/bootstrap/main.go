@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -104,6 +105,12 @@ func main() {
 		log.Fatalf("consensus: failed to sync: %v", err)
 	}
 	defer raft.Shutdown()
+
+	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: string(selfhash)})
+	if err != nil {
+		log.Fatalf("consensus: failed to commit state: %v", err)
+	}
+	fmt.Println("selfhash raft state:", state)
 
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")

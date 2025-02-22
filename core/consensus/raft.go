@@ -394,7 +394,8 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		return nil, errors.New("consensus: commit: not a leader")
+		log.Warnf("not a leader: %s", leaderId)
+		return nil, nil
 	}
 	updatedState := make(ConsensusDefaultState)
 	for k, v := range newState {
