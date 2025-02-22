@@ -6,6 +6,7 @@ services:
     network_mode: host
     restart: always
     environment:
+      - NODE_PORT=4001
       - NODE_HOST=207.154.221.44
 
   warpnet2:

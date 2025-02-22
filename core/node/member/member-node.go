@@ -128,25 +128,15 @@ func setupMemberNode(
 	n.ipv4, n.ipv6 = parseAddresses(node)
 
 	println()
-	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %s\033[0m\n", n.ID(), n.ipv4, n.ipv6)
+	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %v\033[0m\n", n.ID(), n.node.Addrs())
 	println()
 
 	return n, nil
 }
 
-const localhost = "127.0.0.1"
-
 func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	if n == nil || n.node == nil {
 		return nil
-	}
-
-	if len(p.Addrs) == 1 && strings.Contains(p.Addrs[0].String(), localhost) {
-		return nil
-	}
-
-	if len(p.Addrs) > 1 && strings.Contains(p.Addrs[0].String(), localhost) {
-		p.Addrs = p.Addrs[1:]
 	}
 
 	now := time.Now()
@@ -182,7 +172,7 @@ func (n *WarpNode) SupportedProtocols() []string {
 		if strings.HasPrefix(string(p), "/libp2p") {
 			continue
 		}
-		if strings.HasPrefix(string(p), "/warpnet") {
+		if strings.Contains(string(p), "/kad/") {
 			continue
 		}
 		if strings.HasPrefix(string(p), "/meshsub") {

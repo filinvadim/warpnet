@@ -44,7 +44,8 @@ type API struct {
 }
 
 func main() {
-	ipfslog.SetDebugLogging()
+	//ipfslog.SetDebugLogging()
+	ipfslog.SetLogLevel("raftlib", "DEBUG")
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)
@@ -184,7 +185,7 @@ func main() {
 	for _, info := range infos {
 		bt, err := serverNode.GenericStream(info.ID.String(), event.PUBLIC_GET_PING, []byte{})
 		if err != nil {
-			log.Fatalf("failed to init ping stream: %v", err)
+			log.Errorf("failed ping stream %s: %v", info.String(), err)
 		}
 		log.Infof("ping to %s, response: %s", info.ID.String(), bt)
 	}
@@ -334,7 +335,6 @@ func main() {
 		event.PRIVATE_GET_CHAT,
 		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
 	)
-	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	nodeReadyChan <- serverNodeAuthInfo
 
@@ -351,6 +351,8 @@ func main() {
 		log.Fatalf("consensus: failed to sync: %v", err)
 	}
 	defer raft.Shutdown()
+
+	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	state, err := raft.CommitState(map[string]string{"selfhash": string(selfhash)})
 	fmt.Println("raft state:", state, "err:", err)
