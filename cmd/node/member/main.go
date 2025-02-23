@@ -45,7 +45,6 @@ type API struct {
 
 func main() {
 	//ipfslog.SetDebugLogging()
-	ipfslog.SetLogLevel("raftlib", "DEBUG")
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
 		panic(err)

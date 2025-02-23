@@ -290,7 +290,7 @@ func (c *consensusSync) waitForVoter() error {
 
 func (c *consensusSync) waitForUpdates() error {
 	log.Debugln("raft state is catching up to the latest known version. Please wait...")
-	ticker := time.NewTicker(time.Second / 2)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {

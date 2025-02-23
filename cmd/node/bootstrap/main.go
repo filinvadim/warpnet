@@ -13,7 +13,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
-	ipfslog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
@@ -24,8 +23,6 @@ import (
 )
 
 func main() {
-	ipfslog.SetLogLevel("raftlib", "DEBUG")
-
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
