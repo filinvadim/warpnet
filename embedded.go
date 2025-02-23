@@ -12,3 +12,10 @@ var codeBase embed.FS
 func GetCodeBase() embed.FS {
 	return codeBase
 }
+
+//go:embed version
+var version []byte
+
+func GetVersion() []byte {
+	return version
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"github.com/Masterminds/semver/v3"
+	root "github.com/filinvadim/warpnet"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -41,8 +42,10 @@ func init() {
 
 	bootstrap := viper.GetString("node.bootstrap")
 
+	version := root.GetVersion()
+
 	ConfigFile = Config{
-		Version: semver.MustParse(strings.TrimSpace("0.0.0")),
+		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
 			Bootstrap: strings.Split(bootstrap, ","),
 			Host:      viper.GetString("node.host"),
