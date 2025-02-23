@@ -33,7 +33,7 @@ func main() {
 		panic(err)
 	}
 
-	log.Infof("codebase hash: %x", selfhash)
+	log.Infof("codebase hash: %s", selfhash.String())
 	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)

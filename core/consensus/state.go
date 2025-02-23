@@ -54,6 +54,8 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 		return fmt.Errorf("failed to decode log: %w", err)
 	}
 
+	log.Infof("fsm: new state for apply: %s", newState)
+
 	for _, v := range fsm.validators {
 		if err := v(newState); err != nil {
 			log.Errorf("failed to apply validator: %v", err)

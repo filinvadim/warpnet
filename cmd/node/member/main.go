@@ -51,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	log.Infof("codebase hash: %x", selfhash)
+	log.Infof("codebase hash: %s", selfhash.String())
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
