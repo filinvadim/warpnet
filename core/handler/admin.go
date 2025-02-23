@@ -6,6 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
+	log "github.com/sirupsen/logrus"
 )
 
 type AdminStreamer interface {
@@ -26,6 +27,8 @@ func StreamSelfHashVerifyHandler(state AdminStateCommitter) middleware.WarpHandl
 		if err != nil {
 			return nil, err
 		}
+
+		log.Infof("hash verif request received: %v", newState)
 
 		updatedState, err := state.CommitState(newState)
 		if err != nil {

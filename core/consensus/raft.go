@@ -314,7 +314,7 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 		if server.ID == srvID && server.Suffrage == raft.Voter {
 			return true
 		}
-		log.Infoln("consensus: not voter yet...")
+		log.Infoln("consensus: raft server is a voter")
 	}
 	return false
 }
