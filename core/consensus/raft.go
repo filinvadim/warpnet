@@ -229,7 +229,7 @@ func (c *consensusService) sync(id raft.ServerID) error {
 		return fmt.Errorf("waiting to become a voter: %w", err)
 	}
 
-	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute)
+	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer updatesCancel()
 
 	err = cs.waitForUpdates(updatesCtx)

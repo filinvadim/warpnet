@@ -48,7 +48,7 @@ func main() {
 	//ipfslog.SetDebugLogging()
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	log.Infof("codebase hash: %s", selfhash.String())
@@ -354,17 +354,22 @@ func main() {
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	newState := map[string]string{security.SelfHashConsensusKey: selfhash.String()}
-	resp, err := clientNode.ClientStream(raft.LeaderID(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
-	if err != nil {
-		log.Fatalf("failed to stream initial state: %v", err)
-	}
-	updatedState := make(map[string]string)
-	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Fatalf("failed to unmarshal initial state: %v", err)
-	}
-
-	if err = selfhash.Validate(updatedState); err != nil {
-		log.Fatalf("failed to validate initial state: %v", err)
+	if raft.LeaderID() == serverNode.ID().String() {
+		state, err := raft.CommitState(newState)
+		if err != nil {
+			log.Fatalf("consensus: failed to commit state: %v", err)
+		}
+		log.Infof("consensus: committed state: %v", state)
+	} else {
+		resp, err := serverNode.GenericStream(raft.LeaderID(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
+		if err != nil {
+			log.Fatalf("failed to stream initial state: %v", err)
+		}
+		updatedState := make(map[string]string)
+		if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
+			log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
+			log.Fatalln("self hash verification failed: code base was changed")
+		}
 	}
 
 	<-interruptChan
