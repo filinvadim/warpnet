@@ -2,6 +2,7 @@ package security
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,9 +19,12 @@ type FileSystem interface {
 
 type SelfHash []byte
 
-func (s SelfHash) Validate(m map[string]string) bool {
+func (s SelfHash) Validate(m map[string]string) error {
 	value, ok := m[SelfHashConsensusKey]
-	return !ok || value == s.String()
+	if !ok || value == s.String() {
+		return nil
+	}
+	return errors.New("invalid self hash")
 }
 
 func (s SelfHash) String() string {

@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/hashicorp/raft"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"sync"
 )
@@ -32,7 +33,7 @@ type FSM struct {
 	validators []ConsensusValidatorFunc
 }
 
-type ConsensusValidatorFunc func(map[string]string) bool
+type ConsensusValidatorFunc func(map[string]string) error
 
 func newFSM(validators ...ConsensusValidatorFunc) *FSM {
 	state := KVState{genesis.String(): ""}
@@ -52,21 +53,19 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			*fsm.state = fsm.prevState
-			result = errors.New("apply panic: rollback")
+			result = errors.New("fsm apply panic: rollback")
 		}
 	}()
 
-	log.Infof("new state data: %s %s %s", rlog.Type, rlog.Data, rlog.Extensions)
-
 	var newState = make(map[string]string, 1)
-
-	if err := json.JSON.Unmarshal(rlog.Data, &newState); err != nil {
+	if err := msgpack.Unmarshal(rlog.Data, &newState); err != nil {
 		return fmt.Errorf("failed to decode log: %w", err)
 	}
 
 	for _, v := range fsm.validators {
-		if !v(newState) {
-			return errors.New("validation failed")
+		if err := v(newState); err != nil {
+			log.Errorf("failed to apply validator: %v", err)
+			return err
 		}
 	}
 
