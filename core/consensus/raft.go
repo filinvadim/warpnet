@@ -208,8 +208,8 @@ func (c *consensusService) sync(id raft.ServerID) error {
 	if c.raftID == "" {
 		panic("consensus: raft id not initialized")
 	}
-	leaderCtx, cancel := context.WithTimeout(c.ctx, time.Minute)
-	defer cancel()
+	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
+	defer leaderCancel()
 
 	cs := consensusSync{
 		ctx:    c.ctx,
@@ -229,7 +229,10 @@ func (c *consensusService) sync(id raft.ServerID) error {
 		return fmt.Errorf("waiting to become a voter: %w", err)
 	}
 
-	err = cs.waitForUpdates()
+	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute)
+	defer updatesCancel()
+
+	err = cs.waitForUpdates(updatesCtx)
 	if err != nil {
 		return fmt.Errorf("waiting for consensus updates: %w", err)
 	}
@@ -283,15 +286,15 @@ func (c *consensusSync) waitForVoter() error {
 	}
 }
 
-func (c *consensusSync) waitForUpdates() error {
+func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	log.Debugln("raft state is catching up to the latest known version. Please wait...")
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-c.ctx.Done():
-			return c.ctx.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-ticker.C:
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
