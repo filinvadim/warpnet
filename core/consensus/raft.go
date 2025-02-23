@@ -196,15 +196,20 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	actor := libp2praft.NewActor(c.raft)
 	c.consensus.SetActor(actor)
 
-	err = c.sync(config.LocalID)
+	err = c.sync()
 	if err != nil {
 		return err
 	}
-	log.Infof("consensus: ready  %s and last index: %d", c.raft.String(), c.raft.LastIndex())
+	log.Infof("consensus: ready %s and last index: %d", c.raft.String(), c.raft.LastIndex())
 	return nil
 }
 
-func (c *consensusService) sync(id raft.ServerID) error {
+type consensusSync struct {
+	raft   *raft.Raft
+	raftID raft.ServerID
+}
+
+func (c *consensusService) sync() error {
 	if c.raftID == "" {
 		panic("consensus: raft id not initialized")
 	}
@@ -212,37 +217,37 @@ func (c *consensusService) sync(id raft.ServerID) error {
 	defer leaderCancel()
 
 	cs := consensusSync{
-		ctx:    c.ctx,
 		raft:   c.raft,
-		raftID: id,
+		raftID: c.raftID,
 	}
 
+	log.Infoln("consensus: waiting for leader...")
 	leaderID, err := cs.waitForLeader(leaderCtx)
 	if err != nil {
 		return fmt.Errorf("waiting for leader: %w", err)
 	}
 
-	log.Infof("current raft leader: %s", leaderID)
+	log.Infof("consensus: current raft leader: %s", leaderID)
 
-	err = cs.waitForVoter()
+	log.Infoln("consensus: waiting until we are promoted to a voter...")
+	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute)
+	defer voterCancel()
+
+	err = cs.waitForVoter(voterCtx)
 	if err != nil {
-		return fmt.Errorf("waiting to become a voter: %w", err)
+		return fmt.Errorf("consensus: waiting to become a voter: %w", err)
 	}
+	log.Infoln("consensus: node received voter status")
 
 	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer updatesCancel()
 
 	err = cs.waitForUpdates(updatesCtx)
 	if err != nil {
-		return fmt.Errorf("waiting for consensus updates: %w", err)
+		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
 	}
+	log.Infoln("consensus: sync complete")
 	return nil
-}
-
-type consensusSync struct {
-	ctx    context.Context
-	raft   *raft.Raft
-	raftID raft.ServerID
 }
 
 func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
@@ -261,16 +266,15 @@ func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
 	}
 }
 
-func (c *consensusSync) waitForVoter() error {
-	log.Debugln("waiting until we are promoted to a voter")
+func (c *consensusSync) waitForVoter(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
 
 	id := c.raftID
 	for {
 		select {
-		case <-c.ctx.Done():
-			return c.ctx.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-ticker.C:
 			wait := c.raft.GetConfiguration()
 			if err := wait.Error(); err != nil {
@@ -278,7 +282,6 @@ func (c *consensusSync) waitForVoter() error {
 			}
 
 			if isVoter(id, wait.Configuration()) {
-				log.Infof("consensus: node is voter: %s", id)
 				return nil
 			}
 			log.Debugf("not voter yet: %s", id)
@@ -311,6 +314,7 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 		if server.ID == srvID && server.Suffrage == raft.Voter {
 			return true
 		}
+		log.Infoln("consensus: not voter yet...")
 	}
 	return false
 }
