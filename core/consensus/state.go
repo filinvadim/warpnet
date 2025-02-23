@@ -12,14 +12,6 @@ import (
 	"sync"
 )
 
-type knownKey string
-
-func (k knownKey) String() string { return string(k) }
-
-const (
-	genesis knownKey = "genesis"
-)
-
 type KVState map[string]string
 
 type FSM struct {
@@ -36,7 +28,7 @@ type FSM struct {
 type ConsensusValidatorFunc func(map[string]string) error
 
 func newFSM(validators ...ConsensusValidatorFunc) *FSM {
-	state := KVState{genesis.String(): ""}
+	state := KVState{"genesis": ""}
 	return &FSM{
 		state:       &state,
 		prevState:   KVState{},
