@@ -312,9 +312,9 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 	for _, server := range cfg.Servers {
 		if server.ID == srvID && server.Suffrage == raft.Voter {
+			log.Infoln("consensus: raft server is a voter")
 			return true
 		}
-		log.Infoln("consensus: raft server is a voter")
 	}
 	return false
 }
