@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
+	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"
+	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -103,11 +105,19 @@ func main() {
 	}
 	defer raft.Shutdown()
 
-	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: selfhash.String()})
-	if err != nil {
-		log.Fatalf("consensus: failed to commit state: %v", err)
+	mw := middleware.NewWarpMiddleware()
+	n.SetStreamHandler(
+		event.PUBLIC_POST_SELFHASH_VERIFY,
+		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamSelfHashVerifyHandler(raft))),
+	)
+
+	if raft.LeaderID() == id.String() {
+		state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: selfhash.String()})
+		if err != nil {
+			log.Fatalf("consensus: failed to commit state: %v", err)
+		}
+		log.Infof("consensus: committed state: %v", state)
 	}
-	fmt.Println("selfhash raft state:", state)
 
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")

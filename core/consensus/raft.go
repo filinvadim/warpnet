@@ -46,19 +46,14 @@ import (
 */
 
 type (
-	ConsensusDefaultState map[string]string
-	Consensus             = libp2praft.Consensus
-	State                 = consensus.State
+	Consensus = libp2praft.Consensus
+	State     = consensus.State
 )
 
 type ConsensusStorer interface {
 	raft.LogStore
 	raft.StableStore
 	SnapshotFilestore() (file io.Writer, path string)
-}
-
-type StateCommitter interface {
-	Commit(key string, secret string) (err error)
 }
 
 type NodeServicesProvider interface {
@@ -386,7 +381,13 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	return
 }
 
-func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVState, err error) {
+func (c *consensusService) LeaderID() string {
+	_, leaderId := c.raft.LeaderWithID()
+	return string(leaderId)
+
+}
+
+func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	if c.raft == nil {
 		return nil, errors.New("consensus: nil raft service")
 	}
@@ -397,12 +398,8 @@ func (c *consensusService) CommitState(newState ConsensusDefaultState) (_ *KVSta
 		log.Warnf("not a leader: %s", leaderId)
 		return nil, nil
 	}
-	updatedState := make(ConsensusDefaultState)
-	for k, v := range newState {
-		updatedState[k] = v
-	}
 
-	returnedState, err := c.consensus.CommitState(updatedState)
+	returnedState, err := c.consensus.CommitState(newState)
 	if err != nil {
 		return nil, err
 	}

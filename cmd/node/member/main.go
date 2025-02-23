@@ -22,6 +22,7 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
+	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
@@ -184,20 +185,15 @@ func main() {
 	serverNodeAuthInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
 	serverNodeAuthInfo.Version = config.ConfigFile.Version.String()
 
-	infos, _ := config.ConfigFile.Node.AddrInfos()
-	for _, info := range infos {
-		bt, err := serverNode.GenericStream(info.ID.String(), event.PUBLIC_GET_PING, []byte{})
-		if err != nil {
-			log.Errorf("failed ping stream %s: %v", info.String(), err)
-		}
-		log.Infof("ping to %s, response: %s", info.ID.String(), bt)
-	}
-
 	mw := middleware.NewWarpMiddleware()
 	logMw := mw.LoggingMiddleware
 	authMw := mw.AuthMiddleware
 	unwrapMw := mw.UnwrapStreamMiddleware
 
+	serverNode.SetStreamHandler(
+		event.PUBLIC_POST_SELFHASH_VERIFY,
+		logMw(unwrapMw(handler.StreamSelfHashVerifyHandler(raft))),
+	)
 	serverNode.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
 		logMw(handler.StreamGetInfoHandler(serverNode, discService.HandlePeerFound)),
@@ -357,12 +353,20 @@ func main() {
 
 	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
-	state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: selfhash.String()})
+	newState := map[string]string{security.SelfHashConsensusKey: selfhash.String()}
+	resp, err := clientNode.ClientStream(raft.LeaderID(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
 	if err != nil {
-		log.Fatalf("consensus: failed to commit state: %v", err)
+		log.Fatalf("failed to stream initial state: %v", err)
 	}
-	fmt.Println("selfhash raft state:", state)
-	log.Infoln("Warpnet started")
+	updatedState := make(map[string]string)
+	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
+		log.Fatalf("failed to unmarshal initial state: %v", err)
+	}
+
+	if err = selfhash.Validate(updatedState); err != nil {
+		log.Fatalf("failed to validate initial state: %v", err)
+	}
+
 	<-interruptChan
 	log.Infoln("interrupted...")
 }

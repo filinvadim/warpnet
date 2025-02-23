@@ -9,18 +9,13 @@ import (
 	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/retrier"
-	"github.com/libp2p/go-libp2p/core/network"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type WarpBootstrapNode struct {
 	ctx      context.Context
 	node     warpnet.P2PNode
 	relay    warpnet.WarpRelayCloser
-	retrier  retrier.Retrier
 	version  *semver.Version
 	selfHash string
 }
@@ -71,22 +66,22 @@ func setupBootstrapNode(
 		ctx:      ctx,
 		node:     node,
 		relay:    nodeRelay,
-		retrier:  retrier.New(time.Second * 5),
 		version:  conf.Version,
 		selfHash: selfHash,
 	}
-
-	n.node.SetStreamHandler(event.PUBLIC_GET_PING, func(s network.Stream) {
-		defer s.Close()
-		log.Infof("new ping stream from %s", s.Conn().RemotePeer().String())
-		s.Write([]byte(event.Accepted))
-	})
 
 	println()
 	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.node.ID(), n.node.Addrs())
 	println()
 
 	return n, nil
+}
+
+func (n *WarpBootstrapNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
+	if !stream.IsValidRoute(route) {
+		log.Fatalf("invalid route: %v", route)
+	}
+	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
 func (n *WarpBootstrapNode) Node() warpnet.P2PNode {
@@ -104,10 +99,6 @@ func (n *WarpBootstrapNode) Addrs() (addrs []string) {
 		addrs = append(addrs, addr.String())
 	}
 	return addrs
-}
-
-func (n *WarpBootstrapNode) SelfHash() string {
-	return n.selfHash
 }
 
 func (n *WarpBootstrapNode) ID() warpnet.WarpPeerID {

@@ -49,7 +49,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 		}
 	}()
 
-	var newState = make(map[string]string, 1)
+	var newState = make(KVState, 1)
 	if err := msgpack.Unmarshal(rlog.Data, &newState); err != nil {
 		return fmt.Errorf("failed to decode log: %w", err)
 	}
@@ -63,7 +63,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 		}
 	}
 
-	fsm.prevState = make(map[string]string, len(*fsm.state))
+	fsm.prevState = make(KVState, len(*fsm.state))
 	for k, v := range *fsm.state {
 		fsm.prevState[k] = v
 	}
@@ -73,6 +73,8 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 	}
 
 	fsm.initialized = true
+	log.Error("fsm: state - initialized")
+
 	return fsm.state
 }
 
