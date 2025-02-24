@@ -114,8 +114,17 @@ func (n *WarpClientNode) pairNodes(nodeId string, serverInfo domain.AuthNodeInfo
 		log.Errorln("client node must not be nil")
 		return errors.New("client node must not be nil")
 	}
-	_, err := n.ClientStream(nodeId, event.PRIVATE_POST_PAIR, serverInfo)
-	return err
+	resp, err := n.ClientStream(nodeId, event.PRIVATE_POST_PAIR, serverInfo)
+	if err != nil {
+		return err
+	}
+
+	var errResp event.ErrorResponse
+	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
+		return errResp
+	}
+
+	return nil
 }
 
 func (n *WarpClientNode) IsRunning() bool {

@@ -10,7 +10,6 @@ import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -151,32 +150,25 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	err = raft.BootstrapCluster(
-		config,
-		c.logStore,
-		c.stableStore,
-		c.snapshotStore,
-		c.transport,
-		c.raftConf.Clone(),
-	)
-	if err != nil {
-		// random wait to avoid cluster nodes simultaneous setup
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)))
+	if c.isBootstrap {
+		raft.BootstrapCluster(
+			config,
+			c.logStore,
+			c.stableStore,
+			c.snapshotStore,
+			c.transport,
+			c.raftConf.Clone(),
+		)
+	}
 
-		termKey := []byte("CurrentTerm")
-		if term, _ := c.stableStore.GetUint64(termKey); term == 0 {
-			_ = c.stableStore.SetUint64(termKey, 1)
+	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
+		entry := &raft.Log{
+			Type:  raft.LogConfiguration,
+			Index: 1,
+			Term:  1,
+			Data:  raft.EncodeConfiguration(c.raftConf),
 		}
-		err := c.logStore.GetLog(2, &raft.Log{})
-		if errors.Is(err, database.ErrConsensusKeyNotFound) {
-			entry := &raft.Log{
-				Type:  raft.LogConfiguration,
-				Index: 1,
-				Term:  1,
-				Data:  raft.EncodeConfiguration(c.raftConf),
-			}
-			_ = c.logStore.StoreLog(entry)
-		}
+		_ = c.logStore.StoreLog(entry)
 	}
 
 	log.Infoln("consensus: raft starting...")
@@ -312,9 +304,12 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 	for _, server := range cfg.Servers {
 		if server.ID == srvID && server.Suffrage == raft.Voter {
-			log.Infoln("consensus: raft server is a voter")
 			return true
 		}
+		if server.ID == srvID {
+			log.Infof("consensus: raft server is a %s", server.Suffrage)
+		}
+
 	}
 	return false
 }

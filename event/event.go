@@ -63,6 +63,10 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+func (e ErrorResponse) Error() string {
+	return e.Message
+}
+
 // FolloweesResponse defines model for FolloweesResponse.
 type FolloweesResponse struct {
 	Cursor    string             `json:"cursor"`
