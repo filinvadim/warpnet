@@ -8,7 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type ReplyTweetStorer interface {
@@ -38,7 +38,7 @@ func StreamNewReplyHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewReplyEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func StreamNewReplyHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other reply error response: %s", possibleError.Message)
 		}
 
@@ -98,7 +98,7 @@ func StreamNewReplyHandler(
 func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetReplyEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func StreamDeleteReplyHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteReplyEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +170,7 @@ func StreamDeleteReplyHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other delete reply error response: %s", possibleError.Message)
 		}
 
@@ -181,7 +181,7 @@ func StreamDeleteReplyHandler(
 func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllRepliesEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}

@@ -9,8 +9,8 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type UserStreamer interface {
@@ -46,7 +46,7 @@ func StreamGetUserHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetUserEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, fmt.Errorf("get user: event unmarshal: %v %s", err, buf)
 		}
@@ -105,11 +105,11 @@ func StreamGetUserHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(otherUserData, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(otherUserData, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other user error response: %s", possibleError.Message)
 		}
 
-		if err = json.JSON.Unmarshal(otherUserData, &u); err != nil {
+		if err = msgpack.Unmarshal(otherUserData, &u); err != nil {
 			return nil, fmt.Errorf("get other user: response unmarshal: %v %s", err, otherUserData)
 		}
 		_, err = repo.Update(u.Id, u)
@@ -124,7 +124,7 @@ func StreamGetUsersHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllUsersEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -165,12 +165,12 @@ func StreamGetUsersHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(usersDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(usersDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other users error response: %s", possibleError.Message)
 		}
 
 		var usersResp event.UsersResponse
-		if err := json.JSON.Unmarshal(usersDataResp, &usersResp); err != nil {
+		if err := msgpack.Unmarshal(usersDataResp, &usersResp); err != nil {
 			return nil, err
 		}
 
@@ -194,7 +194,7 @@ func StreamGetUsersHandler(
 func StreamUpdateProfileHandler(authRepo UserAuthStorer, userRepo UserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewUserEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}

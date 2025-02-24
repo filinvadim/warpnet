@@ -8,7 +8,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 	"github.com/vmihailenco/msgpack/v5"
 	"time"
@@ -49,7 +48,7 @@ func StreamGetTweetsHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllTweetsEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -99,12 +98,12 @@ func StreamGetTweetsHandler(
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(tweetsDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(tweetsDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other tweets error response: %s", possibleError.Message)
 		}
 
 		var tweetsResp event.TweetsResponse
-		if err := json.JSON.Unmarshal(tweetsDataResp, &tweetsResp); err != nil {
+		if err := msgpack.Unmarshal(tweetsDataResp, &tweetsResp); err != nil {
 			return nil, err
 		}
 
@@ -115,7 +114,7 @@ func StreamGetTweetsHandler(
 func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +137,7 @@ func StreamNewTweetHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewTweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +168,7 @@ func StreamNewTweetHandler(
 				UserId:    tweet.UserId,
 				Username:  tweet.Username,
 			}
-			bt, _ := json.JSON.Marshal(respTweetEvent)
+			bt, _ := msgpack.Marshal(respTweetEvent)
 			msgBody := msgpack.RawMessage(bt)
 			msg := event.Message{
 				Body:      &msgBody,
@@ -192,7 +191,7 @@ func StreamDeleteTweetHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteTweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +211,7 @@ func StreamDeleteTweetHandler(
 				UserId:  ev.UserId,
 				TweetId: ev.TweetId,
 			}
-			bt, _ := json.JSON.Marshal(respTweetEvent)
+			bt, _ := msgpack.Marshal(respTweetEvent)
 			msgBody := msgpack.RawMessage(bt)
 			msg := event.Message{
 				Body:      &msgBody,

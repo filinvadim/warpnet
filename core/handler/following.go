@@ -8,8 +8,8 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type FollowNodeStreamer interface {
@@ -46,7 +46,7 @@ func StreamFollowHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewFollowEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func StreamFollowHandler(
 
 		if event.AcceptedResponse(followDataResp) != event.Accepted {
 			var errorResp event.ErrorResponse
-			if err := json.JSON.Unmarshal(followDataResp, &errorResp); err == nil {
+			if err := msgpack.Unmarshal(followDataResp, &errorResp); err == nil {
 				return nil, fmt.Errorf("follow stream: %s", errorResp.Message)
 			}
 			return nil, fmt.Errorf("follow stream: %s %w", followDataResp, err)
@@ -104,7 +104,7 @@ func StreamUnfollowHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewUnfollowEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +141,7 @@ func StreamUnfollowHandler(
 
 		if event.AcceptedResponse(unfollowDataResp) != event.Accepted {
 			var errorResp event.ErrorResponse
-			if err := json.JSON.Unmarshal(unfollowDataResp, &errorResp); err == nil {
+			if err := msgpack.Unmarshal(unfollowDataResp, &errorResp); err == nil {
 				return nil, fmt.Errorf("unfollow stream: %s", errorResp.Message)
 			}
 			return nil, fmt.Errorf("unfollow stream: %s %w", unfollowDataResp, err)
@@ -159,7 +159,7 @@ func StreamGetFollowersHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetFollowersEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -201,12 +201,12 @@ func StreamGetFollowersHandler(
 			return nil, err
 		}
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(followersData, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(followersData, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other followers error response: %s", possibleError.Message)
 		}
 
 		var followersResp event.FollowersResponse
-		if err := json.JSON.Unmarshal(followersData, &followersResp); err != nil {
+		if err := msgpack.Unmarshal(followersData, &followersResp); err != nil {
 			return nil, err
 		}
 		return followersResp, nil
@@ -221,7 +221,7 @@ func StreamGetFolloweesHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetFolloweesEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -263,12 +263,12 @@ func StreamGetFolloweesHandler(
 			return nil, err
 		}
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(followeesData, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(followeesData, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other followees error response: %s", possibleError.Message)
 		}
 
 		var followeesResp event.FolloweesResponse
-		if err := json.JSON.Unmarshal(followeesData, &followeesResp); err != nil {
+		if err := msgpack.Unmarshal(followeesData, &followeesResp); err != nil {
 			return nil, err
 		}
 		return followeesResp, nil

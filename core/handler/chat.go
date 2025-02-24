@@ -8,7 +8,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
+	"github.com/vmihailenco/msgpack/v5"
 	"time"
 )
 
@@ -40,7 +40,7 @@ type ChatStorer interface {
 func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer ChatStreamer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewChatEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +73,7 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(otherChatData, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(otherChatData, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other chat error response: %s", possibleError.Message)
 		}
 
@@ -87,7 +87,7 @@ func StreamGetUserChatHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetChatEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func StreamGetUserChatHandler(
 func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteChatEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +125,7 @@ func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 func StreamGetUserChatsHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllChatsEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +173,7 @@ func StreamGetUserChatsHandler(repo ChatStorer, userRepo ChatUserFetcher) middle
 func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer ChatStreamer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewMessageEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +213,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		}
 
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(otherMsgData, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(otherMsgData, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other message error response: %s", possibleError.Message)
 		}
 
@@ -225,7 +225,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 func StreamDeleteMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer ChatStreamer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteMessageEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func StreamDeleteMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, strea
 func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllMessagesEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -290,7 +290,7 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 func StreamGetMessageHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetMessageEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}

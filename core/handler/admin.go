@@ -5,8 +5,8 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type AdminStreamer interface {
@@ -23,7 +23,7 @@ func StreamSelfHashVerifyHandler(state AdminStateCommitter) middleware.WarpHandl
 			return nil, nil
 		}
 		var newState map[string]string
-		err := json.JSON.Unmarshal(buf, &newState)
+		err := msgpack.Unmarshal(buf, &newState)
 		if err != nil {
 			return nil, err
 		}

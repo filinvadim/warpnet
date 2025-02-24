@@ -6,7 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type TimelineFetcher interface {
@@ -16,7 +16,7 @@ type TimelineFetcher interface {
 func StreamTimelineHandler(repo TimelineFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTimelineEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}

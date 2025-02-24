@@ -3,7 +3,6 @@ package pubsub
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
@@ -375,7 +374,7 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	var simulatedMessage event.Message
 	if err := msgpack.Unmarshal(msg.Data, &simulatedMessage); err != nil {
-		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
+		log.Errorf("pubsub discovery: failed to decode user update message: %v %s", err, msg.Data)
 		return err
 	}
 	if simulatedMessage.NodeId == g.serverNode.ID().String() {
@@ -407,7 +406,7 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 
 func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	var discoveryMsg warpnet.WarpAddrInfo
-	if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+	if err := msgpack.Unmarshal(msg.Data, &discoveryMsg); err != nil {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return
 	}

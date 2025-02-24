@@ -86,10 +86,8 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		defer func() { s.Close() }() //#nosec
 
 		var (
-			response     any
-			err          error
-			incomingType any
-			decodedData  []byte
+			response any
+			err      error
 		)
 
 		reader := io.LimitReader(s, MB) // TODO size limit???
@@ -101,18 +99,9 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 		}
 
 		if response == nil {
-			if err := msgpack.Unmarshal(bt, &incomingType); err != nil {
-				log.Errorf("middleware: decoding from stream: %v", err)
-				response = event.ErrorResponse{Message: ErrStreamReadError.Error()}
-			} else {
-				decodedData, _ = json.JSON.Marshal(incomingType)
-			}
-		}
-
-		if response == nil {
-			response, err = fn(decodedData, s)
+			response, err = fn(bt, s)
 			if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
-				log.Debugf(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(decodedData))
+				log.Debugf(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(bt))
 				respBytes, _ := json.JSON.Marshal(response)
 				log.Debugf("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), string(respBytes))
 				log.Errorf("middleware: handling %s message: %v\n", s.Protocol(), err)

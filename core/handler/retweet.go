@@ -9,8 +9,8 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type RetweetStreamer interface {
@@ -47,7 +47,7 @@ func StreamNewReTweetHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var retweetEvent event.NewRetweetEvent
-		err := json.JSON.Unmarshal(buf, &retweetEvent)
+		err := msgpack.Unmarshal(buf, &retweetEvent)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +85,7 @@ func StreamNewReTweetHandler(
 			return nil, err
 		}
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(retweetDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(retweetDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other retweet error response: %s", possibleError.Message)
 		}
 
@@ -101,7 +101,7 @@ func StreamUnretweetHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.UnretweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func StreamUnretweetHandler(
 			return nil, err
 		}
 		var possibleError event.ErrorResponse
-		if _ = json.JSON.Unmarshal(unretweetDataResp, &possibleError); possibleError.Message != "" {
+		if _ = msgpack.Unmarshal(unretweetDataResp, &possibleError); possibleError.Message != "" {
 			return nil, fmt.Errorf("unmarshal other unretweet error response: %s", possibleError.Message)
 		}
 
@@ -155,7 +155,7 @@ func StreamUnretweetHandler(
 func StreamGetReTweetsCountHandler(repo ReTweetsStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetReTweetsCountEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +177,7 @@ func StreamGetRetweetersHandler(
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetRetweetersEvent
-		err := json.JSON.Unmarshal(buf, &ev)
+		err := msgpack.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
