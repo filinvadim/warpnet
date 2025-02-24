@@ -2,7 +2,6 @@ package relay
 
 import (
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/ipfs/go-log/v2"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"time"
 )
@@ -38,7 +37,6 @@ import (
 */
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	log.SetLogLevel("autorelay", "INFO")
 	relay, err := relayv2.New(
 		node,
 		relayv2.WithLimit(&relayv2.RelayLimit{

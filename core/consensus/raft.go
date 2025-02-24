@@ -145,7 +145,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
 	if err != nil {
-		log.Errorf("failed to create raft transport: %v", err)
+		log.Errorf("consensus: failed to create raft transport: %v", err)
 		return
 	}
 
@@ -284,13 +284,13 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 			if isVoter(id, wait.Configuration()) {
 				return nil
 			}
-			log.Debugf("not voter yet: %s", id)
+			log.Debugf("consensus: not voter yet: %s", id)
 		}
 	}
 }
 
 func (c *consensusSync) waitForUpdates(ctx context.Context) error {
-	log.Debugln("raft state is catching up to the latest known version. Please wait...")
+	log.Debugln("consensus: raft state is catching up to the latest known version. Please wait...")
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -301,7 +301,7 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 		case <-ticker.C:
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
-			log.Infof("current raft index: %d/%d", lastAppliedIndex, lastIndex)
+			log.Infof("consensus: current raft index: %d/%d", lastAppliedIndex, lastIndex)
 			if lastAppliedIndex == lastIndex {
 				return nil
 			}
@@ -402,7 +402,7 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		log.Warnf("not a leader: %s", leaderId)
+		log.Warnf("consensus: not a leader: %s", leaderId)
 		return nil, nil
 	}
 
@@ -452,7 +452,7 @@ func (c *consensusService) Shutdown() {
 	_ = c.transport.Close()
 	wait := c.raft.Shutdown()
 	if wait != nil && wait.Error() != nil {
-		log.Infof("failed to shutdown raft: %v", wait.Error())
+		log.Infof("consensus: failed to shutdown raft: %v", wait.Error())
 	}
 	log.Infoln("consensus: raft node shut down")
 	c.raft = nil

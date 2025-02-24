@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -131,19 +132,13 @@ func (n *WarpClientNode) ClientStream(nodeId string, path string, data any) (_ [
 		return nil, err
 	}
 
-	var bt []byte
-	if data != nil {
-		var ok bool
-		bt, ok = data.([]byte)
-		if !ok {
-			bt, err = msgpack.Marshal(data)
-			if err != nil {
-				return nil, err
-			}
-		}
+	var buf = bytes.NewBuffer(nil)
+	encoder := msgpack.NewEncoder(buf)
+	encoder.SetCustomStructTag("json")
+	if err := encoder.Encode(data); err != nil {
+		return nil, fmt.Errorf("client stream encoding: %w", err)
 	}
-
-	return n.streamer.Send(*addrInfo, stream.WarpRoute(path), bt)
+	return n.streamer.Send(*addrInfo, stream.WarpRoute(path), buf.Bytes())
 }
 
 func (n *WarpClientNode) Stop() {

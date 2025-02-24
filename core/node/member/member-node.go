@@ -1,6 +1,7 @@
 package member
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"errors"
@@ -128,7 +129,7 @@ func setupMemberNode(
 	n.ipv4, n.ipv6 = parseAddresses(node)
 
 	println()
-	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %v\033[0m\n", n.ID(), n.node.Addrs())
+	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.ID(), n.node.Addrs())
 	println()
 
 	return n, nil
@@ -280,19 +281,14 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		return nil, warpnet.ErrNodeIsOffline
 	}
 
-	var bt []byte
-	if data != nil {
-		var ok bool
-		bt, ok = data.([]byte)
-		if !ok {
-			bt, err = msgpack.Marshal(data)
-			if err != nil {
-				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
-			}
-		}
+	var buf = bytes.NewBuffer(nil)
+	encoder := msgpack.NewEncoder(buf)
+	encoder.SetCustomStructTag("json")
+	if err := encoder.Encode(data); err != nil {
+		return nil, err
 	}
 
-	return n.streamer.Send(peerInfo, path, bt)
+	return n.streamer.Send(peerInfo, path, buf.Bytes())
 }
 
 func (n *WarpNode) Stop() {

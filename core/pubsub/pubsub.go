@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"slices"
 	"strings"
 	"sync"
@@ -254,12 +256,14 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 	g.topics[topicName] = topic
 	g.mx.Unlock()
 
-	data, err := json.Marshal(msg)
-	if err != nil {
-		log.Errorf("pubsub discovery: failed to marchal message: %v", err)
-		return err
+	var buf = bytes.NewBuffer(nil)
+	encoder := msgpack.NewEncoder(buf)
+	encoder.SetCustomStructTag("json")
+	if err := encoder.Encode(msg); err != nil {
+		return fmt.Errorf("client stream encoding: %w", err)
 	}
-	err = topic.Publish(g.ctx, data)
+
+	err = topic.Publish(g.ctx, buf.Bytes())
 	if err != nil {
 		log.Errorf("pubsub discovery: failed to publish message: %v", err)
 		return err
@@ -467,12 +471,15 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 				ID:    g.serverNode.ID(),
 				Addrs: addrs,
 			}
-			data, err := json.Marshal(msg)
-			if err != nil {
-				log.Errorf("pubsub discovery: failed to marchal message: %v", err)
+			var buf = bytes.NewBuffer(nil)
+			encoder := msgpack.NewEncoder(buf)
+			encoder.SetCustomStructTag("json")
+			if err := encoder.Encode(msg); err != nil {
+				log.Errorf("client stream encoding: %v", err)
 				return
 			}
-			err = discTopic.Publish(g.ctx, data)
+
+			err := discTopic.Publish(g.ctx, buf.Bytes())
 			if err != nil {
 				log.Errorf("pubsub discovery: failed to publish message: %v", err)
 			}
