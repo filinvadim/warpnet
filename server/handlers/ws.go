@@ -9,9 +9,9 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/server/websocket"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"net/http"
 	"time"
 )
@@ -101,7 +101,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			log.Errorf("websocket: login FromLoginResponse: %v", err)
 			break
 		}
-		msgBody := jsoniter.RawMessage(bt)
+		msgBody := msgpack.RawMessage(bt)
 		response.Body = &msgBody
 	case event.PRIVATE_POST_LOGOUT:
 		defer c.upgrader.Close()
@@ -135,7 +135,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(err.Error())
 			break
 		}
-		msgBody := jsoniter.RawMessage(respData)
+		msgBody := msgpack.RawMessage(respData)
 		response.Body = &msgBody
 	}
 	if response.Body == nil {
@@ -160,8 +160,12 @@ func newErrorResp(message string) event.Message {
 		Message: message,
 	}
 
-	bt, _ := json.JSON.Marshal(errResp)
-	msgBody := jsoniter.RawMessage(bt)
+	var buf = bytes.NewBuffer(nil)
+	encoder := msgpack.NewEncoder(buf)
+	encoder.SetCustomStructTag("json")
+	_ = encoder.Encode(errResp)
+
+	msgBody := msgpack.RawMessage(buf.Bytes())
 	resp := event.Message{
 		Body: &msgBody,
 	}

@@ -374,7 +374,7 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 
 func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	var simulatedMessage event.Message
-	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
+	if err := msgpack.Unmarshal(msg.Data, &simulatedMessage); err != nil {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
 	}

@@ -2,7 +2,7 @@ package event
 
 import (
 	"github.com/filinvadim/warpnet/domain"
-	json "github.com/json-iterator/go"
+	"github.com/vmihailenco/msgpack/v5"
 	"time"
 )
 
@@ -215,12 +215,12 @@ type LogoutEvent struct {
 
 // Message defines model for Message.
 type Message struct {
-	Body      *json.RawMessage `json:"body,omitempty"`
-	MessageId string           `json:"message_id"`
-	NodeId    string           `json:"node_id"`
-	Path      string           `json:"path"`
-	Timestamp time.Time        `json:"timestamp,omitempty"`
-	Version   string           `json:"version"`
+	Body      *msgpack.RawMessage `json:"body,omitempty"`
+	MessageId string              `json:"message_id"`
+	NodeId    string              `json:"node_id"`
+	Path      string              `json:"path"`
+	Timestamp time.Time           `json:"timestamp,omitempty"`
+	Version   string              `json:"version"`
 }
 
 // MessageBody defines model for Message.Body.
