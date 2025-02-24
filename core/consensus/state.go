@@ -55,6 +55,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 	}
 
 	log.Infof("fsm: new state for apply: %s", newState)
+	log.Infof("fsm: current state: %s", *fsm.state)
 
 	for _, v := range fsm.validators {
 		if err := v(newState); err != nil {
