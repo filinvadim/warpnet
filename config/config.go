@@ -30,7 +30,7 @@ func init() {
 		strings.Join(defaultBootstrapNodes, ","),
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
-	pflag.String("logging.level", "INFO", "Logging level")
+	pflag.String("logging.level", "DEBUG", "Logging level")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()

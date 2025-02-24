@@ -9,7 +9,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
@@ -17,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"sync/atomic"
 	"time"
@@ -126,21 +126,21 @@ func (n *WarpClientNode) ClientStream(nodeId string, path string, data any) (_ [
 	if n == nil || n.clientNode == nil {
 		return nil, errors.New("client node not initialized")
 	}
+	addrInfo, err := peer.AddrInfoFromString(n.serverNodeAddr + nodeId)
+	if err != nil {
+		return nil, err
+	}
+
 	var bt []byte
 	if data != nil {
 		var ok bool
 		bt, ok = data.([]byte)
 		if !ok {
-			bt, err = json.JSON.Marshal(data)
+			bt, err = msgpack.Marshal(data)
 			if err != nil {
 				return nil, err
 			}
 		}
-	}
-
-	addrInfo, err := peer.AddrInfoFromString(n.serverNodeAddr + nodeId)
-	if err != nil {
-		return nil, err
 	}
 
 	return n.streamer.Send(*addrInfo, stream.WarpRoute(path), bt)

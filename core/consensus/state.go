@@ -73,7 +73,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 	}
 
 	fsm.initialized = true
-	log.Error("fsm: state - initialized")
+	log.Infoln("fsm: state - initialized")
 
 	return fsm.state
 }

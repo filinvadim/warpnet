@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"time"
 )
@@ -60,13 +61,13 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 		}
 		route := stream.FromPrIDToRoute(s.Protocol())
 		if route.IsPrivate() && p.clientNodeID == "" {
-			log.Errorf("middleware: client peer ID not set, ignoring private route:", route)
+			log.Errorf("middleware: client peer ID not set, ignoring private route: %s", route)
 			_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 			return
 		}
 		if route.IsPrivate() && p.clientNodeID != "" { // not private == no auth
 			if !(p.clientNodeID == s.Conn().RemotePeer()) { // only own client node can do private requests
-				log.Errorf("middleware: client peer id mismatch:", s.Conn().RemotePeer())
+				log.Errorf("middleware: client peer id mismatch: %s", s.Conn().RemotePeer())
 				_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 				return
 			}
@@ -84,10 +85,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 	return func(s warpnet.WarpStream) {
 		defer func() { s.Close() }() //#nosec
 
-		var (
-			response any
-			encoder  = json.JSON.NewEncoder(s)
-		)
+		var response any
 
 		reader := io.LimitReader(s, MB) // TODO size limit???
 		data, err := io.ReadAll(reader)
@@ -97,11 +95,18 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		}
 
+		var decodedData []byte
+		if err = msgpack.Unmarshal(data, &decodedData); err != nil {
+			log.Errorf("middleware: decoding from stream: %v", err)
+			response = event.ErrorResponse{Message: ErrStreamReadError.Error()}
+		}
+
 		if response == nil {
-			response, err = fn(data, s)
+			response, err = fn(decodedData, s)
 			if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 				log.Debugf(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(data))
-				log.Debugf("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), response)
+				respBytes, _ := json.JSON.Marshal(response)
+				log.Debugf("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), string(respBytes))
 				log.Errorf("middleware: handling %s message: %v\n", s.Protocol(), err)
 				response = event.ErrorResponse{Code: 500, Message: ErrInternalNodeError.Error()}
 			}
@@ -120,7 +125,8 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		default:
 		}
-		if err := encoder.Encode(response); err != nil {
+
+		if err := msgpack.NewEncoder(s).Encode(response); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)
 		}
 	}

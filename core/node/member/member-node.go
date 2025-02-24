@@ -12,9 +12,9 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
 	log "github.com/sirupsen/logrus"
+	"github.com/vmihailenco/msgpack/v5"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -274,26 +274,22 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 	if n.ID() == nodeId {
 		return nil, nil // self request discarded
 	}
+	peerInfo := n.Peerstore().PeerInfo(nodeId)
+	if len(peerInfo.Addrs) == 0 {
+		log.Debugf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		return nil, warpnet.ErrNodeIsOffline
+	}
 
 	var bt []byte
 	if data != nil {
 		var ok bool
 		bt, ok = data.([]byte)
 		if !ok {
-			bt, err = json.JSON.Marshal(data)
+			bt, err = msgpack.Marshal(data)
 			if err != nil {
 				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
 			}
 		}
-	}
-
-	peerInfo := n.Peerstore().PeerInfo(nodeId)
-	if len(peerInfo.Addrs) == 0 {
-		log.Debugf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
-		return nil, warpnet.ErrNodeIsOffline
-	}
-	for _, addr := range peerInfo.Addrs {
-		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
 	}
 
 	return n.streamer.Send(peerInfo, path, bt)
