@@ -141,7 +141,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	// force Raft to create cluster no matter what
 	if lastIndex == 0 {
-		log.Warn("consensus: bootstrapping a new cluster...")
+		log.Infoln("consensus: bootstrapping a new cluster...")
 		raftConf := raft.Configuration{}
 		raftConf.Servers = append(raftConf.Servers, raft.Server{
 			Suffrage: raft.Voter,
@@ -187,7 +187,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Infof("consensus: ready %s and last index: %d", c.raft.String(), c.raft.LastIndex())
+	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	return nil
 }
 

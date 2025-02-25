@@ -14,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/libp2p/go-libp2p/core/network"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync/atomic"
@@ -139,20 +140,17 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		return nil
 	}
 
-	now := time.Now()
-	err := n.retrier.Try(
-		func() (bool, error) {
-			log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
-			if err := n.node.Connect(n.ctx, p); err != nil {
-				log.Errorf("failed to connect to node: %v", err)
-				return false, nil
-			}
-			log.Infoln("connect attempt successful:", p.ID.String())
-			return true, nil
-		},
-		now.Add(time.Minute/2),
-	)
-	return err
+	if n.node.Network().Connectedness(p.ID) == network.Connected {
+		return nil
+	}
+
+	log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
+	if err := n.node.Connect(n.ctx, p); err != nil {
+		return fmt.Errorf("failed to connect to node: %w", err)
+	}
+	log.Infoln("connect attempt successful:", p.ID.String())
+
+	return nil
 }
 
 func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
