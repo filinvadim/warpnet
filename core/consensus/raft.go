@@ -126,7 +126,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.HeartbeatTimeout = time.Minute
 	config.LeaderLeaseTimeout = time.Second * 10
 	config.CommitTimeout = time.Minute
-	config.LogLevel = "ERROR"
+	config.LogLevel = "DEBUG"
 	config.LocalID = raft.ServerID(node.ID().String())
 	c.raftID = raft.ServerID(node.ID().String())
 
