@@ -81,7 +81,7 @@ func NewRaft(
 	isBootstrap bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
-	ipfslog.SetLogLevel("raftlib", "INFO")
+	ipfslog.SetLogLevel("raftlib", "DEBUG")
 
 	var stableStore raft.StableStore = raft.NewInmemStore()
 	var snapshotStore raft.SnapshotStore = raft.NewInmemSnapshotStore()
