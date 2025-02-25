@@ -81,24 +81,10 @@ func NewRaft(
 	isBootstrap bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
-	var (
-		logStore      raft.LogStore
-		stableStore   raft.StableStore
-		snapshotStore raft.SnapshotStore
-	)
-
-	if isBootstrap {
-		logStore = raft.NewInmemStore()
-		stableStore = raft.NewInmemStore()
-		snapshotStore = raft.NewInmemSnapshotStore()
-	} else {
-		f, path := consRepo.SnapshotFilestore()
-		logStore = consRepo
-		stableStore = consRepo
-		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
-		if err != nil {
-			log.Fatalf("consensus: failed to create snapshot store: %v", err)
-		}
+	f, path := consRepo.SnapshotFilestore()
+	snapshotStore, err := raft.NewFileSnapshotStore(path, 5, f)
+	if err != nil {
+		log.Fatalf("consensus: failed to create snapshot store: %v", err)
 	}
 
 	fsm := newFSM(validators...)
@@ -118,8 +104,8 @@ func NewRaft(
 
 	return &consensusService{
 		ctx:           ctx,
-		logStore:      logStore,
-		stableStore:   stableStore,
+		logStore:      raft.NewInmemStore(),
+		stableStore:   consRepo,
 		snapshotStore: snapshotStore,
 		fsm:           fsm,
 		consensus:     cons,
@@ -135,9 +121,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	config := raft.DefaultConfig()
 	config.ElectionTimeout = time.Minute
-	config.HeartbeatTimeout = time.Second * 30
-	config.LeaderLeaseTimeout = time.Second * 30
-	config.CommitTimeout = time.Second * 30
+	config.HeartbeatTimeout = time.Minute
+	config.LeaderLeaseTimeout = time.Second * 10
+	config.CommitTimeout = time.Minute
 	config.LogLevel = "DEBUG"
 	config.LocalID = raft.ServerID(node.ID().String())
 	c.raftID = raft.ServerID(node.ID().String())
@@ -162,13 +148,10 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
-		entry := &raft.Log{
-			Type:  raft.LogConfiguration,
-			Index: 1,
-			Term:  1,
-			Data:  raft.EncodeConfiguration(c.raftConf),
-		}
-		_ = c.logStore.StoreLog(entry)
+		c.logStore.StoreLog(&raft.Log{
+			Type: raft.LogConfiguration, Index: 1, Term: 1,
+			Data: raft.EncodeConfiguration(c.raftConf),
+		})
 	}
 
 	log.Infoln("consensus: raft starting...")

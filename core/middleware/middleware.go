@@ -119,9 +119,10 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			}
 			return
 		default:
+			if err := encoder.Encode(response); err != nil {
+				log.Errorf("fail encoding generic response: %v", err)
+			}
 		}
-		if err := encoder.Encode(response); err != nil {
-			log.Errorf("fail encoding generic response: %v", err)
-		}
+
 	}
 }

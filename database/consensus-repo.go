@@ -98,9 +98,7 @@ func (cr *ConsensusRepo) LastIndex() (uint64, error) {
 	if err != nil && !errors.Is(err, ErrStopIteration) {
 		return 0, err
 	}
-	if value == 0 {
-		return 1, nil // intentionally!
-	}
+	
 	return value, nil
 }
 
@@ -128,7 +126,7 @@ func (cr *ConsensusRepo) StoreLog(log *raft.Log) error {
 }
 
 // StoreLogs stores a set of raft logs.
-func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error { // TODO
+func (cr *ConsensusRepo) StoreLogs(logs []*raft.Log) error {
 	txn, err := cr.db.NewWriteTxn()
 	if err != nil {
 		return err

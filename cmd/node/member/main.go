@@ -351,7 +351,7 @@ func main() {
 	}
 	defer raft.Shutdown()
 
-	log.Infoln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
+	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
 
 	newState := map[string]string{security.SelfHashConsensusKey: selfhash.String()}
 	if raft.LeaderID() == serverNode.ID().String() {

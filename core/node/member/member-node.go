@@ -128,7 +128,7 @@ func setupMemberNode(
 	n.ipv4, n.ipv6 = parseAddresses(node)
 
 	println()
-	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %s %v\033[0m\n", n.ID(), n.node.Addrs())
+	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.ID(), n.node.Addrs())
 	println()
 
 	return n, nil
@@ -275,6 +275,15 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		return nil, nil // self request discarded
 	}
 
+	peerInfo := n.Peerstore().PeerInfo(nodeId)
+	if len(peerInfo.Addrs) == 0 {
+		log.Errorf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		return nil, warpnet.ErrNodeIsOffline
+	}
+	for _, addr := range peerInfo.Addrs {
+		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
+	}
+
 	var bt []byte
 	if data != nil {
 		var ok bool
@@ -285,15 +294,6 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
 			}
 		}
-	}
-
-	peerInfo := n.Peerstore().PeerInfo(nodeId)
-	if len(peerInfo.Addrs) == 0 {
-		log.Debugf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
-		return nil, warpnet.ErrNodeIsOffline
-	}
-	for _, addr := range peerInfo.Addrs {
-		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
 	}
 
 	return n.streamer.Send(peerInfo, path, bt)
