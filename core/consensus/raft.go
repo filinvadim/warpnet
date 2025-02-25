@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -68,7 +70,6 @@ type consensusService struct {
 	snapshotStore raft.SnapshotStore
 	transport     *raft.NetworkTransport
 	raftID        raft.ServerID
-	isBootstrap   bool
 	syncMx        *sync.RWMutex
 }
 
@@ -85,7 +86,15 @@ func NewRaft(
 	)
 
 	if isBootstrap {
-		snapshotStore = raft.NewInmemSnapshotStore()
+		path := config.ConfigFile.Database.DirName
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+		if err != nil {
+			return nil, err
+		}
+		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
+		if err != nil {
+			log.Fatalf("consensus: failed to create snapshot store: %v", err)
+		}
 		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
 	} else {
@@ -108,7 +117,6 @@ func NewRaft(
 		snapshotStore: snapshotStore,
 		fsm:           finiteStateMachine,
 		consensus:     cons,
-		isBootstrap:   isBootstrap,
 		syncMx:        new(sync.RWMutex),
 	}, nil
 }

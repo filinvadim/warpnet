@@ -368,10 +368,9 @@ func main() {
 			updatedState := make(map[string]string)
 			if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
 				log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
-				log.Errorf("self hash verification failed: code base was changed")
+				log.Errorf("self hash verification failed: codebase was changed")
 			}
 		}
-
 	}
 
 	<-interruptChan

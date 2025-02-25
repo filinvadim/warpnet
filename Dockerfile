@@ -13,4 +13,6 @@ RUN go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet cmd/node
 
 EXPOSE 4001 4002
 
+VOLUME $HOME/storage
+
 CMD ["/warpnet/warpnet"]
