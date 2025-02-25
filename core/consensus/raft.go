@@ -118,7 +118,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.ElectionTimeout = config.HeartbeatTimeout
 	config.LeaderLeaseTimeout = config.HeartbeatTimeout
 	config.CommitTimeout = time.Second * 30
-	config.LogLevel = "INFO"
+	config.LogLevel = "ERROR"
 	config.LocalID = raft.ServerID(node.ID().String())
 
 	if err := raft.ValidateConfig(config); err != nil {
