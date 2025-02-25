@@ -7,6 +7,7 @@ import (
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
+	ipfslog "github.com/ipfs/go-log/v2"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -80,6 +81,8 @@ func NewRaft(
 	isBootstrap bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
+	ipfslog.SetLogLevel("raftlib", "INFO")
+
 	var stableStore raft.StableStore = raft.NewInmemStore()
 	var snapshotStore raft.SnapshotStore = raft.NewInmemSnapshotStore()
 	if !isBootstrap {
