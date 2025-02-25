@@ -6,7 +6,6 @@ import (
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	ipfslog "github.com/ipfs/go-log/v2"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
@@ -154,12 +153,12 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		log.Errorf("failed to bootstrap cluster: %v", err)
 	}
 
-	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
-		c.logStore.StoreLog(&raft.Log{
-			Type: raft.LogConfiguration, Index: 1, Term: 1,
-			Data: raft.EncodeConfiguration(c.raftConf),
-		})
-	}
+	//if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
+	//	c.logStore.StoreLog(&raft.Log{
+	//		Type: raft.LogConfiguration, Index: 1, Term: 1,
+	//		Data: raft.EncodeConfiguration(c.raftConf),
+	//	})
+	//}
 
 	log.Infoln("consensus: raft starting...")
 
