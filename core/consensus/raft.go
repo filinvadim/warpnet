@@ -219,7 +219,11 @@ func (c *consensusService) sync() error {
 		return fmt.Errorf("waiting for leader: %w", err)
 	}
 
-	log.Infof("consensus: current raft leader: %s", leaderID)
+	if string(c.raftID) == leaderID {
+		log.Infoln("consensus: node is a leader!")
+	} else {
+		log.Infof("consensus: current leader: %s", leaderID)
+	}
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
 	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute)
