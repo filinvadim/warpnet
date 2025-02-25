@@ -425,19 +425,23 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
 
-	if g.discoveryHandler == nil { // just bootstrap
-		if err := g.serverNode.Connect(peerInfo); err != nil {
-			log.Errorf(
-				"pubsub discovery: failed to connect to peer %s: %v",
-				peerInfo.String(),
-				err,
-			)
-			return
-		}
-		log.Debugf("pubsub: connected to peer: %s %s", discoveryMsg.Addrs, discoveryMsg.ID)
+	g.defaultDiscoveryHandler(peerInfo)
+	if g.discoveryHandler != nil {
+		g.discoveryHandler(peerInfo) // add new user
+	}
+}
+
+func (g *Gossip) defaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
+	if err := g.serverNode.Connect(peerInfo); err != nil {
+		log.Errorf(
+			"pubsub discovery: failed to connect to peer %s: %v",
+			peerInfo.String(),
+			err,
+		)
 		return
 	}
-	g.discoveryHandler(peerInfo) // add new user
+	log.Debugf("pubsub: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	return
 }
 
 func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {

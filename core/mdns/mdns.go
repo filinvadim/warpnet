@@ -76,18 +76,27 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	if m.discoveryHandler == nil {
-		if err := m.node.Connect(p); err != nil {
-			log.Errorln("mdns: failed to connect to peer", p.ID, err)
-		}
-		log.Infoln("mdns: connected to peer:", p.ID)
+	
+	m.defaultDiscoveryHandler(p)
+	if m.discoveryHandler != nil {
+		m.discoveryHandler(p)
+	}
+}
+
+func (m *mdnsDiscoveryService) defaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
+	if err := m.node.Connect(peerInfo); err != nil {
+		log.Errorf(
+			"mdns discovery: failed to connect to peer %s: %v",
+			peerInfo.String(),
+			err,
+		)
 		return
 	}
-	m.discoveryHandler(p)
+	log.Debugf("mdns discovery: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	return
 }
 
 func NewMulticastDNS(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *MulticastDNS {
-
 	service := &mdnsDiscoveryService{
 		ctx:              ctx,
 		discoveryHandler: discoveryHandler,
