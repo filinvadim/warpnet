@@ -6,7 +6,6 @@ import (
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -71,7 +70,6 @@ type consensusService struct {
 	transport     *raft.NetworkTransport
 	raftConf      raft.Configuration
 	raftID        raft.ServerID
-	isBootstrap   bool
 	syncMx        *sync.RWMutex
 }
 
@@ -115,7 +113,6 @@ func NewRaft(
 		fsm:           fsm,
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
-		isBootstrap:   isBootstrap,
 		syncMx:        new(sync.RWMutex),
 	}, nil
 }
@@ -129,7 +126,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.HeartbeatTimeout = time.Minute
 	config.LeaderLeaseTimeout = time.Second * 10
 	config.CommitTimeout = time.Minute
-	config.LogLevel = "DEBUG"
+	config.LogLevel = "ERROR"
 	config.LocalID = raft.ServerID(node.ID().String())
 	c.raftID = raft.ServerID(node.ID().String())
 
@@ -141,23 +138,21 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	if c.isBootstrap {
-		raft.BootstrapCluster(
-			config,
-			c.logStore,
-			c.stableStore,
-			c.snapshotStore,
-			c.transport,
-			c.raftConf.Clone(),
-		)
-	}
+	raft.BootstrapCluster(
+		config,
+		c.logStore,
+		c.stableStore,
+		c.snapshotStore,
+		c.transport,
+		c.raftConf.Clone(),
+	)
 
-	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
-		c.logStore.StoreLog(&raft.Log{
-			Type: raft.LogConfiguration, Index: 1, Term: 1,
-			Data: raft.EncodeConfiguration(c.raftConf),
-		})
-	}
+	//if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
+	//	c.logStore.StoreLog(&raft.Log{
+	//		Type: raft.LogConfiguration, Index: 1, Term: 1,
+	//		Data: raft.EncodeConfiguration(c.raftConf),
+	//	})
+	//}
 
 	log.Infoln("consensus: raft starting...")
 
