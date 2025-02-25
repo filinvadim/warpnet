@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
@@ -86,7 +85,7 @@ func NewRaft(
 	)
 
 	if isBootstrap {
-		path := config.ConfigFile.Database.DirName
+		path := "/root/snapshot"
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
