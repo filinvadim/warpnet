@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -69,7 +67,6 @@ type consensusService struct {
 	stableStore   raft.StableStore
 	snapshotStore raft.SnapshotStore
 	transport     *raft.NetworkTransport
-	raftConf      raft.Configuration
 	raftID        raft.ServerID
 	isBootstrap   bool
 	syncMx        *sync.RWMutex
@@ -82,19 +79,15 @@ func NewRaft(
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
 	var (
-		logStore      raft.LogStore
-		stableStore   raft.StableStore
+		logStore      raft.LogStore    = raft.NewInmemStore()
+		stableStore   raft.StableStore = raft.NewInmemStore()
 		snapshotStore raft.SnapshotStore
 	)
 
 	if isBootstrap {
-		logStore = raft.NewInmemStore()
-		stableStore = raft.NewInmemStore()
 		snapshotStore = raft.NewInmemSnapshotStore()
 	} else {
 		f, path := consRepo.SnapshotFilestore()
-		logStore = consRepo
-		stableStore = consRepo
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
@@ -104,18 +97,6 @@ func NewRaft(
 	finiteStateMachine := newFSM(validators...)
 	cons := libp2praft.NewConsensus(finiteStateMachine.state)
 
-	var (
-		bootstrapAddrs, _ = confFile.ConfigFile.Node.AddrInfos()
-		bootstrapServers  = make([]raft.Server, 0, len(bootstrapAddrs))
-	)
-	for _, addr := range bootstrapAddrs {
-		serverIdP2p := raft.ServerID(addr.ID.String())
-		bootstrapServers = append(
-			bootstrapServers,
-			raft.Server{Suffrage: raft.Voter, ID: serverIdP2p, Address: raft.ServerAddress(serverIdP2p)},
-		)
-	}
-
 	return &consensusService{
 		ctx:           ctx,
 		logStore:      logStore,
@@ -123,7 +104,6 @@ func NewRaft(
 		snapshotStore: snapshotStore,
 		fsm:           finiteStateMachine,
 		consensus:     cons,
-		raftConf:      raft.Configuration{Servers: bootstrapServers},
 		isBootstrap:   isBootstrap,
 		syncMx:        new(sync.RWMutex),
 	}, nil
@@ -134,12 +114,16 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	defer c.syncMx.Unlock()
 
 	config := raft.DefaultConfig()
-	config.ElectionTimeout = time.Minute
-	config.HeartbeatTimeout = time.Minute
-	config.LeaderLeaseTimeout = time.Second * 10
-	config.CommitTimeout = time.Minute
-	config.LogLevel = "DEBUG"
+	config.HeartbeatTimeout = time.Second * 5
+	config.ElectionTimeout = config.HeartbeatTimeout
+	config.LeaderLeaseTimeout = config.HeartbeatTimeout
+	config.CommitTimeout = time.Second * 30
+	config.LogLevel = "INFO"
 	config.LocalID = raft.ServerID(node.ID().String())
+
+	if err := raft.ValidateConfig(config); err != nil {
+		return err
+	}
 	c.raftID = raft.ServerID(node.ID().String())
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
@@ -150,24 +134,31 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	if c.isBootstrap {
-		if err := raft.BootstrapCluster(
-			config,
-			c.logStore,
-			c.stableStore,
-			c.snapshotStore,
-			c.transport,
-			c.raftConf.Clone(),
-		); err != nil {
-			log.Errorf("failed to bootstrap cluster: %v", err)
-		}
+	lastIndex, err := c.logStore.LastIndex()
+	if err != nil {
+		return fmt.Errorf("consensus: failed to read last log index: %v", err)
 	}
 
-	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
-		c.logStore.StoreLog(&raft.Log{
-			Type: raft.LogConfiguration, Index: 1, Term: 1,
-			Data: raft.EncodeConfiguration(c.raftConf),
+	// force Raft to create cluster no matter what
+	if lastIndex == 0 {
+		log.Warn("consensus: bootstrapping a new cluster...")
+		raftConf := raft.Configuration{}
+		raftConf.Servers = append(raftConf.Servers, raft.Server{
+			Suffrage: raft.Voter,
+			ID:       config.LocalID,
+			Address:  raft.ServerAddress(config.LocalID),
 		})
+
+		if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
+			return fmt.Errorf("consensus: failed to save current term: %v", err)
+		}
+		err := c.logStore.StoreLog(&raft.Log{
+			Type: raft.LogConfiguration, Index: 1, Term: 1,
+			Data: raft.EncodeConfiguration(raftConf),
+		})
+		if err != nil {
+			return fmt.Errorf("consensus: failed to store bootstrap log: %v", err)
+		}
 	}
 
 	log.Infoln("consensus: raft starting...")
@@ -182,6 +173,11 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	)
 	if err != nil {
 		return fmt.Errorf("consensus: failed to create raft node: %w", err)
+	}
+
+	wait := c.raft.GetConfiguration()
+	if err := wait.Error(); err != nil {
+		log.Errorf("consensus: raft configuration error: %v", err)
 	}
 
 	actor := libp2praft.NewActor(c.raft)

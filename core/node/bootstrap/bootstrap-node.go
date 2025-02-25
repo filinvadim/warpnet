@@ -70,13 +70,6 @@ func setupBootstrapNode(
 		selfHash: selfHash,
 	}
 
-	for {
-		peers := n.node.Peerstore().Peers()
-		if len(peers) >= 3 {
-			break
-		}
-	}
-
 	println()
 	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.node.ID(), n.node.Addrs())
 	println()

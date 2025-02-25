@@ -55,9 +55,17 @@ func main() {
 		log.Fatalf("fail getting ID: %v", err)
 	}
 
-	mdnsService := mdns.NewMulticastDNS(ctx, nil)
+	raft, err := consensus.NewRaft(
+		ctx, nil, true,
+		selfhash.Validate,
+	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	mdnsService := mdns.NewMulticastDNS(ctx, raft.AddVoter)
 	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, nil)
+	pubsubService := pubsub.NewPubSub(ctx, raft.AddVoter)
 
 	memoryStore, err := pstoremem.NewPeerstore()
 	if err != nil {
@@ -73,14 +81,6 @@ func main() {
 		log.Fatalf("fail creating providers cache: %v", err)
 	}
 	defer providersCache.Close()
-
-	raft, err := consensus.NewRaft(
-		ctx, nil, true,
-		selfhash.Validate,
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	dHashTable := dht.NewDHTable(
 		ctx, mapStore, providersCache, selfhash,
