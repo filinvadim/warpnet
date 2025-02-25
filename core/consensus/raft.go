@@ -79,14 +79,18 @@ func NewRaft(
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
 	var (
-		logStore      raft.LogStore    = raft.NewInmemStore()
-		stableStore   raft.StableStore = raft.NewInmemStore()
+		logStore      raft.LogStore
+		stableStore   raft.StableStore
 		snapshotStore raft.SnapshotStore
 	)
 
 	if isBootstrap {
 		snapshotStore = raft.NewInmemSnapshotStore()
+		logStore = raft.NewInmemStore()
+		stableStore = raft.NewInmemStore()
 	} else {
+		stableStore = consRepo
+		logStore = consRepo
 		f, path := consRepo.SnapshotFilestore()
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
