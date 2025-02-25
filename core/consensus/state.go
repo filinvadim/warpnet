@@ -14,7 +14,7 @@ import (
 
 type KVState map[string]string
 
-type FSM struct {
+type fsm struct {
 	state     *KVState
 	prevState KVState
 
@@ -27,9 +27,9 @@ type FSM struct {
 
 type ConsensusValidatorFunc func(map[string]string) error
 
-func newFSM(validators ...ConsensusValidatorFunc) *FSM {
+func newFSM(validators ...ConsensusValidatorFunc) *fsm {
 	state := KVState{"genesis": ""}
-	return &FSM{
+	return &fsm{
 		state:       &state,
 		prevState:   KVState{},
 		initialized: false,
@@ -39,7 +39,7 @@ func newFSM(validators ...ConsensusValidatorFunc) *FSM {
 }
 
 // Apply is invoked by Raft once a log entry is commited. Do not use directly.
-func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
+func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	defer func() {
@@ -79,7 +79,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) (result interface{}) {
 }
 
 // Snapshot encodes the current state so that we can save a snapshot.
-func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
+func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if !fsm.initialized {
@@ -97,7 +97,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 // Restore takes a snapshot and sets the current state from it.
-func (fsm *FSM) Restore(reader io.ReadCloser) error {
+func (fsm *fsm) Restore(reader io.ReadCloser) error {
 	defer reader.Close()
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()

@@ -64,7 +64,7 @@ type NodeServicesProvider interface {
 type consensusService struct {
 	ctx           context.Context
 	consensus     *Consensus
-	fsm           *FSM
+	fsm           *fsm
 	raft          *raft.Raft
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -94,8 +94,8 @@ func NewRaft(
 		}
 	}
 
-	fsm := newFSM(validators...)
-	cons := libp2praft.NewConsensus(fsm.state)
+	finiteStateMachine := newFSM(validators...)
+	cons := libp2praft.NewConsensus(finiteStateMachine.state)
 
 	var (
 		bootstrapAddrs, _ = confFile.ConfigFile.Node.AddrInfos()
@@ -114,7 +114,7 @@ func NewRaft(
 		logStore:      raft.NewInmemStore(),
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
-		fsm:           fsm,
+		fsm:           finiteStateMachine,
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
 		syncMx:        new(sync.RWMutex),
@@ -142,7 +142,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	raft.BootstrapCluster(
+	err = raft.BootstrapCluster(
 		config,
 		c.logStore,
 		c.stableStore,
@@ -150,6 +150,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		c.transport,
 		c.raftConf.Clone(),
 	)
+	if err != nil {
+		log.Errorf("failed to bootstrap cluster: %v", err)
+	}
 
 	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
 		c.logStore.StoreLog(&raft.Log{
@@ -192,6 +195,7 @@ func (c *consensusService) sync() error {
 	if c.raftID == "" {
 		panic("consensus: raft id not initialized")
 	}
+
 	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
 	defer leaderCancel()
 
