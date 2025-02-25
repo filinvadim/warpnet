@@ -86,6 +86,7 @@ func NewRaft(
 
 	if isBootstrap {
 		path := "/root/snapshot"
+		_ = os.MkdirAll(path, 0660)
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
@@ -363,11 +364,11 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	return
 }
 
-func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
+func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	if c.raft == nil {
 		return
 	}
-	if info.ID.String() == "" {
+	if id.String() == "" {
 		return
 	}
 
@@ -376,7 +377,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
-	log.Infof("consensus: removing voter %s", info.ID.String())
+	log.Infof("consensus: removing voter %s", id.String())
 
 	configFuture := c.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -386,7 +387,7 @@ func (c *consensusService) RemoveVoter(info warpnet.PeerAddrInfo) {
 	prevIndex := configFuture.Index()
 
 	wait := c.raft.RemoveServer(
-		raft.ServerID(info.ID.String()), prevIndex, 30*time.Second,
+		raft.ServerID(id.String()), prevIndex, 30*time.Second,
 	)
 	if err := wait.Error(); err != nil {
 		log.Warnf("consensus: failed to remove raft server: %s", wait.Error())

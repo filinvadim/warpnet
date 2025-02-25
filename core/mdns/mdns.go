@@ -53,10 +53,10 @@ type MulticastDNS struct {
 }
 
 type mdnsDiscoveryService struct {
-	ctx              context.Context
-	discoveryHandler discovery.DiscoveryHandler
-	node             NodeConnector
-	mx               *sync.Mutex
+	ctx               context.Context
+	discoveryHandlers []discovery.DiscoveryHandler
+	node              NodeConnector
+	mx                *sync.Mutex
 }
 
 func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
@@ -76,10 +76,12 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	
+
 	m.defaultDiscoveryHandler(p)
-	if m.discoveryHandler != nil {
-		m.discoveryHandler(p)
+	if m.discoveryHandlers != nil {
+		for _, h := range m.discoveryHandlers {
+			h(p)
+		}
 	}
 }
 
@@ -96,12 +98,12 @@ func (m *mdnsDiscoveryService) defaultDiscoveryHandler(peerInfo warpnet.PeerAddr
 	return
 }
 
-func NewMulticastDNS(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *MulticastDNS {
+func NewMulticastDNS(ctx context.Context, discoveryHandlers ...discovery.DiscoveryHandler) *MulticastDNS {
 	service := &mdnsDiscoveryService{
-		ctx:              ctx,
-		discoveryHandler: discoveryHandler,
-		node:             nil,
-		mx:               new(sync.Mutex),
+		ctx:               ctx,
+		discoveryHandlers: discoveryHandlers,
+		node:              nil,
+		mx:                new(sync.Mutex),
 	}
 
 	return &MulticastDNS{nil, service, new(atomic.Bool)}

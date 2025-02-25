@@ -84,7 +84,7 @@ func main() {
 
 	dHashTable := dht.NewDHTable(
 		ctx, mapStore, providersCache, selfhash,
-		raft.AddVoter, raft.RemoveVoter,
+		raft.RemoveVoter, raft.AddVoter,
 	)
 	defer dHashTable.Close()
 

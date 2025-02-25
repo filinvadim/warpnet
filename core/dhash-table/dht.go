@@ -69,8 +69,8 @@ type DistributedHashTable struct {
 	db            RoutingStorer
 	providerStore ProviderStorer
 	boostrapNodes []warpnet.PeerAddrInfo
-	addF          discovery.DiscoveryHandler
-	removeF       discovery.DiscoveryHandler
+	addFuncs      []discovery.DiscoveryHandler
+	removeF       func(warpnet.WarpPeerID)
 	dht           *dht.IpfsDHT
 	codeHash      []byte
 }
@@ -88,8 +88,8 @@ func NewDHTable(
 	db RoutingStorer,
 	providerStore ProviderStorer,
 	codeHash []byte,
-	addF discovery.DiscoveryHandler,
-	removeF discovery.DiscoveryHandler,
+	removeF func(warpnet.WarpPeerID),
+	addFuncs ...discovery.DiscoveryHandler,
 ) *DistributedHashTable {
 	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
 	return &DistributedHashTable{
@@ -97,7 +97,7 @@ func NewDHTable(
 		db:            db,
 		providerStore: providerStore,
 		boostrapNodes: bootstrapAddrs,
-		addF:          addF,
+		addFuncs:      addFuncs,
 		removeF:       removeF,
 		codeHash:      codeHash,
 	}
@@ -122,18 +122,19 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	}
 
 	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
-	if d.addF != nil {
+	if d.addFuncs != nil {
 		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
 			log.Infof("dht: new peer added: %s", id)
 			info := peer.AddrInfo{ID: id}
-			d.addF(info)
+			for _, addF := range d.addFuncs {
+				addF(info)
+			}
 		}
 	}
 	dhTable.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
 	if d.removeF != nil {
 		dhTable.RoutingTable().PeerRemoved = func(id peer.ID) {
-			info := peer.AddrInfo{ID: id}
-			d.removeF(info)
+			d.removeF(id)
 		}
 	}
 

@@ -49,13 +49,13 @@ type PubsubAuthStorer interface {
 }
 
 type Gossip struct {
-	ctx              context.Context
-	pubsub           *pubsub.PubSub
-	serverNode       PubsubServerNodeConnector
-	clientNode       PubsubClientNodeStreamer
-	discoveryHandler discovery.DiscoveryHandler
-	version          string
-	owner            domain.Owner
+	ctx               context.Context
+	pubsub            *pubsub.PubSub
+	serverNode        PubsubServerNodeConnector
+	clientNode        PubsubClientNodeStreamer
+	discoveryHandlers []discovery.DiscoveryHandler
+	version           string
+	owner             domain.Owner
 
 	mx     *sync.RWMutex
 	subs   []*pubsub.Subscription
@@ -64,19 +64,19 @@ type Gossip struct {
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *Gossip {
+func NewPubSub(ctx context.Context, discoveryHandlers ...discovery.DiscoveryHandler) *Gossip {
 	version := fmt.Sprintf("%d.0.0", config.ConfigFile.Version.Major())
 
 	g := &Gossip{
-		ctx:              ctx,
-		pubsub:           nil,
-		serverNode:       nil,
-		clientNode:       nil,
-		discoveryHandler: discoveryHandler,
-		version:          version,
-		mx:               &sync.RWMutex{},
-		subs:             []*pubsub.Subscription{},
-		topics:           map[string]*pubsub.Topic{},
+		ctx:               ctx,
+		pubsub:            nil,
+		serverNode:        nil,
+		clientNode:        nil,
+		discoveryHandlers: discoveryHandlers,
+		version:           version,
+		mx:                &sync.RWMutex{},
+		subs:              []*pubsub.Subscription{},
+		topics:            map[string]*pubsub.Topic{},
 
 		isRunning: new(atomic.Bool),
 	}
@@ -426,8 +426,10 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	}
 
 	g.defaultDiscoveryHandler(peerInfo)
-	if g.discoveryHandler != nil {
-		g.discoveryHandler(peerInfo) // add new user
+	if g.discoveryHandlers != nil {
+		for _, handler := range g.discoveryHandlers {
+			handler(peerInfo) // add new user
+		}
 	}
 }
 

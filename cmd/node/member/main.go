@@ -164,7 +164,7 @@ func main() {
 
 	dHashTable := dht.NewDHTable(
 		ctx, persLayer, providerStore, selfhash,
-		discService.HandlePeerFound, nil,
+		nil, discService.HandlePeerFound,
 	)
 	defer dHashTable.Close()
 
