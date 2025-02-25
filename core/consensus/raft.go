@@ -81,10 +81,15 @@ func NewRaft(
 	isBootstrap bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
-	f, path := consRepo.SnapshotFilestore()
-	snapshotStore, err := raft.NewFileSnapshotStore(path, 5, f)
-	if err != nil {
-		log.Fatalf("consensus: failed to create snapshot store: %v", err)
+	var stableStore raft.StableStore = raft.NewInmemStore()
+	var snapshotStore raft.SnapshotStore = raft.NewInmemSnapshotStore()
+	if !isBootstrap {
+		f, path := consRepo.SnapshotFilestore()
+		stableStore = consRepo
+		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
+		if err != nil {
+			log.Fatalf("consensus: failed to create snapshot store: %v", err)
+		}
 	}
 
 	fsm := newFSM(validators...)
@@ -92,7 +97,7 @@ func NewRaft(
 
 	var (
 		bootstrapAddrs, _ = confFile.ConfigFile.Node.AddrInfos()
-		bootstrapServers  = make([]raft.Server, 0, len(bootstrapAddrs)+1)
+		bootstrapServers  = make([]raft.Server, 0, len(bootstrapAddrs))
 	)
 	for _, addr := range bootstrapAddrs {
 		serverIdP2p := raft.ServerID(addr.ID.String())
@@ -105,7 +110,7 @@ func NewRaft(
 	return &consensusService{
 		ctx:           ctx,
 		logStore:      raft.NewInmemStore(),
-		stableStore:   consRepo,
+		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
 		fsm:           fsm,
 		consensus:     cons,
