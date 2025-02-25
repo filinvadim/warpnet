@@ -6,7 +6,7 @@ import (
 	"fmt"
 	confFile "github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	ipfslog "github.com/ipfs/go-log/v2"
+	"github.com/filinvadim/warpnet/database"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -71,6 +71,7 @@ type consensusService struct {
 	transport     *raft.NetworkTransport
 	raftConf      raft.Configuration
 	raftID        raft.ServerID
+	isBootstrap   bool
 	syncMx        *sync.RWMutex
 }
 
@@ -80,12 +81,19 @@ func NewRaft(
 	isBootstrap bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
-	ipfslog.SetLogLevel("raftlib", "DEBUG")
+	var (
+		logStore      raft.LogStore
+		stableStore   raft.StableStore
+		snapshotStore raft.SnapshotStore
+	)
 
-	var stableStore raft.StableStore = raft.NewInmemStore()
-	var snapshotStore raft.SnapshotStore = raft.NewInmemSnapshotStore()
-	if !isBootstrap {
+	if isBootstrap {
+		logStore = raft.NewInmemStore()
+		stableStore = raft.NewInmemStore()
+		snapshotStore = raft.NewInmemSnapshotStore()
+	} else {
 		f, path := consRepo.SnapshotFilestore()
+		logStore = consRepo
 		stableStore = consRepo
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
@@ -110,12 +118,13 @@ func NewRaft(
 
 	return &consensusService{
 		ctx:           ctx,
-		logStore:      raft.NewInmemStore(),
+		logStore:      logStore,
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
 		fsm:           finiteStateMachine,
 		consensus:     cons,
 		raftConf:      raft.Configuration{Servers: bootstrapServers},
+		isBootstrap:   isBootstrap,
 		syncMx:        new(sync.RWMutex),
 	}, nil
 }
@@ -141,24 +150,25 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	err = raft.BootstrapCluster(
-		config,
-		c.logStore,
-		c.stableStore,
-		c.snapshotStore,
-		c.transport,
-		c.raftConf.Clone(),
-	)
-	if err != nil {
-		log.Errorf("failed to bootstrap cluster: %v", err)
+	if c.isBootstrap {
+		if err := raft.BootstrapCluster(
+			config,
+			c.logStore,
+			c.stableStore,
+			c.snapshotStore,
+			c.transport,
+			c.raftConf.Clone(),
+		); err != nil {
+			log.Errorf("failed to bootstrap cluster: %v", err)
+		}
 	}
 
-	//if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
-	//	c.logStore.StoreLog(&raft.Log{
-	//		Type: raft.LogConfiguration, Index: 1, Term: 1,
-	//		Data: raft.EncodeConfiguration(c.raftConf),
-	//	})
-	//}
+	if err = c.logStore.GetLog(1, &raft.Log{}); errors.Is(err, database.ErrConsensusKeyNotFound) {
+		c.logStore.StoreLog(&raft.Log{
+			Type: raft.LogConfiguration, Index: 1, Term: 1,
+			Data: raft.EncodeConfiguration(c.raftConf),
+		})
+	}
 
 	log.Infoln("consensus: raft starting...")
 
