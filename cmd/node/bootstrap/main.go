@@ -4,19 +4,8 @@ import (
 	"context"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/consensus"
-	dht "github.com/filinvadim/warpnet/core/dhash-table"
-	"github.com/filinvadim/warpnet/core/handler"
-	"github.com/filinvadim/warpnet/core/mdns"
-	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
-	"github.com/filinvadim/warpnet/core/pubsub"
-	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/security"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
 	_ "go.uber.org/automaxprocs" // DO NOT remove
 	"os"
@@ -41,82 +30,15 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed := []byte("bootstrap")
-	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
-		seed = []byte(hostname)
-	}
-	privKey, err := security.GenerateKeyFromSeed(seed)
-	if err != nil {
-		log.Fatalf("fail generating key: %v", err)
-	}
-	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
-	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
-	if err != nil {
-		log.Fatalf("fail getting ID: %v", err)
-	}
-
-	raft, err := consensus.NewRaft(
-		ctx, nil, true,
-		selfhash.Validate,
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	mdnsService := mdns.NewMulticastDNS(ctx, raft.AddVoter)
-	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, raft.AddVoter)
-
-	memoryStore, err := pstoremem.NewPeerstore()
-	if err != nil {
-		log.Fatalf("fail creating memory peerstore: %v", err)
-	}
-	defer memoryStore.Close()
-
-	mapStore := datastore.NewMapDatastore()
-	defer mapStore.Close()
-
-	providersCache, err := providers.NewProviderManager(id, memoryStore, mapStore)
-	if err != nil {
-		log.Fatalf("fail creating providers cache: %v", err)
-	}
-	defer providersCache.Close()
-
-	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache, selfhash,
-		raft.RemoveVoter, raft.AddVoter,
-	)
-	defer dHashTable.Close()
-
-	n, err := bootstrap.NewBootstrapNode(
-		ctx, warpPrivKey, selfhash.String(), memoryStore, dHashTable.StartRouting,
-	)
+	n, err := bootstrap.NewBootstrapNode(ctx, selfhash)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}
 	defer n.Stop()
 
-	go mdnsService.Start(n)
-	go pubsubService.Run(n, nil, nil, nil)
-	defer pubsubService.Close()
-
-	if err := raft.Sync(n); err != nil {
-		log.Fatalf("consensus: failed to sync: %v", err)
-	}
-	defer raft.Shutdown()
-
-	mw := middleware.NewWarpMiddleware()
-	n.SetStreamHandler(
-		event.PUBLIC_POST_SELFHASH_VERIFY,
-		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamSelfHashVerifyHandler(raft))),
-	)
-
-	if raft.LeaderID() == id.String() {
-		state, err := raft.CommitState(map[string]string{security.SelfHashConsensusKey: selfhash.String()})
-		if err != nil {
-			log.Fatalf("consensus: failed to commit state: %v", err)
-		}
-		log.Infof("consensus: committed state: %v", state)
+	err = n.Start()
+	if err != nil {
+		log.Fatalf("failed to start bootstrap node: %v", err)
 	}
 
 	<-interruptChan

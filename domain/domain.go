@@ -1,13 +1,14 @@
 package domain
 
 import (
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"time"
 )
 
 // AuthNodeInfo defines model for AuthNodeInfo.
 type AuthNodeInfo struct {
-	Identity Identity `json:"identity"`
-	Version  string   `json:"version"`
+	Identity Identity         `json:"identity"`
+	NodeInfo warpnet.NodeInfo `json:"node_info"`
 }
 
 // Chat defines model for Chat.
@@ -60,8 +61,6 @@ type Like struct {
 // Owner defines model for Owner.
 type Owner struct {
 	CreatedAt time.Time `json:"created_at"`
-	Ipv4      string    `json:"ipv4"`
-	Ipv6      string    `json:"ipv6"`
 	NodeId    string    `json:"node_id"`
 	UserId    string    `json:"user_id"`
 	Username  string    `json:"username"`

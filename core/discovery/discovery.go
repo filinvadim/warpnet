@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
@@ -22,7 +21,7 @@ import (
 type DiscoveryHandler func(warpnet.PeerAddrInfo)
 
 type DiscoveryInfoStorer interface {
-	ID() warpnet.WarpPeerID
+	NodeInfo() warpnet.NodeInfo
 	Peerstore() warpnet.WarpPeerstore
 	Mux() warpnet.WarpProtocolSwitch
 	Network() warpnet.WarpNetwork
@@ -31,7 +30,7 @@ type DiscoveryInfoStorer interface {
 }
 
 type NodeStorer interface {
-	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error
+	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
@@ -71,6 +70,19 @@ func NewDiscoveryService(
 	}
 }
 
+func NewBootstrapDiscoveryService(ctx context.Context) *discoveryService {
+	addrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress)
+	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	for _, info := range addrInfos {
+		addrs[info.ID] = info.Addrs
+	}
+	return &discoveryService{
+		ctx:            ctx,
+		version:        config.ConfigFile.Version,
+		bootstrapAddrs: addrs,
+	}
+}
+
 func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	if s == nil {
 		return
@@ -80,6 +92,10 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	defer log.Infoln("discovery service stopped")
 
 	s.node = n
+
+	if s.discoveryChan == nil {
+		return
+	}
 
 	for {
 		select {
@@ -102,7 +118,7 @@ func printPeers(n DiscoveryInfoStorer) {
 		}
 	}()
 	for _, id := range n.Peerstore().Peers() {
-		if n.ID() == id {
+		if n.NodeInfo().ID == id {
 			continue
 		}
 
@@ -118,6 +134,9 @@ func (s *discoveryService) Close() {
 			log.Errorf("discovery: close recovered from panic: %v", r)
 		}
 	}()
+	if s.stopChan == nil {
+		return
+	}
 	close(s.stopChan)
 	for len(s.discoveryChan) > 0 {
 		<-s.discoveryChan
@@ -125,14 +144,24 @@ func (s *discoveryService) Close() {
 	close(s.discoveryChan)
 }
 
+func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
+	if err := s.node.Connect(peerInfo); err != nil {
+		log.Errorf(
+			"default discovery: failed to connect to peer %s: %v",
+			peerInfo.String(),
+			err,
+		)
+		return
+	}
+	log.Debugf("default discovery: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	return
+}
+
 func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	if s == nil {
 		return
 	}
-	if s.discoveryChan == nil {
-		log.Errorf("discovery channel is nil")
-		return
-	}
+
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
 		<-s.discoveryChan // drop old data
 	}
@@ -141,7 +170,6 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 
 func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
-		log.Errorf("discovery service is not initialized")
 		return
 	}
 
@@ -149,7 +177,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: peer %s has no ID", pi.ID.String())
 		return
 	}
-	if pi.ID == s.node.ID() {
+	if pi.ID == s.node.NodeInfo().ID {
 		return
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
@@ -191,7 +219,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	var info p2p.NodeInfo
+	var info warpnet.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
 		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)

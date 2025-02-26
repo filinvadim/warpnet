@@ -2,336 +2,337 @@ package member
 
 import (
 	"context"
-	"crypto"
-	"errors"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/p2p"
-	"github.com/filinvadim/warpnet/core/relay"
-	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/core/consensus"
+	dht "github.com/filinvadim/warpnet/core/dhash-table"
+	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/handler"
+	"github.com/filinvadim/warpnet/core/mdns"
+	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/node/base"
+	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/filinvadim/warpnet/retrier"
-	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
 	"strings"
-	"sync/atomic"
-	"time"
 )
 
-type PersistentLayer interface {
-	warpnet.WarpBatching
-	warpnet.WarpProviderStore
-	GetOwner() domain.Owner
-	SessionToken() string
-	PrivateKey() crypto.PrivateKey
-	ListProviders() (_ map[string][]warpnet.PeerAddrInfo, err error)
-	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error
-	RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
-	BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
-	IsBlocklisted(ctx context.Context, peerId warpnet.WarpPeerID) (bool, error)
-	Blocklist(ctx context.Context, peerId warpnet.WarpPeerID) error
-}
+type MemberNode struct {
+	*base.WarpNode
 
-type MDNSServicer interface {
-	Start(node *WarpNode)
-	Close()
-}
-
-type DiscoveryServicer interface {
-	HandlePeerFound(warpnet.PeerAddrInfo)
-}
-
-type Streamer interface {
-	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
-}
-
-type WarpNode struct {
-	ctx       context.Context
-	node      warpnet.P2PNode
-	discovery DiscoveryServicer
-	relay     warpnet.WarpRelayCloser
-	streamer  Streamer
-	isClosed  *atomic.Bool
-
-	ipv4, ipv6 string
-
-	retrier  retrier.Retrier
-	ownerId  string
-	version  *semver.Version
-	selfHash string
+	discService   DiscoveryHandler
+	mdnsService   MDNSStarterCloser
+	pubsubService PubSubProvider
+	raft          ConsensusProvider
+	dHashTable    DistributedHashTableCloser
+	providerStore ProviderCacheCloser
+	nodeRepo      ProviderCacheCloser
 }
 
 func NewMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfHash string,
-	db PersistentLayer,
-	routingFn routingFunc,
-) (_ *WarpNode, err error) {
-	store, err := warpnet.NewPeerstore(ctx, db)
+	selfhash security.SelfHash,
+	authRepo AuthProvider,
+	db Storer,
+) (_ *MemberNode, err error) {
+	consensusRepo, err := database.NewConsensusRepo(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init consensus repo: %w", err)
+	}
+	nodeRepo := database.NewNodeRepo(db)
+	store, err := warpnet.NewPeerstore(ctx, nodeRepo)
 	if err != nil {
 		return nil, err
 	}
 
-	n, err := setupMemberNode(
-		ctx, privKey, selfHash, store, config.ConfigFile, routingFn,
+	userRepo := database.NewUserRepo(db)
+	followRepo := database.NewFollowRepo(db)
+	owner := authRepo.GetOwner()
+	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo)
+	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
+	pubsubService := pubsub.NewPubSub(ctx, followRepo, owner.UserId, discService.HandlePeerFound)
+	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init providers: %v", err)
+	}
+
+	raft, err := consensus.NewRaft(
+		ctx, consensusRepo, false,
+		selfhash.Validate,
+		userRepo.ValidateUserID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("raft initialization: %v", err)
 	}
 
-	owner := db.GetOwner()
-	n.ownerId = owner.UserId
+	dHashTable := dht.NewDHTable(
+		ctx, nodeRepo, providerStore, selfhash,
+		nil, discService.HandlePeerFound,
+	)
 
-	return n, err
-}
-
-type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
-
-func setupMemberNode(
-	ctx context.Context,
-	privKey warpnet.WarpPrivateKey,
-	selfHash string,
-	store warpnet.WarpPeerstore,
-	conf config.Config,
-	routingFn routingFunc,
-) (*WarpNode, error) {
-	node, err := p2p.NewP2PNode(
+	node, err := base.NewWarpNode(
+		ctx,
 		privKey,
 		store,
-		fmt.Sprintf("/ip4/%s/tcp/%s", conf.Node.Host, conf.Node.Port),
-		conf,
-		routingFn,
+		owner.UserId,
+		selfhash.String(),
+		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
+		dHashTable.StartRouting,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeRelay, err := relay.NewRelay(node)
-	if err != nil {
-		return nil, err
-	}
-
-	n := &WarpNode{
-		ctx:      ctx,
-		node:     node,
-		relay:    nodeRelay,
-		isClosed: new(atomic.Bool),
-		retrier:  retrier.New(time.Second * 5),
-		version:  conf.Version,
-		streamer: stream.NewStreamPool(ctx, node),
-		selfHash: selfHash,
-	}
-
-	n.ipv4, n.ipv6 = parseAddresses(node)
-
 	println()
-	fmt.Printf("\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.ID(), n.node.Addrs())
+	fmt.Printf(
+		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
+		node.NodeInfo().ID, node.NodeInfo().Addrs,
+	)
 	println()
 
-	return n, nil
+	mn := &MemberNode{
+		WarpNode:      node,
+		discService:   discService,
+		mdnsService:   mdnsService,
+		pubsubService: pubsubService,
+		raft:          raft,
+		dHashTable:    dHashTable,
+		providerStore: providerStore,
+		nodeRepo:      nodeRepo,
+	}
+
+	mn.setupHandlers(authRepo, userRepo, followRepo, db)
+	return mn, nil
 }
 
-func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
-	if n == nil || n.node == nil {
-		return nil
+func (m *MemberNode) setupHandlers(
+	authRepo AuthProvider, userRepo UserProvider, followRepo FollowStorer, db Storer,
+) {
+	timelineRepo := database.NewTimelineRepo(db)
+	tweetRepo := database.NewTweetRepo(db)
+	replyRepo := database.NewRepliesRepo(db)
+
+	likeRepo := database.NewLikeRepo(db)
+	chatRepo := database.NewChatRepo(db)
+
+	authNodeInfo := domain.AuthNodeInfo{
+		Identity: domain.Identity{authRepo.GetOwner(), authRepo.SessionToken()},
+		NodeInfo: m.NodeInfo(),
 	}
 
-	if n.node.Network().Connectedness(p.ID) == network.Connected {
-		return nil
+	mw := middleware.NewWarpMiddleware()
+	logMw := mw.LoggingMiddleware
+	authMw := mw.AuthMiddleware
+	unwrapMw := mw.UnwrapStreamMiddleware
+	m.SetStreamHandler(
+		event.PUBLIC_POST_SELFHASH_VERIFY,
+		logMw(unwrapMw(handler.StreamSelfHashVerifyHandler(m.raft))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_INFO,
+		logMw(handler.StreamGetInfoHandler(m, m.discService.HandlePeerFound)),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_POST_PAIR,
+		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(authNodeInfo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_TIMELINE,
+		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_POST_TWEET,
+		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(m.pubsubService, authRepo, tweetRepo, timelineRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_DELETE_TWEET,
+		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(m.pubsubService, authRepo, tweetRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_REPLY,
+		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(replyRepo, userRepo, tweetRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_DELETE_REPLY,
+		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(tweetRepo, userRepo, replyRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_FOLLOW,
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(m.pubsubService, m, userRepo, followRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_UNFOLLOW,
+		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(m.pubsubService, m, userRepo, followRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_USER,
+		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(tweetRepo, followRepo, userRepo, authRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_USERS,
+		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo, authRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_TWEETS,
+		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo, authRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_TWEET,
+		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_REPLY,
+		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_REPLIES,
+		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_FOLLOWERS,
+		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_FOLLOWEES,
+		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_LIKE,
+		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_UNLIKE,
+		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_LIKESCOUNT,
+		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_LIKERS,
+		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_POST_USER,
+		logMw(authMw(unwrapMw(handler.StreamUpdateProfileHandler(authRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_RETWEETSCOUNT,
+		logMw(authMw(unwrapMw(handler.StreamGetReTweetsCountHandler(tweetRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_RETWEET,
+		logMw(authMw(unwrapMw(handler.StreamNewReTweetHandler(authRepo, userRepo, tweetRepo, timelineRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_UNRETWEET,
+		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_RETWEETERS,
+		logMw(authMw(unwrapMw(handler.StreamGetRetweetersHandler(tweetRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_DELETE_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamDeleteChatHandler(chatRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_CHATS,
+		logMw(authMw(unwrapMw(handler.StreamGetUserChatsHandler(chatRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamSendMessageHandler(chatRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_DELETE_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo, userRepo, m)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_MESSAGE,
+		logMw(authMw(unwrapMw(handler.StreamGetMessageHandler(chatRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_MESSAGES,
+		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, userRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_CHAT,
+		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
+	)
+}
+
+func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
+	go m.discService.Run(m)
+	go m.mdnsService.Start(m)
+	go m.pubsubService.Run(m, clientNode)
+
+	if err := m.raft.Sync(m); err != nil {
+		return fmt.Errorf("consensus: failed to sync: %v", err)
 	}
 
-	log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
-	if err := n.node.Connect(n.ctx, p); err != nil {
-		return fmt.Errorf("failed to connect to node: %w", err)
+	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
+
+	newState := map[string]string{security.SelfHashConsensusKey: m.NodeInfo().SelfHash}
+	if m.raft.LeaderID() == m.NodeInfo().ID {
+		state, err := m.raft.CommitState(newState)
+		log.Infof("consensus: committed state: %v", state)
+		return err
 	}
-	log.Infoln("connect attempt successful:", p.ID.String())
+	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
+	if err != nil {
+		return fmt.Errorf("selfhash verify stream: %w", err)
+	}
+	updatedState := make(map[string]string)
+	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
+		log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
+		return fmt.Errorf("self hash verification failed: codebase was changed")
+	}
 
 	return nil
 }
 
-func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
-	if !stream.IsValidRoute(route) {
-		log.Fatalf("invalid route: %v", route)
+func (m *MemberNode) Stop() {
+	if m == nil {
+		return
 	}
-	n.node.SetStreamHandler(route.ProtocolID(), handler)
-}
-
-func (n *WarpNode) SupportedProtocols() []string {
-	protocols := n.node.Mux().Protocols()
-	filtered := make([]string, 0, len(protocols))
-	for _, p := range protocols {
-		if strings.HasPrefix(string(p), "/ipfs") {
-			continue
+	if m.discService != nil {
+		m.discService.Close()
+	}
+	if m.mdnsService != nil {
+		m.mdnsService.Close()
+	}
+	if m.pubsubService != nil {
+		if err := m.pubsubService.Close(); err != nil {
+			log.Errorf("consensus: failed to close pubsub: %v", err)
 		}
-		if strings.HasPrefix(string(p), "/libp2p") {
-			continue
+	}
+	if m.providerStore != nil {
+		if err := m.providerStore.Close(); err != nil {
+			log.Errorf("consensus: failed to close provider: %v", err)
 		}
-		if strings.Contains(string(p), "/kad/") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/meshsub") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/floodsub") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/private") { // hide it just in case
-			continue
-		}
-		filtered = append(filtered, string(p))
 	}
-	return filtered
-}
-
-func (n *WarpNode) NodeInfo() p2p.NodeInfo {
-	reg := n.Node()
-	id := reg.ID()
-	latency := reg.Peerstore().LatencyEWMA(id)
-	peerInfo := reg.Peerstore().PeerInfo(id)
-	connectedness := reg.Network().Connectedness(id)
-
-	plainAddrs := make([]string, 0, len(peerInfo.Addrs))
-	for _, a := range peerInfo.Addrs {
-		plainAddrs = append(plainAddrs, a.String())
+	if m.dHashTable != nil {
+		m.dHashTable.Close()
 	}
-
-	return p2p.NodeInfo{
-		Addrs:        n.Addrs(),
-		Protocols:    n.SupportedProtocols(),
-		Latency:      latency,
-		NetworkState: connectedness.String(),
-		Version:      n.version,
-		//StreamStats:  nil, // will be added later
-		OwnerId:  n.ownerId,
-		SelfHash: n.selfHash,
+	if m.raft != nil {
+		m.raft.Shutdown()
 	}
-}
-
-func (n *WarpNode) SelfHash() string {
-	return n.selfHash
-}
-
-func (n *WarpNode) ID() warpnet.WarpPeerID {
-	if n == nil || n.node == nil {
-		return ""
-	}
-	return n.node.ID()
-}
-
-func (n *WarpNode) Node() warpnet.P2PNode {
-	if n == nil || n.node == nil {
-		return nil
-	}
-	return n.node
-}
-
-func (n *WarpNode) Peerstore() warpnet.WarpPeerstore {
-	if n == nil || n.node == nil {
-		return nil
-	}
-	return n.node.Peerstore()
-}
-
-func (n *WarpNode) Network() warpnet.WarpNetwork {
-	if n == nil || n.node == nil {
-		return nil
-	}
-	return n.node.Network()
-}
-
-func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
-	return n.node.Mux()
-}
-
-func (n *WarpNode) Addrs() []string {
-	return []string{n.ipv4, n.ipv6}
-}
-func (n *WarpNode) IPv4() string {
-	return n.ipv4
-}
-
-func (n *WarpNode) IPv6() string {
-	return n.ipv6
-}
-
-type streamNodeID = string
-
-func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
-	if n == nil || n.streamer == nil {
-		return nil, errors.New("node is not initialized")
-	}
-
-	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
-	if nodeId == "" {
-		return nil, fmt.Errorf("invalid node id: %v", nodeIdStr)
-	}
-	if n.ID() == nodeId {
-		return nil, nil // self request discarded
-	}
-
-	peerInfo := n.Peerstore().PeerInfo(nodeId)
-	if len(peerInfo.Addrs) == 0 {
-		log.Errorf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
-		return nil, warpnet.ErrNodeIsOffline
-	}
-	for _, addr := range peerInfo.Addrs {
-		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
-	}
-
-	var bt []byte
-	if data != nil {
-		var ok bool
-		bt, ok = data.([]byte)
-		if !ok {
-			bt, err = json.JSON.Marshal(data)
-			if err != nil {
-				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
-			}
+	if m.nodeRepo != nil {
+		if err := m.nodeRepo.Close(); err != nil {
+			log.Errorf("consensus: failed to close node repo: %v", err)
 		}
 	}
 
-	return n.streamer.Send(peerInfo, path, bt)
-}
-
-func (n *WarpNode) Stop() {
-	log.Infoln("shutting down node...")
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorf("recovered: %v\n", r)
-		}
-	}()
-	if n.relay != nil {
-		_ = n.relay.Close()
-	}
-	if err := n.node.Close(); err != nil {
-		log.Errorf("failed to close node: %v", err)
-	}
-	n.isClosed.Store(true)
-	n.node = nil
-	return
-}
-
-func parseAddresses(node warpnet.P2PNode) (string, string) {
-	var (
-		ipv4, ipv6 string
-	)
-	for _, a := range node.Addrs() {
-		if strings.HasPrefix(a.String(), "/ip4/127.0.0.1") { // localhost is default
-			continue
-		}
-		if strings.HasPrefix(a.String(), "/ip6/::1") { // localhost is default
-			continue
-		}
-		if strings.HasPrefix(a.String(), "/ip4") {
-			ipv4 = a.String()
-		}
-		if strings.HasPrefix(a.String(), "/ip6") {
-			ipv6 = a.String()
-		}
-	}
-	return ipv4, ipv6
+	m.StopNode()
 }

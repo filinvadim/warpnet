@@ -32,8 +32,7 @@ const (
 type PubsubServerNodeConnector interface {
 	Node() warpnet.P2PNode
 	Connect(warpnet.PeerAddrInfo) error
-	ID() warpnet.WarpPeerID
-	Addrs() []string
+	NodeInfo() warpnet.NodeInfo
 }
 
 type PubsubClientNodeStreamer interface {
@@ -44,30 +43,32 @@ type PubsubFollowingStorer interface {
 	GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error)
 }
 
-type PubsubAuthStorer interface {
-	GetOwner() domain.Owner
-}
-
-type Gossip struct {
+type gossip struct {
 	ctx               context.Context
 	pubsub            *pubsub.PubSub
 	serverNode        PubsubServerNodeConnector
 	clientNode        PubsubClientNodeStreamer
 	discoveryHandlers []discovery.DiscoveryHandler
 	version           string
-	owner             domain.Owner
 
-	mx     *sync.RWMutex
-	subs   []*pubsub.Subscription
-	topics map[string]*pubsub.Topic
+	mx         *sync.RWMutex
+	subs       []*pubsub.Subscription
+	topics     map[string]*pubsub.Topic
+	ownerId    string
+	followRepo PubsubFollowingStorer
 
 	isRunning *atomic.Bool
 }
 
-func NewPubSub(ctx context.Context, discoveryHandlers ...discovery.DiscoveryHandler) *Gossip {
+func NewPubSub(
+	ctx context.Context,
+	followRepo PubsubFollowingStorer,
+	ownerId string,
+	discoveryHandlers ...discovery.DiscoveryHandler,
+) *gossip {
 	version := fmt.Sprintf("%d.0.0", config.ConfigFile.Version.Major())
 
-	g := &Gossip{
+	g := &gossip{
 		ctx:               ctx,
 		pubsub:            nil,
 		serverNode:        nil,
@@ -78,15 +79,23 @@ func NewPubSub(ctx context.Context, discoveryHandlers ...discovery.DiscoveryHand
 		subs:              []*pubsub.Subscription{},
 		topics:            map[string]*pubsub.Topic{},
 
-		isRunning: new(atomic.Bool),
+		followRepo: followRepo,
+		ownerId:    ownerId,
+		isRunning:  new(atomic.Bool),
 	}
 
 	return g
 }
 
-func (g *Gossip) Run(
+func NewPubSubBootstrap(
+	ctx context.Context,
+	discoveryHandlers ...discovery.DiscoveryHandler,
+) *gossip {
+	return NewPubSub(ctx, nil, "", discoveryHandlers...)
+}
+
+func (g *gossip) Run(
 	serverNode PubsubServerNodeConnector, clientNode PubsubClientNodeStreamer,
-	authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer,
 ) {
 	if g.isRunning.Load() {
 		return
@@ -98,7 +107,7 @@ func (g *Gossip) Run(
 		log.Fatalf("failed to create Gossip sub: %s", err)
 	}
 
-	if err := g.preSubscribe(authRepo, followRepo); err != nil {
+	if err := g.preSubscribe(); err != nil {
 		log.Fatalf("failed to presubscribe: %s", err)
 	}
 	for {
@@ -141,7 +150,7 @@ func (g *Gossip) Run(
 	}
 }
 
-func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
+func (g *gossip) run(n PubsubServerNodeConnector) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("pubsub discovery: recovered from panic: %v", r)
@@ -174,18 +183,20 @@ func (g *Gossip) run(n PubsubServerNodeConnector) (err error) {
 	return nil
 }
 
-func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollowingStorer) error {
-	if authRepo == nil {
-		return nil
-	}
+func (g *gossip) preSubscribe() error {
 	var (
 		nextCursor string
 		limit      = uint64(20)
 	)
-	g.owner = authRepo.GetOwner()
+	if g.ownerId == "" {
+		return nil
+	}
+	if g.followRepo == nil {
+		return nil
+	}
 
 	for {
-		followees, cur, _ := followRepo.GetFollowees(g.owner.UserId, &limit, &nextCursor)
+		followees, cur, _ := g.followRepo.GetFollowees(g.ownerId, &limit, &nextCursor)
 		for _, f := range followees {
 			if err := g.SubscribeUserUpdate(f.Followee); err != nil {
 				return err
@@ -201,7 +212,7 @@ func (g *Gossip) preSubscribe(authRepo PubsubAuthStorer, followRepo PubsubFollow
 	return nil
 }
 
-func (g *Gossip) Close() (err error) {
+func (g *gossip) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -235,7 +246,7 @@ func (g *Gossip) Close() (err error) {
 }
 
 // PublishOwnerUpdate - publish for followers
-func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
+func (g *gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
@@ -267,7 +278,7 @@ func (g *Gossip) PublishOwnerUpdate(ownerId string, msg event.Message) (err erro
 	return
 }
 
-func (g *Gossip) GenericSubscribe(topicName string) (err error) {
+func (g *gossip) GenericSubscribe(topicName string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
@@ -305,11 +316,11 @@ func (g *Gossip) GenericSubscribe(topicName string) (err error) {
 }
 
 // SubscribeUserUpdate - follow someone
-func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
+func (g *gossip) SubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
-	if g.owner.UserId == userId {
+	if g.ownerId == userId {
 		return errors.New("can't subscribe to own user")
 	}
 
@@ -340,7 +351,7 @@ func (g *Gossip) SubscribeUserUpdate(userId string) (err error) {
 }
 
 // UnsubscribeUserUpdate - unfollow someone
-func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
+func (g *gossip) UnsubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub service not initialized")
 	}
@@ -368,13 +379,13 @@ func (g *Gossip) UnsubscribeUserUpdate(userId string) (err error) {
 	return err
 }
 
-func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
+func (g *gossip) handleUserUpdate(msg *pubsub.Message) error {
 	var simulatedMessage event.Message
 	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return err
 	}
-	if simulatedMessage.NodeId == g.serverNode.ID().String() {
+	if simulatedMessage.NodeId == g.serverNode.NodeInfo().ID.String() {
 		return nil
 	}
 
@@ -394,14 +405,14 @@ func (g *Gossip) handleUserUpdate(msg *pubsub.Message) error {
 	}
 
 	_, err := g.clientNode.ClientStream( // send to self
-		g.serverNode.ID().String(),
+		g.serverNode.NodeInfo().ID.String(),
 		simulatedMessage.Path,
 		*simulatedMessage.Body,
 	)
 	return err
 }
 
-func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
+func (g *gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	var discoveryMsg warpnet.WarpAddrInfo
 	if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
 		log.Errorf("pubsub discovery: failed to decode discovery message: %v %s", err, msg.Data)
@@ -411,7 +422,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 		log.Errorf("pubsub discovery: message has no ID: %s", string(msg.Data))
 		return
 	}
-	if discoveryMsg.ID == g.serverNode.ID() {
+	if discoveryMsg.ID == g.serverNode.NodeInfo().ID {
 		return
 	}
 
@@ -425,7 +436,6 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
 
-	g.defaultDiscoveryHandler(peerInfo)
 	if g.discoveryHandlers != nil {
 		for _, handler := range g.discoveryHandlers {
 			handler(peerInfo) // add new user
@@ -433,20 +443,7 @@ func (g *Gossip) handlePubSubDiscovery(msg *pubsub.Message) {
 	}
 }
 
-func (g *Gossip) defaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
-	if err := g.serverNode.Connect(peerInfo); err != nil {
-		log.Errorf(
-			"pubsub discovery: failed to connect to peer %s: %v",
-			peerInfo.String(),
-			err,
-		)
-		return
-	}
-	log.Debugf("pubsub: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
-	return
-}
-
-func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
+func (g *gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
 	log.Infoln("pubsub: publisher started")
@@ -461,8 +458,8 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 		case <-g.ctx.Done():
 			return
 		case <-ticker.C:
-			addrs := make([]string, 0, len(g.serverNode.Addrs()))
-			for _, addr := range g.serverNode.Addrs() {
+			addrs := make([]string, 0, len(g.serverNode.NodeInfo().Addrs))
+			for _, addr := range g.serverNode.NodeInfo().Addrs {
 				if addr == "" {
 					continue
 				}
@@ -470,7 +467,7 @@ func (g *Gossip) publishPeerInfo(discTopic *pubsub.Topic) {
 			}
 
 			msg := warpnet.WarpAddrInfo{
-				ID:    g.serverNode.ID(),
+				ID:    g.serverNode.NodeInfo().ID,
 				Addrs: addrs,
 			}
 			data, err := json.Marshal(msg)

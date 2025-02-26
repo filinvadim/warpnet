@@ -14,10 +14,13 @@ import (
 )
 
 type UserPersistencyLayer interface {
-	Authenticate(username, password string) error
-	SessionToken() string
 	Create(user domain.User) (domain.User, error)
 	Update(userId string, newUser domain.User) (domain.User, error)
+}
+
+type AuthPersistencyLayer interface {
+	Authenticate(username, password string) error
+	SessionToken() string
 	GetOwner() domain.Owner
 	SetOwner(domain.Owner) (domain.Owner, error)
 }
@@ -25,20 +28,23 @@ type UserPersistencyLayer interface {
 type AuthService struct {
 	isAuthenticated *atomic.Bool
 	userPersistence UserPersistencyLayer
+	authPersistence AuthPersistencyLayer
 	interrupt       chan os.Signal
 	nodeReady       chan domain.AuthNodeInfo
 	authReady       chan domain.AuthNodeInfo
 }
 
 func NewAuthService(
-	userPersistence UserPersistencyLayer,
+	authRepo AuthPersistencyLayer,
+	userRepo UserPersistencyLayer,
 	interrupt chan os.Signal,
 	nodeReady chan domain.AuthNodeInfo,
 	authReady chan domain.AuthNodeInfo,
 ) *AuthService {
 	return &AuthService{
 		new(atomic.Bool),
-		userPersistence,
+		userRepo,
+		authRepo,
 		interrupt,
 		nodeReady,
 		authReady,
@@ -51,8 +57,8 @@ func (as *AuthService) IsAuthenticated() bool {
 
 func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
-		token := as.userPersistence.SessionToken()
-		owner := as.userPersistence.GetOwner()
+		token := as.authPersistence.SessionToken()
+		owner := as.authPersistence.GetOwner()
 
 		return event.LoginResponse{
 			Token: token,
@@ -61,18 +67,18 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 	}
 	log.Infof("authenticating user %s", message.Username)
 
-	if err := as.userPersistence.Authenticate(message.Username, message.Password); err != nil {
+	if err := as.authPersistence.Authenticate(message.Username, message.Password); err != nil {
 		log.Errorf("authentication failed: %v", err)
 		return resp, fmt.Errorf("authentication failed: %v", err)
 	}
-	token := as.userPersistence.SessionToken()
-	owner := as.userPersistence.GetOwner()
+	token := as.authPersistence.SessionToken()
+	owner := as.authPersistence.GetOwner()
 
 	var user domain.User
 	if owner.UserId == "" {
 		id := uuid.New().String()
 		log.Infoln("creating new owner:", id)
-		owner, err = as.userPersistence.SetOwner(domain.Owner{
+		owner, err = as.authPersistence.SetOwner(domain.Owner{
 			CreatedAt: time.Now(),
 			Username:  message.Username,
 			UserId:    id,
@@ -104,7 +110,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 
 	log.Infoln("OWNER USER ID:", owner.UserId)
 
-	timer := time.NewTimer(30 * time.Second)
+	timer := time.NewTimer(time.Minute * 2)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
@@ -119,7 +125,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		owner.NodeId = nodeInfo.Identity.Owner.NodeId
 	}
 
-	if owner, err = as.userPersistence.SetOwner(owner); err != nil {
+	if owner, err = as.authPersistence.SetOwner(owner); err != nil {
 		log.Errorf("owner update failed: %v", err)
 	}
 	if _, err = as.userPersistence.Update(user.Id, user); err != nil {

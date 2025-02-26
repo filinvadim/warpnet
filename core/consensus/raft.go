@@ -49,14 +49,13 @@ type (
 )
 
 type ConsensusStorer interface {
-	raft.LogStore
 	raft.StableStore
 	SnapshotFilestore() (file io.Writer, path string)
 }
 
 type NodeServicesProvider interface {
 	Node() warpnet.P2PNode
-	ID() warpnet.WarpPeerID
+	NodeInfo() warpnet.NodeInfo
 }
 
 type consensusService struct {
@@ -72,6 +71,10 @@ type consensusService struct {
 	syncMx        *sync.RWMutex
 }
 
+func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
+	return NewRaft(ctx, nil, true, validators...)
+}
+
 func NewRaft(
 	ctx context.Context,
 	consRepo ConsensusStorer,
@@ -85,13 +88,12 @@ func NewRaft(
 	)
 
 	if isBootstrap {
-		path := "/root/snapshot"
-		_ = os.MkdirAll(path, 0660)
+		path := "/tmp/snapshot"
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
 		}
-		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
+		snapshotStore, err = raft.NewFileSnapshotStore("/tmp", 5, f)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
@@ -99,7 +101,7 @@ func NewRaft(
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
-		logStore = consRepo
+		logStore = raft.NewInmemStore()
 		f, path := consRepo.SnapshotFilestore()
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
@@ -131,50 +133,25 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.LeaderLeaseTimeout = config.HeartbeatTimeout
 	config.CommitTimeout = time.Second * 30
 	config.LogLevel = "ERROR"
-	config.LocalID = raft.ServerID(node.ID().String())
+	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
 	}
-	c.raftID = raft.ServerID(node.ID().String())
+	c.raftID = config.LocalID
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
 	if err != nil {
 		log.Errorf("failed to create raft transport: %v", err)
 		return
 	}
-
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	lastIndex, err := c.logStore.LastIndex()
-	if err != nil {
-		return fmt.Errorf("consensus: failed to read last log index: %v", err)
+	if err := c.forceBootstrap(config.LocalID); err != nil {
+		return err
 	}
 
-	// force Raft to create cluster no matter what
-	if lastIndex == 0 {
-		log.Infoln("consensus: bootstrapping a new cluster...")
-		raftConf := raft.Configuration{}
-		raftConf.Servers = append(raftConf.Servers, raft.Server{
-			Suffrage: raft.Voter,
-			ID:       config.LocalID,
-			Address:  raft.ServerAddress(config.LocalID),
-		})
-
-		if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
-			return fmt.Errorf("consensus: failed to save current term: %v", err)
-		}
-		err := c.logStore.StoreLog(&raft.Log{
-			Type: raft.LogConfiguration, Index: 1, Term: 1,
-			Data: raft.EncodeConfiguration(raftConf),
-		})
-		if err != nil {
-			return fmt.Errorf("consensus: failed to store bootstrap log: %v", err)
-		}
-	}
-
-	log.Infoln("consensus: raft starting...")
-
+	log.Infof("consensus: raft server %s starting...", c.raftID)
 	c.raft, err = raft.NewRaft(
 		config,
 		c.fsm,
@@ -201,6 +178,39 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	return nil
+}
+
+func (c *consensusService) forceBootstrap(id raft.ServerID) error {
+
+	lastIndex, err := c.logStore.LastIndex()
+	if err != nil {
+		return fmt.Errorf("consensus: failed to read last log index: %v", err)
+	}
+
+	if lastIndex != 0 {
+		return nil
+	}
+	log.Infoln("consensus: bootstrapping a new cluster with server id:", id)
+
+	// force Raft to create cluster no matter what
+	raftConf := raft.Configuration{}
+	raftConf.Servers = append(raftConf.Servers, raft.Server{
+		Suffrage: raft.Voter,
+		ID:       id,
+		Address:  raft.ServerAddress(id),
+	})
+
+	if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
+		return fmt.Errorf("consensus: failed to save current term: %v", err)
+	}
+	if err := c.logStore.StoreLog(&raft.Log{
+		Type: raft.LogConfiguration, Index: 1, Term: 1,
+		Data: raft.EncodeConfiguration(raftConf),
+	}); err != nil {
+		return fmt.Errorf("consensus: failed to store bootstrap log: %v", err)
+	}
+
+	return c.logStore.GetLog(1, &raft.Log{})
 }
 
 type consensusSync struct {
@@ -395,9 +405,10 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	return
 }
 
-func (c *consensusService) LeaderID() string {
+func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	_, leaderId := c.raft.LeaderWithID()
-	return string(leaderId)
+
+	return warpnet.FromStringToPeerID(string(leaderId))
 
 }
 

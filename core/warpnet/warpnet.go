@@ -3,6 +3,7 @@ package warpnet
 import (
 	"context"
 	"errors"
+	"github.com/Masterminds/semver/v3"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -16,7 +17,20 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/multiformats/go-multiaddr"
+	"time"
 )
+
+type NodeInfo struct {
+	ID           WarpPeerID      `json:"id"`
+	Addrs        []string        `json:"addrs"`
+	Latency      time.Duration   `json:"latency"`
+	NetworkState string          `json:"network_state"`
+	Version      *semver.Version `json:"version"`
+	StreamStats  network.Stats   `json:"stream_stats"`
+	OwnerId      string          `json:"owner_id"`
+	SelfHash     string          `json:"self_hash"`
+	Protocols    []string        `json:"protocols"`
+}
 
 var ErrNodeIsOffline = errors.New("node is offline")
 
@@ -85,3 +99,5 @@ func NewPeerstore(ctx context.Context, db datastore.Batching) (WarpPeerstore, er
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	return WarpPeerstore(store), err
 }
+
+type WarpRoutingFunc func(node P2PNode) (WarpPeerRouting, error)

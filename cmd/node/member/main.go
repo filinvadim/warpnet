@@ -8,21 +8,12 @@ import (
 	root "github.com/filinvadim/warpnet"
 	frontend "github.com/filinvadim/warpnet-frontend"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/consensus"
-	dht "github.com/filinvadim/warpnet/core/dhash-table"
-	"github.com/filinvadim/warpnet/core/discovery"
-	"github.com/filinvadim/warpnet/core/handler"
-	"github.com/filinvadim/warpnet/core/mdns"
-	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/client"
 	"github.com/filinvadim/warpnet/core/node/member"
-	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
-	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
@@ -33,7 +24,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 )
 
@@ -73,21 +63,8 @@ func main() {
 	}
 	defer dbCloser()
 
-	nodeRepo, closer := database.NewNodeRepo(db)
-	defer closer()
-
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
-	followRepo := database.NewFollowRepo(db)
-	timelineRepo := database.NewTimelineRepo(db)
-	tweetRepo := database.NewTweetRepo(db)
-	replyRepo := database.NewRepliesRepo(db)
-	consensusRepo, err := database.NewConsensusRepo(db)
-	if err != nil {
-		log.Fatalf("failed to init consensus repo: %v", err)
-	}
-	likeRepo := database.NewLikeRepo(db)
-	chatRepo := database.NewChatRepo(db)
 
 	var (
 		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
@@ -112,14 +89,7 @@ func main() {
 		log.Fatalf("failed to init client node: %v", err)
 	}
 
-	userPersistency := struct {
-		*database.AuthRepo
-		*database.UserRepo
-	}{
-		authRepo, userRepo,
-	}
-
-	authService := auth.NewAuthService(userPersistency, interruptChan, nodeReadyChan, authReadyChan)
+	authService := auth.NewAuthService(authRepo, userRepo, interruptChan, nodeReadyChan, authReadyChan)
 	wsCtrl := handlers.NewWSController(authService, clientNode)
 	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
@@ -128,6 +98,7 @@ func main() {
 		wsCtrl,
 	})
 	defer interfaceServer.Shutdown(ctx)
+
 	go interfaceServer.Start()
 
 	var serverNodeAuthInfo domain.AuthNodeInfo
@@ -138,202 +109,26 @@ func main() {
 	case serverNodeAuthInfo = <-authReadyChan:
 		log.Infoln("authentication was successful")
 	}
-	privKey := authRepo.PrivateKey().(warpnet.WarpPrivateKey)
-	persLayer := persistentLayer{nodeRepo, authRepo}
-
-	discService := discovery.NewDiscoveryService(ctx, userRepo, persLayer)
-	defer discService.Close()
-	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
-	defer mdnsService.Close()
-	pubsubService := pubsub.NewPubSub(ctx, discService.HandlePeerFound)
-	defer pubsubService.Close()
-	providerStore, err := dht.NewProviderCache(ctx, persLayer)
-	if err != nil {
-		log.Fatalf("failed to init providers: %v", err)
-	}
-	defer providerStore.Close()
-
-	raft, err := consensus.NewRaft(
-		ctx, consensusRepo, false,
-		selfhash.Validate,
-		userRepo.ValidateUserID,
-	)
-	if err != nil {
-		log.Fatalf("raft initialization: %v", err)
-	}
-
-	dHashTable := dht.NewDHTable(
-		ctx, persLayer, providerStore, selfhash,
-		nil, discService.HandlePeerFound,
-	)
-	defer dHashTable.Close()
 
 	serverNode, err := member.NewMemberNode(
 		ctx,
-		privKey,
-		string(selfhash),
-		persLayer,
-		dHashTable.StartRouting,
+		authRepo.PrivateKey().(warpnet.WarpPrivateKey),
+		selfhash,
+		authRepo,
+		db,
 	)
 	if err != nil {
 		log.Fatalf("failed to init node: %v", err)
 	}
 	defer serverNode.Stop()
 
-	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.ID().String()
-	serverNodeAuthInfo.Identity.Owner.Ipv6 = serverNode.IPv6()
-	serverNodeAuthInfo.Identity.Owner.Ipv4 = serverNode.IPv4()
-	serverNodeAuthInfo.Version = config.ConfigFile.Version.String()
+	err = serverNode.Start(clientNode)
+	if err != nil {
+		log.Fatalf("failed to start member node: %v", err)
+	}
 
-	mw := middleware.NewWarpMiddleware()
-	logMw := mw.LoggingMiddleware
-	authMw := mw.AuthMiddleware
-	unwrapMw := mw.UnwrapStreamMiddleware
-
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_SELFHASH_VERIFY,
-		logMw(unwrapMw(handler.StreamSelfHashVerifyHandler(raft))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_INFO,
-		logMw(handler.StreamGetInfoHandler(serverNode, discService.HandlePeerFound)),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_PAIR,
-		logMw(authMw(unwrapMw(handler.StreamNodesPairingHandler(serverNodeAuthInfo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_GET_TIMELINE,
-		logMw(authMw(unwrapMw(handler.StreamTimelineHandler(timelineRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_TWEET,
-		logMw(authMw(unwrapMw(handler.StreamNewTweetHandler(pubsubService, authRepo, tweetRepo, timelineRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_DELETE_TWEET,
-		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(pubsubService, authRepo, tweetRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(replyRepo, userRepo, tweetRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_DELETE_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamDeleteReplyHandler(tweetRepo, userRepo, replyRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_FOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamFollowHandler(pubsubService, serverNode, userRepo, followRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_UNFOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(pubsubService, serverNode, userRepo, followRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_USER,
-		logMw(authMw(unwrapMw(handler.StreamGetUserHandler(tweetRepo, followRepo, userRepo, authRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_USERS,
-		logMw(authMw(unwrapMw(handler.StreamGetUsersHandler(userRepo, authRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_TWEETS,
-		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo, authRepo, userRepo, serverNode)))),
-	)
-
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_TWEET,
-		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_REPLIES,
-		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_FOLLOWERS,
-		logMw(authMw(unwrapMw(handler.StreamGetFollowersHandler(authRepo, userRepo, followRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_FOLLOWEES,
-		logMw(authMw(unwrapMw(handler.StreamGetFolloweesHandler(authRepo, userRepo, followRepo, serverNode)))),
-	)
-
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_LIKE,
-		logMw(authMw(unwrapMw(handler.StreamLikeHandler(likeRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_UNLIKE,
-		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_LIKESCOUNT,
-		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_LIKERS,
-		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_POST_USER,
-		logMw(authMw(unwrapMw(handler.StreamUpdateProfileHandler(authRepo, userRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_RETWEETSCOUNT,
-		logMw(authMw(unwrapMw(handler.StreamGetReTweetsCountHandler(tweetRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_RETWEET,
-		logMw(authMw(unwrapMw(handler.StreamNewReTweetHandler(authRepo, userRepo, tweetRepo, timelineRepo, serverNode)))),
-	)
-
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_UNRETWEET,
-		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_GET_RETWEETERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRetweetersHandler(tweetRepo, userRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_DELETE_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamDeleteChatHandler(chatRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_GET_CHATS,
-		logMw(authMw(unwrapMw(handler.StreamGetUserChatsHandler(chatRepo, userRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PUBLIC_POST_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamSendMessageHandler(chatRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_DELETE_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo, userRepo, serverNode)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_GET_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamGetMessageHandler(chatRepo, userRepo)))),
-	)
-	serverNode.SetStreamHandler(
-		event.PRIVATE_GET_MESSAGES,
-		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, userRepo)))),
-	)
-
-	serverNode.SetStreamHandler(
-		event.PRIVATE_GET_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
-	)
+	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.NodeInfo().ID.String()
+	serverNodeAuthInfo.NodeInfo = serverNode.NodeInfo()
 
 	nodeReadyChan <- serverNodeAuthInfo
 
@@ -342,44 +137,9 @@ func main() {
 	}
 	defer clientNode.Stop()
 
-	go discService.Run(serverNode)
-	go mdnsService.Start(serverNode)
-	go pubsubService.Run(serverNode, clientNode, authRepo, followRepo)
-
-	if err := raft.Sync(serverNode); err != nil {
-		log.Fatalf("consensus: failed to sync: %v", err)
-	}
-	defer raft.Shutdown()
-
-	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(serverNode.SupportedProtocols(), ","))
-
-	newState := map[string]string{security.SelfHashConsensusKey: selfhash.String()}
-	if raft.LeaderID() == serverNode.ID().String() {
-		state, err := raft.CommitState(newState)
-		if err != nil {
-			log.Errorf("consensus: failed to commit state: %v", err)
-		}
-		log.Infof("consensus: committed state: %v", state)
-	} else {
-		resp, err := serverNode.GenericStream(raft.LeaderID(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
-		if err != nil {
-			log.Errorf("failed to stream initial state: %v", err)
-		} else {
-			updatedState := make(map[string]string)
-			if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-				log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
-				log.Errorf("self hash verification failed: codebase was changed")
-			}
-		}
-	}
-
+	log.Infoln("WARPNET STARTED")
 	<-interruptChan
 	log.Infoln("interrupted...")
-}
-
-type persistentLayer struct {
-	*database.NodeRepo
-	*database.AuthRepo
 }
 
 func getAppPath() string {

@@ -2,14 +2,13 @@ package handler
 
 import (
 	"github.com/filinvadim/warpnet/core/discovery"
-	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 )
 
 type NodeInformer interface {
-	NodeInfo() p2p.NodeInfo
+	NodeInfo() warpnet.NodeInfo
 }
 
 func StreamGetInfoHandler(i NodeInformer, handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {

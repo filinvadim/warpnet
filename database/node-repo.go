@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
-
-	"github.com/filinvadim/warpnet/core/p2p"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
@@ -63,15 +61,13 @@ type batch struct {
 	writeBatch *badger.WriteBatch
 }
 
-func NewNodeRepo(db NodeStorer) (*NodeRepo, func()) {
+func NewNodeRepo(db NodeStorer) *NodeRepo {
 	nr := &NodeRepo{
 		db:       db,
 		stopChan: make(chan struct{}),
 	}
 
-	return nr, func() {
-		_ = nr.Close()
-	}
+	return nr
 }
 
 func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
@@ -759,7 +755,7 @@ func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerI
 	return err
 }
 
-func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info p2p.NodeInfo) error {
+func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error {
 	if d == nil {
 		return ErrNilNodeRepo
 	}

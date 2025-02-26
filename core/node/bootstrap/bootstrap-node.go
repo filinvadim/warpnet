@@ -3,130 +3,189 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/p2p"
-	"github.com/filinvadim/warpnet/core/relay"
-	"github.com/filinvadim/warpnet/core/stream"
+	"github.com/filinvadim/warpnet/core/consensus"
+	dht "github.com/filinvadim/warpnet/core/dhash-table"
+	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/filinvadim/warpnet/core/handler"
+	"github.com/filinvadim/warpnet/core/mdns"
+	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/node/base"
+	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/event"
+	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/security"
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"strings"
 )
 
-type WarpBootstrapNode struct {
-	ctx      context.Context
-	node     warpnet.P2PNode
-	relay    warpnet.WarpRelayCloser
-	version  *semver.Version
-	selfHash string
-}
+type BootstrapNode struct {
+	*base.WarpNode
 
-type routingFunc func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error)
+	discService       DiscoveryHandler
+	mdnsService       MDNSStarterCloser
+	pubsubService     PubSubProvider
+	raft              ConsensusProvider
+	dHashTable        DistributedHashTableCloser
+	providerStore     ProviderCacheCloser
+	memoryStoreCloseF func() error
+}
 
 func NewBootstrapNode(
 	ctx context.Context,
-	privKey warpnet.WarpPrivateKey,
-	selfHash string,
-	memoryStore warpnet.WarpPeerstore,
-	routingF routingFunc,
-) (_ *WarpBootstrapNode, err error) {
-	return setupBootstrapNode(
+	selfhash security.SelfHash,
+) (_ *BootstrapNode, err error) {
+	seed := []byte("bootstrap")
+	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
+		seed = []byte(hostname)
+	}
+	privKey, err := security.GenerateKeyFromSeed(seed)
+	if err != nil {
+		return nil, fmt.Errorf("fail generating key: %v", err)
+	}
+	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
+	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
+	if err != nil {
+		return nil, fmt.Errorf("fail getting ID: %v", err)
+	}
+
+	discService := discovery.NewBootstrapDiscoveryService(ctx)
+	raft, err := consensus.NewBootstrapRaft(ctx, selfhash.Validate)
+	if err != nil {
+		return nil, err
+	}
+
+	mdnsService := mdns.NewMulticastDNS(ctx, discService.DefaultDiscoveryHandler, raft.AddVoter)
+	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler, raft.AddVoter)
+
+	memoryStore, err := pstoremem.NewPeerstore()
+	if err != nil {
+		return nil, fmt.Errorf("fail creating memory peerstore: %w", err)
+	}
+
+	mapStore := datastore.NewMapDatastore()
+
+	closeF := func() error {
+		memoryStore.Close()
+		return mapStore.Close()
+	}
+
+	providersCache, err := providers.NewProviderManager(id, memoryStore, mapStore)
+	if err != nil {
+		return nil, fmt.Errorf("fail creating providers cache: %w", err)
+	}
+
+	dHashTable := dht.NewDHTable(
+		ctx, mapStore, providersCache, selfhash,
+		raft.RemoveVoter, discService.DefaultDiscoveryHandler, raft.AddVoter,
+	)
+
+	node, err := base.NewWarpNode(
 		ctx,
-		privKey,
-		selfHash,
+		warpPrivKey,
 		memoryStore,
-		config.ConfigFile,
-		routingF,
-	)
-}
-
-func setupBootstrapNode(
-	ctx context.Context,
-	privKey warpnet.WarpPrivateKey,
-	selfHash string,
-	store warpnet.WarpPeerstore,
-	conf config.Config,
-	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
-) (*WarpBootstrapNode, error) {
-	node, err := p2p.NewP2PNode(
-		privKey,
-		store,
-		fmt.Sprintf("/ip4/%s/tcp/%s", conf.Node.Host, conf.Node.Port),
-		conf,
-		routingFn,
+		"bootstrap",
+		selfhash.String(),
+		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
+		dHashTable.StartRouting,
 	)
 	if err != nil {
 		return nil, err
 	}
-	nodeRelay, err := relay.NewRelay(node)
+
+	println()
+	fmt.Printf(
+		"\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
+		node.NodeInfo().ID, node.NodeInfo().Addrs,
+	)
+	println()
+
+	bn := &BootstrapNode{
+		WarpNode:          node,
+		discService:       discService,
+		mdnsService:       mdnsService,
+		pubsubService:     pubsubService,
+		raft:              raft,
+		dHashTable:        dHashTable,
+		providerStore:     providersCache,
+		memoryStoreCloseF: closeF,
+	}
+
+	mw := middleware.NewWarpMiddleware()
+	bn.SetStreamHandler(
+		event.PUBLIC_POST_SELFHASH_VERIFY,
+		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamSelfHashVerifyHandler(bn.raft))),
+	)
+
+	return bn, nil
+}
+
+func (bn *BootstrapNode) Start() error {
+	go bn.discService.Run(bn)
+	go bn.mdnsService.Start(bn)
+	go bn.pubsubService.Run(bn, nil)
+
+	if err := bn.raft.Sync(bn); err != nil {
+		return fmt.Errorf("consensus: failed to sync: %v", err)
+	}
+
+	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
+
+	newState := map[string]string{security.SelfHashConsensusKey: bn.NodeInfo().SelfHash}
+	if bn.raft.LeaderID() == bn.NodeInfo().ID {
+		state, err := bn.raft.CommitState(newState)
+		log.Infof("consensus: committed state: %v", state)
+		return err
+	}
+	resp, err := bn.GenericStream(bn.raft.LeaderID().String(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	updatedState := make(map[string]string)
+	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
+		log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
+		return fmt.Errorf("self hash verification failed: codebase was changed")
 	}
 
-	n := &WarpBootstrapNode{
-		ctx:      ctx,
-		node:     node,
-		relay:    nodeRelay,
-		version:  conf.Version,
-		selfHash: selfHash,
-	}
-
-	println()
-	fmt.Printf("\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n", n.node.ID(), n.node.Addrs())
-	println()
-
-	return n, nil
+	return nil
 }
 
-func (n *WarpBootstrapNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
-	if !stream.IsValidRoute(route) {
-		log.Fatalf("invalid route: %v", route)
-	}
-	n.node.SetStreamHandler(route.ProtocolID(), handler)
-}
-
-func (n *WarpBootstrapNode) Node() warpnet.P2PNode {
-	if n == nil || n.node == nil {
-		return nil
-	}
-	return n.node
-}
-
-func (n *WarpBootstrapNode) Addrs() (addrs []string) {
-	if n == nil || n.node == nil {
-		return nil
-	}
-	for _, addr := range n.node.Addrs() {
-		addrs = append(addrs, addr.String())
-	}
-	return addrs
-}
-
-func (n *WarpBootstrapNode) ID() warpnet.WarpPeerID {
-	if n == nil || n.node == nil {
-		return ""
-	}
-	return n.node.ID()
-}
-
-func (n *WarpBootstrapNode) Connect(p warpnet.PeerAddrInfo) error {
-	if n == nil || n.node == nil {
-		return nil
-	}
-
-	return n.node.Connect(n.ctx, p)
-}
-
-func (n *WarpBootstrapNode) GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error) {
-	panic("just a stub")
-}
-
-func (n *WarpBootstrapNode) Stop() {
-	if n == nil {
+func (bn *BootstrapNode) Stop() {
+	if bn == nil {
 		return
 	}
-	if err := n.node.Close(); err != nil {
-		log.Infoln("bootstrap node stop fail:", err)
+	if bn.discService != nil {
+		bn.discService.Close()
 	}
-	log.Infoln("bootstrap node stopped")
-	n.node = nil
+	if bn.mdnsService != nil {
+		bn.mdnsService.Close()
+	}
+	if bn.pubsubService != nil {
+		if err := bn.pubsubService.Close(); err != nil {
+			log.Errorf("consensus: failed to close pubsub: %v", err)
+		}
+	}
+	if bn.providerStore != nil {
+		if err := bn.providerStore.Close(); err != nil {
+			log.Errorf("consensus: failed to close provider: %v", err)
+		}
+	}
+	if bn.dHashTable != nil {
+		bn.dHashTable.Close()
+	}
+	if bn.raft != nil {
+		bn.raft.Shutdown()
+	}
+	if bn.memoryStoreCloseF != nil {
+		if err := bn.memoryStoreCloseF(); err != nil {
+			log.Errorf("consensus: failed to close memory store: %v", err)
+		}
+	}
+
+	bn.WarpNode.StopNode()
 }
