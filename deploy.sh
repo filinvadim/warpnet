@@ -22,6 +22,5 @@ iptables -A FORWARD -i br-6383b19e4979 -o br-6383b19e4979 -j ACCEPT
 iptables -P FORWARD ACCEPT
 iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-mkdir -p ./data || true
-touch ./data/snapshot || true
+touch /tmp/snapshot || true
 docker compose up -d --build

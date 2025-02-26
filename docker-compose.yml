@@ -11,7 +11,7 @@ services:
       - NODE_PORT=4001
       - NODE_HOST=207.154.221.44
     volumes:
-    - ./data/snapshot1:/tmp/snapshot:rw
+    - /tmp/snapshot1:/tmp/snapshot:rw
 
   warpnet2:
     container_name: warpnet2
@@ -23,7 +23,7 @@ services:
       - NODE_PORT=4002
       - NODE_HOST=207.154.221.44
     volumes:
-    - ./data/snapshot2:/tmp/snapshot:rw
+    - /tmp/snapshot2:/tmp/snapshot:rw
 
   warpnet3:
     container_name: warpnet3
@@ -35,5 +35,5 @@ services:
       - NODE_PORT=4003
       - NODE_HOST=207.154.221.44
     volumes:
-    - ./data/snapshot3:/tmp/snapshot:rw
+    - /tmp/snapshot3:/tmp/snapshot:rw
 

@@ -82,7 +82,6 @@ func NewRaft(
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
 	var (
-		logStore      raft.LogStore
 		stableStore   raft.StableStore
 		snapshotStore raft.SnapshotStore
 	)
@@ -97,11 +96,9 @@ func NewRaft(
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
-		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
-		logStore = raft.NewInmemStore()
 		f, path := consRepo.SnapshotFilestore()
 		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
 		if err != nil {
@@ -114,7 +111,7 @@ func NewRaft(
 
 	return &consensusService{
 		ctx:           ctx,
-		logStore:      logStore,
+		logStore:      raft.NewInmemStore(),
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
 		fsm:           finiteStateMachine,
