@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   warpnet1:
     container_name: warpnet1
@@ -9,7 +11,7 @@ services:
       - NODE_PORT=4001
       - NODE_HOST=207.154.221.44
     volumes:
-      - /tmp/snapshot1:/tmp/snapshot
+    - ./data/snapshot1:/tmp/snapshot:rw
 
   warpnet2:
     container_name: warpnet2
@@ -21,7 +23,7 @@ services:
       - NODE_PORT=4002
       - NODE_HOST=207.154.221.44
     volumes:
-      - /tmp/snapshot2:/tmp/snapshot
+    - ./data/snapshot2:/tmp/snapshot:rw
 
   warpnet3:
     container_name: warpnet3
@@ -33,6 +35,5 @@ services:
       - NODE_PORT=4003
       - NODE_HOST=207.154.221.44
     volumes:
-      - /tmp/snapshot3:/tmp/snapshot
-
+    - ./data/snapshot3:/tmp/snapshot:rw
 
