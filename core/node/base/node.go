@@ -41,11 +41,11 @@ type WarpNode struct {
 	relay    warpnet.WarpRelayCloser
 	streamer Streamer
 
-	ipv4, ipv6, ownerId, selfHash string
-
-	retrier  retrier.Retrier
-	isClosed *atomic.Bool
-	version  *semver.Version
+	ipv4, ipv6, ownerId string
+	selfHash            security.SelfHash
+	retrier             retrier.Retrier
+	isClosed            *atomic.Bool
+	version             *semver.Version
 
 	nodeInfo warpnet.NodeInfo
 }
