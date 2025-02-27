@@ -87,12 +87,12 @@ func NewRaft(
 	)
 
 	if isBootstrap {
-		path := "/tmp/snapshot"
+		path := "/tmp/snapshot/snapshot"
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
 		}
-		snapshotStore, err = raft.NewFileSnapshotStore("/tmp", 5, f)
+		snapshotStore, err = raft.NewFileSnapshotStore("/tmp/snapshot", 5, f)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
