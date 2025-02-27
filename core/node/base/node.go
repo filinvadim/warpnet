@@ -54,7 +54,8 @@ func NewWarpNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
 	store warpnet.WarpPeerstore,
-	ownerId, selfHash string,
+	ownerId string,
+	selfHash security.SelfHash,
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {

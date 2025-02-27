@@ -82,7 +82,7 @@ func NewMemberNode(
 		privKey,
 		store,
 		owner.UserId,
-		selfhash.String(),
+		selfhash,
 		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
 		dHashTable.StartRouting,
 	)
