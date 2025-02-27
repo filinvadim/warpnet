@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -272,6 +273,8 @@ func (m *MemberNode) setupHandlers(
 	)
 }
 
+var ErrConsensusRejection = errors.New("consensus: quorum rejected your node. Try to delete database and update app version")
+
 func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	go m.discService.Run(m)
 	go m.mdnsService.Start(m)
@@ -283,7 +286,10 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
 
-	newState := map[string]string{security.SelfHashConsensusKey: m.NodeInfo().SelfHash}
+	newState := map[string]string{ // TODO
+		security.SelfHashConsensusKey: m.NodeInfo().SelfHash.String(),
+		database.UserIdConsensusKey:   m.NodeInfo().OwnerId,
+	}
 	if m.raft.LeaderID() == m.NodeInfo().ID {
 		state, err := m.raft.CommitState(newState)
 		log.Infof("consensus: committed state: %v", state)
@@ -296,7 +302,7 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	updatedState := make(map[string]string)
 	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
 		log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
-		return fmt.Errorf("self hash verification failed: codebase was changed")
+		return ErrConsensusRejection
 	}
 
 	return nil

@@ -19,9 +19,12 @@ type FileSystem interface {
 
 type SelfHash []byte
 
-func (s SelfHash) Validate(m map[string]string) error {
-	value, ok := m[SelfHashConsensusKey]
-	if !ok || value == s.String() {
+func (s SelfHash) Validate(k, v string) error {
+	if k != SelfHashConsensusKey {
+		return nil
+	}
+
+	if v == s.String() {
 		return nil
 	}
 	return errors.New("invalid self hash")

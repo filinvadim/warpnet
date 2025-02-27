@@ -136,7 +136,7 @@ func (bn *BootstrapNode) Start() error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
 
-	newState := map[string]string{security.SelfHashConsensusKey: bn.NodeInfo().SelfHash}
+	newState := map[string]string{security.SelfHashConsensusKey: bn.NodeInfo().SelfHash.String()}
 	if bn.raft.LeaderID() == bn.NodeInfo().ID {
 		state, err := bn.raft.CommitState(newState)
 		log.Infof("consensus: committed state: %v", state)

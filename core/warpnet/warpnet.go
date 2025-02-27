@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Masterminds/semver/v3"
+	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -21,15 +22,15 @@ import (
 )
 
 type NodeInfo struct {
-	ID           WarpPeerID      `json:"id"`
-	Addrs        []string        `json:"addrs"`
-	Latency      time.Duration   `json:"latency"`
-	NetworkState string          `json:"network_state"`
-	Version      *semver.Version `json:"version"`
-	StreamStats  network.Stats   `json:"stream_stats"`
-	OwnerId      string          `json:"owner_id"`
-	SelfHash     string          `json:"self_hash"`
-	Protocols    []string        `json:"protocols"`
+	ID           WarpPeerID        `json:"id"`
+	Addrs        []string          `json:"addrs"`
+	Latency      time.Duration     `json:"latency"`
+	NetworkState string            `json:"network_state"`
+	Version      *semver.Version   `json:"version"`
+	StreamStats  network.Stats     `json:"stream_stats"`
+	OwnerId      string            `json:"owner_id"`
+	SelfHash     security.SelfHash `json:"self_hash"`
+	Protocols    []string          `json:"protocols"`
 }
 
 var ErrNodeIsOffline = errors.New("node is offline")

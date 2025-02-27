@@ -25,7 +25,7 @@ type fsm struct {
 	validators []ConsensusValidatorFunc
 }
 
-type ConsensusValidatorFunc func(map[string]string) error
+type ConsensusValidatorFunc func(k, v string) error
 
 func newFSM(validators ...ConsensusValidatorFunc) *fsm {
 	state := KVState{"genesis": ""}
@@ -56,11 +56,14 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 
 	log.Infof("fsm: new state: %s, current state: %s", newState, *fsm.state)
 
-	for _, v := range fsm.validators {
-		if err := v(newState); err != nil {
-			log.Errorf("failed to apply validator: %v", err)
-			return err
+	for _, validator := range fsm.validators {
+		for k, v := range newState {
+			if err := validator(k, v); err != nil {
+				log.Errorf("failed to apply validator: %v", err)
+				return err
+			}
 		}
+
 	}
 
 	fsm.prevState = make(KVState, len(*fsm.state))
