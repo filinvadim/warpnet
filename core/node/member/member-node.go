@@ -132,7 +132,7 @@ func (m *MemberNode) setupHandlers(
 	authMw := mw.AuthMiddleware
 	unwrapMw := mw.UnwrapStreamMiddleware
 	m.SetStreamHandler(
-		event.PUBLIC_POST_SELFHASH_VERIFY,
+		event.PUBLIC_POST_NODE_VERIFY,
 		logMw(unwrapMw(handler.StreamSelfHashVerifyHandler(m.raft))),
 	)
 	m.SetStreamHandler(
@@ -295,14 +295,21 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		log.Infof("consensus: committed state: %v", state)
 		return err
 	}
-	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
-	if err != nil {
+	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
+	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		return fmt.Errorf("selfhash verify stream: %w", err)
 	}
+
+	var errResp event.ErrorResponse
+	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
+		log.Errorf("selfhash verify response unmarshal failed: %w", errResp)
+		//return fmt.Errorf("selfhash verify response unmarshal failed: %w", errResp)
+	}
+
 	updatedState := make(map[string]string)
 	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
-		return ErrConsensusRejection
+		log.Errorf("consensus: failed to unmarshal state %s: %v", resp, err)
+		//return ErrConsensusRejection
 	}
 
 	return nil

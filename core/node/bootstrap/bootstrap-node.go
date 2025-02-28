@@ -118,7 +118,7 @@ func NewBootstrapNode(
 
 	mw := middleware.NewWarpMiddleware()
 	bn.SetStreamHandler(
-		event.PUBLIC_POST_SELFHASH_VERIFY,
+		event.PUBLIC_POST_NODE_VERIFY,
 		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamSelfHashVerifyHandler(bn.raft))),
 	)
 
@@ -142,7 +142,7 @@ func (bn *BootstrapNode) Start() error {
 		log.Infof("consensus: committed state: %v", state)
 		return err
 	}
-	resp, err := bn.GenericStream(bn.raft.LeaderID().String(), event.PUBLIC_POST_SELFHASH_VERIFY, newState)
+	resp, err := bn.GenericStream(bn.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
 	if err != nil {
 		return err
 	}

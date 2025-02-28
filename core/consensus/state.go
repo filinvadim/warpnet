@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/hashicorp/raft"
 	log "github.com/sirupsen/logrus"
 	"github.com/vmihailenco/msgpack/v5"
@@ -18,8 +17,6 @@ type fsm struct {
 	state     *KVState
 	prevState KVState
 
-	initialized bool
-
 	mux *sync.Mutex
 
 	validators []ConsensusValidatorFunc
@@ -30,11 +27,10 @@ type ConsensusValidatorFunc func(k, v string) error
 func newFSM(validators ...ConsensusValidatorFunc) *fsm {
 	state := KVState{"genesis": ""}
 	return &fsm{
-		state:       &state,
-		prevState:   KVState{},
-		initialized: false,
-		mux:         new(sync.Mutex),
-		validators:  validators,
+		state:      &state,
+		prevState:  KVState{},
+		mux:        new(sync.Mutex),
+		validators: validators,
 	}
 }
 
@@ -75,9 +71,6 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 		(*fsm.state)[k] = v
 	}
 
-	fsm.initialized = true
-	log.Infoln("fsm: state - initialized")
-
 	return fsm.state
 }
 
@@ -85,13 +78,9 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if !fsm.initialized {
-		log.Error("fsm: snapshot uninitialized state")
-		return nil, errors.New("fsm: snapshot uninitialized state")
-	}
 
 	buf := new(bytes.Buffer)
-	err := json.JSON.NewEncoder(buf).Encode(fsm.state)
+	err := msgpack.NewEncoder(buf).Encode(fsm.state)
 	if err != nil {
 		return nil, err
 	}
@@ -105,15 +94,13 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 
-	err := json.JSON.NewDecoder(reader).Decode(fsm.state)
+	err := msgpack.NewDecoder(reader).Decode(fsm.state)
 	if err != nil {
 		log.Errorf("fsm: decoding snapshot: %s", err)
 		return err
 	}
 
 	fsm.prevState = make(map[string]string, len(*fsm.state))
-	fsm.initialized = true
-
 	return nil
 }
 

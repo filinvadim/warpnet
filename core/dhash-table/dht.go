@@ -3,6 +3,7 @@ package dhash_table
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -147,11 +148,17 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 		d.correctPeerIdMismatch(d.boostrapNodes)
 
-		// force node to know it's external address (in case of local network)
+		// force node to know its external address (in case of local network)
 		for _, info := range d.boostrapNodes {
 			if d.dht.PeerID() == info.ID {
 				d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour*24)
 			}
+		}
+		<-d.dht.RefreshRoutingTable()
+
+		for _, info := range d.dht.RoutingTable().GetPeerInfos() {
+			addrs := d.dht.Host().Peerstore().Addrs(info.Id)
+			fmt.Println(addrs, "?????????????????????????????????//")
 		}
 	}()
 

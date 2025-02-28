@@ -389,9 +389,10 @@ func (repo *UserRepo) ValidateUserID(k, v string) error {
 	if k != UserIdConsensusKey {
 		return nil
 	}
-	
+
 	_, err := repo.Get(v)
 	if !errors.Is(err, ErrUserNotFound) || err == nil {
+		log.Errorf("user %s already exists", v)
 		return errors.New("user ID exists")
 	}
 	return nil
