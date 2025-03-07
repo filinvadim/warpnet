@@ -131,6 +131,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.CommitTimeout = time.Second * 30
 	config.LogLevel = "ERROR"
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
+	config.NoLegacyTelemetry = true
 
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
@@ -166,8 +167,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		log.Errorf("consensus: raft configuration error: %v", err)
 	}
 
-	actor := libp2praft.NewActor(c.raft)
-	c.consensus.SetActor(actor)
+	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
 	err = c.sync()
 	if err != nil {
@@ -406,8 +406,9 @@ func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	_, leaderId := c.raft.LeaderWithID()
 
 	return warpnet.FromStringToPeerID(string(leaderId))
-
 }
+
+var ErrNoRaftCluster = errors.New("no raft cluster found")
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	if c.raft == nil {
@@ -415,6 +416,11 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 	}
 
 	c.waitSync()
+
+	wait := c.raft.GetConfiguration()
+	if len(wait.Configuration().Servers) <= 1 {
+		return nil, ErrNoRaftCluster
+	}
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		log.Warnf("not a leader: %s", leaderId)

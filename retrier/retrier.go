@@ -15,21 +15,23 @@ type Retrier interface {
 
 type retrier struct {
 	mux         *sync.Mutex
-	hasFailed   atomic.Value
+	_           [56]byte // false sharing prevention
+	hasFailed   atomic.Bool
 	minInterval time.Duration
+	_           [56]byte
 }
 
 // New creates a retrier
 func New(minInterval time.Duration) Retrier {
 	return &retrier{
 		mux:         &sync.Mutex{},
-		hasFailed:   atomic.Value{},
+		hasFailed:   atomic.Bool{},
 		minInterval: minInterval,
 	}
 }
 
 func (r *retrier) Try(f func() (bool, error), deadline time.Time) error {
-	if hasFailed, ok := r.hasFailed.Load().(bool); ok && hasFailed {
+	if hasFailed := r.hasFailed.Load(); hasFailed {
 		r.mux.Lock()
 		defer r.mux.Unlock()
 	}

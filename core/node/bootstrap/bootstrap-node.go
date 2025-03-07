@@ -167,12 +167,12 @@ func (bn *BootstrapNode) Stop() {
 	}
 	if bn.pubsubService != nil {
 		if err := bn.pubsubService.Close(); err != nil {
-			log.Errorf("consensus: failed to close pubsub: %v", err)
+			log.Errorf("failed to close pubsub: %v", err)
 		}
 	}
 	if bn.providerStore != nil {
 		if err := bn.providerStore.Close(); err != nil {
-			log.Errorf("consensus: failed to close provider: %v", err)
+			log.Errorf("failed to close provider: %v", err)
 		}
 	}
 	if bn.dHashTable != nil {
@@ -183,7 +183,7 @@ func (bn *BootstrapNode) Stop() {
 	}
 	if bn.memoryStoreCloseF != nil {
 		if err := bn.memoryStoreCloseF(); err != nil {
-			log.Errorf("consensus: failed to close memory store: %v", err)
+			log.Errorf("failed to close memory store: %v", err)
 		}
 	}
 
