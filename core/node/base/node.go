@@ -140,7 +140,7 @@ func NewWarpNode(
 		ownerId:  ownerId,
 		selfHash: selfHash,
 		streamer: stream.NewStreamPool(ctx, node),
-		retrier:  retrier.New(time.Second),
+		retrier:  retrier.New(time.Second, 10, retrier.ExponentialBackoff),
 		isClosed: new(atomic.Bool),
 		version:  config.ConfigFile.Version,
 	}
@@ -278,7 +278,16 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		}
 	}
 
-	return n.streamer.Send(peerInfo, path, bt)
+	ctx, cancel := context.WithTimeout(n.ctx, time.Second*10)
+	defer cancel()
+
+	var resp []byte
+	err = n.retrier.Try(ctx, func() error {
+		resp, err = n.streamer.Send(peerInfo, path, bt)
+		return err
+	})
+
+	return resp, err
 }
 
 func (n *WarpNode) StopNode() {

@@ -1,54 +1,77 @@
 package retrier
 
 import (
+	"context"
 	"errors"
-	"sync"
-	"sync/atomic"
+	"math/rand"
 	"time"
 )
 
 var ErrDeadlineReached = errors.New("deadline reached")
 
-type Retrier interface {
-	Try(f func() (bool, error), deadline time.Time) error
-}
+type (
+	RetrierFunc = func() error
 
-type retrier struct {
-	mux         *sync.Mutex
-	_           [56]byte // false sharing prevention
-	hasFailed   atomic.Bool
-	minInterval time.Duration
-	_           [56]byte
-}
+	Retrier interface {
+		Try(ctx context.Context, f RetrierFunc) error
+	}
 
-// New creates a retrier
-func New(minInterval time.Duration) Retrier {
+	backoff byte
+
+	retrier struct {
+		minInterval time.Duration
+		maxAttempts uint32
+		backoff     backoff
+	}
+)
+
+const (
+	NoBackoff backoff = iota
+	ArithmeticalBackoff
+	ExponentialBackoff
+)
+
+// New creates a retrier with the given minimum interval between attempts and maximum retries.
+func New(minInterval time.Duration, maxAttempts uint32, b backoff) Retrier {
 	return &retrier{
-		mux:         &sync.Mutex{},
-		hasFailed:   atomic.Bool{},
 		minInterval: minInterval,
+		maxAttempts: maxAttempts,
+		backoff:     b,
 	}
 }
 
-func (r *retrier) Try(f func() (bool, error), deadline time.Time) error {
-	if hasFailed := r.hasFailed.Load(); hasFailed {
-		r.mux.Lock()
-		defer r.mux.Unlock()
-	}
+func (r *retrier) Try(ctx context.Context, f RetrierFunc) error {
+	var (
+		attempt  uint32
+		interval = r.minInterval
+	)
 
-	lastInterval := r.minInterval
-
-	var now = time.Now()
-
-	for now.Before(deadline) {
-		if successfullAttempt, err := f(); successfullAttempt || err != nil {
-			r.hasFailed.Store(false)
-			return err
+	for attempt = 0; attempt < r.maxAttempts; attempt++ {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
-		r.hasFailed.Store(true)
-		time.Sleep(lastInterval)
-		now = time.Now()
+
+		if err := f(); err == nil {
+			return nil
+		}
+
+		switch r.backoff {
+		case NoBackoff:
+			interval = interval
+		case ArithmeticalBackoff:
+			interval = interval + interval
+		case ExponentialBackoff:
+			interval = interval * interval
+		}
+		sleepDuration := interval + jitter(r.minInterval)
+		time.Sleep(sleepDuration)
 	}
 
-	return nil
+	return ErrDeadlineReached
+}
+
+func jitter(minInterval time.Duration) time.Duration {
+	return time.Duration(rand.Int63n(int64(minInterval) / 2)) // Add jitter
 }

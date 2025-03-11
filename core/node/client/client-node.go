@@ -47,7 +47,7 @@ func NewClientNode(ctx context.Context) (_ *WarpClientNode, err error) {
 	n := &WarpClientNode{
 		ctx:            ctx,
 		clientNode:     nil,
-		retrier:        retrier.New(time.Second * 5),
+		retrier:        retrier.New(time.Second*5, 10, retrier.ExponentialBackoff),
 		serverNodeAddr: serverNodeAddrDefault,
 		privKey:        privKey.(warpnet.WarpPrivateKey),
 		isRunning:      new(atomic.Bool),
