@@ -20,11 +20,8 @@ type (
 
 	retrier struct {
 		minInterval time.Duration
-		_           [56]byte
 		maxAttempts uint32
-		_           [60]byte
 		backoff     backoff
-		_           [63]byte
 	}
 )
 
