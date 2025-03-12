@@ -89,7 +89,6 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	}
 	log.Infoln("discovery service started")
 	printPeers(n)
-	defer log.Infoln("discovery service stopped")
 
 	s.node = n
 
@@ -100,10 +99,12 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	for {
 		select {
 		case <-s.ctx.Done():
+			log.Errorf("discovery service: context closed")
 			return
 		case <-s.stopChan:
 		case info, ok := <-s.discoveryChan:
 			if !ok {
+				log.Errorf("discovery service: channel closed")
 				return
 			}
 			s.handle(info)

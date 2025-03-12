@@ -2,12 +2,17 @@ package retrier
 
 import (
 	"context"
-	"errors"
 	"math/rand"
 	"time"
 )
 
-var ErrDeadlineReached = errors.New("deadline reached")
+type retrierError string
+
+func (e retrierError) Error() string {
+	return string(e)
+}
+
+const ErrDeadlineReached retrierError = "deadline reached"
 
 type (
 	backoff byte

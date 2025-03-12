@@ -56,6 +56,7 @@ func NewWarpNode(
 	store warpnet.WarpPeerstore,
 	ownerId string,
 	selfHash security.SelfHash,
+	psk warpnet.PSK,
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
@@ -99,7 +100,7 @@ func NewWarpNode(
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(config.ConfigFile.Node.Prefix))), // TODO shuffle name thru consensus. "warpnet" now
+		libp2p.PrivateNetwork(security.ConvertToSHA256(psk)),
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
@@ -120,7 +121,6 @@ func NewWarpNode(
 	}
 
 	ipv4, ipv6 := parseAddresses(node)
-
 	id := node.ID()
 	latency := node.Peerstore().LatencyEWMA(id)
 	peerInfo := node.Peerstore().PeerInfo(id)
@@ -297,6 +297,9 @@ func (n *WarpNode) StopNode() {
 			log.Errorf("recovered: %v\n", r)
 		}
 	}()
+	if n == nil || n.node == nil {
+		return
+	}
 	if n.relay != nil {
 		_ = n.relay.Close()
 	}

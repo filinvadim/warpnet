@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -58,6 +59,7 @@ type WarpAddrInfo struct {
 type WarpPrivateKey crypto.PrivKey
 
 type (
+	PSK               = pnet.PSK
 	WarpProtocolID    = protocol.ID
 	WarpStream        = network.Stream
 	WarpStreamHandler = network.StreamHandler

@@ -50,6 +50,7 @@ type ProviderCacheCloser interface {
 type AuthProvider interface {
 	GetOwner() domain.Owner
 	SessionToken() string
+	ListPSK() ([]warpnet.PSK, error)
 }
 
 type UserProvider interface {
