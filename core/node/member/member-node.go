@@ -83,27 +83,17 @@ func NewMemberNode(
 		return nil, fmt.Errorf("failed to get PSKs list: %v", err)
 	}
 
-	var node *base.WarpNode
-	for _, psk := range PSKs {
-		if node != nil {
-			node.StopNode()
-		}
-		node, err = base.NewWarpNode(
-			ctx,
-			privKey,
-			store,
-			owner.UserId,
-			selfhash,
-			psk,
-			fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
-			dHashTable.StartRouting,
-		)
-		if err != nil {
-			log.Errorf("failed to init member node: %v", err)
-			continue
-		}
-	}
-	if node == nil {
+	node, err := base.NewWarpNode(
+		ctx,
+		privKey,
+		store,
+		owner.UserId,
+		selfhash,
+		PSKs,
+		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
+		dHashTable.StartRouting,
+	)
+	if err != nil {
 		return nil, fmt.Errorf("failed to init member node: %v", err)
 	}
 

@@ -56,7 +56,7 @@ func NewWarpNode(
 	store warpnet.WarpPeerstore,
 	ownerId string,
 	selfHash security.SelfHash,
-	psk warpnet.PSK,
+	PSKs []warpnet.PSK,
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
@@ -83,36 +83,46 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	node, err := libp2p.New(
-		libp2p.WithDialTimeout(DefaultTimeout),
-		libp2p.ListenAddrStrings(
-			listenAddr,
-		),
-		libp2p.SwarmOpts(
-			swarm.WithDialTimeout(DefaultTimeout),
-			swarm.WithDialTimeoutLocal(DefaultTimeout),
-		),
-		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
-		libp2p.Identity(privKey),
-		libp2p.Ping(true),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableAutoNATv2(),
-		libp2p.EnableNATService(),
-		libp2p.NATPortMap(),
-		libp2p.ForceReachabilityPrivate(),
-		libp2p.PrivateNetwork(security.ConvertToSHA256(psk)),
-		libp2p.UserAgent(ServiceName),
-		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(store),
-		libp2p.EnableRelay(),
-		libp2p.ResourceManager(rm),
-		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
-		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
-		libp2p.ConnectionManager(manager),
-		libp2p.Routing(routingFn),
-	)
-	if err != nil {
-		return nil, err
+	var node warpnet.P2PNode
+	for _, psk := range PSKs {
+		if node != nil {
+			_ = node.Close()
+		}
+		node, err = libp2p.New(
+			libp2p.WithDialTimeout(DefaultTimeout),
+			libp2p.ListenAddrStrings(
+				listenAddr,
+			),
+			libp2p.SwarmOpts(
+				swarm.WithDialTimeout(DefaultTimeout),
+				swarm.WithDialTimeoutLocal(DefaultTimeout),
+			),
+			libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
+			libp2p.Identity(privKey),
+			libp2p.Ping(true),
+			libp2p.Security(noise.ID, noise.New),
+			libp2p.EnableAutoNATv2(),
+			libp2p.EnableNATService(),
+			libp2p.NATPortMap(),
+			libp2p.ForceReachabilityPrivate(),
+			libp2p.PrivateNetwork(security.ConvertToSHA256(psk)),
+			libp2p.UserAgent(ServiceName),
+			libp2p.EnableHolePunching(),
+			libp2p.Peerstore(store),
+			libp2p.EnableRelay(),
+			libp2p.ResourceManager(rm),
+			libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
+			libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
+			libp2p.ConnectionManager(manager),
+			libp2p.Routing(routingFn),
+		)
+		if err != nil {
+			log.Errorf("failed to init node: %v", err)
+			continue
+		}
+	}
+	if node == nil {
+		return nil, fmt.Errorf("failed to init node: %v", err)
 	}
 
 	nodeRelay, err := relay.NewRelay(node)

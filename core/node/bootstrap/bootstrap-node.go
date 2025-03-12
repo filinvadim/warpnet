@@ -85,27 +85,17 @@ func NewBootstrapNode(
 		raft.RemoveVoter, discService.DefaultDiscoveryHandler, raft.AddVoter,
 	)
 
-	var node *base.WarpNode
-	for _, psk := range []warpnet.PSK{[]byte(config.ConfigFile.Node.Prefix)} { // TODO
-		if node != nil {
-			node.StopNode()
-		}
-		node, err = base.NewWarpNode(
-			ctx,
-			warpPrivKey,
-			memoryStore,
-			"bootstrap",
-			selfhash,
-			psk,
-			fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
-			dHashTable.StartRouting,
-		)
-		if err != nil {
-			log.Errorf("failed to init member node: %v", err)
-			continue
-		}
-	}
-	if node == nil {
+	node, err := base.NewWarpNode(
+		ctx,
+		warpPrivKey,
+		memoryStore,
+		"bootstrap",
+		selfhash,
+		[]warpnet.PSK{[]byte(config.ConfigFile.Node.Prefix)}, // TODO
+		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
+		dHashTable.StartRouting,
+	)
+	if err != nil {
 		return nil, fmt.Errorf("failed to init bootstrap node: %v", err)
 	}
 
