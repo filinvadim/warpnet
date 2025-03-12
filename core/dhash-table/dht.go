@@ -10,11 +10,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/sec"
-	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -204,23 +202,6 @@ func (d *DistributedHashTable) Close() {
 	}
 	d.dht = nil
 	log.Infoln("dht: table closed")
-}
-
-func localHostAddressFilter(multiaddrs []multiaddr.Multiaddr) (filtered []multiaddr.Multiaddr) {
-	for _, addr := range multiaddrs {
-		if addr == nil {
-			continue
-		}
-		if strings.Contains(addr.String(), "localhost") {
-			continue
-		}
-		if strings.HasPrefix(addr.String(), "127.0.0.1") {
-			continue
-		}
-
-		filtered = append(filtered, addr)
-	}
-	return filtered
 }
 
 //const (

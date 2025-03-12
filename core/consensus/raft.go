@@ -353,18 +353,16 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		log.Errorf("consensus: failed to get raft configuration: %v", err)
 		return
 	}
-	prevIndex := configFuture.Index()
 
-	wait := c.raft.RemoveServer(
-		raft.ServerID(info.ID.String()), prevIndex, 30*time.Second,
-	)
+	id := raft.ServerID(info.ID.String())
+	addr := raft.ServerAddress(info.ID.String())
+
+	wait := c.raft.RemoveServer(id, 0, 30*time.Second)
 	if err := wait.Error(); err != nil {
 		log.Warnf("consensus: failed to remove raft server: %s", wait.Error())
 	}
 
-	wait = c.raft.AddVoter(
-		raft.ServerID(info.ID.String()), raft.ServerAddress(info.ID.String()), prevIndex, 30*time.Second,
-	)
+	wait = c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
 	}
@@ -391,11 +389,8 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 		log.Errorf("consensus: failed to get raft configuration: %v", err)
 		return
 	}
-	prevIndex := configFuture.Index()
 
-	wait := c.raft.RemoveServer(
-		raft.ServerID(id.String()), prevIndex, 30*time.Second,
-	)
+	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {
 		log.Warnf("consensus: failed to remove raft server: %s", wait.Error())
 	}
