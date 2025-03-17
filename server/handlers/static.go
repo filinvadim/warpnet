@@ -42,7 +42,7 @@ func NewStaticController(
 func (c *StaticController) GetIndex(ctx echo.Context) error {
 	f, err := c.fileSystem.Open("index.html")
 	if err != nil {
-		log.Errorf("failed opening index.html: ", err)
+		log.Errorf("failed opening index.html: %v", err)
 		return ctx.JSON(http.StatusInternalServerError, api.ErrorResponse{500, err.Error()})
 	}
 	fi, _ := f.Stat()
@@ -70,10 +70,6 @@ func (c *StaticController) GetIndex(ctx echo.Context) error {
 
 	tempFile := bytes.NewReader([]byte(injectedContent))
 
-	ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
-	ctx.Response().Header().Set("Pragma", "no-cache")
-	ctx.Response().Header().Set("Expires", "0")
-
 	http.ServeContent(ctx.Response(), ctx.Request(), fi.Name(), fi.ModTime(), tempFile)
 	return nil
 }
@@ -88,9 +84,7 @@ func (c *StaticController) GetStaticFile(ctx echo.Context, filePath string) erro
 	}
 	fi, _ := f.Stat()
 	ff := f.(io.ReadSeeker)
-	ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
-	ctx.Response().Header().Set("Pragma", "no-cache")
-	ctx.Response().Header().Set("Expires", "0")
+
 	http.ServeContent(ctx.Response(), ctx.Request(), fi.Name(), fi.ModTime(), ff)
 	return nil
 }

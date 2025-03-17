@@ -52,6 +52,7 @@ func NewInterfaceServer() (PublicServer, error) {
 		AllowMethods: []string{http.MethodGet},
 	}))
 	e.Use(echomiddleware.Gzip())
+	e.Use(secureHeadersMiddleware)
 
 	port := ":" + conf.Server.Port
 	err = browser.OpenURL("http://localhost" + port)
@@ -97,5 +98,23 @@ func (p *interfaceServer) Shutdown(ctx context.Context) {
 	}
 	if err := p.e.Shutdown(ctx); err != nil {
 		p.e.Logger.Error(err)
+	}
+}
+
+func secureHeadersMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		if err := next(ctx); err != nil {
+			ctx.Error(err)
+		}
+		ctx.Response().Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+		ctx.Response().Header().Set("Pragma", "no-cache")
+		ctx.Response().Header().Set("Expires", "0")
+		ctx.Response().Header().Set("X-Content-Type-Options", "nosniff")
+		ctx.Response().Header().Set("X-Frame-Options", "deny")
+		ctx.Response().Header().Set("Content-Security-Policy", "default-src 'none'")
+		ctx.Response().Header().Set("X-Powered-By", "")
+		ctx.Response().Header().Set("Server", "")
+		ctx.Response().Header().Set("Content-Type", "application/json")
+		return nil
 	}
 }

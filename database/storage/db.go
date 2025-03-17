@@ -390,7 +390,7 @@ func increment(txn *badger.Txn, key []byte, incVal int64) (uint64, error) {
 
 	item, err := txn.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		newValue = incVal
+		newValue = 1
 		return uint64(newValue), txn.Set(key, encodeInt64(newValue))
 	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
