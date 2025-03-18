@@ -385,29 +385,24 @@ func (t *WarpWriteTxn) Decrement(key DatabaseKey) (uint64, error) {
 	return increment(t.txn, key.Bytes(), -1)
 }
 
-func increment(txn *badger.Txn, key []byte, incVal int64) (uint64, error) {
-	var newValue int64
+func increment(txn *badger.Txn, key []byte, incVal uint64) (uint64, error) {
+	var newValue uint64
 
 	item, err := txn.Get(key)
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		newValue = 1
-		return uint64(newValue), txn.Set(key, encodeInt64(newValue))
-	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return uint64(newValue), err
+		return 0, err
 	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {
-		return uint64(newValue), err
+		return 0, err
 	}
 	newValue = decodeInt64(val) + incVal
 	if newValue < 0 {
 		newValue = 0
 	}
 
-	err = txn.Set(key, encodeInt64(newValue))
-	return uint64(newValue), err
+	return newValue, txn.Set(key, encodeInt64(newValue))
 }
 
 func (t *WarpWriteTxn) Commit() error {
@@ -672,14 +667,17 @@ func (db *DB) IsClosed() bool {
 	return !db.isRunning.Load()
 }
 
-func encodeInt64(n int64) []byte {
+func encodeInt64(n uint64) []byte {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(n))
+	binary.BigEndian.PutUint64(b, n)
 	return b
 }
 
-func decodeInt64(b []byte) int64 {
-	return int64(binary.BigEndian.Uint64(b))
+func decodeInt64(b []byte) uint64 {
+	if len(b) == 0 {
+		return 0
+	}
+	return uint64(binary.BigEndian.Uint64(b))
 }
 
 func (db *DB) Close() {
