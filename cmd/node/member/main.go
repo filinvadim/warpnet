@@ -27,14 +27,13 @@ import (
 	"syscall"
 )
 
-var _ = ipfslog.LevelInfo
-
 type API struct {
 	*handlers.StaticController
 	*handlers.WSController
 }
 
 func main() {
+	var _ = ipfslog.LevelInfo
 	//ipfslog.SetDebugLogging()
 	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
 	if err != nil {
