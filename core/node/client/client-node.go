@@ -60,11 +60,11 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	if n == nil {
 		return errors.New("client node not initialized")
 	}
-	if serverInfo.Identity.Owner.NodeId == "" {
+	if serverInfo.NodeInfo.ID.String() == "" {
 		return errors.New("client node: server node ID is empty")
 	}
 
-	serverAddr := n.serverNodeAddr + serverInfo.Identity.Owner.NodeId
+	serverAddr := n.serverNodeAddr + serverInfo.NodeInfo.ID.String()
 	maddr, err := warpnet.NewMultiaddr(serverAddr)
 	if err != nil {
 		return fmt.Errorf("client node: parsing server address: %s", err)

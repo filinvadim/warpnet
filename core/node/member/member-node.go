@@ -33,12 +33,13 @@ type MemberNode struct {
 	dHashTable    DistributedHashTableCloser
 	providerStore ProviderCacheCloser
 	nodeRepo      ProviderCacheCloser
+	psk           security.PSK
 }
 
 func NewMemberNode(
 	ctx context.Context,
 	privKey warpnet.WarpPrivateKey,
-	selfhash security.SelfHash,
+	psk security.PSK,
 	authRepo AuthProvider,
 	db Storer,
 ) (_ *MemberNode, err error) {
@@ -58,7 +59,7 @@ func NewMemberNode(
 
 	raft, err := consensus.NewRaft(
 		ctx, consensusRepo, false,
-		selfhash.Validate,
+		psk.Validate,
 		userRepo.ValidateUserID,
 	)
 	if err != nil {
@@ -74,22 +75,16 @@ func NewMemberNode(
 	}
 
 	dHashTable := dht.NewDHTable(
-		ctx, nodeRepo, providerStore, selfhash,
+		ctx, nodeRepo, providerStore,
 		raft.RemoveVoter, raft.AddVoter, discService.HandlePeerFound,
 	)
-
-	PSKs, err := authRepo.ListPSK()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get PSKs list: %v", err)
-	}
 
 	node, err := base.NewWarpNode(
 		ctx,
 		privKey,
 		store,
 		owner.UserId,
-		selfhash,
-		PSKs,
+		psk,
 		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
 		dHashTable.StartRouting,
 	)
@@ -113,6 +108,7 @@ func NewMemberNode(
 		dHashTable:    dHashTable,
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
+		psk:           psk,
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, db)
@@ -294,8 +290,8 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
 
 	newState := map[string]string{ // TODO
-		security.SelfHashConsensusKey: m.NodeInfo().SelfHash.String(),
-		database.UserIdConsensusKey:   m.NodeInfo().OwnerId,
+		security.PSKConsensusKey:    m.psk.String(),
+		database.UserIdConsensusKey: m.NodeInfo().OwnerId,
 	}
 	if m.raft.LeaderID() == m.NodeInfo().ID {
 		state, err := m.raft.CommitState(newState)

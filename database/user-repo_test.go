@@ -15,7 +15,7 @@ func setupUserTestDB(t *testing.T) *storage.DB {
 	path := "/"
 	dir := "tmp"
 	// Открываем базу данных в этой директории
-	db, _, err := storage.New(path, true, dir)
+	db, err := storage.New(path, true, dir)
 	assert.NoError(t, err)
 	err = db.Run("test", "test")
 	assert.NoError(t, err)

@@ -33,16 +33,18 @@ type API struct {
 }
 
 func main() {
+	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
+	log.Infoln("Warpnet version:", config.ConfigFile.Version)
+
 	var _ = ipfslog.LevelInfo
 	//ipfslog.SetDebugLogging()
-	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
+	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Infof("codebase hash: %s", selfhash.String())
-	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
-	log.Infoln("Warpnet version:", config.ConfigFile.Version)
+	// TODO remove
+	fmt.Println("GENERATED PSK:", psk.String())
 
 	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
 	if err != nil {
@@ -56,11 +58,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, dbCloser, err := storage.New(getAppPath(), false, config.ConfigFile.Database.DirName)
+	db, err := storage.New(getAppPath(), false, config.ConfigFile.Database.DirName)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
-	defer dbCloser()
+	defer db.Close()
 
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
@@ -88,7 +90,7 @@ func main() {
 		log.Fatalf("failed to init client node: %v", err)
 	}
 
-	authService := auth.NewAuthService(authRepo, userRepo, interruptChan, nodeReadyChan, authReadyChan)
+	authService := auth.NewAuthService(authRepo, userRepo, interruptChan, authReadyChan)
 	wsCtrl := handlers.NewWSController(authService, clientNode)
 	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
@@ -112,7 +114,7 @@ func main() {
 	serverNode, err := member.NewMemberNode(
 		ctx,
 		authRepo.PrivateKey().(warpnet.WarpPrivateKey),
-		selfhash,
+		psk,
 		authRepo,
 		db,
 	)

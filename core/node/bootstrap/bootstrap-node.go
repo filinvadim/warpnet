@@ -34,11 +34,12 @@ type BootstrapNode struct {
 	dHashTable        DistributedHashTableCloser
 	providerStore     ProviderCacheCloser
 	memoryStoreCloseF func() error
+	psk               security.PSK
 }
 
 func NewBootstrapNode(
 	ctx context.Context,
-	selfhash security.SelfHash,
+	psk security.PSK,
 ) (_ *BootstrapNode, err error) {
 	seed := []byte("bootstrap")
 	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
@@ -55,7 +56,7 @@ func NewBootstrapNode(
 	}
 
 	discService := discovery.NewBootstrapDiscoveryService(ctx)
-	raft, err := consensus.NewBootstrapRaft(ctx, selfhash.Validate)
+	raft, err := consensus.NewBootstrapRaft(ctx, psk.Validate)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func NewBootstrapNode(
 	}
 
 	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache, selfhash,
+		ctx, mapStore, providersCache,
 		raft.RemoveVoter, discService.DefaultDiscoveryHandler, raft.AddVoter,
 	)
 
@@ -90,8 +91,7 @@ func NewBootstrapNode(
 		warpPrivKey,
 		memoryStore,
 		"bootstrap",
-		selfhash,
-		[]warpnet.PSK{[]byte(config.ConfigFile.Node.Prefix)}, // TODO
+		psk,
 		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
 		dHashTable.StartRouting,
 	)
@@ -115,6 +115,7 @@ func NewBootstrapNode(
 		dHashTable:        dHashTable,
 		providerStore:     providersCache,
 		memoryStoreCloseF: closeF,
+		psk:               psk,
 	}
 
 	mw := middleware.NewWarpMiddleware()
@@ -137,7 +138,7 @@ func (bn *BootstrapNode) Start() error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
 
-	newState := map[string]string{security.SelfHashConsensusKey: bn.NodeInfo().SelfHash.String()}
+	newState := map[string]string{security.PSKConsensusKey: bn.psk.String()}
 	if bn.raft.LeaderID() == bn.NodeInfo().ID {
 		state, err := bn.raft.CommitState(newState)
 		log.Infof("consensus: committed state: %v", state)

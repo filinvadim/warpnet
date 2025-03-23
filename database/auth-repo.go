@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
@@ -25,6 +23,7 @@ const (
 
 var (
 	ErrOwnerNotFound = errors.New("owner not found")
+	ErrPSKNotFound   = errors.New("PSK not found")
 	ErrNilAuthRepo   = errors.New("auth repo is nil")
 )
 
@@ -58,18 +57,6 @@ func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 	err = repo.db.Run(username, password)
 	if err != nil {
 		return err
-	}
-
-	PSKs, err := repo.ListPSK()
-	if err != nil {
-		panic(err)
-	}
-	if len(PSKs) == 0 {
-		// set initial PSK
-		err = repo.SetPSK([]byte(config.ConfigFile.Node.Prefix))
-		if err != nil {
-			panic(err)
-		}
 	}
 
 	repo.sessionToken, repo.privateKey, err = repo.generateSecrets(username, password)
@@ -159,49 +146,4 @@ func (repo *AuthRepo) SetOwner(o domain.Owner) (_ domain.Owner, err error) {
 	}
 	repo.owner = o
 	return o, nil
-}
-
-func (repo *AuthRepo) ListPSK() ([]warpnet.PSK, error) {
-	prefix := storage.NewPrefixBuilder(AuthRepoName).AddRootID(pskNamespace).Build()
-
-	txn, err := repo.db.NewReadTxn()
-	if err != nil {
-		return nil, err
-	}
-	defer txn.Rollback()
-
-	items, _, err := txn.List(prefix, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = txn.Commit(); err != nil {
-		return nil, err
-	}
-
-	PSKs := make([]warpnet.PSK, 0, len(items))
-	for _, item := range items {
-		PSKs = append(PSKs, item.Value)
-	}
-
-	return PSKs, nil
-}
-
-func (repo *AuthRepo) SetPSK(psk warpnet.PSK) error {
-	txn, err := repo.db.NewWriteTxn()
-	if err != nil {
-		return err
-	}
-	defer txn.Rollback()
-
-	sortableKey := storage.NewPrefixBuilder(AuthRepoName).
-		AddRootID(pskNamespace).
-		AddReversedTimestamp(time.Now()).
-		Build()
-
-	if err = txn.Set(sortableKey, psk); err != nil {
-		return err
-	}
-
-	return txn.Commit()
 }

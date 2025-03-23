@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
@@ -16,12 +17,14 @@ import (
 func main() {
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
-	selfhash, err := security.GetCodebaseHash(root.GetCodeBase())
+	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Infof("codebase hash: %s", selfhash.String())
+	// TODO remove
+	fmt.Println("GENERATED PSK:", psk.String())
+
 	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	var interruptChan = make(chan os.Signal, 1)
@@ -30,7 +33,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, err := bootstrap.NewBootstrapNode(ctx, selfhash)
+	n, err := bootstrap.NewBootstrapNode(ctx, psk)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

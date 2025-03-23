@@ -14,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
@@ -21,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
+	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -42,7 +44,6 @@ type WarpNode struct {
 	streamer Streamer
 
 	ipv4, ipv6, ownerId string
-	selfHash            security.SelfHash
 	retrier             retrier.Retrier
 	isClosed            *atomic.Bool
 	version             *semver.Version
@@ -55,8 +56,7 @@ func NewWarpNode(
 	privKey warpnet.WarpPrivateKey,
 	store warpnet.WarpPeerstore,
 	ownerId string,
-	selfHash security.SelfHash,
-	PSKs []warpnet.PSK,
+	psk security.PSK,
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
@@ -83,45 +83,35 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	var node warpnet.P2PNode
-	for _, psk := range PSKs {
-		if node != nil {
-			_ = node.Close()
-		}
-		node, err = libp2p.New(
-			libp2p.WithDialTimeout(DefaultTimeout),
-			libp2p.ListenAddrStrings(
-				listenAddr,
-			),
-			libp2p.SwarmOpts(
-				swarm.WithDialTimeout(DefaultTimeout),
-				swarm.WithDialTimeoutLocal(DefaultTimeout),
-			),
-			libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
-			libp2p.Identity(privKey),
-			libp2p.Ping(true),
-			libp2p.Security(noise.ID, noise.New),
-			libp2p.EnableAutoNATv2(),
-			libp2p.EnableNATService(),
-			libp2p.NATPortMap(),
-			libp2p.ForceReachabilityPrivate(),
-			libp2p.PrivateNetwork(security.ConvertToSHA256(psk)),
-			libp2p.UserAgent(ServiceName),
-			libp2p.EnableHolePunching(),
-			libp2p.Peerstore(store),
-			libp2p.EnableRelay(),
-			libp2p.ResourceManager(rm),
-			libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
-			libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
-			libp2p.ConnectionManager(manager),
-			libp2p.Routing(routingFn),
-		)
-		if err != nil {
-			log.Errorf("failed to init node: %v", err)
-			continue
-		}
-	}
-	if node == nil {
+	node, err := libp2p.New(
+		libp2p.WithDialTimeout(DefaultTimeout),
+		libp2p.ListenAddrStrings(
+			listenAddr,
+		),
+		libp2p.SwarmOpts(
+			swarm.WithDialTimeout(DefaultTimeout),
+			swarm.WithDialTimeoutLocal(DefaultTimeout),
+		),
+		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
+		libp2p.Identity(privKey),
+		libp2p.Ping(true),
+		libp2p.Security(noise.ID, noise.New),
+		libp2p.EnableAutoNATv2(),
+		libp2p.EnableNATService(),
+		libp2p.NATPortMap(),
+		libp2p.ForceReachabilityPrivate(),
+		libp2p.PrivateNetwork(pnet.PSK(psk)),
+		libp2p.UserAgent(ServiceName),
+		libp2p.EnableHolePunching(),
+		libp2p.Peerstore(store),
+		libp2p.EnableRelay(),
+		libp2p.ResourceManager(rm),
+		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
+		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
+		libp2p.ConnectionManager(manager),
+		libp2p.Routing(routingFn),
+	)
+	if err != nil {
 		return nil, fmt.Errorf("failed to init node: %v", err)
 	}
 
@@ -148,7 +138,6 @@ func NewWarpNode(
 		ipv6:     ipv6,
 		ipv4:     ipv4,
 		ownerId:  ownerId,
-		selfHash: selfHash,
 		streamer: stream.NewStreamPool(ctx, node),
 		retrier:  retrier.New(time.Second, 10, retrier.ExponentialBackoff),
 		isClosed: new(atomic.Bool),
@@ -163,8 +152,7 @@ func NewWarpNode(
 		NetworkState: connectedness.String(),
 		Version:      wn.version,
 		//StreamStats:  nil, // will be added later
-		OwnerId:  ownerId,
-		SelfHash: selfHash,
+		OwnerId: ownerId,
 	}
 	wn.nodeInfo = nodeInfo
 
@@ -318,6 +306,8 @@ func (n *WarpNode) StopNode() {
 	}
 	n.isClosed.Store(true)
 	n.node = nil
+	time.Sleep(time.Duration(rand.Intn(5)) * time.Second) // jitter
+
 	return
 }
 

@@ -4,12 +4,13 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"io"
 	"io/fs"
 	"sort"
 )
 
-const SelfHashConsensusKey = "selfhash"
+const PSKConsensusKey = "PSK"
 
 type FileSystem interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
@@ -17,10 +18,10 @@ type FileSystem interface {
 	Open(name string) (fs.File, error)
 }
 
-type SelfHash []byte
+type PSK []byte
 
-func (s SelfHash) Validate(k, v string) error {
-	if k != SelfHashConsensusKey {
+func (s PSK) Validate(k, v string) error {
+	if k != PSKConsensusKey {
 		return nil
 	}
 
@@ -30,7 +31,7 @@ func (s SelfHash) Validate(k, v string) error {
 	return errors.New("invalid self hash")
 }
 
-func (s SelfHash) String() string {
+func (s PSK) String() string {
 	return fmt.Sprintf("%x", []byte(s))
 }
 
@@ -86,7 +87,7 @@ func hashFile(fsys FileSystem, path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func GetCodebaseHash(codebase FileSystem) (SelfHash, error) {
+func getCodebaseHash(codebase FileSystem) ([]byte, error) {
 	h := sha256.New()
 
 	err := walkAndHash(codebase, ".", h)
@@ -95,4 +96,16 @@ func GetCodebaseHash(codebase FileSystem) (SelfHash, error) {
 	}
 
 	return h.Sum(nil), nil
+}
+
+func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
+	if codebase == nil || v == nil {
+		return nil, errors.New("codebase or version required")
+	}
+	codeHash, err := getCodebaseHash(codebase)
+	if err != nil {
+		return nil, err
+	}
+	seed := append([]byte(codeHash), v.String()...)
+	return ConvertToSHA256(seed), nil
 }

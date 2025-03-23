@@ -14,11 +14,11 @@ import (
 
 func setupTimelineTestDB(t *testing.T) *storage.DB {
 	path := "../var/dbtesttimeline"
-	db, closer, _ := storage.New(path, true, "storage")
+	db, _ := storage.New(path, true, "storage")
 	db.Run("", "")
 
 	t.Cleanup(func() {
-		closer()
+		db.Close()
 		os.RemoveAll(path)
 	})
 

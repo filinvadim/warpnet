@@ -70,7 +70,6 @@ type DistributedHashTable struct {
 	addFuncs      []discovery.DiscoveryHandler
 	removeF       func(warpnet.WarpPeerID)
 	dht           *dht.IpfsDHT
-	codeHash      []byte
 }
 
 func defaultNodeRemovedCallback(id warpnet.WarpPeerID) {
@@ -85,7 +84,6 @@ func NewDHTable(
 	ctx context.Context,
 	db RoutingStorer,
 	providerStore ProviderStorer,
-	codeHash []byte,
 	removeF func(warpnet.WarpPeerID),
 	addFuncs ...discovery.DiscoveryHandler,
 ) *DistributedHashTable {
@@ -97,7 +95,6 @@ func NewDHTable(
 		boostrapNodes: bootstrapAddrs,
 		addFuncs:      addFuncs,
 		removeF:       removeF,
-		codeHash:      codeHash,
 	}
 }
 

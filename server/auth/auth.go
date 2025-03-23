@@ -30,7 +30,6 @@ type AuthService struct {
 	userPersistence UserPersistencyLayer
 	authPersistence AuthPersistencyLayer
 	interrupt       chan os.Signal
-	nodeReady       chan domain.AuthNodeInfo
 	authReady       chan domain.AuthNodeInfo
 }
 
@@ -38,7 +37,6 @@ func NewAuthService(
 	authRepo AuthPersistencyLayer,
 	userRepo UserPersistencyLayer,
 	interrupt chan os.Signal,
-	nodeReady chan domain.AuthNodeInfo,
 	authReady chan domain.AuthNodeInfo,
 ) *AuthService {
 	return &AuthService{
@@ -46,7 +44,6 @@ func NewAuthService(
 		userRepo,
 		authRepo,
 		interrupt,
-		nodeReady,
 		authReady,
 	}
 }
@@ -116,7 +113,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 	case <-timer.C:
 		log.Errorln("node startup failed: timeout")
 		return resp, errors.New("node starting is timed out")
-	case nodeInfo := <-as.nodeReady:
+	case nodeInfo := <-as.authReady:
 		user.Id = owner.UserId
 		user.Username = owner.Username
 		user.CreatedAt = owner.CreatedAt

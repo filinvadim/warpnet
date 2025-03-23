@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/Masterminds/semver/v3"
-	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -13,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -23,15 +21,14 @@ import (
 )
 
 type NodeInfo struct {
-	ID           WarpPeerID        `json:"id"`
-	Addrs        []string          `json:"addrs"`
-	Latency      time.Duration     `json:"latency"`
-	NetworkState string            `json:"network_state"`
-	Version      *semver.Version   `json:"version"`
-	StreamStats  network.Stats     `json:"stream_stats"`
-	OwnerId      string            `json:"owner_id"`
-	SelfHash     security.SelfHash `json:"self_hash"`
-	Protocols    []string          `json:"protocols"`
+	ID           WarpPeerID      `json:"id"`
+	Addrs        []string        `json:"addrs"`
+	Latency      time.Duration   `json:"latency"`
+	NetworkState string          `json:"network_state"`
+	Version      *semver.Version `json:"version"`
+	StreamStats  network.Stats   `json:"stream_stats"`
+	OwnerId      string          `json:"owner_id"`
+	Protocols    []string        `json:"protocols"`
 }
 
 var ErrNodeIsOffline = errors.New("node is offline")
@@ -59,7 +56,6 @@ type WarpAddrInfo struct {
 type WarpPrivateKey crypto.PrivKey
 
 type (
-	PSK               = pnet.PSK
 	WarpProtocolID    = protocol.ID
 	WarpStream        = network.Stream
 	WarpStreamHandler = network.StreamHandler
