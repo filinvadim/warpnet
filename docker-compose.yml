@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   warpnet1:
     container_name: warpnet1

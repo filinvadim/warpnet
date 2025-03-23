@@ -227,11 +227,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if info.Version.Major() < s.version.Major() {
-		log.Infof("discovery: peer %s has old version %s", pi.ID.String(), info.Version.String())
-		return
-	}
-
 	if err = s.nodeRepo.AddInfo(s.ctx, pi.ID, info); err != nil {
 		log.Errorf("discovery: failed to store info of new peer: %s", err)
 	}
