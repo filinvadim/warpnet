@@ -305,13 +305,13 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	var errResp event.ErrorResponse
 	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
 		log.Errorf("verify response unmarshal failed: %v", errResp)
-		//return fmt.Errorf(" verify response unmarshal failed: %w", errResp)
+		return fmt.Errorf(" verify response unmarshal failed: %w", errResp)
 	}
 
 	updatedState := make(map[string]string)
 	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
 		log.Errorf("failed to unmarshal updated state %s: %v", resp, err)
-		//return ErrConsensusRejection
+		return ErrConsensusRejection
 	}
 
 	return nil
