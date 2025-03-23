@@ -7,14 +7,11 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
-	"io"
-	"os"
 )
 
 const ConsensusConfigNamespace = "/CONFIGS/"
 
 var (
-	// ErrKeyNotFound is an error indicating a given key does not exist
 	ErrConsensusKeyNotFound = errors.New("consensus key not found")
 	ErrStopIteration        = errors.New("stop iteration")
 )
@@ -30,30 +27,19 @@ type ConsensusStorer interface {
 }
 
 type ConsensusRepo struct {
-	db        ConsensusStorer
-	fileStore *os.File
+	db ConsensusStorer
 }
 
-func NewConsensusRepo(db ConsensusStorer) (*ConsensusRepo, error) {
-	fullPath := db.Path() + "/snapshot"
-	f, err := os.OpenFile(fullPath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
-	if err != nil {
-		if f != nil {
-			f.Close()
-		}
-		return nil, err
-	}
-	repo := &ConsensusRepo{db: db, fileStore: f}
-
-	return repo, nil
+func NewConsensusRepo(db ConsensusStorer) *ConsensusRepo {
+	return &ConsensusRepo{db: db}
 }
 
 func (cr *ConsensusRepo) Sync() error {
 	return cr.db.Sync()
 }
 
-func (cr *ConsensusRepo) SnapshotFilestore() (file io.Writer, path string) {
-	return cr.fileStore, cr.db.Path()
+func (cr *ConsensusRepo) Path() (path string) {
+	return cr.db.Path() + "/snapshot"
 }
 
 // Set is used to set a key/value set outside of the raft log.
@@ -90,7 +76,7 @@ func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
 }
 
 func (cr *ConsensusRepo) Close() error {
-	return cr.fileStore.Close()
+	return nil
 }
 
 // ======================= UTILS =========================

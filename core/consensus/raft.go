@@ -7,7 +7,6 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
-	"io"
 	"os"
 	"sync"
 	"time"
@@ -50,7 +49,7 @@ type (
 
 type ConsensusStorer interface {
 	raft.StableStore
-	SnapshotFilestore() (file io.Writer, path string)
+	Path() string
 }
 
 type NodeServicesProvider interface {
@@ -87,20 +86,14 @@ func NewRaft(
 	)
 
 	if isBootstrap {
-		path := "/tmp/snapshot/snapshot"
-		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
-		if err != nil {
-			return nil, err
-		}
-		snapshotStore, err = raft.NewFileSnapshotStore("/tmp/snapshot", 5, f)
+		snapshotStore, err = raft.NewFileSnapshotStore("/tmp/snapshot", 5, os.Stderr)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
-		f, path := consRepo.SnapshotFilestore()
-		snapshotStore, err = raft.NewFileSnapshotStore(path, 5, f)
+		snapshotStore, err = raft.NewFileSnapshotStore(consRepo.Path(), 5, os.Stderr)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}

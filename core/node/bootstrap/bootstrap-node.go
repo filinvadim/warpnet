@@ -14,7 +14,6 @@ import (
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -56,7 +55,7 @@ func NewBootstrapNode(
 	}
 
 	discService := discovery.NewBootstrapDiscoveryService(ctx)
-	raft, err := consensus.NewBootstrapRaft(ctx, psk.Validate)
+	raft, err := consensus.NewBootstrapRaft(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,23 +136,6 @@ func (bn *BootstrapNode) Start() error {
 	}
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
-
-	newState := map[string]string{security.PSKConsensusKey: bn.psk.String()}
-	if bn.raft.LeaderID() == bn.NodeInfo().ID {
-		state, err := bn.raft.CommitState(newState)
-		log.Infof("consensus: committed state: %v", state)
-		return err
-	}
-	resp, err := bn.GenericStream(bn.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
-	if err != nil {
-		return err
-	}
-	updatedState := make(map[string]string)
-	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Debugf("consensus: failed to unmarshal state %s: %v", resp, err)
-		return fmt.Errorf("self hash verification failed: codebase was changed")
-	}
-
 	return nil
 }
 

@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
+	"github.com/filinvadim/warpnet/config"
 	"io"
 	"io/fs"
 	"sort"
 	"strconv"
 )
-
-const PSKConsensusKey = "PSK"
 
 type FileSystem interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
@@ -20,17 +19,6 @@ type FileSystem interface {
 }
 
 type PSK []byte
-
-func (s PSK) Validate(k, v string) error {
-	if k != PSKConsensusKey {
-		return nil
-	}
-
-	if v == s.String() {
-		return nil
-	}
-	return errors.New("invalid self hash")
-}
 
 func (s PSK) String() string {
 	return fmt.Sprintf("%x", []byte(s))
@@ -108,6 +96,7 @@ func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 		return nil, err
 	}
 	majorStr := strconv.FormatInt(int64(v.Major()), 10)
-	seed := append(codeHash, []byte(majorStr)...)
+	seed := append([]byte(config.ConfigFile.Node.Prefix), codeHash...)
+	seed = append(seed, []byte(majorStr)...)
 	return ConvertToSHA256(seed), nil
 }
