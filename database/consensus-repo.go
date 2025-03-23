@@ -39,7 +39,7 @@ func (cr *ConsensusRepo) Sync() error {
 }
 
 func (cr *ConsensusRepo) Path() (path string) {
-	return cr.db.Path() + "/snapshot"
+	return cr.db.Path() + "/snapshots"
 }
 
 // Set is used to set a key/value set outside of the raft log.
