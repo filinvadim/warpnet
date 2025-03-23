@@ -132,6 +132,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.LogLevel = "ERROR"
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
+	config.SnapshotThreshold = 50
+	config.NoSnapshotRestoreOnStart = true
+	config.SnapshotInterval = time.Hour
 
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
