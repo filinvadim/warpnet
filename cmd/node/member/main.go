@@ -85,7 +85,7 @@ func main() {
 		manualCredsInput(interfaceServer, db)
 	}
 
-	clientNode, err := client.NewClientNode(ctx)
+	clientNode, err := client.NewClientNode(ctx, psk)
 	if err != nil {
 		log.Fatalf("failed to init client node: %v", err)
 	}

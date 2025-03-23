@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
@@ -33,12 +35,12 @@ type WarpClientNode struct {
 	retrier        retrier.Retrier
 	serverNodeAddr string
 	privKey        warpnet.WarpPrivateKey
-
-	isRunning *atomic.Bool
+	psk            security.PSK
+	isRunning      *atomic.Bool
 }
 
-func NewClientNode(ctx context.Context) (_ *WarpClientNode, err error) {
-	privKey, err := security.GenerateKeyFromSeed([]byte("client-node"))
+func NewClientNode(ctx context.Context, psk security.PSK) (_ *WarpClientNode, err error) {
+	privKey, err := security.GenerateKeyFromSeed([]byte(rand.Text()))
 	if err != nil {
 		log.Fatalf("fail generating key: %v", err)
 	}
@@ -51,6 +53,7 @@ func NewClientNode(ctx context.Context) (_ *WarpClientNode, err error) {
 		serverNodeAddr: serverNodeAddrDefault,
 		privKey:        privKey.(warpnet.WarpPrivateKey),
 		isRunning:      new(atomic.Bool),
+		psk:            psk,
 	}
 
 	return n, nil
@@ -79,12 +82,12 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 		libp2p.NoListenAddrs,
 		libp2p.DisableMetrics(),
 		libp2p.DisableRelay(),
-		libp2p.Ping(false),
+		libp2p.Ping(true),
 		libp2p.DisableIdentifyAddressDiscovery(),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Transport(tcp.NewTCPTransport),
 		// TODO that's initial PSK but it must be updated thru consensus
-		libp2p.PrivateNetwork(security.ConvertToSHA256([]byte(config.ConfigFile.Node.Prefix))),
+		libp2p.PrivateNetwork(pnet.PSK(n.psk)),
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {
