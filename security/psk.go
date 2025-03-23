@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"sort"
+	"strconv"
 )
 
 const PSKConsensusKey = "PSK"
@@ -106,6 +107,7 @@ func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	if err != nil {
 		return nil, err
 	}
-	seed := append([]byte(codeHash), v.String()...)
+	majorStr := strconv.FormatInt(int64(v.Major()), 10)
+	seed := append(codeHash, []byte(majorStr)...)
 	return ConvertToSHA256(seed), nil
 }
