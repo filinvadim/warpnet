@@ -55,11 +55,9 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	for _, validator := range fsm.validators {
 		for k, v := range newState {
 			if err := validator(k, v); err != nil {
-				log.Errorf("failed to apply validator: %v", err)
 				return err
 			}
 		}
-
 	}
 
 	fsm.prevState = make(KVState, len(*fsm.state))

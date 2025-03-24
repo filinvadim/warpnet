@@ -392,8 +392,7 @@ func (repo *UserRepo) ValidateUserID(k, v string) error {
 
 	_, err := repo.Get(v)
 	if !errors.Is(err, ErrUserNotFound) || err == nil {
-		log.Errorf("user %s already exists", v)
-		return errors.New("user ID exists")
+		return ErrUserAlreadyExists
 	}
 	return nil
 }
