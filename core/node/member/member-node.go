@@ -300,16 +300,8 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		log.Infof("consensus: committed state: %v", state)
 		return err
 	}
-	var (
-		resp         []byte
-		ctx, cancelF = context.WithTimeout(m.ctx, time.Second*30)
-	)
-	defer cancelF()
 
-	err := m.retrier.Try(ctx, func() (err error) {
-		resp, err = m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
-		return err
-	})
+	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		return fmt.Errorf("node verify stream: %w", err)
 	}
