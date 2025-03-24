@@ -87,6 +87,19 @@ func getCodebaseHash(codebase FileSystem) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+const spbFounding = -((int64(133129) << 16) + 51200)
+
+func generateAnchoredEntropy() []byte {
+	spbFoundingStr := strconv.FormatInt(spbFounding, 10)
+	input := []byte(spbFoundingStr)
+	for i := 0; i < 1000; i++ {
+		sum := sha256.Sum256(input)
+		input = sum[:]
+	}
+	return input
+}
+
+// GeneratePSK is not secure TODO
 func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	if codebase == nil || v == nil {
 		return nil, errors.New("codebase or version required")
@@ -95,8 +108,11 @@ func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	if err != nil {
 		return nil, err
 	}
+	entropy := generateAnchoredEntropy()
 	majorStr := strconv.FormatInt(int64(v.Major()), 10)
+
 	seed := append([]byte(config.ConfigFile.Node.Prefix), codeHash...)
 	seed = append(seed, []byte(majorStr)...)
+	seed = append(seed, entropy...)
 	return ConvertToSHA256(seed), nil
 }
