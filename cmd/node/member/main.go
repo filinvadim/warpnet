@@ -67,14 +67,8 @@ func main() {
 	authRepo := database.NewAuthRepo(db)
 	userRepo := database.NewUserRepo(db)
 
-	var (
-		nodeReadyChan = make(chan domain.AuthNodeInfo, 1)
-		authReadyChan = make(chan domain.AuthNodeInfo)
-	)
-	defer func() {
-		close(nodeReadyChan)
-		close(authReadyChan)
-	}()
+	var readyChan = make(chan domain.AuthNodeInfo, 1)
+	defer close(readyChan)
 
 	interfaceServer, err := server.NewInterfaceServer()
 	if err != nil && !errors.Is(err, server.ErrBrowserLoadFailed) {
@@ -89,8 +83,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init client node: %v", err)
 	}
+	defer clientNode.Stop()
 
-	authService := auth.NewAuthService(authRepo, userRepo, interruptChan, authReadyChan)
+	authService := auth.NewAuthService(authRepo, userRepo, interruptChan, readyChan)
 	wsCtrl := handlers.NewWSController(authService, clientNode)
 	staticCtrl := handlers.NewStaticController(db.IsFirstRun(), frontend.GetStaticEmbedded())
 
@@ -107,7 +102,7 @@ func main() {
 	case <-interruptChan:
 		log.Infoln("logged out")
 		return
-	case serverNodeAuthInfo = <-authReadyChan:
+	case serverNodeAuthInfo = <-readyChan:
 		log.Infoln("authentication was successful")
 	}
 
@@ -131,12 +126,11 @@ func main() {
 	serverNodeAuthInfo.Identity.Owner.NodeId = serverNode.NodeInfo().ID.String()
 	serverNodeAuthInfo.NodeInfo = serverNode.NodeInfo()
 
-	nodeReadyChan <- serverNodeAuthInfo
+	readyChan <- serverNodeAuthInfo
 
 	if err := clientNode.Pair(serverNodeAuthInfo); err != nil {
 		log.Fatalf("failed to init client node: %v", err)
 	}
-	defer clientNode.Stop()
 
 	log.Infoln("WARPNET STARTED")
 	<-interruptChan
