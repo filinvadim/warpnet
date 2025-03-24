@@ -10,7 +10,6 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -44,7 +43,6 @@ type WarpNode struct {
 	streamer Streamer
 
 	ipv4, ipv6, ownerId string
-	retrier             retrier.Retrier
 	isClosed            *atomic.Bool
 	version             *semver.Version
 
@@ -139,7 +137,6 @@ func NewWarpNode(
 		ipv4:     ipv4,
 		ownerId:  ownerId,
 		streamer: stream.NewStreamPool(ctx, node),
-		retrier:  retrier.New(time.Second, 10, retrier.ExponentialBackoff),
 		isClosed: new(atomic.Bool),
 		version:  config.ConfigFile.Version,
 	}
@@ -276,16 +273,7 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(n.ctx, time.Second*10)
-	defer cancel()
-
-	var resp []byte
-	err = n.retrier.Try(ctx, func() error {
-		resp, err = n.streamer.Send(peerInfo, path, bt)
-		return err
-	})
-
-	return resp, err
+	return n.streamer.Send(peerInfo, path, bt)
 }
 
 func (n *WarpNode) StopNode() {

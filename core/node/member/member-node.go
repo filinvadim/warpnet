@@ -18,14 +18,17 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
 	"strings"
+	"time"
 )
 
 type MemberNode struct {
 	*base.WarpNode
 
+	ctx           context.Context
 	discService   DiscoveryHandler
 	mdnsService   MDNSStarterCloser
 	pubsubService PubSubProvider
@@ -33,6 +36,7 @@ type MemberNode struct {
 	dHashTable    DistributedHashTableCloser
 	providerStore ProviderCacheCloser
 	nodeRepo      ProviderCacheCloser
+	retrier       retrier.Retrier
 }
 
 func NewMemberNode(
@@ -96,6 +100,7 @@ func NewMemberNode(
 
 	mn := &MemberNode{
 		WarpNode:      node,
+		ctx:           ctx,
 		discService:   discService,
 		mdnsService:   mdnsService,
 		pubsubService: pubsubService,
@@ -103,6 +108,7 @@ func NewMemberNode(
 		dHashTable:    dHashTable,
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
+		retrier:       retrier.New(time.Second, 10, retrier.ExponentialBackoff),
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, db)
@@ -294,7 +300,16 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		log.Infof("consensus: committed state: %v", state)
 		return err
 	}
-	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
+	var (
+		resp         []byte
+		ctx, cancelF = context.WithTimeout(m.ctx, time.Second*30)
+	)
+	defer cancelF()
+
+	err := m.retrier.Try(ctx, func() (err error) {
+		resp, err = m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
+		return err
+	})
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		return fmt.Errorf("node verify stream: %w", err)
 	}

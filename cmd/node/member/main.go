@@ -43,9 +43,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// TODO remove
-	fmt.Println("GENERATED PSK:", psk.String())
-
 	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
 	if err != nil {
 		lvl = log.InfoLevel
