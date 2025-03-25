@@ -216,7 +216,7 @@ func (c *consensusService) sync() error {
 		panic("consensus: raft id not initialized")
 	}
 
-	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute*5)
+	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
 	defer leaderCancel()
 
 	cs := consensusSync{

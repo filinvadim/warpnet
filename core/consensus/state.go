@@ -47,10 +47,9 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 
 	var newState = make(KVState, 1)
 	if err := msgpack.Unmarshal(rlog.Data, &newState); err != nil {
+		log.Errorf("failed to decode log: %v", err)
 		return fmt.Errorf("failed to decode log: %w", err)
 	}
-
-	log.Infof("fsm: new state: %s, current state: %s", newState, *fsm.state)
 
 	for _, validator := range fsm.validators {
 		for k, v := range newState {
@@ -68,7 +67,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	for k, v := range newState {
 		(*fsm.state)[k] = v
 	}
-
+	newState = nil
 	return fsm.state
 }
 
