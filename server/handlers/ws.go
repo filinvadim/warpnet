@@ -94,7 +94,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(err.Error())
 			break
 		}
-		c.upgrader.SetNewSalt(loginResp.Token) // make conn more secure after successful auth
+		c.upgrader.SetNewSalt(loginResp.Identity.Token) // make conn more secure after successful auth
 
 		bt, err := json.JSON.Marshal(loginResp)
 		if err != nil {

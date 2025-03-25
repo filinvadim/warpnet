@@ -24,7 +24,7 @@ func init() {
 	pflag.String("server.port", "4002", "Server port")
 	pflag.String("node.host", "0.0.0.0", "Node host")
 	pflag.String("node.port", "4001", "Node port")
-	pflag.String("node.network.prefix", "testnet", "Private network prefix")
+	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
 	pflag.String(
 		"node.bootstrap",
 		strings.Join(defaultBootstrapNodes, ","),
