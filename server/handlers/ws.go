@@ -44,7 +44,7 @@ func NewWSController(
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
-	log.Infof("websocket upgrade request: %s", ctx.Request().URL.Path)
+	log.Infof("websocket: upgrade request: %s", ctx.Request().URL.Path)
 
 	c.upgrader = websocket.NewEncryptedUpgrader()
 	c.upgrader.OnMessage(c.handle)
@@ -53,7 +53,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 
 	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request()) // WS listener infinite loop
 	if err != nil {
-		log.Errorf("websocket upgrader: %v", err)
+		log.Errorf("websocket: upgrader: %v", err)
 	}
 
 	c.upgrader.Close()
@@ -71,12 +71,12 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		return nil, err
 	}
 	if wsMsg.MessageId == "" {
-		log.Errorf("websocket request: missing message_id: %s\n", string(msg))
-		return nil, fmt.Errorf("websocket request: missing message_id")
+		log.Errorf("websocket: request: missing message_id: %s\n", string(msg))
+		return nil, fmt.Errorf("websocket: request: missing message_id")
 	}
 	if wsMsg.Body == nil {
-		log.Errorf("websocket request: missing body: %s\n", string(msg))
-		return nil, fmt.Errorf("websocket request: missing body")
+		log.Errorf("websocket: request: missing body: %s\n", string(msg))
+		return nil, fmt.Errorf("websocket: request: missing body")
 	}
 
 	switch wsMsg.Path {
@@ -84,13 +84,13 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		var ev event.LoginEvent
 		err = json.JSON.Unmarshal(*wsMsg.Body, &ev)
 		if err != nil {
-			log.Errorf("websocket: message body as login event: %v %s", err, *wsMsg.Body)
+			log.Errorf("websocket:: message body as login event: %v %s", err, *wsMsg.Body)
 			response = newErrorResp(err.Error())
 			break
 		}
 		loginResp, err := c.auth.AuthLogin(ev)
-		if err != nil {
-			log.Errorf("websocket: auth: %v", err)
+		if err != nil || loginResp.Identity.Token == "" {
+			log.Errorf("websocket:: auth: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
@@ -98,7 +98,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 
 		bt, err := json.JSON.Marshal(loginResp)
 		if err != nil {
-			log.Errorf("websocket: login FromLoginResponse: %v", err)
+			log.Errorf("websocket:: login FromLoginResponse: %v", err)
 			break
 		}
 		msgBody := jsoniter.RawMessage(bt)
@@ -109,19 +109,19 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 
 	default:
 		if c.clientNode == nil || !c.clientNode.IsRunning() {
-			log.Errorf("websocket request: not connected to server node")
+			log.Errorf("websocket: request: not connected to server node")
 			response = newErrorResp("not connected to server node")
 			break
 		}
 		if wsMsg.Body == nil {
-			log.Errorf("websocket: missing body: %s\n", string(msg))
+			log.Errorf("websocket:: missing body: %s\n", string(msg))
 			response = newErrorResp(fmt.Sprintf("missing data: %s", msg))
 			break
 		}
 		// TODO check version
 
 		if wsMsg.NodeId == "" || wsMsg.Path == "" {
-			log.Errorf("websocket: missing node id or path: %s\n", string(msg))
+			log.Errorf("websocket:: missing node id or path: %s\n", string(msg))
 			response = newErrorResp(
 				fmt.Sprintf("missing path or node ID: %s", msg),
 			)
@@ -131,7 +131,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		log.Debugf("WS incoming message: %s %s\n", wsMsg.NodeId, stream.WarpRoute(wsMsg.Path))
 		respData, err := c.clientNode.ClientStream(wsMsg.NodeId, wsMsg.Path, *wsMsg.Body)
 		if err != nil {
-			log.Errorf("websocket: send stream: %v", err)
+			log.Errorf("websocket:: send stream: %v", err)
 			response = newErrorResp(err.Error())
 			break
 		}
@@ -139,7 +139,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 		response.Body = &msgBody
 	}
 	if response.Body == nil {
-		log.Errorf("websocket response body is empty")
+		log.Errorf("websocket: response body is empty")
 		return nil, nil
 	}
 

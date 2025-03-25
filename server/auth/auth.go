@@ -54,13 +54,10 @@ func (as *AuthService) IsAuthenticated() bool {
 
 func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
-		token := as.authPersistence.SessionToken()
-		owner := as.authPersistence.GetOwner()
-
 		return event.LoginResponse{
 			Identity: domain.Identity{
-				Token: token,
-				Owner: owner,
+				Token: as.authPersistence.SessionToken(),
+				Owner: as.authPersistence.GetOwner(),
 			},
 		}, nil
 	}
@@ -133,7 +130,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 
 	as.isAuthenticated.Store(true)
 
-	return authInfo, nil
+	return event.LoginResponse(authInfo), nil
 }
 
 func (as *AuthService) AuthLogout() error {

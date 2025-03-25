@@ -104,7 +104,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 		case <-s.stopChan:
 		case info, ok := <-s.discoveryChan:
 			if !ok {
-				log.Errorf("discovery service: channel closed")
+				log.Warnf("discovery service: channel closed")
 				return
 			}
 			s.handle(info)

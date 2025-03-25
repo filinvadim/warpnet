@@ -392,6 +392,9 @@ func increment(txn *badger.Txn, key []byte, incVal int64) (uint64, error) {
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return 0, err
 	}
+	if item == nil {
+		item = &badger.Item{}
+	}
 
 	val, err := item.ValueCopy(nil)
 	if err != nil {

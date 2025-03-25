@@ -216,7 +216,7 @@ func (c *consensusService) sync() error {
 		panic("consensus: raft id not initialized")
 	}
 
-	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
+	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer leaderCancel()
 
 	cs := consensusSync{
@@ -227,7 +227,7 @@ func (c *consensusService) sync() error {
 	log.Infoln("consensus: waiting for leader...")
 	leaderID, err := cs.waitForLeader(leaderCtx)
 	if err != nil {
-		return fmt.Errorf("waiting for leader: %w", err)
+		log.Errorf("waiting for leader: %w", err)
 	}
 
 	if string(c.raftID) == leaderID {
@@ -237,11 +237,10 @@ func (c *consensusService) sync() error {
 	}
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
-	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute)
+	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer voterCancel()
 
-	err = cs.waitForVoter(voterCtx)
-	if err != nil {
+	if err = cs.waitForVoter(voterCtx); err != nil {
 		return fmt.Errorf("consensus: waiting to become a voter: %w", err)
 	}
 	log.Infoln("consensus: node received voter status")
@@ -249,8 +248,7 @@ func (c *consensusService) sync() error {
 	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer updatesCancel()
 
-	err = cs.waitForUpdates(updatesCtx)
-	if err != nil {
+	if err = cs.waitForUpdates(updatesCtx); err != nil {
 		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
 	}
 	log.Infoln("consensus: sync complete")
