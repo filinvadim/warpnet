@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -29,6 +30,7 @@ type NodeInfo struct {
 	StreamStats  network.Stats   `json:"stream_stats"`
 	OwnerId      string          `json:"owner_id"`
 	Protocols    []string        `json:"protocols"`
+	PSK          pnet.PSK        `json:"psk"`
 }
 
 var ErrNodeIsOffline = errors.New("node is offline")

@@ -150,6 +150,7 @@ func NewWarpNode(
 		Version:      wn.version,
 		//StreamStats:  nil, // will be added later
 		OwnerId: ownerId,
+		PSK:     pnet.PSK(psk),
 	}
 	wn.nodeInfo = nodeInfo
 

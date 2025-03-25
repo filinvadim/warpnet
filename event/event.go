@@ -207,10 +207,7 @@ type LoginEvent struct {
 }
 
 // LoginResponse defines model for LoginResponse.
-type LoginResponse struct {
-	Owner Owner  `json:"owner"`
-	Token string `json:"token"`
-}
+type LoginResponse = domain.AuthNodeInfo
 
 // LogoutEvent defines model for LogoutEvent.
 type LogoutEvent struct {

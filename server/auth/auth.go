@@ -52,21 +52,23 @@ func (as *AuthService) IsAuthenticated() bool {
 	return as.isAuthenticated.Load()
 }
 
-func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResponse, err error) {
+func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.LoginResponse, err error) {
 	if as.isAuthenticated.Load() {
 		token := as.authPersistence.SessionToken()
 		owner := as.authPersistence.GetOwner()
 
 		return event.LoginResponse{
-			Token: token,
-			Owner: owner,
+			Identity: domain.Identity{
+				Token: token,
+				Owner: owner,
+			},
 		}, nil
 	}
 	log.Infof("authenticating user %s", message.Username)
 
 	if err := as.authPersistence.Authenticate(message.Username, message.Password); err != nil {
 		log.Errorf("authentication failed: %v", err)
-		return resp, fmt.Errorf("authentication failed: %v", err)
+		return authInfo, fmt.Errorf("authentication failed: %v", err)
 	}
 	token := as.authPersistence.SessionToken()
 	owner := as.authPersistence.GetOwner()
@@ -82,7 +84,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 		})
 		if err != nil {
 			log.Errorf("new owner creation failed: %v", err)
-			return resp, fmt.Errorf("create owner: %v", err)
+			return authInfo, fmt.Errorf("create owner: %v", err)
 
 		}
 		user, err = as.userPersistence.Create(domain.User{
@@ -93,13 +95,13 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 			Rtt:       math.MaxInt64, // put your user at the end of a who-to-follow list
 		})
 		if err != nil {
-			return resp, fmt.Errorf("new user creation failed: %v", err)
+			return authInfo, fmt.Errorf("new user creation failed: %v", err)
 		}
 	}
 
 	if owner.Username != message.Username {
 		log.Errorf("username mismatch: %s == %s", owner.Username, message.Username)
-		return resp, fmt.Errorf("user %s doesn't exist", message.Username)
+		return authInfo, fmt.Errorf("user %s doesn't exist", message.Username)
 	}
 	as.authReady <- domain.AuthNodeInfo{
 		Identity: domain.Identity{Owner: owner, Token: token},
@@ -107,19 +109,19 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 
 	log.Infoln("OWNER USER ID:", owner.UserId)
 
-	timer := time.NewTimer(time.Minute * 2)
+	timer := time.NewTimer(time.Minute * 5)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
 		log.Errorln("node startup failed: timeout")
-		return resp, errors.New("node starting is timed out")
-	case nodeInfo := <-as.authReady:
+		return authInfo, errors.New("node starting is timed out")
+	case authInfo = <-as.authReady:
 		user.Id = owner.UserId
 		user.Username = owner.Username
 		user.CreatedAt = owner.CreatedAt
 		user.Rtt = math.MaxInt64 // put your user at the end of a who-to-follow list
-		user.NodeId = nodeInfo.Identity.Owner.NodeId
-		owner.NodeId = nodeInfo.Identity.Owner.NodeId
+		user.NodeId = authInfo.Identity.Owner.NodeId
+		owner.NodeId = authInfo.Identity.Owner.NodeId
 	}
 
 	if owner, err = as.authPersistence.SetOwner(owner); err != nil {
@@ -131,10 +133,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (resp event.LoginResp
 
 	as.isAuthenticated.Store(true)
 
-	return event.LoginResponse{
-		Token: token,
-		Owner: owner,
-	}, nil
+	return authInfo, nil
 }
 
 func (as *AuthService) AuthLogout() error {
