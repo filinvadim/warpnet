@@ -102,7 +102,7 @@ func generateAnchoredEntropy() []byte {
 // GeneratePSK is not secure TODO
 func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	if config.ConfigFile.Node.Prefix == "testnet" {
-		return []byte{}, nil
+		return ConvertToSHA256([]byte("testnet")), nil
 	}
 	if codebase == nil || v == nil {
 		return nil, errors.New("psk: codebase or version required")
