@@ -72,6 +72,8 @@ type ReplyNode struct {
 	Reply    Tweet       `json:"reply"`
 }
 
+const RetweetPrefix = "RT:"
+
 // Tweet defines model for Tweet.
 type Tweet struct {
 	CreatedAt time.Time `json:"created_at"`

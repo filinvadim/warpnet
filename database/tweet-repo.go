@@ -271,7 +271,7 @@ func (repo *TweetRepo) NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error
 	}
 
 	if tweet.UserId == *tweet.RetweetedBy {
-		tweet.Id = uuid.New().String() // TODO self retweet
+		tweet.Id = domain.RetweetPrefix + tweet.Id
 	}
 
 	newTweet, err := storeTweet(txn, *tweet.RetweetedBy, tweet)
@@ -286,6 +286,7 @@ func (repo *TweetRepo) UnRetweet(retweetedByUserID, tweetId string) error {
 	if tweetId == "" || retweetedByUserID == "" {
 		return errors.New("unretweet: empty tweet ID or user ID")
 	}
+
 	retweetCountKey := storage.NewPrefixBuilder(TweetsNamespace).
 		AddSubPrefix(reTweetsCountSubspace).
 		AddRootID(tweetId).

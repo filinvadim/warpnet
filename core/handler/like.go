@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	"strings"
 )
 
 type LikedUserFetcher interface {
@@ -48,7 +49,7 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 			return nil, err
 		}
 
-		num, err := repo.Like(ev.TweetId, ev.UserId)
+		num, err := repo.Like(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.UserId)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +95,7 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 			return nil, err
 		}
 
-		num, err := repo.Unlike(ev.TweetId, ev.UserId)
+		num, err := repo.Unlike(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.UserId)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +131,7 @@ func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
 		}
-		num, err := repo.LikesCount(ev.TweetId)
+		num, err := repo.LikesCount(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
 		if errors.Is(err, database.ErrLikesNotFound) {
 			return event.LikesCountResponse{0}, nil
 		}
@@ -148,7 +149,9 @@ func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) mid
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
 		}
-		likers, cur, err := likeRepo.Likers(ev.TweetId, ev.Limit, ev.Cursor)
+		likers, cur, err := likeRepo.Likers(
+			strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.Limit, ev.Cursor,
+		)
 		if err != nil {
 			return nil, err
 		}

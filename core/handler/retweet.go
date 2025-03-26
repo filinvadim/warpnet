@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type RetweetStreamer interface {
@@ -64,16 +65,17 @@ func StreamNewReTweetHandler(
 		}
 
 		owner := authRepo.GetOwner()
-		tweetOwner, err := userRepo.Get(retweetEvent.UserId)
-		if err != nil {
-			return nil, err
-		}
-
 		if owner.UserId == *retweetEvent.RetweetedBy {
 			// owner retweeted it
 			if err = timelineRepo.AddTweetToTimeline(owner.UserId, retweet); err != nil {
 				log.Infof("fail adding retweet to timeline: %v", err)
 			}
+			return retweet, nil
+		}
+
+		tweetOwner, err := userRepo.Get(retweetEvent.UserId)
+		if err != nil {
+			return nil, err
 		}
 
 		retweetDataResp, err := streamer.GenericStream(
@@ -163,7 +165,7 @@ func StreamGetReTweetsCountHandler(repo ReTweetsStorer) middleware.WarpHandler {
 			return nil, errors.New("empty tweet id")
 		}
 
-		count, err := repo.RetweetsCount(ev.TweetId)
+		count, err := repo.RetweetsCount(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +187,9 @@ func StreamGetRetweetersHandler(
 			return nil, errors.New("empty tweet id")
 		}
 
-		retweeters, cur, err := retweetRepo.Retweeters(ev.TweetId, ev.Limit, ev.Cursor)
+		retweeters, cur, err := retweetRepo.Retweeters(
+			strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.Limit, ev.Cursor,
+		)
 		if err != nil {
 			return nil, err
 		}
