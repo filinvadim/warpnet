@@ -28,7 +28,7 @@ func StreamSelfHashVerifyHandler(state AdminStateCommitter) middleware.WarpHandl
 			return nil, err
 		}
 
-		log.Infof("hash verify request received: %v", newState)
+		log.Infof("node verify request received: %v", newState)
 
 		updatedState, err := state.CommitState(newState)
 		if err != nil {

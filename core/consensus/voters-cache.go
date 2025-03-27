@@ -2,12 +2,13 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hashicorp/raft"
 	log "github.com/sirupsen/logrus"
 	"sync"
 )
 
-var errVoterNotFound = errors.New("voter not found")
+var errVoterNotFound = errors.New("consensus: voter not found")
 
 type votersCache struct {
 	mutex *sync.RWMutex
@@ -49,8 +50,18 @@ func (d *votersCache) getVoter(key raft.ServerID) (_ raft.Server, err error) {
 	return voter, nil
 }
 
+func (d *votersCache) print() {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+
+	log.Info("consensus: voters list in cache:")
+	for k := range d.m {
+		fmt.Printf("========== %s", k)
+	}
+}
+
 func (d *votersCache) close() {
 	d.m = nil
-	log.Infoln("voters cache closed")
+	log.Infoln("consensus: voters cache closed")
 	return
 }

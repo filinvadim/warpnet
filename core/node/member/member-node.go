@@ -62,7 +62,7 @@ func NewMemberNode(
 		userRepo.ValidateUserID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("raft initialization: %v", err)
+		return nil, fmt.Errorf("member: consensus initialization: %v", err)
 	}
 
 	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo)
@@ -70,7 +70,7 @@ func NewMemberNode(
 	pubsubService := pubsub.NewPubSub(ctx, followRepo, owner.UserId, raft.AddVoter, discService.HandlePeerFound)
 	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init providers: %v", err)
+		return nil, fmt.Errorf("member: failed to init providers: %v", err)
 	}
 
 	dHashTable := dht.NewDHTable(
@@ -88,7 +88,7 @@ func NewMemberNode(
 		dHashTable.StartRouting,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init member node: %v", err)
+		return nil, fmt.Errorf("member: failed to init node: %v", err)
 	}
 
 	println()
@@ -276,8 +276,6 @@ func (m *MemberNode) setupHandlers(
 	)
 }
 
-var ErrConsensusRejection = errors.New("consensus: quorum rejected your node. Try to delete database and update app version")
-
 func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	go m.discService.Run(m)
 	go m.mdnsService.Start(m)
@@ -293,11 +291,10 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		database.UserIdConsensusKey: m.NodeInfo().OwnerId,
 	}
 	if m.raft.LeaderID() == m.NodeInfo().ID {
-		state, err := m.raft.CommitState(newState)
+		_, err := m.raft.CommitState(newState)
 		if errors.Is(err, consensus.ErrNoRaftCluster) {
 			return nil
 		}
-		log.Infof("consensus: committed state: %v", state)
 		return err
 	}
 
@@ -311,14 +308,14 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 
 	var errResp event.ErrorResponse
 	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
-		log.Errorf("verify response unmarshal failed: %v", errResp)
-		return fmt.Errorf(" verify response unmarshal failed: %w", errResp)
+		log.Errorf("member: verify response unmarshal failed: %v", errResp)
+		return fmt.Errorf("member: verify response unmarshal failed: %w", errResp)
 	}
 
 	updatedState := make(map[string]string)
 	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Errorf("failed to unmarshal updated state %s: %v", resp, err)
-		return ErrConsensusRejection
+		log.Errorf("member: failed to unmarshal updated consensus state %s: %v", resp, err)
+		return consensus.ErrConsensusRejection
 	}
 
 	return nil
@@ -336,12 +333,12 @@ func (m *MemberNode) Stop() {
 	}
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
-			log.Errorf("failed to close pubsub: %v", err)
+			log.Errorf("member: failed to close pubsub: %v", err)
 		}
 	}
 	if m.providerStore != nil {
 		if err := m.providerStore.Close(); err != nil {
-			log.Errorf("failed to close provider: %v", err)
+			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
 	if m.dHashTable != nil {
@@ -352,7 +349,7 @@ func (m *MemberNode) Stop() {
 	}
 	if m.nodeRepo != nil {
 		if err := m.nodeRepo.Close(); err != nil {
-			log.Errorf("failed to close node repo: %v", err)
+			log.Errorf("member: failed to close node repo: %v", err)
 		}
 	}
 

@@ -84,7 +84,7 @@ func (s *EncryptedUpgrader) readLoop() error {
 		}
 
 		if !s.isAuthenticated {
-			log.Infoln("websocket received client public key")
+			log.Infoln("websocket: received client public key")
 			pubKey, err := base64.StdEncoding.DecodeString(string(message))
 			if err != nil {
 				_ = s.SendPlain(err.Error())
@@ -96,44 +96,44 @@ func (s *EncryptedUpgrader) readLoop() error {
 				_ = s.SendPlain(err.Error())
 				continue
 			}
-			log.Infoln("websocket computed shared secret")
+			log.Infoln("websocket: computed shared secret")
 
 			// send ours public key
 			encoded := base64.StdEncoding.EncodeToString(s.encrypter.PublicKey())
 			err = s.SendPlain(encoded)
 			if err != nil {
-				log.Infof("websocket error sending public key: %s", err)
+				log.Infof("websocket: error sending public key: %s", err)
 				continue
 			}
-			log.Infoln("websocket sent server public key")
+			log.Infoln("websocket: sent server public key")
 
 			s.isAuthenticated = true
-			log.Infoln("websocket handshake complete")
+			log.Infoln("websocket: handshake complete")
 			continue
 		}
 
 		if s.readCallback == nil {
-			log.Infoln("no read callback provided")
+			log.Infoln("websocket: no read callback provided")
 			continue
 		}
 		decryptedMessage, err := s.encrypter.DecryptMessage(message)
 		if err != nil {
-			log.Errorf("failed to decrypt message: %v", err)
+			log.Errorf("websocket: failed to decrypt message: %v", err)
 			return nil
 		}
 
 		response, err := s.readCallback(decryptedMessage)
 		if err != nil {
-			log.Errorf("callback: %v", err)
+			log.Errorf("websocket: read callback: %v", err)
 		}
 		if response == nil {
 			continue
 		}
 		if err = s.SendEncrypted(response); err != nil {
-			log.Errorf("failed to send encrypted message: %v", err)
+			log.Errorf("websocket: failed to send encrypted message: %v", err)
 		}
 		if err := s.renewSalt(); err != nil {
-			log.Errorf("failed to renew salt: %v", err)
+			log.Errorf("websocket: failed to renew salt: %v", err)
 		}
 	}
 }
@@ -168,7 +168,7 @@ func (s *EncryptedUpgrader) renewSalt() error {
 		return err
 	}
 	s.isSaltRenewed = true
-	log.Infoln("secret renewed")
+	log.Infoln("websocket: secret renewed")
 	return nil
 }
 

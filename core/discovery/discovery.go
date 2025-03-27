@@ -87,7 +87,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	if s == nil {
 		return
 	}
-	log.Infoln("discovery service started")
+	log.Infoln("discovery: service started")
 	printPeers(n)
 
 	s.node = n
@@ -99,12 +99,12 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	for {
 		select {
 		case <-s.ctx.Done():
-			log.Errorf("discovery service: context closed")
+			log.Errorf("discovery: context closed")
 			return
 		case <-s.stopChan:
 		case info, ok := <-s.discoveryChan:
 			if !ok {
-				log.Warnf("discovery service: channel closed")
+				log.Warnf("discovery: channel closed")
 				return
 			}
 			s.handle(info)
@@ -125,7 +125,7 @@ func printPeers(n DiscoveryInfoStorer) {
 
 		info := n.Peerstore().PeerInfo(id)
 
-		fmt.Printf("\033[1mknown peer: %s \033[0m\n", info.String())
+		fmt.Printf("\033[1mdiscovery: known peer: %s \033[0m\n", info.String())
 	}
 }
 
@@ -148,13 +148,13 @@ func (s *discoveryService) Close() {
 func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
 	if err := s.node.Connect(peerInfo); err != nil {
 		log.Errorf(
-			"default discovery: failed to connect to peer %s: %v",
+			"discovery: default handler: failed to connect to peer %s: %v",
 			peerInfo.String(),
 			err,
 		)
 		return
 	}
-	log.Debugf("default discovery: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	log.Debugf("discovery: default handler: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
 	return
 }
 
@@ -261,7 +261,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 	bt, _ := json.JSON.MarshalIndent(newUser, "", "  ")
-	log.Infoln("new user added:", string(bt))
+	log.Infoln("discovery: new user added:", string(bt))
 }
 
 func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {

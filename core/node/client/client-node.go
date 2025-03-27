@@ -42,7 +42,7 @@ type WarpClientNode struct {
 func NewClientNode(ctx context.Context, psk security.PSK) (_ *WarpClientNode, err error) {
 	privKey, err := security.GenerateKeyFromSeed([]byte(rand.Text()))
 	if err != nil {
-		log.Fatalf("fail generating key: %v", err)
+		log.Fatalf("client: fail generating key: %v", err)
 	}
 	serverNodeAddrDefault := fmt.Sprintf("/ip4/127.0.0.1/tcp/%s/p2p/", config.ConfigFile.Node.Port)
 
@@ -61,7 +61,7 @@ func NewClientNode(ctx context.Context, psk security.PSK) (_ *WarpClientNode, er
 
 func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	if n == nil {
-		return errors.New("client node not initialized")
+		return errors.New("client: not initialized")
 	}
 	if serverInfo.NodeInfo.ID.String() == "" {
 		return errors.New("client node: server node ID is empty")
@@ -70,12 +70,12 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	serverAddr := n.serverNodeAddr + serverInfo.NodeInfo.ID.String()
 	maddr, err := warpnet.NewMultiaddr(serverAddr)
 	if err != nil {
-		return fmt.Errorf("client node: parsing server address: %s", err)
+		return fmt.Errorf("client: parsing server address: %s", err)
 	}
 
 	peerInfo, err := warpnet.AddrInfoFromP2pAddr(maddr)
 	if err != nil {
-		return fmt.Errorf("client node: creating address info: %s", err)
+		return fmt.Errorf("client: creating address info: %s", err)
 	}
 	client, err := libp2p.New(
 		libp2p.Identity(n.privKey),
@@ -91,13 +91,13 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {
-		return fmt.Errorf("client node: init %s", err)
+		return fmt.Errorf("client: init %s", err)
 	}
 
 	n.clientNode = client
 	client.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, warpnet.PermanentAddrTTL)
 	if len(client.Addrs()) != 0 {
-		return errors.New("client node must have no addresses")
+		return errors.New("client: must have no addresses")
 	}
 
 	n.streamer = stream.NewStreamPool(n.ctx, n.clientNode)
@@ -114,8 +114,8 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 
 func (n *WarpClientNode) pairNodes(nodeId string, serverInfo domain.AuthNodeInfo) error {
 	if n == nil {
-		log.Errorln("client node must not be nil")
-		return errors.New("client node must not be nil")
+		log.Errorln("client: must not be nil")
+		return errors.New("client: must not be nil")
 	}
 	resp, err := n.ClientStream(nodeId, event.PRIVATE_POST_PAIR, serverInfo)
 	if err != nil {
@@ -136,7 +136,7 @@ func (n *WarpClientNode) IsRunning() bool {
 
 func (n *WarpClientNode) ClientStream(nodeId string, path string, data any) (_ []byte, err error) {
 	if n == nil || n.clientNode == nil {
-		return nil, errors.New("client node not initialized")
+		return nil, errors.New("client: not initialized")
 	}
 	var bt []byte
 	if data != nil {
@@ -163,7 +163,7 @@ func (n *WarpClientNode) Stop() {
 		return
 	}
 	if err := n.clientNode.Close(); err != nil {
-		log.Errorf("client node stop fail: %v", err)
+		log.Errorf("client: stop fail: %v", err)
 	}
 	n.clientNode = nil
 	n.isRunning.Store(false)

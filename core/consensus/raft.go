@@ -61,6 +61,7 @@ type votersCacher interface {
 	addVoter(key raft.ServerID, srv raft.Server)
 	getVoter(key raft.ServerID) (_ raft.Server, err error)
 	removeVoter(key raft.ServerID)
+	print()
 	close()
 }
 
@@ -145,7 +146,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
 	if err != nil {
-		log.Errorf("failed to create raft transport: %v", err)
+		log.Errorf("failed to create node transport: %v", err)
 		return
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
@@ -154,7 +155,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return err
 	}
 
-	log.Infof("consensus: raft server %s starting...", c.raftID)
+	log.Infof("consensus: node %s starting...", c.raftID)
 	c.raft, err = raft.NewRaft(
 		config,
 		c.fsm,
@@ -164,12 +165,12 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		c.transport,
 	)
 	if err != nil {
-		return fmt.Errorf("consensus: failed to create raft node: %w", err)
+		return fmt.Errorf("consensus: failed to create node: %w", err)
 	}
 
 	wait := c.raft.GetConfiguration()
 	if err := wait.Error(); err != nil {
-		log.Errorf("consensus: raft configuration error: %v", err)
+		log.Errorf("consensus: node configuration error: %v", err)
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
@@ -194,7 +195,7 @@ func (c *consensusService) forceBootstrap(id raft.ServerID) error {
 	}
 	log.Infoln("consensus: bootstrapping a new cluster with server id:", id)
 
-	// force Raft to create cluster no matter what
+	// force Raft to create a cluster no matter what
 	raftConf := raft.Configuration{}
 	raftConf.Servers = append(raftConf.Servers, raft.Server{
 		Suffrage: raft.Voter,
@@ -222,7 +223,7 @@ type consensusSync struct {
 
 func (c *consensusService) sync() error {
 	if c.raftID == "" {
-		panic("consensus: raft id not initialized")
+		panic("consensus: node id is not initialized")
 	}
 
 	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
@@ -269,6 +270,7 @@ func (c *consensusService) sync() error {
 	for _, srv := range wait.Configuration().Servers {
 		c.cache.addVoter(srv.ID, srv)
 	}
+
 	log.Infoln("consensus: sync complete")
 	return nil
 }
@@ -307,13 +309,13 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 			if isVoter(id, wait.Configuration()) {
 				return nil
 			}
-			log.Debugf("not voter yet: %s", id)
+			log.Debugf("consensus: node is not voter yet: %s", id)
 		}
 	}
 }
 
 func (c *consensusSync) waitForUpdates(ctx context.Context) error {
-	log.Debugln("raft state is catching up to the latest known version. Please wait...")
+	log.Debugln("consensus: node state is catching up to the latest known version. Please wait...")
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -324,7 +326,7 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 		case <-ticker.C:
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
-			log.Infof("current raft index: %d/%d", lastAppliedIndex, lastIndex)
+			log.Infof("consensus: current node index: %d/%d", lastAppliedIndex, lastIndex)
 			if lastAppliedIndex == lastIndex {
 				return nil
 			}
@@ -338,7 +340,7 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 			return true
 		}
 		if server.ID == srvID {
-			log.Infof("consensus: raft server is a %s", server.Suffrage)
+			log.Infof("consensus: node promoted to %s", server.Suffrage)
 		}
 
 	}
@@ -401,7 +403,7 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 
 	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {
-		log.Errorf("consensus: failed to remove raft server: %s", wait.Error())
+		log.Errorf("consensus: failed to remove node: %s", wait.Error())
 		return
 	}
 	c.cache.removeVoter(raft.ServerID(id.String()))
@@ -413,11 +415,11 @@ func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	return warpnet.FromStringToPeerID(string(leaderId))
 }
 
-var ErrNoRaftCluster = errors.New("no raft cluster found")
+var ErrNoRaftCluster = errors.New("consensus: no cluster found")
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	if c.raft == nil {
-		return nil, errors.New("consensus: nil raft service")
+		return nil, errors.New("consensus: nil node")
 	}
 
 	c.waitSync()
@@ -428,7 +430,7 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 	}
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		log.Warnf("not a leader: %s", leaderId)
+		log.Warnf("consensus: not a leader: %s", leaderId)
 		return nil, nil
 	}
 
@@ -449,7 +451,7 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 
 func (c *consensusService) CurrentState() (*KVState, error) {
 	if c.raft == nil {
-		return nil, errors.New("consensus: nil raft service")
+		return nil, errors.New("consensus: nil node")
 	}
 
 	c.waitSync()
@@ -478,9 +480,10 @@ func (c *consensusService) Shutdown() {
 	_ = c.transport.Close()
 	wait := c.raft.Shutdown()
 	if wait != nil && wait.Error() != nil {
-		log.Infof("failed to shutdown raft: %v", wait.Error())
+		log.Infof("consensus: failed to shutdown node: %v", wait.Error())
 	}
 	c.cache.close()
-	log.Infoln("consensus: raft node shut down")
 	c.raft = nil
+	log.Infoln("consensus: node shut down")
+
 }

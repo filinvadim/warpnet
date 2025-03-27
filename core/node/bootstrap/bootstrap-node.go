@@ -46,12 +46,12 @@ func NewBootstrapNode(
 	}
 	privKey, err := security.GenerateKeyFromSeed(seed)
 	if err != nil {
-		return nil, fmt.Errorf("fail generating key: %v", err)
+		return nil, fmt.Errorf("bootstrap: fail generating key: %v", err)
 	}
 	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
 	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
 	if err != nil {
-		return nil, fmt.Errorf("fail getting ID: %v", err)
+		return nil, fmt.Errorf("bootstrap: fail getting ID: %v", err)
 	}
 
 	discService := discovery.NewBootstrapDiscoveryService(ctx)
@@ -65,7 +65,7 @@ func NewBootstrapNode(
 
 	memoryStore, err := pstoremem.NewPeerstore()
 	if err != nil {
-		return nil, fmt.Errorf("fail creating memory peerstore: %w", err)
+		return nil, fmt.Errorf("bootstrap: fail creating memory peerstore: %w", err)
 	}
 
 	mapStore := datastore.NewMapDatastore()
@@ -77,7 +77,7 @@ func NewBootstrapNode(
 
 	providersCache, err := providers.NewProviderManager(id, memoryStore, mapStore)
 	if err != nil {
-		return nil, fmt.Errorf("fail creating providers cache: %w", err)
+		return nil, fmt.Errorf("bootstrap: fail creating providers cache: %w", err)
 	}
 
 	dHashTable := dht.NewDHTable(
@@ -95,7 +95,7 @@ func NewBootstrapNode(
 		dHashTable.StartRouting,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init bootstrap node: %v", err)
+		return nil, fmt.Errorf("bootstrap: failed to init node: %v", err)
 	}
 
 	println()
@@ -132,7 +132,7 @@ func (bn *BootstrapNode) Start() error {
 	go bn.pubsubService.Run(bn, nil)
 
 	if err := bn.raft.Sync(bn); err != nil {
-		return fmt.Errorf("consensus: failed to sync: %v", err)
+		return err
 	}
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
@@ -151,12 +151,12 @@ func (bn *BootstrapNode) Stop() {
 	}
 	if bn.pubsubService != nil {
 		if err := bn.pubsubService.Close(); err != nil {
-			log.Errorf("failed to close pubsub: %v", err)
+			log.Errorf("bootstrap: failed to close pubsub: %v", err)
 		}
 	}
 	if bn.providerStore != nil {
 		if err := bn.providerStore.Close(); err != nil {
-			log.Errorf("failed to close provider: %v", err)
+			log.Errorf("bootstrap: failed to close provider: %v", err)
 		}
 	}
 	if bn.dHashTable != nil {
@@ -167,7 +167,7 @@ func (bn *BootstrapNode) Stop() {
 	}
 	if bn.memoryStoreCloseF != nil {
 		if err := bn.memoryStoreCloseF(); err != nil {
-			log.Errorf("failed to close memory store: %v", err)
+			log.Errorf("bootstrap: failed to close memory store: %v", err)
 		}
 	}
 

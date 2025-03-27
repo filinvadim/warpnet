@@ -110,7 +110,7 @@ func NewWarpNode(
 		libp2p.Routing(routingFn),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init node: %v", err)
+		return nil, fmt.Errorf("node: failed to init node: %v", err)
 	}
 
 	nodeRelay, err := relay.NewRelay(node)
@@ -166,18 +166,18 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		return nil
 	}
 
-	log.Infoln("connect attempt to node:", p.ID.String(), p.Addrs)
+	log.Infoln("node: connect attempt to node:", p.ID.String(), p.Addrs)
 	if err := n.node.Connect(n.ctx, p); err != nil {
 		return fmt.Errorf("failed to connect to node: %w", err)
 	}
-	log.Infoln("connect attempt successful:", p.ID.String())
+	log.Infoln("node: connect attempt successful:", p.ID.String())
 
 	return nil
 }
 
 func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
 	if !stream.IsValidRoute(route) {
-		log.Fatalf("invalid route: %v", route)
+		log.Fatalf("node: invalid route: %v", route)
 	}
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
@@ -247,7 +247,7 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 
 	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
 	if nodeId == "" {
-		return nil, fmt.Errorf("invalid node id: %v", nodeIdStr)
+		return nil, fmt.Errorf("node: invalid node id: %v", nodeIdStr)
 	}
 	if n.NodeInfo().ID == nodeId {
 		return nil, nil // self request discarded
@@ -255,11 +255,11 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 
 	peerInfo := n.Peerstore().PeerInfo(nodeId)
 	if len(peerInfo.Addrs) == 0 {
-		log.Errorf("peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		log.Errorf("node: peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
 		return nil, warpnet.ErrNodeIsOffline
 	}
 	for _, addr := range peerInfo.Addrs {
-		log.Infof("new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
+		log.Infof("node: new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
 	}
 
 	var bt []byte
@@ -269,7 +269,7 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		if !ok {
 			bt, err = json.JSON.Marshal(data)
 			if err != nil {
-				return nil, fmt.Errorf("generic stream: marshal data %v %s", err, data)
+				return nil, fmt.Errorf("node: generic stream: marshal data %v %s", err, data)
 			}
 		}
 	}
@@ -278,10 +278,10 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 }
 
 func (n *WarpNode) StopNode() {
-	log.Infoln("shutting down node...")
+	log.Infoln("node: shutting down node...")
 	defer func() {
 		if r := recover(); r != nil {
-			log.Errorf("recovered: %v\n", r)
+			log.Errorf("node: recovered: %v\n", r)
 		}
 	}()
 	if n == nil || n.node == nil {
@@ -291,11 +291,11 @@ func (n *WarpNode) StopNode() {
 		_ = n.relay.Close()
 	}
 	if err := n.node.Close(); err != nil {
-		log.Errorf("failed to close node: %v", err)
+		log.Errorf("node: failed to close: %v", err)
 	}
 	n.isClosed.Store(true)
 	n.node = nil
-	time.Sleep(time.Duration(rand.Intn(5)) * time.Second) // jitter
+	time.Sleep(time.Duration(rand.Intn(999)) * time.Millisecond) // jitter
 
 	return
 }

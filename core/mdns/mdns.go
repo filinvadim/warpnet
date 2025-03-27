@@ -88,13 +88,13 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 func (m *mdnsDiscoveryService) defaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
 	if err := m.node.Connect(peerInfo); err != nil {
 		log.Errorf(
-			"mdns discovery: failed to connect to peer %s: %v",
+			"mdns: discovery: failed to connect to peer %s: %v",
 			peerInfo.String(),
 			err,
 		)
 		return
 	}
-	log.Debugf("mdns discovery: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	log.Debugf("mdns: discovery: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
 	return
 }
 
@@ -125,10 +125,10 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 
 	if err := m.mdns.Start(); err != nil {
-		log.Errorf("mdns failed to start: %v", err)
+		log.Errorf("mdns: failed to start: %v", err)
 		return
 	}
-	log.Infoln("mdns service started")
+	log.Infoln("mdns: service started")
 }
 
 func (m *MulticastDNS) Close() {
@@ -139,7 +139,7 @@ func (m *MulticastDNS) Close() {
 		return
 	}
 	if err := m.mdns.Close(); err != nil {
-		log.Errorf("mdns failed to close: %v", err)
+		log.Errorf("mdns: failed to close: %v", err)
 	}
 	m.isRunning.Store(false)
 	m.mdns = nil

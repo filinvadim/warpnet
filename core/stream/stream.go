@@ -46,7 +46,7 @@ func send(
 	}
 
 	if len(serverInfo.ID) > 52 {
-		return nil, fmt.Errorf("node id is too long: %v", serverInfo.ID)
+		return nil, fmt.Errorf("stream: node id is too long: %v", serverInfo.ID)
 	}
 
 	if err := serverInfo.ID.Validate(); err != nil {
@@ -86,18 +86,18 @@ func send(
 
 func closeStream(stream warpnet.WarpStream) {
 	if err := stream.Close(); err != nil {
-		log.Errorf("closing stream: %s", err)
+		log.Errorf("stream: closing: %s", err)
 	}
 }
 
 func flush(rw *bufio.ReadWriter) {
 	if err := rw.Flush(); err != nil {
-		log.Errorf("flush: %s", err)
+		log.Errorf("stream: flush: %s", err)
 	}
 }
 
 func closeWrite(s warpnet.WarpStream) {
 	if err := s.CloseWrite(); err != nil {
-		log.Errorf("close write: %s", err)
+		log.Errorf("stream: close write: %s", err)
 	}
 }

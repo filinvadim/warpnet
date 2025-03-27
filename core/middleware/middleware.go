@@ -60,13 +60,13 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 		}
 		route := stream.FromPrIDToRoute(s.Protocol())
 		if route.IsPrivate() && p.clientNodeID == "" {
-			log.Errorf("middleware: client peer ID not set, ignoring private route:", route)
+			log.Errorf("middleware: client peer ID not set, ignoring private route: %s", route)
 			_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 			return
 		}
 		if route.IsPrivate() && p.clientNodeID != "" { // not private == no auth
 			if !(p.clientNodeID == s.Conn().RemotePeer()) { // only own client node can do private requests
-				log.Errorf("middleware: client peer id mismatch:", s.Conn().RemotePeer())
+				log.Errorf("middleware: client peer id mismatch: %s", s.Conn().RemotePeer())
 				_, _ = s.Write(ErrUnknownClientPeer.Bytes())
 				return
 			}
@@ -120,7 +120,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		default:
 			if err := encoder.Encode(response); err != nil {
-				log.Errorf("fail encoding generic response: %v", err)
+				log.Errorf("middleware: failed encoding generic response: %v", err)
 			}
 		}
 

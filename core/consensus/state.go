@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+var ErrConsensusRejection = errors.New("consensus: quorum rejected your node. Try to delete database and update app version")
+
 type KVState map[string]string
 
 type fsm struct {
@@ -41,7 +43,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			*fsm.state = fsm.prevState
-			result = errors.New("fsm apply panic: rollback")
+			result = errors.New("consensus: fsm apply panic: rollback")
 		}
 	}()
 
@@ -51,8 +53,8 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 
 	var newState = make(KVState, 1)
 	if err := msgpack.Unmarshal(rlog.Data, &newState); err != nil {
-		log.Errorf("failed to decode log: %v", err)
-		return fmt.Errorf("failed to decode log: %w", err)
+		log.Errorf("consensus: failed to decode log: %v", err)
+		return fmt.Errorf("consensus: failed to decode log: %w", err)
 	}
 
 	for _, validator := range fsm.validators {
@@ -97,7 +99,7 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 
 	err := msgpack.NewDecoder(reader).Decode(fsm.state)
 	if err != nil {
-		log.Errorf("fsm: decoding snapshot: %s", err)
+		log.Errorf("consensus: fsm: decoding snapshot: %s", err)
 		return err
 	}
 
@@ -120,5 +122,5 @@ func (snap *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 }
 
 func (snap *fsmSnapshot) Release() {
-	log.Debugln("fsm: releasing snapshot")
+	log.Debugln("consensus: fsm: releasing snapshot")
 }

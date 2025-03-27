@@ -62,7 +62,7 @@ func NewProviderCache(ctx context.Context, db ProviderCacheStorer) (*ProviderCac
 }
 
 func (d *ProviderCache) dumpProviders() {
-	log.Infoln("providers cache is running")
+	log.Infoln("dht: providers cache: is running")
 	tick := time.NewTicker(time.Minute * 10)
 	defer tick.Stop()
 	for {
@@ -81,7 +81,7 @@ func (d *ProviderCache) dumpProviders() {
 						continue
 					}
 					if err := d.db.AddProvider(d.ctx, []byte(key), v.addr); err != nil {
-						log.Errorf("error adding provider %s to db: %v", key, err)
+						log.Errorf("dht: adding provider %s to db: %v", key, err)
 					}
 				}
 			}
@@ -150,14 +150,13 @@ func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []p
 func (d *ProviderCache) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Errorf("recovered: %v", r)
+			log.Errorf("dht: prividers cache: recovered: %v", r)
 			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
 	if d.isClosed.Load() {
 		return nil
 	}
-	log.Infoln("providers cache is shutting down")
 	d.mutex.RLock()
 	for key, values := range d.m {
 		for _, v := range values {
@@ -168,5 +167,6 @@ func (d *ProviderCache) Close() (err error) {
 	close(d.stopChan)
 	d.isClosed.Store(true)
 	d.m = nil
+	log.Infoln("dht: providers cache: shut down")
 	return err
 }
