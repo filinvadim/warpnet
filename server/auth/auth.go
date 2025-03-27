@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	log "github.com/sirupsen/logrus"
 	"math"
 	"os"
@@ -72,7 +72,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 
 	var user domain.User
 	if owner.UserId == "" {
-		id := uuid.New().String()
+		id := ulid.Make().String()
 		log.Infoln("creating new owner:", id)
 		owner, err = as.authPersistence.SetOwner(domain.Owner{
 			CreatedAt: time.Now(),

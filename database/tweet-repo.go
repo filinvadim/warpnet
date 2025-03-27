@@ -10,7 +10,7 @@ import (
 
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 const (
@@ -43,7 +43,7 @@ func (repo *TweetRepo) Create(userId string, tweet domain.Tweet) (domain.Tweet, 
 		return tweet, errors.New("nil tweet")
 	}
 	if tweet.Id == "" {
-		tweet.Id = uuid.New().String()
+		tweet.Id = ulid.Make().String()
 	}
 	if tweet.CreatedAt.IsZero() {
 		tweet.CreatedAt = time.Now()

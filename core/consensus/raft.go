@@ -227,7 +227,7 @@ func (c *consensusService) sync() error {
 	log.Infoln("consensus: waiting for leader...")
 	leaderID, err := cs.waitForLeader(leaderCtx)
 	if err != nil {
-		log.Errorf("waiting for leader: %w", err)
+		log.Errorf("waiting for leader: %v", err)
 	}
 
 	if string(c.raftID) == leaderID {

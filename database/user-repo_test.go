@@ -7,7 +7,7 @@ import (
 
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +30,7 @@ func TestUserRepo_Create(t *testing.T) {
 	user := domain_gen.User{
 		Username: "Test User",
 	}
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	user.Id = userID
 
 	_, err := repo.Create(user)
@@ -53,7 +53,7 @@ func TestUserRepo_Update(t *testing.T) {
 	user := domain_gen.User{
 		Username: "Test User",
 	}
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	user.Id = userID
 
 	_, err := repo.Create(user)
@@ -76,7 +76,7 @@ func TestUserRepo_Get(t *testing.T) {
 
 	repo := database.NewUserRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	user := domain_gen.User{
 		Username: "Test User",
 		Id:       userID,
@@ -98,7 +98,7 @@ func TestUserRepo_Delete(t *testing.T) {
 
 	repo := database.NewUserRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	user := domain_gen.User{
 		Username: "Test User",
 		Id:       userID,
@@ -122,12 +122,12 @@ func TestUserRepo_List(t *testing.T) {
 
 	repo := database.NewUserRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	user1 := domain_gen.User{
 		Username: "User1",
 		Id:       userID,
 	}
-	userID2 := uuid.New().String()
+	userID2 := ulid.Make().String()
 	user2 := domain_gen.User{
 		Username: "User2",
 		Id:       userID2,

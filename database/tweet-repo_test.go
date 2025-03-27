@@ -9,7 +9,7 @@ import (
 
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,13 +31,13 @@ func TestTweetRepo_Create(t *testing.T) {
 	db := setupTweetTestDB(t)
 	repo := database.NewTweetRepo(db)
 
-	tweetID := uuid.New().String()
+	tweetID := ulid.Make().String()
 
 	tweet := domain_gen.Tweet{
 		Id: tweetID,
 	}
 
-	id := uuid.New().String()
+	id := ulid.Make().String()
 	now := time.Now()
 
 	user := domain_gen.User{
@@ -60,11 +60,11 @@ func TestTweetRepo_Get(t *testing.T) {
 	db := setupTweetTestDB(t)
 	repo := database.NewTweetRepo(db)
 
-	tweetID := uuid.New().String()
+	tweetID := ulid.Make().String()
 	tweet := domain_gen.Tweet{
 		Id: tweetID,
 	}
-	id := uuid.New().String()
+	id := ulid.Make().String()
 
 	now := time.Now()
 
@@ -87,11 +87,11 @@ func TestTweetRepo_Delete(t *testing.T) {
 	db := setupTweetTestDB(t)
 	repo := database.NewTweetRepo(db)
 
-	tweetID := uuid.New().String()
+	tweetID := ulid.Make().String()
 	tweet := domain_gen.Tweet{
 		Id: tweetID,
 	}
-	id := uuid.New().String()
+	id := ulid.Make().String()
 
 	user := domain_gen.User{
 		Username: "User",
@@ -122,7 +122,7 @@ func TestTweetRepo_List(t *testing.T) {
 	tweet2 := domain_gen.Tweet{
 		Id: id2,
 	}
-	id := uuid.New().String()
+	id := ulid.Make().String()
 
 	user := domain_gen.User{
 		Username: "User",

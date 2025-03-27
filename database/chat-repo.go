@@ -6,7 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	"strings"
 	"time"
 )
@@ -38,7 +38,7 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 	if ownerId == "" || otherUserId == "" {
 		return domain.Chat{}, errors.New("user ID or other user ID is empty")
 	}
-	if err := uuid.Validate(ownerId); err != nil {
+	if _, err := ulid.ParseStrict(ownerId); err != nil {
 		return domain.Chat{}, err
 	}
 
@@ -255,7 +255,7 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 		msg.CreatedAt = time.Now()
 	}
 	if msg.Id == "" {
-		msg.Id = uuid.New().String()
+		msg.Id = ulid.Make().String()
 	}
 
 	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
@@ -407,6 +407,9 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 
 // TODO access this approach
 func composeChatId(ownerId, otherUserId, nonce string) string {
-	composed := fmt.Sprintf("%s:%s:%s", ownerId, otherUserId, nonce)
-	return uuid.NewSHA1(uuid.NameSpaceDNS, []byte(composed)).String()
+	var result [16]byte
+	for i := range ownerId {
+		result[i] = ownerId[i] ^ otherUserId[i]
+	}
+	return fmt.Sprintf("%s-%s", result, nonce)
 }

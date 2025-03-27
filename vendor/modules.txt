@@ -64,7 +64,7 @@ github.com/elastic/gosigar/sys/windows
 # github.com/fatih/color v1.16.0
 ## explicit; go 1.17
 github.com/fatih/color
-# github.com/filinvadim/warpnet-frontend v0.0.271
+# github.com/filinvadim/warpnet-frontend v0.0.277
 ## explicit; go 1.23.5
 github.com/filinvadim/warpnet-frontend
 # github.com/flynn/noise v1.1.0
@@ -508,6 +508,9 @@ github.com/munnerz/goautoneg
 ## explicit; go 1.20
 github.com/oapi-codegen/runtime
 github.com/oapi-codegen/runtime/types
+# github.com/oklog/ulid/v2 v2.1.0
+## explicit; go 1.15
+github.com/oklog/ulid/v2
 # github.com/onsi/ginkgo/v2 v2.22.0
 ## explicit; go 1.22.0
 github.com/onsi/ginkgo/v2/config

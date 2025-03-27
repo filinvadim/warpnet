@@ -8,7 +8,7 @@ import (
 
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +29,7 @@ func createTestTweet(id string, timestamp time.Time) domain_gen.Tweet {
 	return domain_gen.Tweet{
 		Id:        id,
 		Text:      "Test content",
-		UserId:    uuid.New().String(),
+		UserId:    ulid.Make().String(),
 		CreatedAt: timestamp,
 	}
 }
@@ -72,7 +72,7 @@ func TestAddAndDeleteTweetFromTimeline(t *testing.T) {
 	db := setupTimelineTestDB(t)
 	repo := database.NewTimelineRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	tweet := createTestTweet("tweet1", time.Now().Add(-time.Hour))
 
 	// Add a tweet to the timeline
@@ -102,7 +102,7 @@ func TestGetTimelineEmpty(t *testing.T) {
 	db := setupTimelineTestDB(t)
 	repo := database.NewTimelineRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 
 	lim := uint64(5)
 	cur := ""
@@ -118,7 +118,7 @@ func TestGetTimelineWithLargeLimit(t *testing.T) {
 	db := setupTimelineTestDB(t)
 	repo := database.NewTimelineRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	tweet1 := createTestTweet("tweet1", time.Now().Add(-time.Hour))
 	tweet2 := createTestTweet("tweet2", time.Now().Add(-30*time.Minute))
 	tweet3 := createTestTweet("tweet3", time.Now())
@@ -145,7 +145,7 @@ func TestGetTimelineInvalidCursor(t *testing.T) {
 	db := setupTimelineTestDB(t)
 	repo := database.NewTimelineRepo(db)
 
-	userID := uuid.New().String()
+	userID := ulid.Make().String()
 	tweet := createTestTweet("tweet1", time.Now().Add(-time.Hour))
 	_ = repo.AddTweetToTimeline(userID, tweet)
 

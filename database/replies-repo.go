@@ -9,7 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	domain "github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 const (
@@ -43,7 +43,7 @@ func (repo *ReplyRepo) AddReply(reply domain.Tweet) (domain.Tweet, error) {
 		return reply, errors.New("empty parent")
 	}
 	if reply.Id == "" {
-		reply.Id = uuid.New().String()
+		reply.Id = ulid.Make().String()
 	}
 	if reply.Id == reply.RootId {
 		return reply, errors.New("this is tweet not reply")

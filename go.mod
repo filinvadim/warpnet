@@ -5,9 +5,8 @@ go 1.23.5
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/filinvadim/warpnet-frontend v0.0.271
+	github.com/filinvadim/warpnet-frontend v0.0.277
 	github.com/getkin/kin-openapi v0.127.0
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/raft v1.7.2
 	github.com/ipfs/go-datastore v0.6.0
@@ -23,6 +22,7 @@ require (
 	github.com/monnand/dhkx v0.0.0-20180522003156-9e5b033f1ac4
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/oklog/ulid/v2 v2.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.3
@@ -69,6 +69,7 @@ require (
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
