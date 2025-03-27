@@ -71,7 +71,7 @@ func NewPubSub(
 		serverNode:        nil,
 		clientNode:        nil,
 		discoveryHandlers: discoveryHandlers,
-		mx:                &sync.RWMutex{},
+		mx:                new(sync.RWMutex),
 		subs:              []*pubsub.Subscription{},
 		topics:            map[string]*pubsub.Topic{},
 
@@ -96,6 +96,7 @@ func (g *warpPubSub) Run(
 	if g.isRunning.Load() {
 		return
 	}
+	defer log.Infoln("pubsub: stopped")
 	g.clientNode = clientNode
 	g.serverNode = serverNode
 
@@ -116,6 +117,10 @@ func (g *warpPubSub) Run(
 		g.mx.RUnlock()
 
 		for _, sub := range subscriptions {
+			if g.ctx.Err() != nil {
+				return
+			}
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			msg, err := sub.Next(ctx)
 			if errors.Is(err, context.DeadlineExceeded) {
