@@ -57,10 +57,18 @@ type NodeServicesProvider interface {
 	NodeInfo() warpnet.NodeInfo
 }
 
+type votersCacher interface {
+	addVoter(key raft.ServerID, srv raft.Server)
+	getVoter(key raft.ServerID) (_ raft.Server, err error)
+	removeVoter(key raft.ServerID)
+	close()
+}
+
 type consensusService struct {
 	ctx           context.Context
 	consensus     *Consensus
 	fsm           *fsm
+	cache         votersCacher
 	raft          *raft.Raft
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -108,6 +116,7 @@ func NewRaft(
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
 		fsm:           finiteStateMachine,
+		cache:         newVotersCache(),
 		consensus:     cons,
 		syncMx:        new(sync.RWMutex),
 	}, nil
@@ -251,6 +260,15 @@ func (c *consensusService) sync() error {
 	if err = cs.waitForUpdates(updatesCtx); err != nil {
 		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
 	}
+
+	wait := c.raft.GetConfiguration()
+	if err := wait.Error(); err != nil {
+		return err
+	}
+
+	for _, srv := range wait.Configuration().Servers {
+		c.cache.addVoter(srv.ID, srv)
+	}
 	log.Infoln("consensus: sync complete")
 	return nil
 }
@@ -342,24 +360,23 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	}
 	log.Infof("consensus: adding new voter %s", info.ID.String())
 
-	configFuture := c.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		log.Errorf("consensus: failed to get raft configuration: %v", err)
-		return
-	}
-
 	id := raft.ServerID(info.ID.String())
 	addr := raft.ServerAddress(info.ID.String())
 
-	wait := c.raft.RemoveServer(id, 0, 30*time.Second)
-	if err := wait.Error(); err != nil {
-		log.Warnf("consensus: failed to remove raft server: %s", wait.Error())
+	if _, err := c.cache.getVoter(id); err == nil {
+		return
 	}
 
-	wait = c.raft.AddVoter(id, addr, 0, 30*time.Second)
+	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
 	}
+
+	c.cache.addVoter(id, raft.Server{
+		Suffrage: raft.Voter,
+		ID:       id,
+		Address:  addr,
+	})
 	return
 }
 
@@ -378,22 +395,21 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	}
 	log.Infof("consensus: removing voter %s", id.String())
 
-	configFuture := c.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		log.Errorf("consensus: failed to get raft configuration: %v", err)
+	if _, err := c.cache.getVoter(raft.ServerID(id.String())); errors.Is(err, errVoterNotFound) {
 		return
 	}
 
 	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {
-		log.Warnf("consensus: failed to remove raft server: %s", wait.Error())
+		log.Errorf("consensus: failed to remove raft server: %s", wait.Error())
+		return
 	}
+	c.cache.removeVoter(raft.ServerID(id.String()))
 	return
 }
 
 func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	_, leaderId := c.raft.LeaderWithID()
-
 	return warpnet.FromStringToPeerID(string(leaderId))
 }
 
@@ -464,6 +480,7 @@ func (c *consensusService) Shutdown() {
 	if wait != nil && wait.Error() != nil {
 		log.Infof("failed to shutdown raft: %v", wait.Error())
 	}
+	c.cache.close()
 	log.Infoln("consensus: raft node shut down")
 	c.raft = nil
 }

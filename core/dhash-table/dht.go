@@ -136,18 +136,17 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht = dhTable
 
 	go func() {
+		// force node to know its external address (in case of local network)
+		for _, info := range d.boostrapNodes {
+			d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour*24)
+		}
+
 		if err := d.dht.Bootstrap(d.ctx); err != nil {
 			log.Errorf("dht: bootstrap: %s", err)
 		}
 
 		d.correctPeerIdMismatch(d.boostrapNodes)
 
-		// force node to know its external address (in case of local network)
-		for _, info := range d.boostrapNodes {
-			if d.dht.PeerID() == info.ID {
-				d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour*24)
-			}
-		}
 		<-d.dht.RefreshRoutingTable()
 	}()
 
