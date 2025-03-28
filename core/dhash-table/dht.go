@@ -105,11 +105,12 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
 		dht.Datastore(d.db),
 		dht.MaxRecordAge(time.Hour*24*365),
-		dht.RoutingTableRefreshPeriod(time.Hour*24),
-		dht.RoutingTableRefreshQueryTimeout(time.Hour*24),
+		dht.RoutingTableRefreshPeriod(time.Hour),
+		dht.RoutingTableRefreshQueryTimeout(time.Minute*5),
 		dht.BootstrapPeers(d.boostrapNodes...),
 		dht.ProviderStore(d.providerStore),
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
+		dht.BucketSize(50),
 	)
 	if err != nil {
 		log.Infof("dht: new: %v", err)

@@ -230,17 +230,11 @@ func (g *warpPubSub) Close() (err error) {
 		sub.Cancel()
 	}
 
-	var errs []error
-	for _, topic := range g.topics {
-		if err = topic.Close(); err != nil {
-			errs = append(errs, err)
-		}
+	for i, topic := range g.topics {
+		_ = topic.Close()
+		g.topics[i] = nil
 	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-
+	
 	g.isRunning.Store(false)
 	g.pubsub = nil
 	return

@@ -316,7 +316,7 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 
 func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	log.Debugln("consensus: node state is catching up to the latest known version. Please wait...")
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
 
 	for {
