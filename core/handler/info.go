@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/docker/go-units"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
@@ -11,7 +12,11 @@ type NodeInformer interface {
 	NodeInfo() warpnet.NodeInfo
 }
 
-func StreamGetInfoHandler(i NodeInformer, handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {
+type DBSizer interface {
+	Size() int64
+}
+
+func StreamGetInfoHandler(i NodeInformer, db DBSizer, handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
 		defer func() { s.Close() }() //#nosec
 
@@ -21,7 +26,7 @@ func StreamGetInfoHandler(i NodeInformer, handler discovery.DiscoveryHandler) wa
 		})
 
 		info := i.NodeInfo()
-		info.StreamStats = s.Stat()
+		info.DatabaseSize = units.HumanSize(float64(db.Size()))
 
 		if err := json.JSON.NewEncoder(s).Encode(info); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)

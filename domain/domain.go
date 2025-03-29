@@ -105,7 +105,7 @@ type User struct {
 	NodeId          string    `json:"node_id"`
 
 	// Rtt round trip time - nanoseconds, default - max int64
-	Rtt         int64   `json:"rtt"`
+	Latency     int64   `json:"latency"`
 	TweetsCount uint64  `json:"tweets_count"`
 	Username    string  `json:"username"`
 	Website     *string `json:"website,omitempty"`

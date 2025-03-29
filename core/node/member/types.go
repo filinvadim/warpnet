@@ -88,4 +88,5 @@ type Storer interface {
 	Set(key storage.DatabaseKey, value []byte) error
 	Delete(key storage.DatabaseKey) error
 	Path() string
+	Size() int64
 }

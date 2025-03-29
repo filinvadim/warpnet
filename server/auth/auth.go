@@ -89,7 +89,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 			Id:        id,
 			NodeId:    "None",
 			Username:  owner.Username,
-			Rtt:       math.MaxInt64, // put your user at the end of a who-to-follow list
+			Latency:   math.MaxInt64, // put your user at the end of a who-to-follow list
 		})
 		if err != nil {
 			return authInfo, fmt.Errorf("new user creation failed: %v", err)
@@ -116,7 +116,7 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 		user.Id = owner.UserId
 		user.Username = owner.Username
 		user.CreatedAt = owner.CreatedAt
-		user.Rtt = math.MaxInt64 // put your user at the end of a who-to-follow list
+		user.Latency = math.MaxInt64 // put your user at the end of a who-to-follow list
 		user.NodeId = authInfo.Identity.Owner.NodeId
 		owner.NodeId = authInfo.Identity.Owner.NodeId
 	}

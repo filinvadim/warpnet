@@ -45,8 +45,7 @@ type WarpNode struct {
 	ipv4, ipv6, ownerId string
 	isClosed            *atomic.Bool
 	version             *semver.Version
-
-	nodeInfo warpnet.NodeInfo
+	psk                 security.PSK
 }
 
 func NewWarpNode(
@@ -120,9 +119,7 @@ func NewWarpNode(
 
 	ipv4, ipv6 := parseAddresses(node)
 	id := node.ID()
-	latency := node.Peerstore().LatencyEWMA(id)
 	peerInfo := node.Peerstore().PeerInfo(id)
-	connectedness := node.Network().Connectedness(id)
 
 	plainAddrs := make([]string, 0, len(peerInfo.Addrs))
 	for _, a := range peerInfo.Addrs {
@@ -139,20 +136,8 @@ func NewWarpNode(
 		streamer: stream.NewStreamPool(ctx, node),
 		isClosed: new(atomic.Bool),
 		version:  config.ConfigFile.Version,
+		psk:      psk,
 	}
-
-	nodeInfo := warpnet.NodeInfo{
-		ID:           node.ID(),
-		Addrs:        []string{ipv4, ipv6},
-		Protocols:    wn.SupportedProtocols(),
-		Latency:      latency,
-		NetworkState: connectedness.String(),
-		Version:      wn.version,
-		//StreamStats:  nil, // will be added later
-		OwnerId: ownerId,
-		PSK:     pnet.PSK(psk),
-	}
-	wn.nodeInfo = nodeInfo
 
 	return wn, nil
 }
@@ -204,13 +189,39 @@ func (n *WarpNode) SupportedProtocols() []string {
 		if strings.HasPrefix(string(p), "/private") { // hide it just in case
 			continue
 		}
+		if strings.Contains(string(p), "/admin/") {
+			continue
+		}
+		if strings.HasPrefix(string(p), "/raft") {
+			continue
+		}
 		filtered = append(filtered, string(p))
 	}
 	return filtered
 }
 
 func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
-	return n.nodeInfo
+	networkState := "NotConnected"
+	peersOnline := n.node.Network().Peers()
+	if len(peersOnline) != 0 {
+		networkState = "Connected"
+	}
+
+	storedPeers := n.node.Peerstore().Peers()
+
+	return warpnet.NodeInfo{
+		ID: n.node.ID(),
+		Addrs: warpnet.AddrsInfo{
+			IPv4: n.ipv4,
+			IPv6: n.ipv6,
+		},
+		PeersOnline:  len(peersOnline),
+		PeersStored:  len(storedPeers),
+		NetworkState: networkState,
+		Version:      n.version,
+		OwnerId:      n.ownerId,
+		PSK:          pnet.PSK(n.psk),
+	}
 }
 
 func (n *WarpNode) Node() warpnet.P2PNode {

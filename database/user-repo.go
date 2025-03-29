@@ -21,7 +21,7 @@ const (
 	userSubNamespace = "USER"
 	nodeSubNamespace = "NODE"
 
-	defaultAverageRTT int64 = 250000
+	defaultAverageLatency int64 = 125000
 )
 
 type UserStorer interface {
@@ -53,11 +53,11 @@ func (repo *UserRepo) Create(user domain.User) (domain.User, error) {
 		return user, err
 	}
 
-	if user.Rtt == 0 {
-		user.Rtt = defaultAverageRTT
+	if user.Latency == 0 {
+		user.Latency = defaultAverageLatency
 	}
 
-	rttRange := storage.RangePrefix(strconv.FormatInt(user.Rtt, 10))
+	rttRange := storage.RangePrefix(strconv.FormatInt(user.Latency, 10))
 
 	fixedKey := storage.NewPrefixBuilder(UsersRepoName).
 		AddSubPrefix(userSubNamespace).

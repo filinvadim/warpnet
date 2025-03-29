@@ -18,19 +18,23 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/multiformats/go-multiaddr"
-	"time"
 )
 
 type NodeInfo struct {
 	ID           WarpPeerID      `json:"id"`
-	Addrs        []string        `json:"addrs"`
-	Latency      time.Duration   `json:"latency"`
+	Addrs        AddrsInfo       `json:"addrs"`
 	NetworkState string          `json:"network_state"`
 	Version      *semver.Version `json:"version"`
-	StreamStats  network.Stats   `json:"stream_stats"`
 	OwnerId      string          `json:"owner_id"`
-	Protocols    []string        `json:"protocols"`
 	PSK          pnet.PSK        `json:"psk"`
+	PeersOnline  int             `json:"peers_online"`
+	PeersStored  int             `json:"peers_stored"`
+	DatabaseSize string          `json:"database_size"`
+}
+
+type AddrsInfo struct {
+	IPv4 string `json:"ipv4"`
+	IPv6 string `json:"ipv6,omitempty"`
 }
 
 var ErrNodeIsOffline = errors.New("node is offline")

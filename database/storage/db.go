@@ -168,6 +168,11 @@ func (db *DB) runEventualGC() {
 	}
 }
 
+func (db *DB) Size() int64 {
+	lsm, vlog := db.badger.Size()
+	return lsm + vlog
+}
+
 func (db *DB) Set(key DatabaseKey, value []byte) error {
 	if db == nil {
 		return ErrNotRunning

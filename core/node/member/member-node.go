@@ -140,7 +140,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
-		logMw(handler.StreamGetInfoHandler(m, m.discService.HandlePeerFound)),
+		logMw(handler.StreamGetInfoHandler(m, db, m.discService.HandlePeerFound)),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_POST_PAIR,

@@ -189,7 +189,7 @@ func (repo *ReplyRepo) GetRepliesTree(rootId, parentId string, limit *uint64, cu
 
 func buildRepliesTree(replies []domain.Tweet) []domain.ReplyNode {
 	if len(replies) == 0 {
-		return nil
+		return []domain.ReplyNode{}
 	}
 
 	nodeMap := make(map[string]domain.ReplyNode, len(replies))

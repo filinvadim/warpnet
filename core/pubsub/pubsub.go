@@ -234,7 +234,7 @@ func (g *warpPubSub) Close() (err error) {
 		_ = topic.Close()
 		g.topics[i] = nil
 	}
-	
+
 	g.isRunning.Store(false)
 	g.pubsub = nil
 	return
@@ -453,17 +453,11 @@ func (g *warpPubSub) publishPeerInfo(discTopic *pubsub.Topic) {
 		case <-g.ctx.Done():
 			return
 		case <-ticker.C:
-			addrs := make([]string, 0, len(g.serverNode.NodeInfo().Addrs))
-			for _, addr := range g.serverNode.NodeInfo().Addrs {
-				if addr == "" {
-					continue
-				}
-				addrs = append(addrs, addr)
-			}
+			addrs := g.serverNode.NodeInfo().Addrs
 
 			msg := warpnet.WarpAddrInfo{
 				ID:    g.serverNode.NodeInfo().ID,
-				Addrs: addrs,
+				Addrs: []string{addrs.IPv4, addrs.IPv6},
 			}
 			data, err := json.Marshal(msg)
 			if err != nil {

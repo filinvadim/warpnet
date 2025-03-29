@@ -237,13 +237,13 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
-	now := time.Now()
+
 	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer: %s", err)
 		return
 	}
-	rtt := time.Since(now)
+	latency := s.node.Peerstore().LatencyEWMA(pi.ID)
 
 	var user domain.User
 	err = json.JSON.Unmarshal(userResp, &user)
@@ -251,7 +251,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
-	user.Rtt = int64(rtt)
+	user.Latency = int64(latency)
 	newUser, err := s.userRepo.Create(user)
 	if errors.Is(err, database.ErrUserAlreadyExists) {
 		return
