@@ -201,6 +201,9 @@ func (n *WarpNode) SupportedProtocols() []string {
 }
 
 func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
+	if n == nil || n.node == nil || n.node.Network() == nil || n.node.Peerstore() == nil {
+		return warpnet.NodeInfo{}
+	}
 	networkState := "NotConnected"
 	peersOnline := n.node.Network().Peers()
 	if len(peersOnline) != 0 {

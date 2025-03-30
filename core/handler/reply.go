@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	"strings"
 )
 
 type ReplyTweetStorer interface {
@@ -45,21 +46,27 @@ func StreamNewReplyHandler(
 		if ev.Text == "" {
 			return nil, errors.New("empty reply body")
 		}
-
-		var parentTweet domain.Tweet
 		if ev.ParentId == nil {
-			parentTweet, err = tweetRepo.Get(ev.UserId, ev.RootId)
+			return nil, errors.New("empty parent ID")
+		}
+
+		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
+		parentId := strings.TrimPrefix(*ev.ParentId, domain.RetweetPrefix)
+
+		var parentPost domain.Tweet
+		if *ev.ParentId == ev.RootId { // parent is a tweet, not reply
+			parentPost, err = tweetRepo.Get(ev.UserId, rootId)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("rootID: %s, user ID: %s, %w", rootId, ev.UserId, err)
 			}
 		} else {
-			parentTweet, err = replyRepo.GetReply(ev.RootId, *ev.ParentId)
+			parentPost, err = replyRepo.GetReply(rootId, parentId)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("rootID: %s, parent ID: %s, %w", rootId, parentId, err)
 			}
 		}
 
-		parentUser, err := userRepo.Get(parentTweet.UserId)
+		parentUser, err := userRepo.Get(parentPost.UserId)
 		if err != nil {
 			return nil, err
 		}
@@ -67,8 +74,8 @@ func StreamNewReplyHandler(
 		reply, err := replyRepo.AddReply(domain.Tweet{
 			CreatedAt: ev.CreatedAt,
 			Id:        ev.Id,
-			ParentId:  ev.ParentId,
-			RootId:    ev.RootId,
+			ParentId:  &parentId,
+			RootId:    rootId,
 			Text:      ev.Text,
 			UserId:    ev.UserId,
 			Username:  ev.Username,
@@ -106,7 +113,10 @@ func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
 			return nil, errors.New("empty root id")
 		}
 
-		return repo.GetReply(ev.RootId, ev.ReplyId)
+		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
+		id := strings.TrimPrefix(ev.ReplyId, domain.RetweetPrefix)
+
+		return repo.GetReply(rootId, id)
 	}
 }
 
@@ -129,19 +139,22 @@ func StreamDeleteReplyHandler(
 			return nil, errors.New("empty root id")
 		}
 
-		reply, err := replyRepo.GetReply(ev.RootId, ev.ReplyId)
+		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
+
+		reply, err := replyRepo.GetReply(rootId, ev.ReplyId)
 		if err != nil {
 			return nil, err
 		}
 
 		var parentTweet domain.Tweet
 		if reply.ParentId == nil {
-			parentTweet, err = tweetRepo.Get(reply.UserId, reply.RootId)
+			parentTweet, err = tweetRepo.Get(reply.UserId, rootId)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			parentTweet, err = replyRepo.GetReply(reply.RootId, *reply.ParentId)
+			parentId := strings.TrimPrefix(*reply.ParentId, domain.RetweetPrefix)
+			parentTweet, err = replyRepo.GetReply(rootId, parentId)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +165,7 @@ func StreamDeleteReplyHandler(
 			return nil, err
 		}
 
-		if err = replyRepo.DeleteReply(ev.RootId, ev.ReplyId); err != nil {
+		if err = replyRepo.DeleteReply(rootId, ev.ReplyId); err != nil {
 			return nil, err
 		}
 
@@ -161,7 +174,7 @@ func StreamDeleteReplyHandler(
 			event.PUBLIC_DELETE_REPLY,
 			event.DeleteReplyEvent{
 				ReplyId: ev.ReplyId,
-				RootId:  ev.RootId,
+				RootId:  rootId,
 				UserId:  ev.UserId,
 			},
 		)
@@ -191,7 +204,11 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		if ev.RootId == "" {
 			return nil, errors.New("empty root id")
 		}
-		replies, cursor, err := repo.GetRepliesTree(ev.RootId, ev.ParentId, ev.Limit, ev.Cursor)
+
+		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
+		parentId := strings.TrimPrefix(ev.ParentId, domain.RetweetPrefix)
+
+		replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -199,6 +216,31 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 			Cursor:  cursor,
 			Replies: replies,
 		}, nil
+	}
+}
 
+func StreamGetRepliesCountHandler(repo ReplyStorer) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetReplyEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+		if ev.ReplyId == "" {
+			return nil, errors.New("empty reply id")
+		}
+
+		//replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//return event.RepliesTreeResponse{
+		//	Cursor:  cursor,
+		//	Replies: replies,
+		//}, nil
+		return nil, nil
 	}
 }

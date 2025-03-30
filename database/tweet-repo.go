@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/domain"
 	"sort"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/oklog/ulid/v2"
 )
+
+var ErrTweetNotFound = errors.New("tweet not found")
 
 const (
 	TweetsNamespace       = "/TWEETS"
@@ -109,11 +112,17 @@ func (repo *TweetRepo) Get(userID, tweetID string) (tweet domain.Tweet, err erro
 		AddParentId(tweetID).
 		Build()
 	sortableKeyBytes, err := repo.db.Get(fixedKey)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return tweet, ErrTweetNotFound
+	}
 	if err != nil {
 		return tweet, err
 	}
 
 	data, err := repo.db.Get(storage.DatabaseKey(sortableKeyBytes))
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return tweet, ErrTweetNotFound
+	}
 	if err != nil {
 		return tweet, err
 	}
