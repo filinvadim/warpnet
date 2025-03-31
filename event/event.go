@@ -11,6 +11,8 @@ const (
 	Accepted AcceptedResponse = "Accepted"
 )
 
+type ID = string
+
 // AcceptedResponse defines model for AcceptedResponse.
 type AcceptedResponse string
 
@@ -138,7 +140,7 @@ type GetFollowersEvent struct {
 }
 
 // GetLikersEvent defines model for GetLikersEvent.
-type GetLikersEvent struct {
+type GetReactorsEvent struct {
 	Cursor  *string `json:"cursor,omitempty"`
 	Limit   *uint64 `json:"limit,omitempty"`
 	TweetId string  `json:"tweet_id"`
@@ -159,6 +161,12 @@ type GetMessageEvent struct {
 	UserId string `json:"user_id"`
 }
 
+type GetTweetStatsEvent struct {
+	TweetId string  `json:"tweet_id"`
+	Cursor  *string `json:"cursor,omitempty"`
+	Limit   *uint64 `json:"limit,omitempty"`
+}
+
 // GetReTweetsCountEvent defines model for GetReTweetsCountEvent.
 type GetReTweetsCountEvent = GetLikesCountEvent
 
@@ -168,9 +176,6 @@ type GetReplyEvent struct {
 	RootId  string `json:"root_id"`
 	UserId  string `json:"user_id"`
 }
-
-// GetRetweetersEvent defines model for GetRetweetersEvent.
-type GetRetweetersEvent = GetLikersEvent
 
 // GetRetweetersResponse defines model for GetRetweetersResponse.
 type GetRetweetersResponse = UsersResponse
@@ -279,6 +284,22 @@ type TweetsResponse struct {
 	Cursor string         `json:"cursor"`
 	Tweets []domain.Tweet `json:"tweets"`
 	UserId string         `json:"user_id"`
+}
+
+type TweetStatsResponse struct {
+	TweetId    ID          `json:"tweet_id"`
+	Likers     IDsResponse `json:"likers"`
+	Retweeters IDsResponse `json:"retweeters"`
+
+	RetweetsCount uint64 `json:"retweets_count"`
+	LikeCount     uint64 `json:"likes_count"`
+	RepliesCount  uint64 `json:"replies_count"`
+	ViewsCount    uint64 `json:"views_count"`
+}
+
+type IDsResponse struct {
+	Cursor string `json:"cursor"`
+	Users  []ID   `json:"users"`
 }
 
 // UnlikeEvent defines model for UnlikeEvent.

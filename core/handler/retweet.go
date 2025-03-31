@@ -6,12 +6,10 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 type RetweetStreamer interface {
@@ -151,57 +149,5 @@ func StreamUnretweetHandler(
 		}
 
 		return event.Accepted, nil
-	}
-}
-
-func StreamGetReTweetsCountHandler(repo ReTweetsStorer) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetReTweetsCountEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
-		}
-
-		count, err := repo.RetweetsCount(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
-		if err != nil {
-			return nil, err
-		}
-		return event.ReTweetsCountResponse{Count: count}, nil
-	}
-}
-
-func StreamGetRetweetersHandler(
-	retweetRepo ReTweetsStorer,
-	userRepo RetweetedUserFetcher,
-) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetRetweetersEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
-		}
-
-		retweeters, cur, err := retweetRepo.Retweeters(
-			strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.Limit, ev.Cursor,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		users, err := userRepo.GetBatch(retweeters...)
-		if err != nil && !errors.Is(err, database.ErrUserNotFound) {
-			return nil, err
-		}
-
-		return event.GetRetweetersResponse{
-			Cursor: cur,
-			Users:  users,
-		}, nil
 	}
 }

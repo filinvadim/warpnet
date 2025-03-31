@@ -37,6 +37,8 @@ type ConsensusProvider interface {
 	LeaderID() warpnet.WarpPeerID
 	CommitState(newState consensus.KVState) (_ *consensus.KVState, err error)
 	Shutdown()
+	ValidateUserID(userId string) error
+	Stats() map[string]string
 }
 
 type DistributedHashTableCloser interface {
@@ -88,5 +90,6 @@ type Storer interface {
 	Set(key storage.DatabaseKey, value []byte) error
 	Delete(key storage.DatabaseKey) error
 	Path() string
-	Size() int64
+	Stats() map[string]string
+	IsFirstRun() bool
 }

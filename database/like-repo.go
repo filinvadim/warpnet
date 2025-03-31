@@ -12,7 +12,7 @@ const (
 	LikerSubNamespace = "LIKER"
 )
 
-var ErrLikesNotFound = errors.New("not found")
+var ErrLikesNotFound = errors.New("like not found")
 
 type LikeStorer interface {
 	Get(key storage.DatabaseKey) ([]byte, error)
@@ -69,7 +69,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error
 	return likesCount, txn.Commit()
 }
 
-func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err error) {
+func (repo *LikeRepo) Unlike(userId, tweetId string) (likesCount uint64, err error) {
 	if tweetId == "" {
 		return 0, errors.New("empty tweet id")
 	}
@@ -150,6 +150,9 @@ func (repo *LikeRepo) Likers(tweetId string, limit *uint64, cursor *string) (_ l
 	defer txn.Rollback()
 
 	items, cur, err := txn.List(likePrefix, limit, cursor)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return nil, "", ErrLikesNotFound
+	}
 	if err != nil {
 		return nil, "", err
 	}

@@ -1,19 +1,23 @@
 package database
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/filinvadim/warpnet/database/storage"
-	domain "github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/oklog/ulid/v2"
 )
 
+var ErrReplyNotFound = errors.New("reply not found")
+
 const (
-	RepliesNamespace = "/REPLY"
+	RepliesNamespace     = "/REPLY"
+	repliesCountSubspace = "REPLIESCOUNT"
 )
 
 type ReplyStorer interface {
@@ -71,6 +75,11 @@ func (repo *ReplyRepo) AddReply(reply domain.Tweet) (domain.Tweet, error) {
 		AddReversedTimestamp(reply.CreatedAt).
 		Build()
 
+	replyCountKey := storage.NewPrefixBuilder(RepliesNamespace).
+		AddSubPrefix(repliesCountSubspace).
+		AddRootID(reply.Id).
+		Build()
+
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return reply, fmt.Errorf("error creating transaction: %w", err)
@@ -83,6 +92,10 @@ func (repo *ReplyRepo) AddReply(reply domain.Tweet) (domain.Tweet, error) {
 	if err := txn.Set(parentSortableKey, data); err != nil {
 		return reply, fmt.Errorf("error adding reply data: %w", err)
 	}
+	if _, err = txn.Increment(replyCountKey); err != nil {
+		return reply, err
+	}
+
 	return reply, txn.Commit()
 }
 
@@ -119,6 +132,25 @@ func (repo *ReplyRepo) GetReply(rootID string, replyId string) (tweet domain.Twe
 	return tweet, txn.Commit()
 }
 
+func (repo *ReplyRepo) RepliesCount(tweetId string) (likesNum uint64, err error) {
+	if tweetId == "" {
+		return 0, errors.New("empty tweet id")
+	}
+	replyCountKey := storage.NewPrefixBuilder(RepliesNamespace).
+		AddSubPrefix(repliesCountSubspace).
+		AddRootID(tweetId).
+		Build()
+
+	bt, err := repo.db.Get(replyCountKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return 0, ErrReplyNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(bt), nil
+}
+
 func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
 	if rootID == "" || replyID == "" {
 		return errors.New("rootID and replyID cannot be empty")
@@ -128,6 +160,11 @@ func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
 		AddRootID(rootID).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(replyID).
+		Build()
+
+	replyCountKey := storage.NewPrefixBuilder(RepliesNamespace).
+		AddSubPrefix(repliesCountSubspace).
+		AddRootID(replyID).
 		Build()
 
 	txn, err := repo.db.NewWriteTxn()
@@ -145,6 +182,9 @@ func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
 	}
 	if err := txn.Delete(storage.DatabaseKey(sortableKey)); err != nil {
 		return fmt.Errorf("error deleting sortable key: %w", err)
+	}
+	if _, err = txn.Decrement(replyCountKey); err != nil {
+		return err
 	}
 
 	return txn.Commit()

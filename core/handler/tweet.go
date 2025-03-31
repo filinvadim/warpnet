@@ -1,16 +1,20 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+	"strings"
 	"time"
 )
 
@@ -39,6 +43,79 @@ type TweetsStorer interface {
 
 type TimelineUpdater interface {
 	AddTweetToTimeline(userId string, tweet domain.Tweet) error
+}
+
+func StreamNewTweetHandler(
+	broadcaster TweetBroadcaster,
+	authRepo OwnerTweetStorer,
+	tweetRepo TweetsStorer,
+	timelineRepo TimelineUpdater,
+) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.NewTweetEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+
+		tweet, err := tweetRepo.Create(ev.UserId, ev)
+		if err != nil {
+			return nil, err
+		}
+
+		owner := authRepo.GetOwner()
+
+		if tweet.Id == "" {
+			return tweet, errors.New("tweet handler: empty tweet id")
+		}
+		if err = timelineRepo.AddTweetToTimeline(owner.UserId, tweet); err != nil {
+			log.Infof("fail adding tweet to timeline: %v", err)
+		}
+		if owner.UserId == ev.UserId {
+			respTweetEvent := event.NewTweetEvent{
+				CreatedAt: tweet.CreatedAt,
+				Id:        tweet.Id,
+				ParentId:  tweet.ParentId,
+				RootId:    tweet.RootId,
+				Text:      tweet.Text,
+				UserId:    tweet.UserId,
+				Username:  tweet.Username,
+			}
+			bt, _ := json.JSON.Marshal(respTweetEvent)
+			msgBody := jsoniter.RawMessage(bt)
+			msg := event.Message{
+				Body:      &msgBody,
+				NodeId:    owner.NodeId,
+				Path:      event.PRIVATE_POST_TWEET,
+				Timestamp: time.Now(),
+			}
+			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
+				log.Infoln("broadcaster publish owner tweet update:", err)
+			}
+		}
+		return tweet, nil
+	}
+}
+
+func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetTweetEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+		if ev.TweetId == "" {
+			return nil, errors.New("empty tweet id")
+		}
+
+		return repo.Get(ev.UserId, ev.TweetId)
+	}
 }
 
 func StreamGetTweetsHandler(
@@ -112,83 +189,11 @@ func StreamGetTweetsHandler(
 	}
 }
 
-func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetTweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
-		}
-		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
-		}
-
-		return repo.Get(ev.UserId, ev.TweetId)
-	}
-}
-
-func StreamNewTweetHandler(
-	broadcaster TweetBroadcaster,
-	authRepo OwnerTweetStorer,
-	tweetRepo TweetsStorer,
-	timelineRepo TimelineUpdater,
-) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.NewTweetEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
-		}
-
-		tweet, err := tweetRepo.Create(ev.UserId, ev)
-		if err != nil {
-			return nil, err
-		}
-
-		owner := authRepo.GetOwner()
-
-		if tweet.Id == "" {
-			return tweet, errors.New("tweet handler: empty tweet id")
-		}
-		if err = timelineRepo.AddTweetToTimeline(owner.UserId, tweet); err != nil {
-			log.Infof("fail adding tweet to timeline: %v", err)
-		}
-		if owner.UserId == ev.UserId {
-			respTweetEvent := event.NewTweetEvent{
-				CreatedAt: tweet.CreatedAt,
-				Id:        tweet.Id,
-				ParentId:  tweet.ParentId,
-				RootId:    tweet.RootId,
-				Text:      tweet.Text,
-				UserId:    tweet.UserId,
-				Username:  tweet.Username,
-			}
-			bt, _ := json.JSON.Marshal(respTweetEvent)
-			msgBody := jsoniter.RawMessage(bt)
-			msg := event.Message{
-				Body:      &msgBody,
-				NodeId:    owner.NodeId,
-				Path:      event.PRIVATE_POST_TWEET,
-				Timestamp: time.Now(),
-			}
-			if err := broadcaster.PublishOwnerUpdate(owner.UserId, msg); err != nil {
-				log.Infoln("broadcaster publish owner tweet update:", err)
-			}
-		}
-		return tweet, nil
-	}
-}
-
 func StreamDeleteTweetHandler(
 	broadcaster TweetBroadcaster,
 	authRepo OwnerTweetStorer,
 	repo TweetsStorer,
+	likeRepo *database.LikeRepo, // TODO
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteTweetEvent
@@ -203,9 +208,14 @@ func StreamDeleteTweetHandler(
 			return nil, errors.New("empty tweet id")
 		}
 
-		if err := repo.Delete(ev.UserId, ev.TweetId); err != nil {
+		if _, err := likeRepo.Unlike(ev.UserId, strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)); err != nil {
+			log.Errorf("delete tweet: fail unliking tweet: %v", err)
+		}
+
+		if err := repo.Delete(ev.UserId, strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)); err != nil {
 			return nil, err
 		}
+
 		owner := authRepo.GetOwner()
 		if owner.UserId == ev.UserId {
 			respTweetEvent := event.DeleteTweetEvent{
@@ -226,5 +236,91 @@ func StreamDeleteTweetHandler(
 		}
 
 		return event.Accepted, nil
+	}
+}
+
+func StreamGetTweetStatsHandler(
+	likeRepo *database.LikeRepo,
+	retweetRepo *database.TweetRepo,
+	replyRepo *database.ReplyRepo, // TODO views
+) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetTweetStatsEvent
+		err := json.JSON.Unmarshal(buf, &ev)
+		if err != nil {
+			return nil, err
+		}
+		if ev.TweetId == "" {
+			return nil, errors.New("empty tweet id")
+		}
+
+		var (
+			retweetsCount    uint64
+			likesCount       uint64
+			repliesCount     uint64
+			retweeters       []string
+			retweetersCursor string
+			likers           []string
+			likersCursor     string
+			ctx, cancelF     = context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+			g, _             = errgroup.WithContext(ctx)
+			tweetId          = strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
+		)
+		defer cancelF()
+
+		g.Go(func() error {
+			retweetsCount, err = retweetRepo.RetweetsCount(tweetId)
+			if errors.Is(err, database.ErrTweetNotFound) {
+				return nil
+			}
+			return err
+		})
+		g.Go(func() error {
+			likesCount, err = likeRepo.LikesCount(tweetId)
+			if errors.Is(err, database.ErrLikesNotFound) {
+				return nil
+			}
+			return err
+		})
+		g.Go(func() error {
+			repliesCount, err = replyRepo.RepliesCount(tweetId)
+			if errors.Is(err, database.ErrReplyNotFound) {
+				return nil
+			}
+			return err
+		})
+		g.Go(func() error {
+			retweeters, retweetersCursor, err = retweetRepo.Retweeters(tweetId, ev.Limit, ev.Cursor)
+			if errors.Is(err, database.ErrTweetNotFound) {
+				return nil
+			}
+			return err
+		})
+		g.Go(func() error {
+			likers, likersCursor, err = likeRepo.Likers(tweetId, ev.Limit, ev.Cursor)
+			if errors.Is(err, database.ErrLikesNotFound) {
+				return nil
+			}
+			return err
+		})
+		if err = g.Wait(); err != nil {
+			log.Errorf("get tweet stats: %v %v", ev, err)
+		}
+
+		return event.TweetStatsResponse{
+			TweetId:       ev.TweetId,
+			ViewsCount:    0, // TODO
+			RetweetsCount: retweetsCount,
+			LikeCount:     likesCount,
+			RepliesCount:  repliesCount,
+			Retweeters: event.IDsResponse{
+				Cursor: retweetersCursor,
+				Users:  retweeters,
+			},
+			Likers: event.IDsResponse{
+				Cursor: likersCursor,
+				Users:  likers,
+			},
+		}, nil
 	}
 }

@@ -2,7 +2,6 @@ package member
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -17,7 +16,6 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
@@ -37,6 +35,7 @@ type MemberNode struct {
 	providerStore ProviderCacheCloser
 	nodeRepo      ProviderCacheCloser
 	retrier       retrier.Retrier
+	isFirstRun    bool
 }
 
 func NewMemberNode(
@@ -109,6 +108,7 @@ func NewMemberNode(
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
 		retrier:       retrier.New(time.Second, 10, retrier.ExponentialBackoff),
+		isFirstRun:    db.IsFirstRun(),
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, db)
@@ -140,7 +140,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
-		logMw(handler.StreamGetInfoHandler(m, db, m.discService.HandlePeerFound)),
+		logMw(handler.StreamGetInfoHandler(m, db, m.raft, m.discService.HandlePeerFound)),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_POST_PAIR,
@@ -156,7 +156,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_DELETE_TWEET,
-		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(m.pubsubService, authRepo, tweetRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamDeleteTweetHandler(m.pubsubService, authRepo, tweetRepo, likeRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_REPLY,
@@ -191,6 +191,10 @@ func (m *MemberNode) setupHandlers(
 		logMw(authMw(unwrapMw(handler.StreamGetTweetHandler(tweetRepo)))),
 	)
 	m.SetStreamHandler(
+		event.PUBLIC_GET_TWEET_STATS,
+		logMw(authMw(unwrapMw(handler.StreamGetTweetStatsHandler(likeRepo, tweetRepo, replyRepo)))),
+	)
+	m.SetStreamHandler(
 		event.PUBLIC_GET_REPLY,
 		logMw(authMw(unwrapMw(handler.StreamGetReplyHandler(replyRepo)))),
 	)
@@ -215,20 +219,8 @@ func (m *MemberNode) setupHandlers(
 		logMw(authMw(unwrapMw(handler.StreamUnlikeHandler(likeRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
-		event.PUBLIC_GET_LIKESCOUNT,
-		logMw(authMw(unwrapMw(handler.StreamGetLikesNumHandler(likeRepo)))),
-	)
-	m.SetStreamHandler(
-		event.PUBLIC_GET_LIKERS,
-		logMw(authMw(unwrapMw(handler.StreamGetLikersHandler(likeRepo, userRepo)))),
-	)
-	m.SetStreamHandler(
 		event.PRIVATE_POST_USER,
 		logMw(authMw(unwrapMw(handler.StreamUpdateProfileHandler(authRepo, userRepo)))),
-	)
-	m.SetStreamHandler(
-		event.PUBLIC_GET_RETWEETSCOUNT,
-		logMw(authMw(unwrapMw(handler.StreamGetReTweetsCountHandler(tweetRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_RETWEET,
@@ -237,10 +229,6 @@ func (m *MemberNode) setupHandlers(
 	m.SetStreamHandler(
 		event.PUBLIC_POST_UNRETWEET,
 		logMw(authMw(unwrapMw(handler.StreamUnretweetHandler(authRepo, tweetRepo, userRepo, m)))),
-	)
-	m.SetStreamHandler(
-		event.PUBLIC_GET_RETWEETERS,
-		logMw(authMw(unwrapMw(handler.StreamGetRetweetersHandler(tweetRepo, userRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_CHAT,
@@ -287,38 +275,11 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
 
-	newState := map[string]string{ // TODO
-		database.UserIdConsensusKey: m.NodeInfo().OwnerId,
-	}
-	if m.raft.LeaderID() == m.NodeInfo().ID {
-		_, err := m.raft.CommitState(newState)
-		if errors.Is(err, consensus.ErrNoRaftCluster) {
-			return nil
-		}
-		return err
-	}
-
-	resp, err := m.GenericStream(m.raft.LeaderID().String(), event.PUBLIC_POST_NODE_VERIFY, newState)
-	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
-		return fmt.Errorf("node verify stream: %w", err)
-	}
-	if len(resp) == 0 {
+	if !m.isFirstRun {
 		return nil
 	}
 
-	var errResp event.ErrorResponse
-	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
-		log.Errorf("member: verify response unmarshal failed: %v", errResp)
-		return fmt.Errorf("member: verify response unmarshal failed: %w", errResp)
-	}
-
-	updatedState := make(map[string]string)
-	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Errorf("member: failed to unmarshal updated consensus state %s: %v", resp, err)
-		return consensus.ErrConsensusRejection
-	}
-
-	return nil
+	return m.raft.ValidateUserID(m.NodeInfo().OwnerId)
 }
 
 func (m *MemberNode) Stop() {

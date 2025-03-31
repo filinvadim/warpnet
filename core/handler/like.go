@@ -6,7 +6,6 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
@@ -95,14 +94,14 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 			return nil, err
 		}
 
-		num, err := repo.Unlike(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.UserId)
+		num, err := repo.Unlike(ev.UserId, strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
 		if err != nil {
 			return nil, err
 		}
 
 		unlikeDataResp, err := streamer.GenericStream(
 			unlikedUser.NodeId,
-			event.PUBLIC_POST_LIKE,
+			event.PUBLIC_POST_UNLIKE,
 			event.UnlikeEvent{
 				TweetId: ev.TweetId,
 				UserId:  ev.UserId,
@@ -118,58 +117,5 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 		}
 
 		return event.LikesCountResponse{num}, nil
-	}
-}
-
-func StreamGetLikesNumHandler(repo LikesStorer) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetLikesCountEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
-		}
-		num, err := repo.LikesCount(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
-		if errors.Is(err, database.ErrLikesNotFound) {
-			return event.LikesCountResponse{0}, nil
-		}
-		return event.LikesCountResponse{num}, err
-	}
-}
-
-func StreamGetLikersHandler(likeRepo LikesStorer, userRepo LikedUserFetcher) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetLikersEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
-		}
-		likers, cur, err := likeRepo.Likers(
-			strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.Limit, ev.Cursor,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if len(likers) == 0 {
-			return event.GetLikersResponse{
-				Cursor: "",
-				Users:  []domain.User{},
-			}, nil
-		}
-
-		users, err := userRepo.GetBatch(likers...)
-		if err != nil {
-			return nil, err
-		}
-
-		return event.GetLikersResponse{
-			Cursor: cur,
-			Users:  users,
-		}, nil
 	}
 }

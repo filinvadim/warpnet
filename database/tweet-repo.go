@@ -380,6 +380,9 @@ func (repo *TweetRepo) Retweeters(tweetId string, limit *uint64, cursor *string)
 	defer txn.Rollback()
 
 	items, cur, err := txn.List(retweetersPrefix, limit, cursor)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return nil, "", ErrTweetNotFound
+	}
 	if err != nil {
 		return nil, "", err
 	}

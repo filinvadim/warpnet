@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"github.com/docker/go-units"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -168,9 +170,19 @@ func (db *DB) runEventualGC() {
 	}
 }
 
-func (db *DB) Size() int64 {
+func (db *DB) Stats() map[string]string {
 	lsm, vlog := db.badger.Size()
-	return lsm + vlog
+	size := lsm + vlog
+
+	cacheMetrics := db.badger.BlockCacheMetrics()
+
+	maxVersion := strconv.FormatInt(int64(db.badger.MaxVersion()), 10)
+
+	return map[string]string{
+		"size":           units.HumanSize(float64(size)),
+		"cache_hit_miss": fmt.Sprintf("%d/%d", cacheMetrics.Hits(), cacheMetrics.Misses()),
+		"max_version":    maxVersion,
+	}
 }
 
 func (db *DB) Set(key DatabaseKey, value []byte) error {

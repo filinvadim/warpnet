@@ -218,29 +218,3 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		}, nil
 	}
 }
-
-func StreamGetRepliesCountHandler(repo ReplyStorer) middleware.WarpHandler {
-	return func(buf []byte, s warpnet.WarpStream) (any, error) {
-		var ev event.GetReplyEvent
-		err := json.JSON.Unmarshal(buf, &ev)
-		if err != nil {
-			return nil, err
-		}
-		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
-		}
-		if ev.ReplyId == "" {
-			return nil, errors.New("empty reply id")
-		}
-
-		//replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//return event.RepliesTreeResponse{
-		//	Cursor:  cursor,
-		//	Replies: replies,
-		//}, nil
-		return nil, nil
-	}
-}

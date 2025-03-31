@@ -21,15 +21,17 @@ import (
 )
 
 type NodeInfo struct {
-	ID           WarpPeerID      `json:"id"`
-	Addrs        AddrsInfo       `json:"addrs"`
-	NetworkState string          `json:"network_state"`
-	Version      *semver.Version `json:"version"`
-	OwnerId      string          `json:"owner_id"`
-	PSK          pnet.PSK        `json:"psk"`
-	PeersOnline  int             `json:"peers_online"`
-	PeersStored  int             `json:"peers_stored"`
-	DatabaseSize string          `json:"database_size"`
+	ID             WarpPeerID        `json:"id"`
+	Addrs          AddrsInfo         `json:"addrs"`
+	NetworkState   string            `json:"network_state"`
+	Version        *semver.Version   `json:"version"`
+	OwnerId        string            `json:"owner_id"`
+	PSK            pnet.PSK          `json:"psk"`
+	PeersOnline    int               `json:"peers_online"`
+	PeersStored    int               `json:"peers_stored"`
+	DatabaseStats  map[string]string `json:"database_stats"`
+	ConsensusStats map[string]string `json:"consensus_stats"`
+	MemoryStats    map[string]string `json:"memory_stats"`
 }
 
 type AddrsInfo struct {

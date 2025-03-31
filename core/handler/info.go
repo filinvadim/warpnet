@@ -6,6 +6,8 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"runtime"
+	"time"
 )
 
 type NodeInformer interface {
@@ -13,10 +15,18 @@ type NodeInformer interface {
 }
 
 type DBSizer interface {
-	Size() int64
+	Stats() map[string]string
 }
 
-func StreamGetInfoHandler(i NodeInformer, db DBSizer, handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {
+type ConsensusStatsProvider interface {
+	Stats() map[string]string
+}
+
+func StreamGetInfoHandler(
+	i NodeInformer,
+	db DBSizer,
+	consensus ConsensusStatsProvider,
+	handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
 		defer func() { s.Close() }() //#nosec
 
@@ -25,8 +35,17 @@ func StreamGetInfoHandler(i NodeInformer, db DBSizer, handler discovery.Discover
 			Addrs: []warpnet.WarpAddress{s.Conn().RemoteMultiaddr()},
 		})
 
+		memStats := runtime.MemStats{}
+		runtime.ReadMemStats(&memStats)
+
 		info := i.NodeInfo()
-		info.DatabaseSize = units.HumanSize(float64(db.Size()))
+		info.DatabaseStats = db.Stats()
+		info.ConsensusStats = consensus.Stats()
+		info.MemoryStats = map[string]string{
+			"heap":    units.HumanSize(float64(memStats.Alloc)),
+			"stack":   units.HumanSize(float64(memStats.StackInuse)),
+			"last_gc": time.Unix(0, int64(memStats.LastGC)).Format(time.DateTime),
+		}
 
 		if err := json.JSON.NewEncoder(s).Encode(info); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)

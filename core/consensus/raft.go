@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/event"
+	"github.com/filinvadim/warpnet/json"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -55,6 +59,7 @@ type ConsensusStorer interface {
 type NodeServicesProvider interface {
 	Node() warpnet.P2PNode
 	NodeInfo() warpnet.NodeInfo
+	GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type votersCacher interface {
@@ -65,9 +70,15 @@ type votersCacher interface {
 	close()
 }
 
+type Streamer interface {
+	NodeInfo() warpnet.NodeInfo
+	GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error)
+}
+
 type consensusService struct {
 	ctx           context.Context
 	consensus     *Consensus
+	streamer      Streamer
 	fsm           *fsm
 	cache         votersCacher
 	raft          *raft.Raft
@@ -180,11 +191,11 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return err
 	}
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
+	c.streamer = node
 	return nil
 }
 
 func (c *consensusService) forceBootstrap(id raft.ServerID) error {
-
 	lastIndex, err := c.logStore.LastIndex()
 	if err != nil {
 		return fmt.Errorf("consensus: failed to read last log index: %v", err)
@@ -410,9 +421,57 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	return
 }
 
+func (c *consensusService) Stats() map[string]string {
+	s := c.raft.Stats()
+	return map[string]string{
+		"election_state":  s["state"],
+		"election_period": s["term"],
+		"commit_index":    s["commit_index"],
+		"applied_index":   s["applied_index"],
+		"fsm_pending":     s["fsm_pending"],
+		"last_contact":    s["last_contact"],
+	}
+}
+
 func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	_, leaderId := c.raft.LeaderWithID()
 	return warpnet.FromStringToPeerID(string(leaderId))
+}
+
+func (c *consensusService) ValidateUserID(userId string) error {
+	newState := map[string]string{
+		database.UserIdConsensusKey: userId,
+	}
+
+	leaderId := c.LeaderID().String()
+	if leaderId == string(c.raftID) {
+		_, err := c.CommitState(newState)
+		if errors.Is(err, ErrNoRaftCluster) {
+			return nil
+		}
+		return err
+	}
+
+	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
+	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+		return fmt.Errorf("node verify stream: %w", err)
+	}
+	if len(resp) == 0 {
+		return nil
+	}
+
+	var errResp event.ErrorResponse
+	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
+		log.Errorf("member: verify response unmarshal failed: %v", errResp)
+		return fmt.Errorf("member: verify response unmarshal failed: %w", errResp)
+	}
+
+	updatedState := make(map[string]string)
+	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
+		log.Errorf("member: failed to unmarshal updated consensus state %s: %v", resp, err)
+		return ErrConsensusRejection
+	}
+	return nil
 }
 
 var ErrNoRaftCluster = errors.New("consensus: no cluster found")

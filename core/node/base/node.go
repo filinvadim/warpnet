@@ -204,10 +204,10 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	if n == nil || n.node == nil || n.node.Network() == nil || n.node.Peerstore() == nil {
 		return warpnet.NodeInfo{}
 	}
-	networkState := "NotConnected"
+	networkState := "disconnected"
 	peersOnline := n.node.Network().Peers()
 	if len(peersOnline) != 0 {
-		networkState = "Connected"
+		networkState = "connected"
 	}
 
 	storedPeers := n.node.Peerstore().Peers()
