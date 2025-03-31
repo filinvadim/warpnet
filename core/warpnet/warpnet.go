@@ -21,7 +21,7 @@ import (
 )
 
 type NodeInfo struct {
-	ID             WarpPeerID        `json:"id"`
+	ID             WarpPeerID        `json:"node_id"`
 	Addrs          AddrsInfo         `json:"addrs"`
 	NetworkState   string            `json:"network_state"`
 	Version        *semver.Version   `json:"version"`

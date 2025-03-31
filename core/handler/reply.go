@@ -28,7 +28,7 @@ type ReplyStorer interface {
 	GetReply(rootID, replyID string) (tweet domain.Tweet, err error)
 	GetRepliesTree(rootID, parentId string, limit *uint64, cursor *string) ([]domain.ReplyNode, string, error)
 	AddReply(reply domain.Tweet) (domain.Tweet, error)
-	DeleteReply(rootID, replyID string) error
+	DeleteReply(rootID, parentID, replyID string) error
 }
 
 func StreamNewReplyHandler(
@@ -165,7 +165,7 @@ func StreamDeleteReplyHandler(
 			return nil, err
 		}
 
-		if err = replyRepo.DeleteReply(rootId, ev.ReplyId); err != nil {
+		if err = replyRepo.DeleteReply(rootId, parentTweet.Id, ev.ReplyId); err != nil {
 			return nil, err
 		}
 
@@ -209,12 +209,14 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		parentId := strings.TrimPrefix(ev.ParentId, domain.RetweetPrefix)
 
 		replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
+
 		if err != nil {
 			return nil, err
 		}
 		return event.RepliesTreeResponse{
 			Cursor:  cursor,
 			Replies: replies,
+			UserId:  &parentId,
 		}, nil
 	}
 }

@@ -77,7 +77,7 @@ func (repo *ReplyRepo) AddReply(reply domain.Tweet) (domain.Tweet, error) {
 
 	replyCountKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddSubPrefix(repliesCountSubspace).
-		AddRootID(reply.Id).
+		AddRootID(*reply.ParentId).
 		Build()
 
 	txn, err := repo.db.NewWriteTxn()
@@ -92,7 +92,7 @@ func (repo *ReplyRepo) AddReply(reply domain.Tweet) (domain.Tweet, error) {
 	if err := txn.Set(parentSortableKey, data); err != nil {
 		return reply, fmt.Errorf("error adding reply data: %w", err)
 	}
-	if _, err = txn.Increment(replyCountKey); err != nil {
+	if _, err := txn.Increment(replyCountKey); err != nil {
 		return reply, err
 	}
 
@@ -142,6 +142,7 @@ func (repo *ReplyRepo) RepliesCount(tweetId string) (likesNum uint64, err error)
 		Build()
 
 	bt, err := repo.db.Get(replyCountKey)
+
 	if errors.Is(err, storage.ErrKeyNotFound) {
 		return 0, ErrReplyNotFound
 	}
@@ -151,9 +152,9 @@ func (repo *ReplyRepo) RepliesCount(tweetId string) (likesNum uint64, err error)
 	return binary.BigEndian.Uint64(bt), nil
 }
 
-func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
-	if rootID == "" || replyID == "" {
-		return errors.New("rootID and replyID cannot be empty")
+func (repo *ReplyRepo) DeleteReply(rootID, parentID, replyID string) error {
+	if rootID == "" || parentID == "" || replyID == "" {
+		return errors.New("rootID, parent ID or replyID cannot be empty")
 	}
 
 	treeKey := storage.NewPrefixBuilder(RepliesNamespace).
@@ -164,7 +165,7 @@ func (repo *ReplyRepo) DeleteReply(rootID, replyID string) error {
 
 	replyCountKey := storage.NewPrefixBuilder(RepliesNamespace).
 		AddSubPrefix(repliesCountSubspace).
-		AddRootID(replyID).
+		AddRootID(parentID).
 		Build()
 
 	txn, err := repo.db.NewWriteTxn()
