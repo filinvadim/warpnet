@@ -149,7 +149,6 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.SnapshotThreshold = 8192
 	config.SnapshotInterval = 20 * time.Second
 	config.NoSnapshotRestoreOnStart = true
-	config.SnapshotInterval = time.Hour
 
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
