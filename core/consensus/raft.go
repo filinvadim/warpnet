@@ -146,7 +146,8 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.LogLevel = "ERROR"
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
-	config.SnapshotThreshold = 50
+	config.SnapshotThreshold = 8192
+	config.SnapshotInterval = 20 * time.Second
 	config.NoSnapshotRestoreOnStart = true
 	config.SnapshotInterval = time.Hour
 
@@ -371,7 +372,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
-	log.Infof("consensus: adding new voter %s", info.ID.String())
 
 	id := raft.ServerID(info.ID.String())
 	addr := raft.ServerAddress(info.ID.String())
@@ -379,6 +379,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, err := c.cache.getVoter(id); err == nil {
 		return
 	}
+	log.Infof("consensus: adding new voter %s", info.ID.String())
 
 	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
