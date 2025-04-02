@@ -188,6 +188,7 @@ func (g *warpPubSub) preSubscribe() error {
 	var (
 		nextCursor string
 		limit      = uint64(20)
+		errs       []error
 	)
 	if g.ownerId == "" {
 		return nil
@@ -197,7 +198,11 @@ func (g *warpPubSub) preSubscribe() error {
 	}
 
 	for {
-		followees, cur, _ := g.followRepo.GetFollowees(g.ownerId, &limit, &nextCursor)
+		followees, cur, err := g.followRepo.GetFollowees(g.ownerId, &limit, &nextCursor)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
 		for _, f := range followees {
 			if err := g.SubscribeUserUpdate(f.Followee); err != nil {
 				return err
@@ -208,6 +213,9 @@ func (g *warpPubSub) preSubscribe() error {
 			break
 		}
 		nextCursor = cur
+	}
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 	log.Infoln("pubsub: followees presubscribed")
 	return nil
@@ -226,8 +234,9 @@ func (g *warpPubSub) Close() (err error) {
 	g.mx.RLock()
 	defer g.mx.RUnlock()
 
-	for _, sub := range g.subs {
+	for i, sub := range g.subs {
 		sub.Cancel()
+		g.subs[i] = nil
 	}
 
 	for i, topic := range g.topics {
@@ -399,7 +408,7 @@ func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 		return nil
 	}
 
-	_, err := g.clientNode.ClientStream( // send to self
+	_, err := g.clientNode.ClientStream( // send it to self
 		g.serverNode.NodeInfo().ID.String(),
 		simulatedMessage.Path,
 		*simulatedMessage.Body,
@@ -453,10 +462,11 @@ func (g *warpPubSub) publishPeerInfo(discTopic *pubsub.Topic) {
 		case <-g.ctx.Done():
 			return
 		case <-ticker.C:
-			addrs := g.serverNode.NodeInfo().Addrs
+			info := g.serverNode.NodeInfo()
+			addrs := info.Addrs
 
 			msg := warpnet.WarpAddrInfo{
-				ID:    g.serverNode.NodeInfo().ID,
+				ID:    info.ID,
 				Addrs: []string{addrs.IPv4, addrs.IPv6},
 			}
 			data, err := json.Marshal(msg)
