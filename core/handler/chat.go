@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	"strings"
 	"time"
 )
 
@@ -33,7 +34,8 @@ type ChatStorer interface {
 	ListMessages(chatId string, limit *uint64, cursor *string) ([]domain.ChatMessage, string, error)
 	GetMessage(userId, chatId, id string) (domain.ChatMessage, error)
 	DeleteMessage(userId, chatId, id string) error
-	GetChatByUsers(ownerId, otherUserId string) (chat domain.Chat, err error)
+	GetChat(chatId string) (chat domain.Chat, err error)
+	ComposeChatId(ownerId, otherUserId string) string
 }
 
 // Handler for creating a new chat
@@ -91,14 +93,16 @@ func StreamGetUserChatHandler(
 		if err != nil {
 			return nil, err
 		}
-		if ev.OwnerId == "" {
-			ev.OwnerId = authRepo.GetOwner().UserId
-		}
-		if ev.OtherUserId == "" {
-			return nil, errors.New("empty other user ID")
+
+		if ev.ChatId == "" {
+			return nil, errors.New("empty other chat ID")
 		}
 
-		chat, err := repo.GetChatByUsers(ev.OwnerId, ev.OtherUserId)
+		if !strings.Contains(ev.ChatId, authRepo.GetOwner().UserId) {
+			return nil, errors.New("not owner's chats")
+		}
+
+		chat, err := repo.GetChat(ev.ChatId)
 		if err != nil {
 			return nil, err
 		}
@@ -122,43 +126,37 @@ func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 	}
 }
 
-func StreamGetUserChatsHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
+type OwnerChatsStorer interface {
+	GetOwner() domain.Owner
+}
+
+func StreamGetUserChatsHandler(
+	repo ChatStorer, authRepo OwnerChatsStorer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllChatsEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get chats: unmarshal: %w", err)
 		}
 		if ev.UserId == "" {
 			return nil, errors.New("empty user ID")
 		}
 
+		owner := authRepo.GetOwner()
+		if owner.UserId != ev.UserId {
+			return nil, errors.New("not owner's chats")
+		}
+
 		chats, cursor, err := repo.GetUserChats(ev.UserId, ev.Limit, ev.Cursor)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get chats: fetch from db: %w", err)
 		}
 
-		if len(chats) == 0 {
-			return event.ChatsResponse{
-				Chats:  []domain.Chat{},
-				Cursor: "",
-				UserId: ev.UserId,
-			}, nil
-		}
-
-		var (
-			ownerId      = chats[0].OwnerId
-			userId       = chats[0].OtherUserId
-			remotePeerId = s.Conn().RemotePeer()
-		)
-
-		user, err := userRepo.GetByNodeID(remotePeerId.String())
-		if err != nil {
-			return nil, err
-		}
-
-		if user.Id != userId || userId != ownerId {
-			return nil, errors.New("unauthorized user")
+		for i, chat := range chats {
+			if !strings.Contains(chat.Id, owner.UserId) {
+				chats[i] = domain.Chat{}
+			}
 		}
 
 		return event.ChatsResponse{
@@ -177,35 +175,39 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		if err != nil {
 			return nil, err
 		}
-		if ev.ChatId == "" || ev.OwnerId == "" || ev.Text == "" || ev.OtherUserId == "" {
+		if ev.ChatId == "" || !strings.Contains(ev.ChatId, ":") || ev.Text == "" {
 			return nil, errors.New("message parameters are is empty")
 		}
 
-		otherUser, err := userRepo.Get(ev.OtherUserId)
-		if err != nil {
-			return nil, err
-		}
+		split := strings.Split(ev.ChatId, ":")
+		ownerId, otherUserId := split[0], split[1]
 
 		msg := domain.ChatMessage{
 			ChatId:      ev.ChatId,
-			OwnerId:     ev.OwnerId,
-			OtherUserId: ev.OtherUserId,
+			OwnerId:     ownerId,
+			OtherUserId: otherUserId,
 			Text:        ev.Text,
 			CreatedAt:   time.Now(),
 		}
 
 		msg, err = repo.CreateMessage(msg)
+		if err != nil {
+			return nil, err
+		}
+
+		otherUser, err := userRepo.Get(otherUserId)
+		if err != nil {
+			return nil, err
+		}
 
 		otherMsgData, err := streamer.GenericStream(
 			otherUser.NodeId,
 			event.PUBLIC_POST_MESSAGE,
 			event.NewMessageEvent{
-				CreatedAt:   time.Now(),
-				Id:          msg.Id,
-				OtherUserId: msg.OwnerId, // switch users
-				OwnerId:     msg.OtherUserId,
-				Text:        msg.Text,
-				ChatId:      msg.ChatId,
+				CreatedAt: time.Now(),
+				Id:        msg.Id,
+				Text:      msg.Text,
+				ChatId:    repo.ComposeChatId(otherUserId, ownerId), // switch users
 			},
 		)
 		if err != nil {

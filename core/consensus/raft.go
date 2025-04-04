@@ -258,7 +258,7 @@ func (c *consensusService) sync() error {
 	}
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
-	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute*5)
+	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute)
 	defer voterCancel()
 
 	if err = cs.waitForVoter(voterCtx); err != nil {
@@ -266,7 +266,7 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
+	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute)
 	defer updatesCancel()
 
 	if err = cs.waitForUpdates(updatesCtx); err != nil {
@@ -303,7 +303,7 @@ func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
 }
 
 func (c *consensusSync) waitForVoter(ctx context.Context) error {
-	ticker := time.NewTicker(time.Second / 2)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	id := c.raftID
@@ -327,7 +327,7 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 
 func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	log.Debugln("consensus: node state is catching up to the latest known version. Please wait...")
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -406,11 +406,11 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
-	log.Infof("consensus: removing voter %s", id.String())
 
 	if _, err := c.cache.getVoter(raft.ServerID(id.String())); errors.Is(err, errVoterNotFound) {
 		return
 	}
+	log.Infof("consensus: removing voter %s", id.String())
 
 	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {

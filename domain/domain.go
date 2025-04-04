@@ -17,6 +17,7 @@ type Chat struct {
 	Id          string    `json:"id"`
 	OtherUserId string    `json:"other_user_id"`
 	OwnerId     string    `json:"owner_id"`
+	LastMessage string    `json:"last_message"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 

@@ -124,9 +124,7 @@ type GetAllUsersEvent struct {
 
 // GetChatEvent defines model for GetChatEvent.
 type GetChatEvent struct {
-	CreatedAt   time.Time `json:"created_at"`
-	OwnerId     string    `json:"owner_id"`
-	OtherUserId string    `json:"other_user_id"`
+	ChatId string `json:"chat_id"`
 }
 
 // GetFolloweesEvent defines model for GetFolloweesEvent.
@@ -243,7 +241,12 @@ type NewChatEvent struct {
 type NewFollowEvent = domain.Following
 
 // NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent = domain.ChatMessage
+type NewMessageEvent struct {
+	Id        string    `json:"id"`
+	ChatId    string    `json:"chat_id"`
+	CreatedAt time.Time `json:"created_at"`
+	Text      string    `json:"text"`
+}
 
 // NewMessageResponse defines model for NewMessageResponse.
 type NewMessageResponse = domain.ChatMessage

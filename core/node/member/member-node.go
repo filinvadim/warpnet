@@ -240,7 +240,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_CHATS,
-		logMw(authMw(unwrapMw(handler.StreamGetUserChatsHandler(chatRepo, userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetUserChatsHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_MESSAGE,
