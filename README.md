@@ -13,8 +13,9 @@
     golang >=1.23
 
 ## How to run single node (dev mode)
-```
 - bootstrap node
+
+```
 ```bash 
 go run cmd/node/bootstrap/main.go
 ```
