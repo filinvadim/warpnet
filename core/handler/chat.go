@@ -39,7 +39,12 @@ type ChatStorer interface {
 }
 
 // Handler for creating a new chat
-func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer ChatStreamer) middleware.WarpHandler {
+func StreamCreateChatHandler(
+	repo ChatStorer,
+	userRepo ChatUserFetcher,
+	authRepo ChatAuthStorer,
+	streamer ChatStreamer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewChatEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -50,6 +55,10 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 			return nil, errors.New("owner ID or other user ID is empty")
 		}
 
+		owner := authRepo.GetOwner()
+		if ev.ChatId != nil && ev.OtherUserId == owner.UserId {
+			*ev.ChatId = repo.ComposeChatId(ev.OtherUserId, ev.OwnerId)
+		}
 		otherUser, err := userRepo.Get(ev.OtherUserId)
 		if err != nil {
 			return nil, err
@@ -65,8 +74,8 @@ func StreamCreateChatHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer
 			event.PUBLIC_POST_CHAT,
 			domain.Chat{
 				CreatedAt:   time.Now(),
-				Id:          ownerChat.Id,
-				OtherUserId: ownerChat.OwnerId, // switch users
+				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId), // switch users
+				OtherUserId: ownerChat.OwnerId,
 				OwnerId:     ownerChat.OtherUserId,
 			},
 		)

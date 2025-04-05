@@ -232,7 +232,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, m)))),
+		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, authRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_DELETE_CHAT,

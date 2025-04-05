@@ -43,3 +43,4 @@ build-windows:
 
 build-macos:
 	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-darwin cmd/node/member/main.go
+	chmod +x warpnet-darwin1
