@@ -189,11 +189,18 @@ func StreamGetTweetsHandler(
 	}
 }
 
+type LikeTweetStorer interface {
+	Like(tweetId, userId string) (likesNum uint64, err error)
+	Unlike(tweetId, userId string) (likesNum uint64, err error)
+	LikesCount(tweetId string) (likesNum uint64, err error)
+	Likers(tweetId string, limit *uint64, cursor *string) (likers []string, cur string, err error)
+}
+
 func StreamDeleteTweetHandler(
 	broadcaster TweetBroadcaster,
 	authRepo OwnerTweetStorer,
 	repo TweetsStorer,
-	likeRepo *database.LikeRepo, // TODO
+	likeRepo LikeTweetStorer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteTweetEvent
@@ -239,10 +246,22 @@ func StreamDeleteTweetHandler(
 	}
 }
 
+type RetweetsTweetStorer interface {
+	Get(userID, tweetID string) (tweet domain.Tweet, err error)
+	NewRetweet(tweet domain.Tweet) (_ domain.Tweet, err error)
+	UnRetweet(retweetedByUserID, tweetId string) error
+	RetweetsCount(tweetId string) (uint64, error)
+	Retweeters(tweetId string, limit *uint64, cursor *string) (_ []string, cur string, err error)
+}
+
+type RepliesTweetCounter interface {
+	RepliesCount(tweetId string) (likesNum uint64, err error)
+}
+
 func StreamGetTweetStatsHandler(
-	likeRepo *database.LikeRepo,
-	retweetRepo *database.TweetRepo,
-	replyRepo *database.ReplyRepo, // TODO views
+	likeRepo LikeTweetStorer,
+	retweetRepo RetweetsTweetStorer,
+	replyRepo RepliesTweetCounter, // TODO views
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTweetStatsEvent

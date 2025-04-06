@@ -120,7 +120,7 @@ func NewBootstrapNode(
 	mw := middleware.NewWarpMiddleware()
 	bn.SetStreamHandler(
 		event.PUBLIC_POST_NODE_VERIFY,
-		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamSelfHashVerifyHandler(bn.raft))),
+		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamVerifyHandler(bn.raft))),
 	)
 
 	return bn, nil

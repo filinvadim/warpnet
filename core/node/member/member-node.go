@@ -136,7 +136,7 @@ func (m *MemberNode) setupHandlers(
 	unwrapMw := mw.UnwrapStreamMiddleware
 	m.SetStreamHandler(
 		event.PUBLIC_POST_NODE_VERIFY,
-		logMw(unwrapMw(handler.StreamSelfHashVerifyHandler(m.raft))),
+		logMw(unwrapMw(handler.StreamVerifyHandler(m.raft))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
@@ -248,7 +248,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_DELETE_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo, userRepo, m)))),
+		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_MESSAGE,

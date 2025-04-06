@@ -233,7 +233,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 }
 
 // Handler for deleting a message
-func StreamDeleteMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streamer ChatStreamer) middleware.WarpHandler {
+func StreamDeleteMessageHandler(repo ChatStorer) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.DeleteMessageEvent
 		err := json.JSON.Unmarshal(buf, &ev)

@@ -17,7 +17,7 @@ type AdminStateCommitter interface {
 	CommitState(newState consensus.KVState) (_ *consensus.KVState, err error)
 }
 
-func StreamSelfHashVerifyHandler(state AdminStateCommitter) middleware.WarpHandler {
+func StreamVerifyHandler(state AdminStateCommitter) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		if state == nil {
 			return nil, nil

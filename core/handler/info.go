@@ -26,7 +26,8 @@ func StreamGetInfoHandler(
 	i NodeInformer,
 	db DBSizer,
 	consensus ConsensusStatsProvider,
-	handler discovery.DiscoveryHandler) warpnet.WarpStreamHandler {
+	handler discovery.DiscoveryHandler,
+) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
 		defer func() { s.Close() }() //#nosec
 

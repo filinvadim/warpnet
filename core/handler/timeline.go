@@ -29,13 +29,13 @@ func StreamTimelineHandler(repo TimelineFetcher) middleware.WarpHandler {
 			return nil, err
 		}
 
-		if timeline != nil {
-			return event.TweetsResponse{
-				Cursor: cursor,
-				Tweets: timeline,
-				UserId: ev.UserId,
-			}, nil
+		if timeline == nil {
+			timeline = []domain.Tweet{}
 		}
-		return nil, nil
+		return event.TweetsResponse{
+			Cursor: cursor,
+			Tweets: timeline,
+			UserId: ev.UserId,
+		}, nil
 	}
 }
