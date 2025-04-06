@@ -14,25 +14,23 @@
 
 ## How to run single node (dev mode)
 - bootstrap node
-
-```
 ```bash 
-go run cmd/node/bootstrap/main.go
+    go run cmd/node/bootstrap/main.go
 ```
 - member node
 ```bash 
-go run cmd/node/member/main.go
+    go run cmd/node/member/main.go
 ```
 
 ## How to run multiple nodes (dev mode)
-1. :
+1. go to `config/config.go`:
    - change all ports to different ones;
    - change `database.dir` flag to different one.
 2. Run every node as an independent OS process
-as described in the previous chapter.
+   as described in the previous chapter.
 
 ## How to run multiple nodes in isolated network (dev mode)
-1. In addition to previous chapter update flags:
-    - change `node.network.prefix` to different one.
+1. In addition to the previous chapter update flags:
+    - change `node.network.prefix` flag to different one.
 2. Run multiple nodes as described in the previous chapter.
 

@@ -185,7 +185,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 			return nil, err
 		}
 		if ev.ChatId == "" || !strings.Contains(ev.ChatId, ":") || ev.Text == "" {
-			return nil, errors.New("message parameters are is empty")
+			return nil, errors.New("message parameters are invalid")
 		}
 
 		split := strings.Split(ev.ChatId, ":")
