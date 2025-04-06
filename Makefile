@@ -33,14 +33,18 @@ setup-hooks:
 ssh-do:
 	ssh root@207.154.221.44
 
-self-sign:
-	openssl genpkey -algorithm Ed25519 -out private.pem
-	openssl pkey -in private.pem -pubout -out public.pem
-	openssl pkeyutl -sign -inkey private.pem -rawin -in warpnet -out warpnet.sig
-
 build-windows:
 	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-win.exe cmd/node/member/main.go
 
 build-macos:
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-darwin cmd/node/member/main.go
-	chmod +x warpnet-darwin1
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o dist/darwin/warpnet.app/Contents/MacOS/warpnet-darwin cmd/node/member/main.go
+	chmod +x dist/darwin/warpnet.app/Contents/MacOS/warpnet-darwin
+	chmod +x dist/darwin/warpnet.app/Contents/MacOS/launcher
+
+build-linux:
+	#sudo dpkg -P warpnet
+	rm -f dist/linux/warpnet.deb
+	go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o dist/linux/warpnet/usr/local/bin/warpnet cmd/node/member/main.go
+	chmod +x dist/linux/warpnet/usr/local/bin/warpnet
+	dpkg-deb --build dist/linux/warpnet dist/linux/warpnet.deb
+	desktop-file-validate dist/linux/warpnet/usr/share/applications/warpnet.desktop

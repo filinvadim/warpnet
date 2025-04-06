@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Warpnet
-  version: 0.2.200
+  version: 0.2.201
   description: External API for a distributed Twitter-like application
 servers:
   - url: http://localhost:4002

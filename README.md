@@ -1,11 +1,11 @@
 # WARPNET
 ## General principles
-- warpnet must be independent of any 3rd party services
-- warpnet must be independent of any 3rd party technologies
+- warpnet must be independent of any third party services
+- warpnet must be independent of any third party technologies
 - warpnet node must be represented as a single executable file
 - warpnet must be a multiplatform service
 - warpnet must be a singleton node that running on machine, but it could have as many aliases as needed
-- warpnet member node must be managed only by nodes consensus
+- warpnet member node must be managed only by node consensus
 - warpnet business node could have centralized management
 - warpnet node must store private data only at host machine
 - warpnet member node must not be developed by a single programmer
@@ -28,11 +28,11 @@ go run cmd/node/member/main.go
 1. :
    - change all ports to different ones;
    - change `database.dir` flag to different one.
-2. Run every node as independent OS process
-as described in previous chapter.
+2. Run every node as an independent OS process
+as described in the previous chapter.
 
 ## How to run multiple nodes in isolated network (dev mode)
 1. In addition to previous chapter update flags:
     - change `node.network.prefix` to different one.
-2. Run multiple nodes as described in previous chapter.
+2. Run multiple nodes as described in the previous chapter.
 
