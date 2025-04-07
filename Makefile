@@ -23,7 +23,7 @@ gosec:
 	~/go/bin/gosec ./...
 
 get-frontend:
-	rm -rf vendor/github.com/filinvadim/warpnet-frontend/dist
+	rm -rf vendor/github.com/filinvadim/warpnet-frontend/release
 	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend
 	go mod vendor
 
@@ -37,14 +37,14 @@ build-windows:
 	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-win.exe cmd/node/member/main.go
 
 build-macos:
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o dist/darwin/warpnet.app/Contents/MacOS/warpnet-darwin cmd/node/member/main.go
-	chmod +x dist/darwin/warpnet.app/Contents/MacOS/warpnet-darwin
-	chmod +x dist/darwin/warpnet.app/Contents/MacOS/launcher
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o release/darwin/warpnet.app/Contents/MacOS/warpnet-darwin cmd/node/member/main.go
+	chmod +x release/darwin/warpnet.app/Contents/MacOS/warpnet-darwin
+	chmod +x release/darwin/warpnet.app/Contents/MacOS/launcher
 
 build-linux:
 	#sudo dpkg -P warpnet
-	rm -f dist/linux/warpnet.deb
-	go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o dist/linux/warpnet/usr/local/bin/warpnet cmd/node/member/main.go
-	chmod +x dist/linux/warpnet/usr/local/bin/warpnet
-	dpkg-deb --build dist/linux/warpnet dist/linux/warpnet.deb
-	desktop-file-validate dist/linux/warpnet/usr/share/applications/warpnet.desktop
+	rm -f release/linux/warpnet.deb
+	go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o release/linux/warpnet/usr/local/bin/warpnet cmd/node/member/main.go
+	chmod +x release/linux/warpnet/usr/local/bin/warpnet
+	dpkg-deb --build release/linux/warpnet release/linux/warpnet.deb
+	desktop-file-validate release/linux/warpnet/usr/share/applications/warpnet.desktop
