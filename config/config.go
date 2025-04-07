@@ -30,6 +30,7 @@ func init() {
 		strings.Join(defaultBootstrapNodes, ","),
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
+	pflag.String("node.metrics.server", "", "Metrics server address")
 	pflag.String("logging.level", "INFO", "Logging level")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -51,6 +52,9 @@ func init() {
 			Host:      viper.GetString("node.host"),
 			Port:      viper.GetString("node.port"),
 			Prefix:    viper.GetString("node.network.prefix"),
+			Metrics: Metrics{
+				Server: viper.GetString("node.metrics.server"),
+			},
 		},
 		Database: Database{viper.GetString("database.dir")},
 		Server: Server{
@@ -73,6 +77,11 @@ type Node struct {
 	Host      string
 	Port      string
 	Prefix    string
+	Metrics   Metrics
+}
+
+type Metrics struct {
+	Server string
 }
 type Database struct {
 	DirName string

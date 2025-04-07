@@ -6,6 +6,7 @@ import (
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
+	"github.com/filinvadim/warpnet/metrics"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
 	_ "go.uber.org/automaxprocs" // DO NOT remove
@@ -44,6 +45,8 @@ func main() {
 		log.Fatalf("failed to start bootstrap node: %v", err)
 	}
 
+	m := metrics.NewMetricsClient(config.ConfigFile.Node.Metrics.Server, n.NodeInfo().ID.String(), true)
+	m.PushStatusOnline()
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/metrics"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
@@ -129,6 +130,10 @@ func main() {
 		log.Fatalf("failed to init client node: %v", err)
 	}
 
+	m := metrics.NewMetricsClient(
+		config.ConfigFile.Node.Metrics.Server, serverNodeAuthInfo.Identity.Owner.NodeId, false,
+	)
+	m.PushStatusOnline()
 	log.Infoln("WARPNET STARTED")
 	<-interruptChan
 	log.Infoln("interrupted...")

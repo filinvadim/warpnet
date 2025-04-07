@@ -143,7 +143,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.ElectionTimeout = config.HeartbeatTimeout
 	config.LeaderLeaseTimeout = config.HeartbeatTimeout
 	config.CommitTimeout = time.Second * 30
-	config.LogLevel = "ERROR"
+	config.Logger = newConsensusLogger("error", "consensus")
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
 	config.SnapshotThreshold = 8192
@@ -266,7 +266,7 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute)
+	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*2)
 	defer updatesCancel()
 
 	if err = cs.waitForUpdates(updatesCtx); err != nil {
