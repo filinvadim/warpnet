@@ -25,8 +25,8 @@ const (
 )
 
 type UserStorer interface {
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 	Set(key storage.DatabaseKey, value []byte) error
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error

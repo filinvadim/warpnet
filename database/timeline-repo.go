@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
-	domain_gen "github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/domain"
 	"sort"
 	"time"
 
@@ -15,7 +15,7 @@ const TimelineRepoName = "/TIMELINE"
 
 type TimelineStorer interface {
 	Set(key storage.DatabaseKey, value []byte) error
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 	Delete(key storage.DatabaseKey) error
 }
 
@@ -27,7 +27,7 @@ func NewTimelineRepo(db TimelineStorer) *TimelineRepo {
 	return &TimelineRepo{db: db}
 }
 
-func (repo *TimelineRepo) AddTweetToTimeline(userId string, tweet domain_gen.Tweet) error {
+func (repo *TimelineRepo) AddTweetToTimeline(userId string, tweet domain.Tweet) error {
 	if userId == "" {
 		return errors.New("userID cannot be blank")
 	}
@@ -67,7 +67,7 @@ func (repo *TimelineRepo) DeleteTweetFromTimeline(userID, tweetID string, create
 }
 
 // GetTimeline retrieves a user's timeline sorted from newest to oldest
-func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *string) ([]domain_gen.Tweet, string, error) {
+func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *string) ([]domain.Tweet, string, error) {
 	if userId == "" {
 		return nil, "", errors.New("user ID cannot be blank")
 	}
@@ -89,9 +89,9 @@ func (repo *TimelineRepo) GetTimeline(userId string, limit *uint64, cursor *stri
 		return nil, "", err
 	}
 
-	tweets := make([]domain_gen.Tweet, 0, len(items))
+	tweets := make([]domain.Tweet, 0, len(items))
 	for _, item := range items {
-		var t domain_gen.Tweet
+		var t domain.Tweet
 		err = json.JSON.Unmarshal(item.Value, &t)
 		if err != nil {
 			return nil, "", err

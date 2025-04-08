@@ -17,6 +17,7 @@ import (
 
 func main() {
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
+	security.DisableDebugger()
 
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {

@@ -17,8 +17,8 @@ const (
 )
 
 type ChatStorer interface {
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 }
 
 type ChatRepo struct {
@@ -184,7 +184,11 @@ func (repo *ChatRepo) GetUserChats(userId string, limit *uint64, cursor *string)
 		var chat domain.Chat
 		err = json.JSON.Unmarshal(item.Value, &chat)
 		if err != nil {
-			return chats, cur, fmt.Errorf("failed to unmarshal chat: %s %w", item.Value, err)
+			err = fmt.Errorf(
+				"failed to unmarshal chat: key: %s, value: %s, message: %w",
+				item.Key, item.Value, err,
+			)
+			return chats, cur, err
 		}
 		chats = append(chats, chat)
 	}

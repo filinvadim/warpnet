@@ -78,8 +78,8 @@ type FollowStorer interface {
 }
 
 type Storer interface {
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 	Get(key storage.DatabaseKey) ([]byte, error)
 	GetExpiration(key storage.DatabaseKey) (uint64, error)
 	GetSize(key storage.DatabaseKey) (int64, error)

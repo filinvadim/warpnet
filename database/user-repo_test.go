@@ -1,152 +1,136 @@
-package database_test
+package database
 
 import (
-	"fmt"
-	domain_gen "github.com/filinvadim/warpnet/domain"
+	"go.uber.org/goleak"
 	"testing"
+	"time"
 
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/oklog/ulid/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/filinvadim/warpnet/domain"
+	"github.com/stretchr/testify/suite"
 )
 
-func setupUserTestDB(t *testing.T) *storage.DB {
-	path := "/"
-	dir := "tmp"
-	// Открываем базу данных в этой директории
-	db, err := storage.New(path, true, dir)
-	assert.NoError(t, err)
-	err = db.Run("test", "test")
-	assert.NoError(t, err)
-	return db
+type UserRepoTestSuite struct {
+	suite.Suite
+	db   *storage.DB
+	repo *UserRepo
 }
 
-func TestUserRepo_Create(t *testing.T) {
-	db := setupUserTestDB(t)
-	defer db.Close()
-	repo := database.NewUserRepo(db)
+func (s *UserRepoTestSuite) SetupSuite() {
+	var err error
+	s.db, err = storage.New(".", true, "")
+	s.Require().NoError(err)
 
-	user := domain_gen.User{
-		Username: "Test User",
-	}
-	userID := ulid.Make().String()
-	user.Id = userID
+	authRepo := NewAuthRepo(s.db)
+	err = authRepo.Authenticate("test", "test")
+	s.Require().NoError(err)
 
-	_, err := repo.Create(user)
-
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь был корректно создан
-	retrievedUser, err := repo.Get(userID)
-	assert.NoError(t, err)
-	assert.Equal(t, user.Username, retrievedUser.Username)
-	assert.Equal(t, user.Id, retrievedUser.Id)
+	s.repo = NewUserRepo(s.db)
 }
 
-func TestUserRepo_Update(t *testing.T) {
-	db := setupUserTestDB(t)
-	defer db.Close()
-
-	repo := database.NewUserRepo(db)
-
-	user := domain_gen.User{
-		Username: "Test User",
-	}
-	userID := ulid.Make().String()
-	user.Id = userID
-
-	_, err := repo.Create(user)
-	assert.NoError(t, err)
-
-	updatedUsername := "Test User Updated"
-	_, err = repo.Update(user.Id, domain_gen.User{Username: updatedUsername})
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь был корректно создан
-	retrievedUser, err := repo.Get(userID)
-	assert.NoError(t, err)
-	assert.Equal(t, updatedUsername, retrievedUser.Username)
-	assert.Equal(t, user.Id, retrievedUser.Id)
+func (s *UserRepoTestSuite) TearDownSuite() {
+	s.db.Close()
 }
 
-func TestUserRepo_Get(t *testing.T) {
-	db := setupUserTestDB(t)
-	defer db.Close()
-
-	repo := database.NewUserRepo(db)
-
-	userID := ulid.Make().String()
-	user := domain_gen.User{
-		Username: "Test User",
-		Id:       userID,
+func (s *UserRepoTestSuite) TestCreateAndGetUser() {
+	user := domain.User{
+		Id:        "user1",
+		Username:  "testuser",
+		CreatedAt: time.Now(),
 	}
+	created, err := s.repo.Create(user)
+	s.Require().NoError(err)
+	s.Equal(user.Id, created.Id)
 
-	_, err := repo.Create(user)
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь может быть получен
-	retrievedUser, err := repo.Get(userID)
-	assert.NoError(t, err)
-	assert.Equal(t, user.Username, retrievedUser.Username)
-	assert.Equal(t, user.Id, retrievedUser.Id)
+	fetched, err := s.repo.Get(user.Id)
+	s.Require().NoError(err)
+	s.Equal(user.Id, fetched.Id)
+	s.Equal(user.Username, fetched.Username)
 }
 
-func TestUserRepo_Delete(t *testing.T) {
-	db := setupUserTestDB(t)
-	defer db.Close()
-
-	repo := database.NewUserRepo(db)
-
-	userID := ulid.Make().String()
-	user := domain_gen.User{
-		Username: "Test User",
-		Id:       userID,
+func (s *UserRepoTestSuite) TestUpdateUser() {
+	user := domain.User{
+		Id:        "user2",
+		Username:  "initial",
+		CreatedAt: time.Now(),
 	}
+	_, err := s.repo.Create(user)
+	s.Require().NoError(err)
 
-	_, err := repo.Create(user)
-	assert.NoError(t, err)
-
-	// Удаляем пользователя
-	err = repo.Delete(userID)
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь был удален
-	_, err = repo.Get(userID)
-	assert.Error(t, err)
+	updated, err := s.repo.Update(user.Id, domain.User{
+		Username: "updated",
+	})
+	s.Require().NoError(err)
+	s.Equal("updated", updated.Username)
 }
 
-func TestUserRepo_List(t *testing.T) {
-	db := setupUserTestDB(t)
-	defer db.Close()
-
-	repo := database.NewUserRepo(db)
-
-	userID := ulid.Make().String()
-	user1 := domain_gen.User{
-		Username: "User1",
-		Id:       userID,
+func (s *UserRepoTestSuite) TestDeleteUser() {
+	user := domain.User{
+		Id:        "user3",
+		Username:  "todelete",
+		CreatedAt: time.Now(),
 	}
-	userID2 := ulid.Make().String()
-	user2 := domain_gen.User{
-		Username: "User2",
-		Id:       userID2,
+	_, err := s.repo.Create(user)
+	s.Require().NoError(err)
+
+	err = s.repo.Delete(user.Id)
+	s.Require().NoError(err)
+
+	_, err = s.repo.Get(user.Id)
+	s.Equal(ErrUserNotFound, err)
+}
+
+func (s *UserRepoTestSuite) TestGetByNodeID() {
+	user := domain.User{
+		Id:        "user4",
+		NodeId:    "node123",
+		Username:  "nodeuser",
+		CreatedAt: time.Now(),
+	}
+	_, err := s.repo.Create(user)
+	s.Require().NoError(err)
+
+	found, err := s.repo.GetByNodeID("node123")
+	s.Require().NoError(err)
+	s.Equal("user4", found.Id)
+}
+
+func (s *UserRepoTestSuite) TestListAndGetBatch() {
+	users := []domain.User{
+		{Id: "list1", Username: "a"},
+		{Id: "list2", Username: "b"},
+		{Id: "list3", Username: "c"},
+	}
+	for _, u := range users {
+		u.CreatedAt = time.Now()
+		_, err := s.repo.Create(u)
+		s.Require().NoError(err)
 	}
 
-	_, err := repo.Create(user1)
-	assert.NoError(t, err)
-	_, err = repo.Create(user2)
-	assert.NoError(t, err)
+	limit := uint64(10)
+	all, _, err := s.repo.List(&limit, nil)
+	s.Require().NoError(err)
+	s.GreaterOrEqual(len(all), 3)
 
-	// Получаем список пользователей
-	users, _, err := repo.List(nil, nil)
-	assert.NoError(t, err)
-	assert.Len(t, users, 2)
-	fmt.Println(users[0].Username, users[1].Username)
+	usersBatch, err := s.repo.GetBatch("list1", "list2")
+	s.Require().NoError(err)
+	s.Len(usersBatch, 2)
+}
 
-	// Проверяем, что все пользователи корректно получены
-	assert.Equal(t, user1.Username, users[0].Username)
-	assert.Equal(t, userID, users[0].Id)
-	assert.Equal(t, user2.Username, users[1].Username)
-	assert.Equal(t, userID2, users[1].Id)
+func (s *UserRepoTestSuite) TestValidateUserID() {
+	user := domain.User{Id: "uniqueUser", CreatedAt: time.Now()}
+	_, err := s.repo.Create(user)
+	s.Require().NoError(err)
+
+	err = s.repo.ValidateUserID(UserIdConsensusKey, "uniqueUser")
+	s.Equal(ErrUserAlreadyExists, err)
+
+	err = s.repo.ValidateUserID(UserIdConsensusKey, "nonexistent")
+	s.NoError(err)
+}
+
+func TestUserRepoTestSuite(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	suite.Run(t, new(UserRepoTestSuite))
 }

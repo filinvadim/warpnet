@@ -50,6 +50,7 @@ var (
 	ErrNotRunning    = errors.New("DB is not running")
 	ErrKeyNotFound   = badger.ErrKeyNotFound
 	ErrWrongPassword = errors.New("wrong username or password")
+	ErrStopIteration = errors.New("stop iteration")
 )
 
 type (
@@ -89,7 +90,9 @@ func New(
 		WithNumCompactors(2).
 		WithLoggingLevel(badger.WARNING)
 	if isInMemory {
-		opts.WithInMemory(true)
+		opts = opts.WithDir("")
+		opts = opts.WithValueDir("")
+		opts = opts.WithInMemory(true)
 	}
 
 	isDirEmpty, err := isDirectoryEmpty(dbPath)
@@ -142,7 +145,9 @@ func (db *DB) Run(username, password string) (err error) {
 		return err
 	}
 
-	go db.runEventualGC()
+	if !db.storedOpts.InMemory {
+		go db.runEventualGC()
+	}
 
 	return nil
 }
@@ -307,15 +312,23 @@ func (db *DB) Delete(key DatabaseKey) error {
 
 type WarpTxn = badger.Txn
 
+type WarpTxWriter interface {
+	Set(key DatabaseKey, value []byte) error
+	Get(key DatabaseKey) ([]byte, error)
+	SetWithTTL(key DatabaseKey, value []byte, ttl time.Duration) error
+	BatchSet(data []ListItem) (err error)
+	Delete(key DatabaseKey) error
+	Increment(key DatabaseKey) (uint64, error)
+	Decrement(key DatabaseKey) (uint64, error)
+	Commit() error
+	Rollback()
+}
+
 type WarpWriteTxn struct {
 	txn *badger.Txn
 }
 
-type WarpReadTxn struct {
-	txn *badger.Txn
-}
-
-func (db *DB) NewWriteTxn() (*WarpWriteTxn, error) {
+func (db *DB) NewWriteTxn() (WarpTxWriter, error) {
 	if db == nil {
 		return nil, ErrNotRunning
 	}
@@ -435,7 +448,21 @@ func (t *WarpWriteTxn) Rollback() {
 
 // =========== READ ===============================
 
-func (db *DB) NewReadTxn() (*WarpReadTxn, error) {
+type WarpTxReader interface {
+	IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error
+	Get(key DatabaseKey) ([]byte, error)
+	ReverseIterateKeys(prefix DatabaseKey, handler IterKeysFunc) error
+	List(prefix DatabaseKey, limit *uint64, cursor *string) ([]ListItem, string, error)
+	BatchGet(keys ...DatabaseKey) ([]ListItem, error)
+	Commit() error
+	Rollback()
+}
+
+type WarpReadTxn struct {
+	txn *badger.Txn
+}
+
+func (db *DB) NewReadTxn() (WarpTxReader, error) {
 	if db == nil {
 		return nil, ErrNotRunning
 	}
@@ -458,6 +485,10 @@ func (t *WarpReadTxn) IterateKeys(prefix DatabaseKey, handler IterKeysFunc) erro
 
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 		item := it.Item()
+		key := string(item.KeyCopy(nil))
+		if strings.Contains(key, FixedKey) {
+			continue
+		}
 		err := handler(string(item.KeyCopy(nil)))
 		if err != nil {
 			return err
@@ -480,9 +511,11 @@ func (t *WarpReadTxn) ReverseIterateKeys(prefix DatabaseKey, handler IterKeysFun
 
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 		item := it.Item()
-		fmt.Println("KEY", item.KeyCopy(nil))
-
-		err := handler(string(item.KeyCopy(nil)))
+		key := string(item.KeyCopy(nil))
+		if strings.Contains(key, FixedKey) {
+			continue
+		}
+		err := handler(key)
 		if err != nil {
 			return err
 		}
@@ -552,7 +585,7 @@ func iterateKeysValues(
 		key := string(item.Key())
 
 		if strings.Contains(key, FixedKey) {
-			return "", nil
+			continue
 		}
 
 		if iterNum > *limit {

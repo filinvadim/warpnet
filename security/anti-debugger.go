@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func init() {
+func DisableDebugger() {
 	_ = os.Unsetenv("LD_PRELOAD")
 	EnableCoreDumps()
 	go DisableCoreDumps()

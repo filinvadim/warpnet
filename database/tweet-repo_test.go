@@ -1,146 +1,147 @@
-package database_test
+package database
 
 import (
-	"fmt"
-	domain_gen "github.com/filinvadim/warpnet/domain"
-	"os"
+	"go.uber.org/goleak"
 	"testing"
 	"time"
 
-	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/database/storage"
+	"github.com/filinvadim/warpnet/domain"
 	"github.com/oklog/ulid/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func setupTweetTestDB(t *testing.T) *storage.DB {
-	path := "../var/dbtesttweet"
-	// Открываем базу данных в этой директории
-	db, _ := storage.New(path, true, "storage")
-	db.Run("", "")
-
-	t.Cleanup(func() {
-		db.Close()
-		os.RemoveAll(path)
-	})
-
-	return db
+type TweetRepoTestSuite struct {
+	suite.Suite
+	db   *storage.DB
+	repo *TweetRepo
 }
 
-func TestTweetRepo_Create(t *testing.T) {
-	db := setupTweetTestDB(t)
-	repo := database.NewTweetRepo(db)
+func (s *TweetRepoTestSuite) SetupSuite() {
+	var err error
+	s.db, err = storage.New(".", true, "")
+	s.Require().NoError(err)
+	auth := NewAuthRepo(s.db)
+	s.Require().NoError(auth.Authenticate("test", "test"))
 
-	tweetID := ulid.Make().String()
-
-	tweet := domain_gen.Tweet{
-		Id: tweetID,
-	}
-
-	id := ulid.Make().String()
-	now := time.Now()
-
-	user := domain_gen.User{
-		Username:  "User",
-		Id:        id,
-		CreatedAt: now,
-	}
-
-	_, err := repo.Create(user.Id, tweet)
-
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь был корректно создан
-	retrievedTweet, err := repo.Get(user.Id, tweetID)
-	assert.NoError(t, err)
-	assert.Equal(t, tweet.Id, retrievedTweet.Id)
+	s.repo = NewTweetRepo(s.db)
 }
 
-func TestTweetRepo_Get(t *testing.T) {
-	db := setupTweetTestDB(t)
-	repo := database.NewTweetRepo(db)
-
-	tweetID := ulid.Make().String()
-	tweet := domain_gen.Tweet{
-		Id: tweetID,
-	}
-	id := ulid.Make().String()
-
-	now := time.Now()
-
-	user := domain_gen.User{
-		Username:  "User",
-		Id:        id,
-		CreatedAt: now,
-	}
-
-	_, err := repo.Create(user.Id, tweet)
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь может быть получен
-	retrievedTweet, err := repo.Get(user.Id, tweetID)
-	assert.NoError(t, err)
-	assert.Equal(t, tweet.Id, retrievedTweet.Id)
+func (s *TweetRepoTestSuite) TearDownSuite() {
+	s.db.Close()
 }
 
-func TestTweetRepo_Delete(t *testing.T) {
-	db := setupTweetTestDB(t)
-	repo := database.NewTweetRepo(db)
+func (s *TweetRepoTestSuite) TestCreateAndGetTweet() {
+	userId := ulid.Make().String()
+	tweet := domain.Tweet{UserId: userId, Text: "hello world"}
 
-	tweetID := ulid.Make().String()
-	tweet := domain_gen.Tweet{
-		Id: tweetID,
-	}
-	id := ulid.Make().String()
+	created, err := s.repo.Create(userId, tweet)
+	s.Require().NoError(err)
+	s.Equal(tweet.Text, created.Text)
 
-	user := domain_gen.User{
-		Username: "User",
-		Id:       id,
-	}
-
-	_, err := repo.Create(user.Id, tweet)
-	assert.NoError(t, err)
-
-	err = repo.Delete(user.Id, tweetID)
-	assert.NoError(t, err)
-
-	// Проверяем, что пользователь был удален
-	retrievedTweet, err := repo.Get(user.Id, tweetID)
-	assert.Error(t, err)
-	assert.Nil(t, retrievedTweet)
+	fetched, err := s.repo.Get(userId, created.Id)
+	s.Require().NoError(err)
+	s.Equal(created.Id, fetched.Id)
+	s.Equal(created.Text, fetched.Text)
 }
 
-func TestTweetRepo_List(t *testing.T) {
-	db := setupTweetTestDB(t)
-	repo := database.NewTweetRepo(db)
+func (s *TweetRepoTestSuite) TestDeleteTweet() {
+	userId := ulid.Make().String()
+	tweet := domain.Tweet{UserId: userId, Text: "to delete"}
 
-	id1 := "1"
-	id2 := "2"
-	tweet1 := domain_gen.Tweet{
-		Id: id1,
+	created, err := s.repo.Create(userId, tweet)
+	s.Require().NoError(err)
+
+	err = s.repo.Delete(userId, created.Id)
+	s.Require().NoError(err)
+
+	_, err = s.repo.Get(userId, created.Id)
+	s.Error(err)
+}
+
+func (s *TweetRepoTestSuite) TestTweetsCount() {
+	userId := ulid.Make().String()
+	tweet := domain.Tweet{UserId: userId, Text: "counted"}
+
+	_, err := s.repo.Create(userId, tweet)
+	s.Require().NoError(err)
+
+	count, err := s.repo.TweetsCount(userId)
+	s.Require().NoError(err)
+	s.Equal(uint64(1), count)
+}
+
+func (s *TweetRepoTestSuite) TestListTweets() {
+	userId := ulid.Make().String()
+	for i := 0; i < 3; i++ {
+		_, err := s.repo.Create(userId, domain.Tweet{
+			UserId:    userId,
+			Text:      "tweet",
+			CreatedAt: time.Now().Add(-time.Duration(i) * time.Second),
+		})
+		s.Require().NoError(err)
 	}
-	tweet2 := domain_gen.Tweet{
-		Id: id2,
+
+	limit := uint64(10)
+	tweets, cursor, err := s.repo.List(userId, &limit, nil)
+	s.Require().NoError(err)
+	s.Len(tweets, 3)
+	s.Empty(cursor)
+}
+
+func (s *TweetRepoTestSuite) TestRetweetAndRetweeters() {
+	original := domain.Tweet{
+		UserId:    ulid.Make().String(),
+		Text:      "original",
+		CreatedAt: time.Now(),
 	}
-	id := ulid.Make().String()
+	original, err := s.repo.Create(original.UserId, original)
+	s.Require().NoError(err)
 
-	user := domain_gen.User{
-		Username: "User",
-		Id:       id,
+	retweeter := ulid.Make().String()
+	retweeted := original
+	retweeted.RetweetedBy = &retweeter
+	retweeted.UserId = retweeter
+
+	_, err = s.repo.NewRetweet(retweeted)
+	s.Require().NoError(err)
+
+	count, err := s.repo.RetweetsCount(original.Id)
+	s.Require().NoError(err)
+	s.Equal(uint64(1), count)
+
+	retweeters, _, err := s.repo.Retweeters(original.Id, nil, nil)
+	s.Require().NoError(err)
+	s.Equal([]string{retweeter}, retweeters)
+}
+
+func (s *TweetRepoTestSuite) TestUnRetweet() {
+	original := domain.Tweet{
+		Id:        "TestUnRetweet",
+		UserId:    ulid.Make().String(),
+		Text:      "original",
+		CreatedAt: time.Now(),
 	}
+	original, err := s.repo.Create(original.UserId, original)
+	s.Require().NoError(err)
 
-	_, err := repo.Create(user.Id, tweet1)
-	assert.NoError(t, err)
-	_, err = repo.Create(user.Id, tweet2)
-	assert.NoError(t, err)
+	retweeterId := ulid.Make().String()
+	retweet := original
+	retweet.RetweetedBy = &retweeterId
 
-	tweets, _, err := repo.List(user.Id, nil, nil)
-	assert.NoError(t, err)
-	assert.Len(t, tweets, 2)
+	created, err := s.repo.NewRetweet(retweet)
+	s.Require().NoError(err)
 
-	fmt.Println(tweets, "TWEETS!")
+	err = s.repo.UnRetweet(retweeterId, created.Id)
+	s.Require().NoError(err)
 
-	// Проверяем, что все пользователи корректно получены
-	assert.Contains(t, tweets, tweet1)
-	assert.Contains(t, tweets, tweet2)
+	count, err := s.repo.RetweetsCount(original.Id)
+	s.Require().NoError(err)
+	s.Equal(uint64(0), count)
+}
+
+func TestTweetRepoTestSuite(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	suite.Run(t, new(TweetRepoTestSuite))
 }

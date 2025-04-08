@@ -37,6 +37,8 @@ func main() {
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
+	security.DisableDebugger()
+
 	var _ = ipfslog.LevelInfo
 	//ipfslog.SetDebugLogging()
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)

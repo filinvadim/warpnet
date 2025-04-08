@@ -16,8 +16,8 @@ var ErrLikesNotFound = errors.New("like not found")
 
 type LikeStorer interface {
 	Get(key storage.DatabaseKey) ([]byte, error)
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 }
 
 type LikeRepo struct {

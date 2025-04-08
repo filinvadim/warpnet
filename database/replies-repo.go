@@ -24,8 +24,8 @@ type ReplyStorer interface {
 	Set(key storage.DatabaseKey, value []byte) error
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Delete(key storage.DatabaseKey) error
-	NewReadTxn() (*storage.WarpReadTxn, error)
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
+	NewReadTxn() (storage.WarpTxReader, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
 }
 
 type ReplyRepo struct {

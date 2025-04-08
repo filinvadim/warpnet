@@ -1,24 +1,19 @@
 package database
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/filinvadim/warpnet/json"
 )
 
 const ConsensusConfigNamespace = "/CONFIGS/"
 
-var (
-	ErrConsensusKeyNotFound = errors.New("consensus key not found")
-	ErrStopIteration        = errors.New("stop iteration")
-)
+var ErrConsensusKeyNotFound = errors.New("consensus key not found")
 
 type ConsensusStorer interface {
-	NewWriteTxn() (*storage.WarpWriteTxn, error)
-	NewReadTxn() (*storage.WarpReadTxn, error)
+	NewWriteTxn() (storage.WarpTxWriter, error)
+	NewReadTxn() (storage.WarpTxReader, error)
 	Set(key storage.DatabaseKey, value []byte) error
 	Get(key storage.DatabaseKey) ([]byte, error)
 	Sync() error
@@ -80,19 +75,6 @@ func (cr *ConsensusRepo) Close() error {
 }
 
 // ======================= UTILS =========================
-
-// Decode reverses the encode operation on a byte slice input
-func decode(buf []byte, out interface{}) error {
-	r := bytes.NewBuffer(buf)
-	return json.JSON.NewDecoder(r).Decode(out)
-}
-
-// Encode writes an encoded object to a new bytes buffer
-func encode(in interface{}) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
-	err := json.JSON.NewEncoder(buf).Encode(in)
-	return buf, err
-}
 
 func bytesToUint64(b []byte) uint64 {
 	if len(b) < 8 {
