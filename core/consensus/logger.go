@@ -79,6 +79,7 @@ func (c *consensusLogger) Error(msg string, args ...interface{}) {
 			return
 		}
 	}
+	// failed to decode incoming command. Args:  error=stream reset.
 	c.l.Errorln(msg, args)
 }
 

@@ -40,14 +40,14 @@ type listener struct {
 
 func (pwma *parsedWebsocketMultiaddr) toMultiaddr() ma.Multiaddr {
 	if !pwma.isWSS {
-		return pwma.restMultiaddr.Encapsulate(wsComponent)
+		return pwma.restMultiaddr.AppendComponent(wsComponent)
 	}
 
 	if pwma.sni == nil {
-		return pwma.restMultiaddr.Encapsulate(tlsComponent).Encapsulate(wsComponent)
+		return pwma.restMultiaddr.AppendComponent(tlsComponent, wsComponent)
 	}
 
-	return pwma.restMultiaddr.Encapsulate(tlsComponent).Encapsulate(pwma.sni).Encapsulate(wsComponent)
+	return pwma.restMultiaddr.AppendComponent(tlsComponent, pwma.sni, wsComponent)
 }
 
 // newListener creates a new listener from a raw net.Listener.
@@ -137,9 +137,9 @@ func (l *listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	select {
-	case l.incoming <- NewConn(c, l.isWss):
+	case l.incoming <- nc:
 	case <-l.closed:
-		c.Close()
+		nc.Close()
 	}
 	// The connection has been hijacked, it's safe to return.
 }

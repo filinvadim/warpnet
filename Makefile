@@ -22,6 +22,10 @@ compose-up:
 gosec:
 	~/go/bin/gosec ./...
 
+update-deps:
+	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get -v -u all
+	go mod vendor
+
 get-frontend:
 	rm -rf vendor/github.com/filinvadim/warpnet-frontend/release
 	GOPRIVATE=github.com/filinvadim/warpnet-frontend go get github.com/filinvadim/warpnet-frontend

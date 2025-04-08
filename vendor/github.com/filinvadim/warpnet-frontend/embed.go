@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// This file embeds the whole frontend to Golang binary file. DO NOT REMOVE.
+// This file embeds the whole frontend to a single Golang binary file. DO NOT REMOVE.
 
 //go:embed dist
 var static embed.FS
