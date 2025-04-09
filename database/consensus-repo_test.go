@@ -78,4 +78,5 @@ func TestConsensusRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	suite.Run(t, new(ConsensusRepoTestSuite))
+	closeWriter()
 }

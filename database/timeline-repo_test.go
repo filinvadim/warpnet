@@ -105,4 +105,5 @@ func TestTimelineRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	suite.Run(t, new(TimelineRepoTestSuite))
+	closeWriter()
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
 	ipfslog "github.com/ipfs/go-log/v2"
+	writer "github.com/ipfs/go-log/writer"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -34,6 +35,8 @@ type API struct {
 }
 
 func main() {
+	defer closeWriter()
+
 	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
@@ -187,4 +190,10 @@ func manualCredsInput(
 			log.Fatalf("failed to run db: %v", err)
 		}
 	}
+}
+
+// TODO temp. Check for https://github.com/libp2p/go-libp2p-kad-dht/issues/1073
+func closeWriter() {
+	defer func() { recover() }()
+	_ = writer.WriterGroup.Close()
 }

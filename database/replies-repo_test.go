@@ -133,4 +133,5 @@ func TestReplyRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	suite.Run(t, new(ReplyRepoTestSuite))
+	closeWriter()
 }

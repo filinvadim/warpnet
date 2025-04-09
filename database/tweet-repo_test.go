@@ -144,4 +144,5 @@ func TestTweetRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	suite.Run(t, new(TweetRepoTestSuite))
+	closeWriter()
 }

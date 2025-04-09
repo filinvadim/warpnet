@@ -1,6 +1,7 @@
 package database
 
 import (
+	log "github.com/ipfs/go-log/writer"
 	"go.uber.org/goleak"
 	"testing"
 
@@ -83,4 +84,10 @@ func (s *AuthRepoTestSuite) TestSetOwner_SetsCreatedAt() {
 func TestAuthRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	suite.Run(t, new(AuthRepoTestSuite))
+	closeWriter()
+}
+
+func closeWriter() {
+	defer func() { recover() }()
+	_ = log.WriterGroup.Close()
 }

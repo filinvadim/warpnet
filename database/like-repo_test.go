@@ -116,4 +116,5 @@ func TestLikeRepoTestSuite(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	suite.Run(t, new(LikeRepoTestSuite))
+	closeWriter()
 }
