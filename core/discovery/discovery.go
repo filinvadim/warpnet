@@ -32,6 +32,7 @@ type DiscoveryInfoStorer interface {
 type NodeStorer interface {
 	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
+	HasInfo(ctx context.Context, peerId warpnet.WarpPeerID) bool
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
 	Blocklist(ctx context.Context, peerId peer.ID) error
@@ -102,6 +103,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 			log.Errorf("discovery: context closed")
 			return
 		case <-s.stopChan:
+			return
 		case info, ok := <-s.discoveryChan:
 			if !ok {
 				log.Infoln("discovery: service closed")
@@ -164,6 +166,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	}
 
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
+		log.Errorf("discovery: channel overflow %d", cap(s.discoveryChan))
 		<-s.discoveryChan // drop old data
 	}
 	s.discoveryChan <- pi
@@ -191,9 +194,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	peerState := s.node.Network().Connectedness(pi.ID)
-	if peerState == network.Connected || peerState == network.Limited {
-		return
-	}
+
+	isConnected := peerState == network.Connected || peerState == network.Limited
 
 	bAddrs, ok := s.bootstrapAddrs[pi.ID]
 	if ok {
@@ -201,16 +203,22 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		pi.Addrs = append(pi.Addrs, bAddrs...)
 		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour*24)
 	}
-	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
-	if err := s.node.Connect(pi); err != nil {
-		log.Errorf("discovery: failed to connect to new peer: %s...", err)
-		return
+	if !isConnected {
+		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
+
+		if err := s.node.Connect(pi); err != nil {
+			log.Errorf("discovery: failed to connect to new peer: %s...", err)
+			return
+		}
+		log.Infof("discovery: connected to new peer: %s", pi.ID)
 	}
-	log.Infof("discovery: connected to new peer: %s", pi.ID)
 
 	if s.isBootstrapNode(pi) {
-		log.Warningln("discovery: bootstrap node doesn't support requesting", pi.ID.String())
+		return
+	}
+
+	if s.nodeRepo.HasInfo(s.ctx, pi.ID) {
 		return
 	}
 

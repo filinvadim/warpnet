@@ -449,12 +449,12 @@ func (c *consensusService) ValidateUserID(userId string) error {
 		if errors.Is(err, ErrNoRaftCluster) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("consensus: failed to commit validate user state: %w", err)
 	}
 
 	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
-		return fmt.Errorf("node verify stream: %w", err)
+		return fmt.Errorf("consensus: node verify stream: %w", err)
 	}
 	if len(resp) == 0 {
 		return nil
@@ -462,13 +462,13 @@ func (c *consensusService) ValidateUserID(userId string) error {
 
 	var errResp event.ErrorResponse
 	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
-		log.Errorf("member: verify response unmarshal failed: %v", errResp)
-		return fmt.Errorf("member: verify response unmarshal failed: %w", errResp)
+		log.Errorf("consensus: verify response unmarshal failed: %v", errResp)
+		return fmt.Errorf("consensus: verify response unmarshal failed: %w", errResp)
 	}
 
 	updatedState := make(map[string]string)
 	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Errorf("member: failed to unmarshal updated consensus state %s: %v", resp, err)
+		log.Errorf("consensus: failed to unmarshal updated consensus state %s: %v", resp, err)
 		return ErrConsensusRejection
 	}
 	return nil

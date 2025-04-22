@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows
 
 package security
 
@@ -11,21 +11,21 @@ import (
 	"time"
 )
 
-func DisableDebugger() {
+func init() {
 	_ = os.Unsetenv("LD_PRELOAD")
-	EnableCoreDumps()
-	go DisableCoreDumps()
-	MustNotGDBAttached()
+	//enableCoreDumps()
+	disableCoreDumps()
+	mustNotGDBAttached()
 }
 
-func EnableCoreDumps() {
+func enableCoreDumps() {
 	err := unix.Prctl(unix.PR_SET_DUMPABLE, 1, 0, 0, 0)
 	if err != nil {
 		log.Fatalf("failed to enable core dumps: %v", err)
 	}
 }
 
-func DisableCoreDumps() {
+func disableCoreDumps() {
 	tick := time.NewTicker(10 * time.Second)
 	defer tick.Stop()
 	<-tick.C
@@ -35,7 +35,7 @@ func DisableCoreDumps() {
 	}
 }
 
-func MustNotGDBAttached() {
+func mustNotGDBAttached() {
 	data, err := os.ReadFile("/proc/self/status")
 	if err != nil {
 		return

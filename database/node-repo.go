@@ -78,7 +78,7 @@ func (d *NodeRepo) Put(ctx context.Context, key ds.Key, value []byte) error {
 		return ctx.Err()
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -104,7 +104,7 @@ func (d *NodeRepo) PutWithTTL(ctx context.Context, key ds.Key, value []byte, ttl
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -147,7 +147,7 @@ func (d *NodeRepo) GetExpiration(ctx context.Context, key ds.Key) (t time.Time, 
 
 	expiration := time.Time{}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -180,7 +180,7 @@ func (d *NodeRepo) Get(ctx context.Context, key ds.Key) (value []byte, err error
 		return nil, storage.ErrNotRunning
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -209,7 +209,7 @@ func (d *NodeRepo) Has(ctx context.Context, key ds.Key) (_ bool, err error) {
 		return false, storage.ErrNotRunning
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -240,7 +240,7 @@ func (d *NodeRepo) GetSize(ctx context.Context, key ds.Key) (_ int, err error) {
 		return size, storage.ErrNotRunning
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -269,7 +269,7 @@ func (d *NodeRepo) Delete(ctx context.Context, key ds.Key) error {
 		return storage.ErrNotRunning
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	prefix := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -577,7 +577,7 @@ func (b *batch) put(key ds.Key, value []byte) error {
 		return ErrNilNodeRepo
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	batchKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -590,7 +590,7 @@ func (b *batch) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
 		return ErrNilNodeRepo
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	batchKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -610,7 +610,7 @@ func (b *batch) Delete(ctx context.Context, key ds.Key) error {
 		return storage.ErrNotRunning
 	}
 
-	rootKey := strings.TrimPrefix(key.String(), "/")
+	rootKey := buildRootKey(key)
 
 	batchKey := storage.NewPrefixBuilder(NodesNamespace).
 		AddRootID(rootKey).
@@ -801,6 +801,22 @@ func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info 
 	return d.Put(ctx, ds.NewKey(infoKey.String()), bt)
 }
 
+func (d *NodeRepo) HasInfo(ctx context.Context, peerId warpnet.WarpPeerID) bool {
+	if d == nil {
+		return false
+	}
+	if peerId == "" {
+		return false
+	}
+	infoKey := storage.NewPrefixBuilder(NodesNamespace).
+		AddSubPrefix(InfoSubNamespace).
+		AddRootID(peerId.String()).
+		Build()
+
+	v, err := d.Get(ctx, ds.NewKey(infoKey.String()))
+	return err == nil && v != nil
+}
+
 func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error) {
 	if d == nil {
 		return ErrNilNodeRepo
@@ -814,4 +830,12 @@ func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (e
 		Build()
 
 	return d.Delete(ctx, ds.NewKey(infoKey.String()))
+}
+
+func buildRootKey(key ds.Key) string {
+	rootKey := strings.TrimPrefix(key.String(), "/")
+	if len(rootKey) == 0 {
+		rootKey = key.String()
+	}
+	return rootKey
 }

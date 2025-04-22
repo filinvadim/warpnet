@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
@@ -20,15 +19,11 @@ func main() {
 	defer closeWriter()
 
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
-	security.DisableDebugger()
 
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		panic(err)
 	}
-
-	// TODO remove
-	fmt.Println("GENERATED PSK:", psk.String())
 
 	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 

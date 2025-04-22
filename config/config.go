@@ -41,14 +41,14 @@ func init() {
 
 	_ = viper.BindPFlags(pflag.CommandLine)
 
-	bootstrap := viper.GetString("node.bootstrap")
+	bootstrapAddrs := viper.GetString("node.bootstrap")
 
 	version := root.GetVersion()
 
 	ConfigFile = Config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
-			Bootstrap: strings.Split(bootstrap, ","),
+			Bootstrap: strings.Split(bootstrapAddrs, ","),
 			Host:      viper.GetString("node.host"),
 			Port:      viper.GetString("node.port"),
 			Prefix:    viper.GetString("node.network.prefix"),

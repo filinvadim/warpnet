@@ -323,7 +323,7 @@ func StreamGetTweetStatsHandler(
 			return err
 		})
 		if err = g.Wait(); err != nil {
-			log.Errorf("get tweet stats: %v %v", ev, err)
+			log.Errorf("get tweet stats: %s %v", buf, err)
 		}
 
 		return event.TweetStatsResponse{

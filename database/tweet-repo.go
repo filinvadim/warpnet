@@ -353,7 +353,7 @@ func (repo *TweetRepo) RetweetsCount(tweetId string) (uint64, error) {
 
 	bt, err := txn.Get(retweetCountKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
-		return 0, errors.New("count not exist")
+		return 0, ErrTweetNotFound
 	}
 	if err != nil {
 		return 0, err

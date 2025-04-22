@@ -272,9 +272,6 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 		log.Errorf("node: peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
 		return nil, warpnet.ErrNodeIsOffline
 	}
-	for _, addr := range peerInfo.Addrs {
-		log.Infof("node: new node is dialable: %s %t\n", addr.String(), n.Network().CanDial(peerInfo.ID, addr))
-	}
 
 	var bt []byte
 	if data != nil {

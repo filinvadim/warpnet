@@ -77,12 +77,13 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	m.defaultDiscoveryHandler(p)
 	if m.discoveryHandlers != nil {
 		for _, h := range m.discoveryHandlers {
 			h(p)
 		}
+		return
 	}
+	m.defaultDiscoveryHandler(p)
 }
 
 func (m *mdnsDiscoveryService) defaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
