@@ -167,11 +167,11 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_FOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamFollowHandler(m.pubsubService, m, userRepo, followRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamFollowHandler(m.pubsubService, followRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_UNFOLLOW,
-		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(m.pubsubService, m, userRepo, followRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamUnfollowHandler(m.pubsubService, followRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_USER,
