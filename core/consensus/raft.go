@@ -21,31 +21,32 @@ import (
 )
 
 /*
-	Raft is a consensus algorithm designed for managing replicated logs in distributed systems.
-	It was developed as a more understandable alternative to Paxos and is used to ensure data consistency across nodes.
+		Raft is a consensus algorithm designed for managing replicated logs in distributed systems.
+		It was developed as a more understandable alternative to Paxos and is used to ensure data consistency across nodes.
 
-  Raft solves three key tasks:
-  1. **Leader Election**: One node is elected as the leader, responsible for managing log entries.
-  2. **Log Replication**: The leader accepts commands and distributes them to other nodes for synchronization.
-  3. **Safety and Fault Tolerance**: Ensures that data remains consistent even in the event of failures.
+	  Raft solves three key tasks:
+	  1. **Leader Election**: One node is elected as the leader, responsible for managing log entries.
+	  2. **Log Replication**: The leader accepts commands and distributes them to other nodes for synchronization.
+	  3. **Safety and Fault Tolerance**: Ensures that data remains consistent even in the event of failures.
 
-  Raft provides **strong consistency**, making it suitable for distributed systems that require predictability
-  and protection against network partitioning.
+	  Raft provides **strong consistency**, making it suitable for distributed systems that require predictability
+	  and protection against network partitioning.
 
-  The **go-libp2p-consensus** library is a module for libp2p that enables the integration of consensus mechanisms
-  (including Raft) into peer-to-peer (P2P) networks. It provides an abstract interface that can be implemented
-  for various consensus algorithms, including Raft, PoW, PoS, and BFT-based systems.
+	  The **go-libp2p-consensus** library is a module for libp2p that enables the integration of consensus mechanisms
+	  (including Raft) into peer-to-peer (P2P) networks. It provides an abstract interface that can be implemented
+	  for various consensus algorithms, including Raft, PoW, PoS, and BFT-based systems.
 
-  ### **Key Features of go-libp2p-consensus:**
-  - **Consensus Algorithm Abstraction**
-    - Supports Raft and other algorithms (e.g., PoS).
-  - **Integration with libp2p**
-    - Designed for decentralized systems without a central coordinator.
-  - **Flexibility**
-    - Developers can implement custom consensus logic by extending the library's interfaces.
-  - **Optimized for P2P Environments**
-    - Unlike traditional Raft, it is adapted for dynamically changing networks.
+	  ### **Key Features of go-libp2p-consensus:**
+	  - **Consensus Algorithm Abstraction**
+	    - Supports Raft and other algorithms (e.g., PoS).
+	  - **Integration with libp2p**
+	    - Designed for decentralized systems without a central coordinator.
+	  - **Flexibility**
+	    - Developers can implement custom consensus logic by extending the library's interfaces.
+	  - **Optimized for P2P Environments**
+	    - Unlike traditional Raft, it is adapted for dynamically changing networks.
 */
+var ErrNoRaftCluster = errors.New("consensus: no cluster found")
 
 type (
 	Consensus = libp2praft.Consensus
@@ -440,6 +441,8 @@ func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 }
 
 func (c *consensusService) AskUserValidation(user domain.User) error {
+	log.Infoln("consensus: asking for user validation...")
+
 	bt, err := json.JSON.Marshal(user)
 	if err != nil {
 		return err
@@ -476,10 +479,10 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 		log.Errorf("consensus: failed to unmarshal updated consensus state %s: %v", resp, err)
 		return ErrConsensusRejection
 	}
+
+	log.Infoln("consensus: user validated")
 	return nil
 }
-
-var ErrNoRaftCluster = errors.New("consensus: no cluster found")
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	if c.raft == nil {

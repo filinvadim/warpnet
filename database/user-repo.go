@@ -401,6 +401,8 @@ func (repo *UserRepo) ValidateUser(k, v string) error {
 	isSameNode := outerUser.NodeId == innerUser.NodeId
 	isOuterNewer := outerUser.CreatedAt.After(innerUser.CreatedAt)
 
+	log.Debugln("user validation:", isUserAlreadyExists, isOuterNewer, !isSameNode)
+
 	if isUserAlreadyExists && isOuterNewer && !isSameNode {
 		return errors.New("validator rejected new user")
 	}

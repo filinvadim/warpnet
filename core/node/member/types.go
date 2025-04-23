@@ -32,6 +32,10 @@ type PubSubProvider interface {
 	Close() error
 }
 
+type UserFetcher interface {
+	Get(userId string) (user domain.User, err error)
+}
+
 type ConsensusProvider interface {
 	Sync(node consensus.NodeServicesProvider) (err error)
 	LeaderID() warpnet.WarpPeerID

@@ -35,7 +35,7 @@ type MemberNode struct {
 	providerStore ProviderCacheCloser
 	nodeRepo      ProviderCacheCloser
 	retrier       retrier.Retrier
-	ownerUser     domain.User
+	userRepo      UserFetcher
 }
 
 func NewMemberNode(
@@ -97,11 +97,6 @@ func NewMemberNode(
 	)
 	println()
 
-	ownerUser, err := userRepo.Get(owner.UserId)
-	if err != nil {
-		return nil, fmt.Errorf("member: failed to get owner user: %v", err)
-	}
-
 	mn := &MemberNode{
 		WarpNode:      node,
 		ctx:           ctx,
@@ -113,7 +108,7 @@ func NewMemberNode(
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
 		retrier:       retrier.New(time.Second, 10, retrier.ExponentialBackoff),
-		ownerUser:     ownerUser,
+		userRepo:      userRepo,
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, db)
@@ -279,7 +274,12 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
 
-	return m.raft.AskUserValidation(m.ownerUser)
+	ownerUser, err := m.userRepo.Get(m.NodeInfo().OwnerId)
+	if err != nil {
+		return fmt.Errorf("member: failed to get owner user: %v", err)
+	}
+
+	return m.raft.AskUserValidation(ownerUser)
 }
 
 func (m *MemberNode) Stop() {

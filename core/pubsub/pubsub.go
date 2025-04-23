@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
 	"slices"
 	"strings"
@@ -290,6 +291,10 @@ func (g *warpPubSub) subscribe(topics ...string) (err error) {
 	}
 
 	return nil
+}
+
+func (g *warpPubSub) GetSubscribers() peer.IDSlice {
+	return nil // TODO
 }
 
 func (g *warpPubSub) unsubscribe(topics ...string) (err error) {

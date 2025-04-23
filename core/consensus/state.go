@@ -56,7 +56,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 		log.Errorf("consensus: failed to decode log: %v", err)
 		return fmt.Errorf("consensus: failed to decode log: %w", err)
 	}
-
+	
 	for _, validator := range fsm.validators {
 		for k, v := range newState {
 			if err := validator(k, v); err != nil {
