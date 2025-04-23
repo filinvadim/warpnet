@@ -1,5 +1,6 @@
 project_name: warpnet
 builds:
+  - main: cmd/node/member/
   - env: [CGO_ENABLED=0]
     goos:
       - linux
@@ -8,6 +9,10 @@ builds:
     goarch:
       - amd64
       - arm64
+  - gcflags:
+    - all=-l
+  - ldflags:
+      - -s -w
 dockers:
 - image_templates: ["ghcr.io/filinvadim/warpnet:{{ .Version }}"]
   dockerfile: Dockerfile
