@@ -1,9 +1,8 @@
 project_name: warpnet
 version: 2
 builds:
-  - id: warpnet-release
-  - main: cmd/node/member/
-  - env: [CGO_ENABLED=0]
+  - main: ./cmd/node/member/
+    env: [CGO_ENABLED=0,GOPROXY='',GOSUMDB='',GOPRIVATE='github.com/filinvadim/warpnet',GO111MODULE='']
     goos:
       - linux
       - windows
@@ -11,10 +10,12 @@ builds:
     goarch:
       - amd64
       - arm64
-  - gcflags:
+    gcflags:
     - all=-l
-  - ldflags:
+    ldflags:
       - -s -w
+    flags:
+      - -mod=vendor
 dockers:
 - image_templates: ["ghcr.io/filinvadim/warpnet:{{ .Version }}"]
   dockerfile: Dockerfile
