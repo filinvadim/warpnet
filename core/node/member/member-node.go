@@ -35,7 +35,7 @@ type MemberNode struct {
 	providerStore ProviderCacheCloser
 	nodeRepo      ProviderCacheCloser
 	retrier       retrier.Retrier
-	isFirstRun    bool
+	ownerUser     domain.User
 }
 
 func NewMemberNode(
@@ -58,7 +58,7 @@ func NewMemberNode(
 
 	raft, err := consensus.NewRaft(
 		ctx, consensusRepo, false,
-		userRepo.ValidateUserID,
+		userRepo.ValidateUser,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("member: consensus initialization: %v", err)
@@ -97,6 +97,11 @@ func NewMemberNode(
 	)
 	println()
 
+	ownerUser, err := userRepo.Get(owner.UserId)
+	if err != nil {
+		return nil, fmt.Errorf("member: failed to get owner user: %v", err)
+	}
+
 	mn := &MemberNode{
 		WarpNode:      node,
 		ctx:           ctx,
@@ -108,7 +113,7 @@ func NewMemberNode(
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
 		retrier:       retrier.New(time.Second, 10, retrier.ExponentialBackoff),
-		isFirstRun:    db.IsFirstRun(),
+		ownerUser:     ownerUser,
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, db)
@@ -121,12 +126,11 @@ func (m *MemberNode) setupHandlers(
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
 	replyRepo := database.NewRepliesRepo(db)
-
 	likeRepo := database.NewLikeRepo(db)
 	chatRepo := database.NewChatRepo(db)
 
 	authNodeInfo := domain.AuthNodeInfo{
-		Identity: domain.Identity{authRepo.GetOwner(), authRepo.SessionToken()},
+		Identity: domain.Identity{Owner: authRepo.GetOwner(), Token: authRepo.SessionToken()},
 		NodeInfo: m.NodeInfo(),
 	}
 
@@ -275,11 +279,7 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
 
-	if !m.isFirstRun {
-		return nil
-	}
-
-	return m.raft.ValidateUserID(m.NodeInfo().OwnerId)
+	return m.raft.AskUserValidation(m.ownerUser)
 }
 
 func (m *MemberNode) Stop() {

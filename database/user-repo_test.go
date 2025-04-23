@@ -1,6 +1,7 @@
 package database
 
 import (
+	"github.com/filinvadim/warpnet/json"
 	"go.uber.org/goleak"
 	"testing"
 	"time"
@@ -117,15 +118,22 @@ func (s *UserRepoTestSuite) TestListAndGetBatch() {
 	s.Len(usersBatch, 2)
 }
 
-func (s *UserRepoTestSuite) TestValidateUserID() {
+func (s *UserRepoTestSuite) TestValidateUser() {
 	user := domain.User{Id: "uniqueUser", CreatedAt: time.Now()}
 	_, err := s.repo.Create(user)
 	s.Require().NoError(err)
 
-	err = s.repo.ValidateUserID(UserIdConsensusKey, "uniqueUser")
+	bt, err := json.JSON.Marshal(user)
+	s.NoError(err)
+
+	err = s.repo.ValidateUser(UserConsensusKey, string(bt))
 	s.Equal(ErrUserAlreadyExists, err)
 
-	err = s.repo.ValidateUserID(UserIdConsensusKey, "nonexistent")
+	user.Id = "nonexistent"
+	bt, err = json.JSON.Marshal(user)
+	s.NoError(err)
+
+	err = s.repo.ValidateUser(UserConsensusKey, string(bt))
 	s.NoError(err)
 }
 

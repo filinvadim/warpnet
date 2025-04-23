@@ -382,17 +382,28 @@ func (repo *UserRepo) GetBatch(userIDs ...string) (users []domain.User, err erro
 	return users, txn.Commit()
 }
 
-const UserIdConsensusKey = "userId"
+const UserConsensusKey = "user"
 
-// ValidateUserID if already taken
-func (repo *UserRepo) ValidateUserID(k, v string) error {
-	if k != UserIdConsensusKey {
+// ValidateUser if already taken
+func (repo *UserRepo) ValidateUser(k, v string) error {
+	if k != UserConsensusKey {
 		return nil
 	}
 
-	_, err := repo.Get(v)
-	if !errors.Is(err, ErrUserNotFound) || err == nil {
-		return ErrUserAlreadyExists
+	var outerUser domain.User
+	if err := json.JSON.Unmarshal([]byte(v), &outerUser); err != nil {
+		return err
 	}
+
+	innerUser, err := repo.Get(outerUser.Id)
+
+	isUserAlreadyExists := !errors.Is(err, ErrUserNotFound) || err == nil
+	isSameNode := outerUser.NodeId == innerUser.NodeId
+	isOuterNewer := outerUser.CreatedAt.After(innerUser.CreatedAt)
+
+	if isUserAlreadyExists && isOuterNewer && !isSameNode {
+		return errors.New("validator rejected new user")
+	}
+
 	return nil
 }

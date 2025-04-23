@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
+	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	consensus "github.com/libp2p/go-libp2p-consensus"
@@ -438,9 +439,13 @@ func (c *consensusService) LeaderID() warpnet.WarpPeerID {
 	return warpnet.FromStringToPeerID(string(leaderId))
 }
 
-func (c *consensusService) ValidateUserID(userId string) error {
+func (c *consensusService) AskUserValidation(user domain.User) error {
+	bt, err := json.JSON.Marshal(user)
+	if err != nil {
+		return err
+	}
 	newState := map[string]string{
-		database.UserIdConsensusKey: userId,
+		database.UserConsensusKey: string(bt),
 	}
 
 	leaderId := c.LeaderID().String()

@@ -37,7 +37,7 @@ type ConsensusProvider interface {
 	LeaderID() warpnet.WarpPeerID
 	CommitState(newState consensus.KVState) (_ *consensus.KVState, err error)
 	Shutdown()
-	ValidateUserID(userId string) error
+	AskUserValidation(user domain.User) error
 	Stats() map[string]string
 }
 
@@ -56,7 +56,7 @@ type AuthProvider interface {
 
 type UserProvider interface {
 	Create(user domain.User) (domain.User, error)
-	ValidateUserID(k, v string) error
+	ValidateUser(k, v string) error
 	GetByNodeID(nodeID string) (user domain.User, err error)
 	Get(userId string) (user domain.User, err error)
 	List(limit *uint64, cursor *string) ([]domain.User, string, error)
