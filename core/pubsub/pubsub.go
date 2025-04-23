@@ -416,6 +416,8 @@ func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 		return nil
 	}
 
+	log.Infof("pubsub: new user update: %s", *simulatedMessage.Body)
+
 	_, err := g.clientNode.ClientStream( // send it to self
 		g.serverNode.NodeInfo().ID.String(),
 		simulatedMessage.Path,

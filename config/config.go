@@ -19,11 +19,11 @@ var defaultBootstrapNodes = []string{
 var ConfigFile Config
 
 func init() {
-	pflag.String("database.dir", "storage2", "Database directory name")
+	pflag.String("database.dir", "storage", "Database directory name")
 	pflag.String("server.host", "localhost", "Server host")
-	pflag.String("server.port", "4012", "Server port")
+	pflag.String("server.port", "4002", "Server port")
 	pflag.String("node.host", "0.0.0.0", "Node host")
-	pflag.String("node.port", "4011", "Node port")
+	pflag.String("node.port", "4001", "Node port")
 	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
 	pflag.String(
 		"node.bootstrap",
