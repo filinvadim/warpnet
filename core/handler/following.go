@@ -42,6 +42,8 @@ func StreamFollowHandler(
 	broadcaster FollowingBroadcaster,
 	followRepo FollowingStorer,
 	authRepo FollowingAuthStorer,
+	userRepo FollowingUserStorer,
+	streamer FollowNodeStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewFollowEvent
@@ -53,23 +55,54 @@ func StreamFollowHandler(
 			return nil, errors.New("empty follower or followee id")
 		}
 
-		isImFollowing := authRepo.GetOwner().UserId == ev.Follower
+		ownerUserId := authRepo.GetOwner().UserId
+		isMeFollowed := ownerUserId == ev.Followee
 
-		if err := followRepo.Follow(ev.Follower, ev.Followee, domain.Following{
+		if isMeFollowed {
+			if err := followRepo.Follow(ev.Follower, ownerUserId, domain.Following{
+				Followee:         ownerUserId,
+				Follower:         ev.Follower,
+				FollowerUsername: ev.FollowerUsername,
+			}); err != nil {
+				return nil, err
+			}
+			return event.Accepted, nil
+		}
+
+		// I follow someone
+
+		if err := followRepo.Follow(ownerUserId, ev.Followee, domain.Following{
 			Followee:         ev.Followee,
-			Follower:         ev.Follower,
+			Follower:         ownerUserId,
 			FollowerUsername: ev.FollowerUsername,
 		}); err != nil {
 			return nil, err
 		}
 
-		if isImFollowing {
-			if err := broadcaster.SubscribeUserUpdate(ev.Followee); err != nil {
-				return nil, err
-			}
+		if err := broadcaster.SubscribeUserUpdate(ev.Followee); err != nil {
+			return nil, err
 		}
 
-		return event.Accepted, nil
+		followeeUser, err := userRepo.Get(ev.Followee)
+		if err != nil {
+			return nil, err
+		}
+
+		// inform about me following now
+		followDataResp, err := streamer.GenericStream(
+			followeeUser.NodeId,
+			event.PUBLIC_POST_FOLLOW,
+			event.NewFollowEvent{
+				Followee:         ev.Followee,
+				Follower:         ev.Follower,
+				FollowerUsername: ev.FollowerUsername,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return event.Accepted, validateResponse(followDataResp)
 	}
 }
 
@@ -77,6 +110,8 @@ func StreamUnfollowHandler(
 	broadcaster FollowingBroadcaster,
 	followRepo FollowingStorer,
 	authRepo FollowingAuthStorer,
+	userRepo FollowingUserStorer,
+	streamer FollowNodeStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.NewUnfollowEvent
@@ -88,21 +123,62 @@ func StreamUnfollowHandler(
 			return nil, errors.New("empty follower or followee id")
 		}
 
-		isImUnfollowing := authRepo.GetOwner().UserId == ev.Follower
+		ownerUserId := authRepo.GetOwner().UserId
+		isMeUnfollowed := ownerUserId == ev.Followee
 
-		err = followRepo.Unfollow(ev.Follower, ev.Followee)
+		if isMeUnfollowed {
+			err = followRepo.Unfollow(ev.Followee, ev.Follower)
+			if err != nil {
+				return nil, err
+			}
+			return event.Accepted, nil
+		}
+
+		err = followRepo.Unfollow(ownerUserId, ev.Followee)
 		if err != nil {
 			return nil, err
 		}
 
-		if isImUnfollowing {
-			if err := broadcaster.UnsubscribeUserUpdate(ev.Followee); err != nil {
-				log.Infoln("unfollow unsubscribe:", err)
-			}
+		if err := broadcaster.UnsubscribeUserUpdate(ev.Followee); err != nil {
+			log.Infoln("unfollow unsubscribe:", err)
 		}
 
-		return event.Accepted, nil
+		followeeUser, err := userRepo.Get(ev.Followee)
+		if err != nil {
+			return nil, err
+		}
+
+		unfollowDataResp, err := streamer.GenericStream(
+			followeeUser.NodeId,
+			event.PUBLIC_POST_UNFOLLOW,
+			event.NewUnfollowEvent{
+				Followee:         followeeUser.Id,
+				Follower:         ownerUserId,
+				FollowerUsername: ev.FollowerUsername,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return event.Accepted, validateResponse(unfollowDataResp)
 	}
+}
+
+func validateResponse(resp []byte) error {
+	if event.AcceptedResponse(resp) == event.Accepted {
+		return nil
+	}
+
+	var errorResp event.ErrorResponse
+	err := json.JSON.Unmarshal(resp, &errorResp)
+	if err != nil {
+		return err
+	}
+	if errorResp.Message != "" {
+		return errors.New(errorResp.Message)
+	}
+	return nil
 }
 
 func StreamGetFollowersHandler(

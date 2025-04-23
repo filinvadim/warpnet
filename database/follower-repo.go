@@ -106,7 +106,6 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 	return txn.Commit()
 }
 
-// Unfollow removes a reader-writer relationship in both directions
 func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	fixedFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeSubName).
@@ -115,27 +114,11 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 		AddParentId(fromUserId).
 		Build()
 
-	fixedFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddSubPrefix(followerSubName).
-		AddRootID(fromUserId).
-		AddRange(storage.FixedRangeKey).
-		AddParentId(toUserId).
-		Build()
-
 	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeCountSubName).
 		AddRootID(toUserId).
 		Build()
 
-	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddSubPrefix(followerCountSubName).
-		AddRootID(fromUserId).
-		Build()
-
-	sortableFollowerKey, err := repo.db.Get(fixedFollowerKey)
-	if err != nil {
-		return err
-	}
 	sortableFolloweeKey, err := repo.db.Get(fixedFolloweeKey)
 	if err != nil {
 		return err
@@ -149,16 +132,7 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	if err := txn.Delete(fixedFolloweeKey); err != nil {
 		return err
 	}
-	if err := txn.Delete(fixedFollowerKey); err != nil {
-		return err
-	}
-	if err := txn.Delete(storage.DatabaseKey(sortableFollowerKey)); err != nil {
-		return err
-	}
 	if err := txn.Delete(storage.DatabaseKey(sortableFolloweeKey)); err != nil {
-		return err
-	}
-	if _, err := txn.Decrement(followersCountKey); err != nil {
 		return err
 	}
 	if _, err := txn.Decrement(followeesCountKey); err != nil {

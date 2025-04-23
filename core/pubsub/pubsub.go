@@ -294,7 +294,15 @@ func (g *warpPubSub) subscribe(topics ...string) (err error) {
 }
 
 func (g *warpPubSub) GetSubscribers() peer.IDSlice {
-	return nil // TODO
+	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, g.ownerId)
+	g.mx.RLock()
+	topic, ok := g.topics[topicName]
+	g.mx.RUnlock()
+	if !ok {
+		return nil
+	}
+
+	return topic.ListPeers()
 }
 
 func (g *warpPubSub) unsubscribe(topics ...string) (err error) {
