@@ -1,5 +1,7 @@
 project_name: warpnet
+version: 2
 builds:
+  - id: warpnet-release
   - main: cmd/node/member/
   - env: [CGO_ENABLED=0]
     goos:
