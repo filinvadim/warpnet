@@ -1,4 +1,4 @@
-name: Build, Push and Deploy to Droplet
+name: Build, Push and Deploy Bootstrap
 
 on:
   workflow_dispatch: # Запуск вручную
@@ -29,7 +29,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/${{ github.repository }}-bootstrap:latest
           build-args: --dns 8.8.8.8
 
       - name: Set up SSH agent

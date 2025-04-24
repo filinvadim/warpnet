@@ -12,7 +12,7 @@ docker stop $(docker ps -aq) || true
 docker container prune -f
 docker compose down
 echo $GITHUB_TOKEN | docker login ghcr.io -u filinvadim --password-stdin
-docker pull ghcr.io/filinvadim/warpnet:latest
+docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 ufw disable
 systemctl restart systemd-networkd
 iptables -I DOCKER-USER -j ACCEPT

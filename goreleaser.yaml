@@ -17,7 +17,7 @@ builds:
     flags:
       - -mod=vendor
 dockers:
-- image_templates: ["ghcr.io/filinvadim/warpnet:{{ .Version }}"]
+- image_templates: ["ghcr.io/filinvadim/warpnet-member:{{ .Version }}"]
   dockerfile: Dockerfile
   build_flag_templates:
   - --label=org.opencontainers.image.title={{ .ProjectName }}
