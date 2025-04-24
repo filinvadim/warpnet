@@ -34,7 +34,6 @@ type ReplyStorer interface {
 func StreamNewReplyHandler(
 	replyRepo ReplyStorer,
 	userRepo ReplyUserFetcher,
-	tweetRepo ReplyTweetStorer,
 	streamer ReplyStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
@@ -53,20 +52,7 @@ func StreamNewReplyHandler(
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
 		parentId := strings.TrimPrefix(*ev.ParentId, domain.RetweetPrefix)
 
-		var parentPost domain.Tweet
-		if *ev.ParentId == ev.RootId { // parent is a tweet, not reply
-			parentPost, err = tweetRepo.Get(ev.UserId, rootId)
-			if err != nil {
-				return nil, fmt.Errorf("rootID: %s, user ID: %s, %w", rootId, ev.UserId, err)
-			}
-		} else {
-			parentPost, err = replyRepo.GetReply(rootId, parentId)
-			if err != nil {
-				return nil, fmt.Errorf("rootID: %s, parent ID: %s, %w", rootId, parentId, err)
-			}
-		}
-
-		parentUser, err := userRepo.Get(parentPost.UserId)
+		parentUser, err := userRepo.Get(ev.ParentUserId)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +64,6 @@ func StreamNewReplyHandler(
 			RootId:    rootId,
 			Text:      ev.Text,
 			UserId:    ev.UserId,
-			Username:  ev.Username,
 		})
 		if err != nil {
 			return nil, err
@@ -87,9 +72,17 @@ func StreamNewReplyHandler(
 		replyDataResp, err := streamer.GenericStream(
 			parentUser.NodeId,
 			event.PUBLIC_POST_REPLY,
-			event.NewReplyEvent(reply),
+			event.NewReplyEvent{
+				CreatedAt:    reply.CreatedAt,
+				Id:           reply.Id,
+				ParentId:     ev.ParentId,
+				ParentUserId: ev.ParentUserId,
+				RootId:       ev.RootId,
+				Text:         ev.Text,
+				UserId:       ev.UserId,
+			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 
@@ -178,7 +171,7 @@ func StreamDeleteReplyHandler(
 				UserId:  ev.UserId,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 

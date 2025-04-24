@@ -81,7 +81,7 @@ func StreamNewReTweetHandler(
 			event.PUBLIC_POST_RETWEET,
 			event.NewRetweetEvent(retweet),
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 		var possibleError event.ErrorResponse
@@ -140,7 +140,7 @@ func StreamUnretweetHandler(
 			event.PUBLIC_POST_UNRETWEET,
 			ev,
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 		var possibleError event.ErrorResponse

@@ -98,7 +98,7 @@ func StreamFollowHandler(
 				FollowerUsername: ev.FollowerUsername,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 
@@ -157,7 +157,7 @@ func StreamUnfollowHandler(
 				FollowerUsername: ev.FollowerUsername,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 

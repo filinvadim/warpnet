@@ -61,7 +61,7 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 				UserId:  ev.UserId,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 
@@ -107,7 +107,7 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 				UserId:  ev.UserId,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 			return nil, err
 		}
 

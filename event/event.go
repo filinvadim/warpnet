@@ -252,7 +252,15 @@ type NewMessageEvent struct {
 type NewMessageResponse = domain.ChatMessage
 
 // NewReplyEvent defines model for NewReplyEvent.
-type NewReplyEvent = domain.Tweet
+type NewReplyEvent struct {
+	CreatedAt    time.Time `json:"created_at"`
+	Id           string    `json:"id"`
+	ParentId     *string   `json:"parent_id,omitempty"`
+	ParentUserId string    `json:"parent_user_id"`
+	RootId       string    `json:"root_id"`
+	Text         string    `json:"text"`
+	UserId       string    `json:"user_id"`
+}
 
 // NewReplyResponse defines model for NewReplyResponse.
 type NewReplyResponse = domain.Tweet

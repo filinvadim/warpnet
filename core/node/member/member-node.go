@@ -159,7 +159,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_REPLY,
-		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(replyRepo, userRepo, tweetRepo, m)))),
+		logMw(authMw(unwrapMw(handler.StreamNewReplyHandler(replyRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_DELETE_REPLY,

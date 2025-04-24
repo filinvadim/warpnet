@@ -1,10 +1,10 @@
 name: Release
 
 on:
-  push:
-    tags:
+#  push:
+#    tags:
 #      - 'v*'
-      - 'v*.0'
+#      - 'v*.0'
 
 jobs:
   release:

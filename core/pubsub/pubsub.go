@@ -545,9 +545,7 @@ func (g *warpPubSub) Close() (err error) {
 	}
 
 	for t, topic := range g.topics {
-		if err := topic.Close(); err != nil {
-			log.Warnf("pubsub: failed to close topic %s: %v", t, err)
-		}
+		_ = topic.Close()
 		delete(g.topics, t)
 	}
 
