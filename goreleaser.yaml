@@ -4,7 +4,6 @@ builds:
   - id: member
     main: ./cmd/node/member/
     binary: member
-    buildmode: "c-shared"
     env: [CGO_ENABLED=0,GOPROXY='',GOSUMDB='',GOPRIVATE='github.com/filinvadim/warpnet']
     goos:
       - linux
