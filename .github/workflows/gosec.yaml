@@ -1,6 +1,6 @@
 name: Run Gosec
 on:
-  workflow_dispatch: # Запуск вручную
+  workflow_dispatch:
 
 jobs:
   gosec:
