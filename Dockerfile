@@ -11,7 +11,7 @@ ENV GOPRIVATE='github.com/filinvadim/warpnet'
 ENV GO111MODULE=''
 ENV CGO_ENABLED=0
 
-RUN go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet cmd/node/{$NODE_TYPE}/main.go
+RUN go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet cmd/node/$NODE_TYPE/main.go
 EXPOSE 4001 4002
 
 VOLUME /tmp/snapshot
