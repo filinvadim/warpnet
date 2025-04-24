@@ -2,7 +2,7 @@ project_name: warpnet
 version: 2
 builds:
   - main: ./cmd/node/member/
-    env: [CGO_ENABLED=0,GOPROXY='',GOSUMDB='',GOPRIVATE='github.com/filinvadim/warpnet',GO111MODULE=off]
+    env: [CGO_ENABLED=0,GOPROXY='',GOSUMDB='',GOPRIVATE='github.com/filinvadim/warpnet']
     goos:
       - linux
       - windows
