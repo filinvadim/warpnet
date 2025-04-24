@@ -9,8 +9,9 @@
 - warpnet business node could have centralized management
 - warpnet node must store private data only at host machine
 - warpnet member node must not be developed by a single programmer
+
 ## Requirements
-    golang >=1.23
+    golang >=1.24
 
 ## How to run single node (dev mode)
 - bootstrap node
