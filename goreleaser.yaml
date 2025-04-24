@@ -32,4 +32,3 @@ release:
   github:
     owner: filinvadim
     name: warpnet
-  draft: true
