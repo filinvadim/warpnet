@@ -39,7 +39,7 @@ jobs:
           tags: ghcr.io/${{ github.repository }}-member:latest
           build-args: --dns 8.8.8.8
 
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     env:
       flags: ""
