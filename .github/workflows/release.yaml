@@ -13,11 +13,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      flags: ""
     steps:
-      - if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        run: echo "flags=--snapshot" >> $GITHUB_ENV
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -34,6 +30,6 @@ jobs:
         with:
           distribution: goreleaser
           version: "latest"
-          args: release --clean ${{ env.flags }}
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

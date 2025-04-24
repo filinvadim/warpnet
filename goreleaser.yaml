@@ -27,3 +27,8 @@ nfpms:
   formats:
   - deb
   - rpm
+
+release:
+  github:
+    owner: filinvadim
+    name: warpnet-member
