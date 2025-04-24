@@ -1,14 +1,10 @@
 name: Release
 
 on:
-#  workflow_dispatch:
-#
   push:
-    branches:
-      - 'master'
     tags:
       - 'v*'
-#  pull_request:
+#      - 'v*.0'
 
 jobs:
   release:
