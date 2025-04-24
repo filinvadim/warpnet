@@ -31,5 +31,5 @@ nfpms:
 release:
   github:
     owner: filinvadim
-    name: warpnet-member
+    name: warpnet
   draft: true
