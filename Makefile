@@ -1,8 +1,8 @@
-oapi-codegen-install:
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+second-member:
+	go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
 
-ggen:
-	oapi-codegen -generate server,types,spec,skip-prune -package api ./spec/local-api.yml > server/api-gen/api.gen.go
+third-member:
+	go run cmd/node/member/main.go --database.dir storage3 --node.port 4031 --server.port 4032
 
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...
@@ -36,19 +36,3 @@ setup-hooks:
 
 ssh-do:
 	ssh root@207.154.221.44
-
-build-windows:
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o warpnet-win.exe cmd/node/member/main.go
-
-build-macos:
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o release/darwin/warpnet.app/Contents/MacOS/warpnet-darwin cmd/node/member/main.go
-	chmod +x release/darwin/warpnet.app/Contents/MacOS/warpnet-darwin
-	chmod +x release/darwin/warpnet.app/Contents/MacOS/launcher
-
-build-linux:
-	#sudo dpkg -P warpnet
-	rm -f release/linux/warpnet.deb
-	go build -ldflags "-s -w" -gcflags=all=-l -mod=vendor -v -o release/linux/warpnet/usr/local/bin/warpnet cmd/node/member/main.go
-	chmod +x release/linux/warpnet/usr/local/bin/warpnet
-	dpkg-deb --build release/linux/warpnet release/linux/warpnet.deb
-	desktop-file-validate release/linux/warpnet/usr/share/applications/warpnet.desktop

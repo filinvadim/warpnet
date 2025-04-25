@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var ErrAlreadyFollowed = errors.New("already followed")
+
 const (
 	FollowRepoName       = "/FOLLOWER"
 	followeeSubName      = "FOLLOWEE"
@@ -41,20 +43,6 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 
 	data, _ := json.JSON.Marshal(event)
 
-	sortableFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddSubPrefix(followeeSubName).
-		AddRootID(toUserId).
-		AddReversedTimestamp(time.Now()).
-		AddParentId(fromUserId).
-		Build()
-
-	sortableFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
-		AddSubPrefix(followerSubName).
-		AddRootID(fromUserId).
-		AddReversedTimestamp(time.Now()).
-		AddParentId(toUserId).
-		Build()
-
 	fixedFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeSubName).
 		AddRootID(toUserId).
@@ -69,6 +57,31 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		AddParentId(toUserId).
 		Build()
 
+	txn, err := repo.db.NewWriteTxn()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	_, err = txn.Get(fixedFollowerKey)
+	if err == nil {
+		return ErrAlreadyFollowed
+	}
+
+	sortableFolloweeKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followeeSubName).
+		AddRootID(toUserId).
+		AddReversedTimestamp(time.Now()).
+		AddParentId(fromUserId).
+		Build()
+
+	sortableFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(fromUserId).
+		AddReversedTimestamp(time.Now()).
+		AddParentId(toUserId).
+		Build()
+
 	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeCountSubName).
 		AddRootID(toUserId).
@@ -78,12 +91,6 @@ func (repo *FollowRepo) Follow(fromUserId, toUserId string, event domain.Followi
 		AddSubPrefix(followerCountSubName).
 		AddRootID(fromUserId).
 		Build()
-
-	txn, err := repo.db.NewWriteTxn()
-	if err != nil {
-		return err
-	}
-	defer txn.Rollback()
 
 	if err := txn.Set(sortableFollowerKey, data); err != nil {
 		return err
@@ -120,6 +127,9 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 		Build()
 
 	sortableFolloweeKey, err := repo.db.Get(fixedFolloweeKey)
+	if errors.Is(err, storage.ErrKeyNotFound) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -223,7 +233,7 @@ func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *strin
 	return followings, cur, nil
 }
 
-// GetFollowees : followee - one who is followed (has his/her posts monitored by another user)
+// GetFollowees  followee - one who is followed (has his/her posts monitored by another user)
 func (repo *FollowRepo) GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {
 	followerPrefix := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followerSubName).

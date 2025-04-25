@@ -32,7 +32,6 @@ type DiscoveryInfoStorer interface {
 type NodeStorer interface {
 	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
 	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
-	HasInfo(ctx context.Context, peerId warpnet.WarpPeerID) bool
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
 	Blocklist(ctx context.Context, peerId peer.ID) error
@@ -40,6 +39,8 @@ type NodeStorer interface {
 
 type UserStorer interface {
 	Create(user domain.User) (domain.User, error)
+	Update(userId string, newUser domain.User) (domain.User, error)
+	GetByNodeID(nodeID string) (user domain.User, err error)
 }
 
 type discoveryService struct {
@@ -218,7 +219,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if s.nodeRepo.HasInfo(s.ctx, pi.ID) {
+	existedUser, err := s.userRepo.GetByNodeID(pi.ID.String())
+	if !errors.Is(err, database.ErrUserNotFound) && !existedUser.IsOffline {
 		return
 	}
 
@@ -259,9 +261,13 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
 		return
 	}
+
+	user.IsOffline = false
+	user.NodeId = pi.ID.String()
 	user.Latency = int64(latency)
 	newUser, err := s.userRepo.Create(user)
 	if errors.Is(err, database.ErrUserAlreadyExists) {
+		newUser, _ = s.userRepo.Update(user.Id, user)
 		return
 	}
 	if err != nil {

@@ -31,9 +31,10 @@ type bridgeLogger interface {
 }
 
 type consensusLogger struct {
-	l    bridgeLogger
-	lvl  logrus.Level
-	name string
+	l     bridgeLogger
+	lvl   logrus.Level
+	name  string
+	count int
 }
 
 func newConsensusLogger(logLevel, name string) *consensusLogger {
@@ -74,12 +75,21 @@ func (c *consensusLogger) Warn(msg string, args ...interface{}) {
 func (c *consensusLogger) Error(msg string, args ...interface{}) {
 	for _, arg := range args {
 		err, ok := arg.(error)
-		if ok && errors.Is(err, raft.ErrNothingNewToSnapshot) {
+		if !ok {
+			return
+		}
+		if errors.Is(err, raft.ErrNothingNewToSnapshot) {
 			c.Debug(err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "failed to decode incoming command") {
+			if c.count < 5 {
+				c.count++
+				return
+			}
+			c.count = 0
+		}
 	}
-	// failed to decode incoming command. Args:  error=stream reset.
 	c.l.Errorln(msg, args)
 }
 

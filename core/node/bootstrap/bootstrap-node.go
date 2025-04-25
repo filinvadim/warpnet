@@ -12,6 +12,7 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/base"
 	"github.com/filinvadim/warpnet/core/pubsub"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/security"
@@ -137,6 +138,11 @@ func (bn *BootstrapNode) Start() error {
 
 	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
 	return nil
+}
+
+func (bn *BootstrapNode) GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error) {
+	// stub
+	return nil, nil
 }
 
 func (bn *BootstrapNode) Stop() {

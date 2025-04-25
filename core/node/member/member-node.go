@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -12,6 +13,7 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/base"
 	"github.com/filinvadim/warpnet/core/pubsub"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
@@ -107,7 +109,7 @@ func NewMemberNode(
 		dHashTable:    dHashTable,
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
-		retrier:       retrier.New(time.Second, 10, retrier.ExponentialBackoff),
+		retrier:       retrier.New(time.Second, 3, retrier.ArithmeticalBackoff),
 		userRepo:      userRepo,
 	}
 
@@ -279,7 +281,29 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		return fmt.Errorf("member: failed to get owner user: %v", err)
 	}
 
-	return m.raft.AskUserValidation(ownerUser)
+	return m.retrier.Try(m.ctx, func() error {
+		return m.raft.AskUserValidation(ownerUser)
+	})
+}
+
+type streamNodeID = string
+
+func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
+	bt, err := m.Stream(nodeIdStr, path, data)
+	if errors.Is(err, warpnet.ErrNodeIsOffline) {
+		u, err := m.userRepo.GetByNodeID(nodeIdStr)
+		if err != nil {
+			log.Warningf("member: stream: failed to get user: %v", err)
+			return nil, nil
+		}
+		u.IsOffline = true
+		_, err = m.userRepo.Update(u.Id, u)
+		if err != nil {
+			log.Warningf("member: stream: failed to set user offline: %v", err)
+			return nil, nil
+		}
+	}
+	return bt, err
 }
 
 func (m *MemberNode) Stop() {

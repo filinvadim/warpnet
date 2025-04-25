@@ -252,9 +252,7 @@ func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
 	return n.node.Mux()
 }
 
-type streamNodeID = string
-
-func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
+func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, errors.New("node is not initialized")
 	}
@@ -269,7 +267,7 @@ func (n *WarpNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, 
 
 	peerInfo := n.Peerstore().PeerInfo(nodeId)
 	if len(peerInfo.Addrs) == 0 {
-		log.Errorf("node: peer %v does not have any addresses: %v", nodeId, peerInfo.Addrs)
+		log.Warningf("node %v is offline", nodeId)
 		return nil, warpnet.ErrNodeIsOffline
 	}
 

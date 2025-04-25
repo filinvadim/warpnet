@@ -6,10 +6,12 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type FollowNodeStreamer interface {
@@ -54,6 +56,9 @@ func StreamFollowHandler(
 		if ev.Follower == "" || ev.Followee == "" {
 			return nil, errors.New("empty follower or followee id")
 		}
+		if ev.Follower == ev.Followee {
+			return event.Accepted, nil
+		}
 
 		ownerUserId := authRepo.GetOwner().UserId
 		isMeFollowed := ownerUserId == ev.Followee
@@ -63,19 +68,22 @@ func StreamFollowHandler(
 				Followee:         ownerUserId,
 				Follower:         ev.Follower,
 				FollowerUsername: ev.FollowerUsername,
-			}); err != nil {
+			}); err != nil && !errors.Is(err, database.ErrAlreadyFollowed) {
 				return nil, err
 			}
 			return event.Accepted, nil
 		}
 
 		// I follow someone
-
-		if err := followRepo.Follow(ownerUserId, ev.Followee, domain.Following{
+		err = followRepo.Follow(ownerUserId, ev.Followee, domain.Following{
 			Followee:         ev.Followee,
 			Follower:         ownerUserId,
 			FollowerUsername: ev.FollowerUsername,
-		}); err != nil {
+		})
+		if errors.Is(err, database.ErrAlreadyFollowed) {
+			return event.Accepted, nil
+		}
+		if err != nil {
 			return nil, err
 		}
 
@@ -88,7 +96,7 @@ func StreamFollowHandler(
 			return nil, err
 		}
 
-		// inform about me following now
+		// inform about me following someone now
 		followDataResp, err := streamer.GenericStream(
 			followeeUser.NodeId,
 			event.PUBLIC_POST_FOLLOW,
@@ -121,6 +129,9 @@ func StreamUnfollowHandler(
 		}
 		if ev.Follower == "" || ev.Followee == "" {
 			return nil, errors.New("empty follower or followee id")
+		}
+		if ev.Follower == ev.Followee {
+			return event.Accepted, nil
 		}
 
 		ownerUserId := authRepo.GetOwner().UserId
@@ -166,17 +177,17 @@ func StreamUnfollowHandler(
 }
 
 func validateResponse(resp []byte) error {
-	if event.AcceptedResponse(resp) == event.Accepted {
+	if strings.Contains(string(resp), string(event.Accepted)) {
 		return nil
 	}
 
 	var errorResp event.ErrorResponse
 	err := json.JSON.Unmarshal(resp, &errorResp)
 	if err != nil {
-		return err
+		return fmt.Errorf("followings: validate: unmarshal: %w", err)
 	}
 	if errorResp.Message != "" {
-		return errors.New(errorResp.Message)
+		return fmt.Errorf("followings: validate: message: %s", errorResp.Message)
 	}
 	return nil
 }

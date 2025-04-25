@@ -12,7 +12,6 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
-	"os"
 	"sync"
 	"time"
 
@@ -44,7 +43,7 @@ import (
 	  - **Flexibility**
 	    - Developers can implement custom consensus logic by extending the library's interfaces.
 	  - **Optimized for P2P Environments**
-	    - Unlike traditional Raft, it is adapted for dynamically changing networks.
+	    - Unlike the traditional Raft, it is adapted for dynamically changing networks.
 */
 var ErrNoRaftCluster = errors.New("consensus: no cluster found")
 
@@ -107,15 +106,18 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
+	snapshotLogger := newConsensusLogger("error", "consensus-snapshot")
+
 	if isBootstrap {
-		snapshotStore, err = raft.NewFileSnapshotStore("/tmp/snapshot", 5, os.Stderr)
+		basePath := "/tmp/snapshot"
+		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, snapshotLogger)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
-		snapshotStore, err = raft.NewFileSnapshotStore(consRepo.Path(), 5, os.Stderr)
+		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(consRepo.Path(), 5, snapshotLogger)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
@@ -140,6 +142,8 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	c.syncMx.Lock()
 	defer c.syncMx.Unlock()
 
+	c.raftID = raft.ServerID(node.NodeInfo().ID.String())
+
 	config := raft.DefaultConfig()
 	config.HeartbeatTimeout = time.Second * 5
 	config.ElectionTimeout = config.HeartbeatTimeout
@@ -155,9 +159,8 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
 	}
-	c.raftID = config.LocalID
 
-	c.transport, err = libp2praft.NewLibp2pTransport(node.Node(), time.Minute)
+	c.transport, err = NewWarpnetConsensusTransport(node)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
 		return

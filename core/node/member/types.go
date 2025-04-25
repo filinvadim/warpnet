@@ -34,6 +34,8 @@ type PubSubProvider interface {
 
 type UserFetcher interface {
 	Get(userId string) (user domain.User, err error)
+	Update(userId string, newUser domain.User) (domain.User, error)
+	GetByNodeID(nodeID string) (user domain.User, err error)
 }
 
 type ConsensusProvider interface {
