@@ -27,6 +27,8 @@
 |                    | Fetch own tweets                | From local BadgerDB                                   | ✅             |
 |                    | Fetch tweets from followees     | Pull or receive via push, verify signature            | ✅             |
 |                    | Upload 1 picture with tweet     | Add media to tweets                                   |               |
+| **Notifications**  | Store and publish notifications | Store notification and it's counter to DB             |               |
+| **Chatting**       | Implement private chats         | Store messages and chats                              |               |
 | **Timeline**       | Merge timeline                  | Aggregate tweets from followed users                  | ✅             |
 |                    | Pagination / limit              | Limit or paginate timeline results                    | ✅             |
 | **Networking**     | Node discovery & connection     | p2p discovery + manual friend list                    | ✅             |
