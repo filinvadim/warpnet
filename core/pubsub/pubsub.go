@@ -368,7 +368,7 @@ func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 			return err
 		}
 		err = topic.Publish(g.ctx, data)
-		if err != nil {
+		if err != nil && !errors.Is(err, pubsub.ErrTopicClosed) {
 			log.Errorf("pubsub: failed to publish owner update message: %v", err)
 			return err
 		}
@@ -514,7 +514,7 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 				return
 			}
 			err = discTopic.Publish(g.ctx, data)
-			if err != nil {
+			if err != nil && !errors.Is(err, pubsub.ErrTopicClosed) {
 				log.Errorf("pubsub: failed to publish peer info message: %v", err)
 			}
 		}

@@ -448,6 +448,8 @@ func (t *WarpWriteTxn) Rollback() {
 
 // =========== READ ===============================
 
+const endCursor = "end"
+
 type WarpTxReader interface {
 	IterateKeys(prefix DatabaseKey, handler IterKeysFunc) error
 	Get(key DatabaseKey) ([]byte, error)
@@ -533,6 +535,9 @@ func (t *WarpReadTxn) List(prefix DatabaseKey, limit *uint64, cursor *string) ([
 	if cursor != nil && *cursor != "" {
 		startCursor = DatabaseKey(*cursor)
 	}
+	if startCursor.String() == endCursor {
+		return []ListItem{}, endCursor, nil
+	}
 
 	if limit == nil {
 		defaultLimit := uint64(20)
@@ -564,7 +569,9 @@ func iterateKeysValues(
 	if strings.Contains(prefix.String(), FixedKey) {
 		return "", errors.New("cannot iterate thru fixed keys")
 	}
-
+	if startCursor.String() == endCursor {
+		return endCursor, nil
+	}
 	var lastKey DatabaseKey
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = true
@@ -588,9 +595,9 @@ func iterateKeysValues(
 			continue
 		}
 
-		if iterNum > *limit {
+		if iterNum >= *limit {
 			lastKey = DatabaseKey(key)
-			return "", nil
+			break
 		}
 		iterNum++
 
@@ -602,8 +609,9 @@ func iterateKeysValues(
 			return "", err
 		}
 	}
+
 	if iterNum < *limit {
-		lastKey = ""
+		lastKey = endCursor
 	}
 	return lastKey.DropId(), nil
 }

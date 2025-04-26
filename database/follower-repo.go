@@ -233,7 +233,7 @@ func (repo *FollowRepo) GetFollowers(userId string, limit *uint64, cursor *strin
 	return followings, cur, nil
 }
 
-// GetFollowees  followee - one who is followed (has his/her posts monitored by another user)
+// GetFollowees followee - one who is followed (has his/her posts monitored by another user)
 func (repo *FollowRepo) GetFollowees(userId string, limit *uint64, cursor *string) ([]domain.Following, string, error) {
 	followerPrefix := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followerSubName).

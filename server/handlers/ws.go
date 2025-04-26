@@ -52,7 +52,7 @@ func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
 	c.ctx = ctx.Request().Context()
 
 	err = c.upgrader.UpgradeConnection(ctx.Response(), ctx.Request()) // WS listener infinite loop
-	if err != nil {
+	if err != nil && !c.upgrader.IsCloseError(err) {
 		log.Errorf("websocket: upgrader: %v", err)
 	}
 

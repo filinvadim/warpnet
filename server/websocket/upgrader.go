@@ -57,6 +57,10 @@ func (s *EncryptedUpgrader) UpgradeConnection(w http.ResponseWriter, r *http.Req
 	return s.readLoop()
 }
 
+func (s *EncryptedUpgrader) IsCloseError(err error, codes ...int) bool {
+	return ws.IsCloseError(err, codes...)
+}
+
 func (s *EncryptedUpgrader) Close() {
 	if s == nil || s.conn == nil {
 		return

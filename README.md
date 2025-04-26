@@ -1,5 +1,5 @@
 # WARPNET
-## ! General principles !
+## ! General principles of Warp Network !
 - warpnet must be independent of any third party services
 - warpnet must be independent of any third party technologies
 - warpnet node must be represented as a single executable file
@@ -14,31 +14,32 @@
 
 ## 🛠 MVP Features supported (2025-04-25)
 
-| **Category**       | **Feature**                     | **Description**                                       | **Completed** |
-|--------------------|---------------------------------|-------------------------------------------------------|---------------|
-| **Authentication** | Node registration               | Key pair generation, initial setup                    | ✅             |
-|                    | Public key exchange             | RSA/Ed25519 key sharing with peers                    | ✅             |
-|                    | Challenge-Response              | Identity verification protocol between nodes          | ✅             |
-| **User**           | Create profile                  | Nickname, bio, public key                             | ✅             |
-|                    | Fetch profile                   | By ID or public key                                   | ✅             |
-| **Social Graph**   | Subscribe to followee           | Add to following list (follower → followee)           | ✅             |
-|                    | Unsubscribe                     | Remove a followee from the list                       | ✅             |
-| **Tweets**         | Publish tweet                   | Text content with local timestamp                     | ✅             |
-|                    | Fetch own tweets                | From local BadgerDB                                   | ✅             |
-|                    | Fetch tweets from followees     | Pull or receive via push, verify signature            | ✅             |
-|                    | Upload 1 picture with tweet     | Add media to tweets                                   |               |
-| **Notifications**  | Store and publish notifications | Store notification and it's counter to DB             |               |
-| **Chatting**       | Implement private chats         | Store messages and chats                              |               |
-| **Timeline**       | Merge timeline                  | Aggregate tweets from followed users                  | ✅             |
-|                    | Pagination / limit              | Limit or paginate timeline results                    | ✅             |
-| **Networking**     | Node discovery & connection     | p2p discovery + manual friend list                    | ✅             |
-|                    | API between nodes               | Exchange tweets, subs, profiles                       | ✅             |
-|                    | Broadcast support               | Push tweets to known friends                          | ✅             |
-| **Security**       | Sign tweets                     | ECDSA/RSA signatures on content                       |               |
-|                    | Verify incoming tweets          | Check signature validity                              |               |
-|                    | Rate limiting / IP filtering    | Basic DoS/DDoS protection                             | ✅             |
-| **Moderation**     | Content filtering (via AI node) | Enforce basic human rights (CP, weapons, fraud, etc.) |               |
-| **Monitoring**     | Prometheus metrics              | Track request counts, errors, etc.                    |               |
+| **Category**       | **Feature**                     | **Description**                                             | **Completed** |
+|--------------------|---------------------------------|-------------------------------------------------------------|---------------|
+| **Authentication** | Node registration               | Key pair generation, initial DB setup                       | ✅             |
+|                    | Challenge-Response              | Identity verification protocol between frontend and backend | ✅             |
+| **User**           | Create profile                  | Nickname, bio, public key                                   | ✅             |
+|                    | Fetch profile                   | By ID or public key                                         | ✅             |
+| **Social Graph**   | Subscribe to followee           | Add to following list (follower → followee)                 | ✅             |
+|                    | Unsubscribe                     | Remove a followee from the list                             | ✅             |
+| **Tweets**         | Publish tweet                   | Text content with local timestamp                           | ✅             |
+|                    | Fetch own tweets                | From local DB                                               | ✅             |
+|                    | Fetch tweets from followees     | Pull or receive via push, verify signature                  | ✅             |
+|                    | Upload 1 picture with tweet     | Add media to tweets                                         |               |
+| **Notifications**  | Store and publish notifications | Store notification and it's counter to DB                   |               |
+| **Chatting**       | Implement private chats         | Store messages and chats                                    |               |
+| **Timeline**       | Merge timeline                  | Aggregate tweets from followed users                        | ✅             |
+|                    | Pagination / limit              | Limit or paginate timeline results                          | ✅             |
+| **Networking**     | Node discovery & connection     | p2p discovery + manual friend list                          | ✅             |
+|                    | API between nodes               | Exchange tweets, subs, profiles                             | ✅             |
+|                    | Broadcast support               | Push tweets to known friends                                | ✅             |
+| **Security**       | Sign tweets                     | ECDSA/RSA signatures on content                             |               |
+|                    | Verify incoming tweets          | Check signature validity                                    |               |
+|                    | Rate limiting / IP filtering    | Basic DoS/DDoS protection                                   | ✅             |
+|                    | Public key exchange             | Noise protocol key sharing with peers                       | ✅             |
+|                    | Node integrity verification     | Check codebase hash sum, prevent malicious code             | ✅             |
+| **Moderation**     | Content filtering (via AI node) | Enforce basic human rights (CP, weapons, fraud, etc.)       |               |
+| **Monitoring**     | Prometheus metrics              | Track request counts, errors, etc.                          |               |
 
 ## Requirements
     golang >=1.24
