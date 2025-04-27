@@ -35,8 +35,6 @@
 |                    | API between nodes               | Exchange tweets, subs, profiles                             | ✅             |
 |                    | Broadcast support               | Push tweets to known friends                                | ✅             |
 | **Security**       | Sign tweets                     | ECDSA/RSA signatures on content                             |               |
-|                    | Verify incoming tweets          | Check signature validity                                    |               |
-|                    | Rate limiting / IP filtering    | Basic DoS/DDoS protection                                   | ✅             |
 |                    | Public key exchange             | Noise protocol key sharing with peers                       | ✅             |
 |                    | Node integrity verification     | Check codebase hash sum, prevent malicious code             | ✅             |
 
