@@ -120,12 +120,12 @@ func (e *DiffieHellmanEncrypter) ComputeSharedSecret(clientPublicKeyBytes, salt 
 	if err != nil {
 		return fmt.Errorf("computing shared secret: %v", err)
 	}
-	e.aesKey, err = deriveKey(sharedSecret.Bytes(), salt)
+	e.aesKey, err = deriveKeyDH(sharedSecret.Bytes(), salt)
 	return err
 }
 
 // Derive AES key using HKDF
-func deriveKey(sharedSecret, salt []byte) ([]byte, error) {
+func deriveKeyDH(sharedSecret, salt []byte) ([]byte, error) {
 	h := hkdf.New(sha256.New, sharedSecret, salt, []byte(""))
 	key := make([]byte, 32) // AES-256
 	_, err := io.ReadFull(h, key)

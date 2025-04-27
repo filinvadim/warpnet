@@ -45,7 +45,8 @@ type WarpNode struct {
 	ipv4, ipv6, ownerId string
 	isClosed            *atomic.Bool
 	version             *semver.Version
-	psk                 security.PSK
+
+	startTime time.Time
 }
 
 func NewWarpNode(
@@ -127,16 +128,16 @@ func NewWarpNode(
 	}
 
 	wn := &WarpNode{
-		ctx:      ctx,
-		node:     node,
-		relay:    nodeRelay,
-		ipv6:     ipv6,
-		ipv4:     ipv4,
-		ownerId:  ownerId,
-		streamer: stream.NewStreamPool(ctx, node),
-		isClosed: new(atomic.Bool),
-		version:  config.ConfigFile.Version,
-		psk:      psk,
+		ctx:       ctx,
+		node:      node,
+		relay:     nodeRelay,
+		ipv6:      ipv6,
+		ipv4:      ipv4,
+		ownerId:   ownerId,
+		streamer:  stream.NewStreamPool(ctx, node),
+		isClosed:  new(atomic.Bool),
+		version:   config.ConfigFile.Version,
+		startTime: time.Now(),
 	}
 
 	return wn, nil
@@ -204,13 +205,6 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	if n == nil || n.node == nil || n.node.Network() == nil || n.node.Peerstore() == nil {
 		return warpnet.NodeInfo{}
 	}
-	networkState := "Disconnected"
-	peersOnline := n.node.Network().Peers()
-	if len(peersOnline) != 0 {
-		networkState = "Connected"
-	}
-
-	storedPeers := n.node.Peerstore().Peers()
 
 	return warpnet.NodeInfo{
 		ID: n.node.ID(),
@@ -218,12 +212,9 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 			IPv4: n.ipv4,
 			IPv6: n.ipv6,
 		},
-		PeersOnline:  len(peersOnline),
-		PeersStored:  len(storedPeers),
-		NetworkState: networkState,
-		Version:      n.version,
-		OwnerId:      n.ownerId,
-		PSK:          pnet.PSK(n.psk),
+		Version:   n.version,
+		OwnerId:   n.ownerId,
+		StartTime: n.startTime,
 	}
 }
 

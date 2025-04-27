@@ -92,6 +92,10 @@ func NewMemberNode(
 		return nil, fmt.Errorf("member: failed to init node: %v", err)
 	}
 
+	for i := range psk { // avoid RAM snapshot attack
+		psk[i] = 0
+	}
+
 	println()
 	fmt.Printf(
 		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
@@ -125,6 +129,7 @@ func (m *MemberNode) setupHandlers(
 	replyRepo := database.NewRepliesRepo(db)
 	likeRepo := database.NewLikeRepo(db)
 	chatRepo := database.NewChatRepo(db)
+	mediaRepo := database.NewMediaRepo(db)
 
 	authNodeInfo := domain.AuthNodeInfo{
 		Identity: domain.Identity{Owner: authRepo.GetOwner(), Token: authRepo.SessionToken()},
@@ -141,7 +146,11 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
-		logMw(handler.StreamGetInfoHandler(m, db, m.raft, m.discService.HandlePeerFound)),
+		logMw(handler.StreamGetInfoHandler(m, m.discService.HandlePeerFound)),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_GET_STATS,
+		logMw(authMw(unwrapMw(handler.StreamGetStatsHandler(m, db, m.raft)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_POST_PAIR,
@@ -262,6 +271,10 @@ func (m *MemberNode) setupHandlers(
 	m.SetStreamHandler(
 		event.PRIVATE_GET_CHAT,
 		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
+	)
+	m.SetStreamHandler(
+		event.PUBLIC_POST_UPLOAD_IMAGE,
+		logMw(authMw(unwrapMw(handler.StreamUploadImageHandler(m, mediaRepo, userRepo)))),
 	)
 }
 

@@ -324,3 +324,10 @@ type UsersResponse struct {
 	Cursor string        `json:"cursor"`
 	Users  []domain.User `json:"users"`
 }
+
+type UploadImageEvent struct {
+	// Key is image hash
+	Key string `json:"key"`
+	// Image mime type + "," + base64
+	Image string `json:"image"`
+}

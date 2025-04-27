@@ -21,11 +21,6 @@ type MediaStorer interface {
 	Get(key storage.DatabaseKey) ([]byte, error)
 }
 
-type MediaObject struct {
-	data []byte
-	meta []byte
-}
-
 type MediaRepo struct {
 	db MediaStorer
 }
@@ -34,29 +29,31 @@ func NewMediaRepo(db MediaStorer) *MediaRepo {
 	return &MediaRepo{db: db}
 }
 
-func (repo *MediaRepo) GetImage() ([]byte, error) {
+func (repo *MediaRepo) GetImage(key string) ([]byte, error) {
 	if repo == nil {
 		return nil, ErrMediaRepoNotInit
 	}
 
 	mediaKey := storage.NewPrefixBuilder(MediaRepoName).
 		AddRootID(ImageSubNamespace).
+		AddParentId(key).
 		Build()
 
 	data, err := repo.db.Get(mediaKey)
-	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+	if errors.Is(err, storage.ErrKeyNotFound) {
 		return nil, ErrMediaNotFound
 	}
 
-	return data, nil
+	return data, err
 }
 
-func (repo *MediaRepo) SetImage(img []byte) error {
+func (repo *MediaRepo) SetImage(key string, img []byte) error {
 	if repo == nil {
 		return ErrMediaRepoNotInit
 	}
 	mediaKey := storage.NewPrefixBuilder(MediaRepoName).
 		AddRootID(ImageSubNamespace).
+		AddParentId(key).
 		Build()
 
 	return repo.db.Set(mediaKey, img)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Masterminds/semver/v3"
+	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -12,26 +13,107 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/net"
+	log "github.com/sirupsen/logrus"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type NodeInfo struct {
-	ID             WarpPeerID        `json:"node_id"`
-	Addrs          AddrsInfo         `json:"addrs"`
-	NetworkState   string            `json:"network_state"`
-	Version        *semver.Version   `json:"version"`
-	OwnerId        string            `json:"owner_id"`
-	PSK            pnet.PSK          `json:"psk"`
-	PeersOnline    int               `json:"peers_online"`
-	PeersStored    int               `json:"peers_stored"`
+	OwnerId   string          `json:"owner_id"`
+	ID        WarpPeerID      `json:"node_id"`
+	Version   *semver.Version `json:"version"`
+	Addrs     AddrsInfo       `json:"addrs"`
+	StartTime time.Time       `json:"start_time"`
+}
+
+type NodeStats struct {
+	UserId  string          `json:"user_id"`
+	NodeID  WarpPeerID      `json:"node_id"`
+	Version *semver.Version `json:"version"`
+	Addrs   AddrsInfo       `json:"addrs"`
+
+	StartTime time.Time `json:"start_time"`
+
+	NetworkState string `json:"network_state"`
+
 	DatabaseStats  map[string]string `json:"database_stats"`
 	ConsensusStats map[string]string `json:"consensus_stats"`
 	MemoryStats    map[string]string `json:"memory_stats"`
+	CPUStats       map[string]string `json:"cpu_stats"`
+
+	BytesSent     int64 `json:"bytes_sent"`
+	BytesReceived int64 `json:"bytes_received"`
+
+	PeersOnline int `json:"peers_online"`
+	PeersStored int `json:"peers_stored"`
+}
+
+func GetMacAddr() string {
+	ifas, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+	var as []string
+	for _, ifa := range ifas {
+		a := ifa.HardwareAddr
+		if a != "" {
+			as = append(as, a)
+		}
+	}
+	return strings.Join(as, ",")
+}
+
+func GetMemoryStats() map[string]string {
+	memStats := runtime.MemStats{}
+	runtime.ReadMemStats(&memStats)
+
+	return map[string]string{
+		"heap":    units.HumanSize(float64(memStats.Alloc)),
+		"stack":   units.HumanSize(float64(memStats.StackInuse)),
+		"last_gc": time.Unix(0, int64(memStats.LastGC)).Format(time.DateTime),
+	}
+}
+
+func GetCPUStats() map[string]string {
+	cpuNum := strconv.Itoa(runtime.NumCPU())
+
+	stats := map[string]string{
+		"num": cpuNum,
+	}
+
+	percentages, err := cpu.Percent(time.Second, false)
+	if err != nil {
+		log.Error("could not get CPU usage percent", err)
+		return stats
+	}
+	if len(percentages) == 0 {
+		return stats
+	}
+	usage := strconv.FormatFloat(percentages[0], 'f', -1, 64)
+	stats["usage"] = usage
+	return stats
+}
+
+func GetNetworkIO() (bytesSent int64, bytesRecv int64) {
+	ioCounters, err := net.IOCounters(false) // false = суммарно по всем интерфейсам
+	if err != nil {
+		log.Error("could not get network io counters", err)
+		return 0, 0
+	}
+	if len(ioCounters) == 0 {
+		return 0, 0
+	}
+	stats := ioCounters[0]
+	return int64(stats.BytesSent), int64(stats.BytesRecv)
 }
 
 type AddrsInfo struct {
