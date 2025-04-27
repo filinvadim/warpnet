@@ -6,6 +6,7 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
@@ -278,6 +279,21 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 				OwnerId:  ev.OwnerId,
 			}, nil
 		}
+		var (
+			ownerId      = messages[0].OwnerId
+			userId       = messages[0].OtherUserId
+			remotePeerId = s.Conn().RemotePeer()
+		)
+
+		storedUser, err := userRepo.GetByNodeID(remotePeerId.String())
+		if err != nil && !errors.Is(err, database.ErrUserNotFound) {
+			return nil, fmt.Errorf("remote peer %s: %w", remotePeerId.String(), err)
+		}
+
+		// just double check
+		if storedUser.Id != "" && (storedUser.Id != userId || storedUser.Id != ownerId) {
+			return nil, errors.New("user doesn't own these messages")
+		}
 
 		return event.ChatMessagesResponse{
 			ChatId:   ev.ChatId,
@@ -288,7 +304,7 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 	}
 }
 
-// Handler for retrieving a specific message
+// StreamGetMessageHandler for retrieving a specific message
 func StreamGetMessageHandler(repo ChatStorer, userRepo ChatUserFetcher) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetMessageEvent

@@ -12,7 +12,7 @@ import (
 var ErrAlreadyFollowed = errors.New("already followed")
 
 const (
-	FollowRepoName       = "/FOLLOWER"
+	FollowRepoName       = "/FOLLOWINGS"
 	followeeSubName      = "FOLLOWEE"
 	followerSubName      = "FOLLOWER"
 	followeeCountSubName = "FOLLOWEECOUNT"

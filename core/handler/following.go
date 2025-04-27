@@ -106,7 +106,10 @@ func StreamFollowHandler(
 				FollowerUsername: ev.FollowerUsername,
 			},
 		)
-		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+		if errors.Is(err, warpnet.ErrNodeIsOffline) {
+			return nil, warpnet.ErrUserIsOffline
+		}
+		if err != nil {
 			return nil, err
 		}
 

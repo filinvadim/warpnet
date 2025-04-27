@@ -11,6 +11,7 @@
 - warpnet member node must not be developed by a single programmer
 - warpnet contents must be moderated without any human being intervention
 - warpnet bootstrap node hosting must be rewarded
+- warpnet node owners take full personal responsibility for the content their upload
 
 ## 🛠 MVP Features supported (2025-04-25)
 
