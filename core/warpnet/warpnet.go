@@ -39,7 +39,10 @@ type AddrsInfo struct {
 	IPv6 string `json:"ipv6,omitempty"`
 }
 
-var ErrNodeIsOffline = errors.New("node is offline")
+var (
+	ErrNodeIsOffline = errors.New("node is offline")
+	ErrUserIsOffline = errors.New("user is offline")
+)
 
 const PermanentAddrTTL = peerstore.PermanentAddrTTL
 

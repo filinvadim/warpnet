@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/docker/go-units v0.5.0
-	github.com/filinvadim/warpnet-frontend v0.0.406
+	github.com/filinvadim/warpnet-frontend v0.0.410
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-hclog v1.6.3

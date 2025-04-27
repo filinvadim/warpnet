@@ -64,6 +64,10 @@ func StreamCreateChatHandler(
 			return nil, err
 		}
 
+		if otherUser.IsOffline {
+			return nil, warpnet.ErrUserIsOffline // TODO
+		}
+
 		ownerChat, err := repo.CreateChat(ev.ChatId, ev.OwnerId, ev.OtherUserId)
 		if err != nil {
 			return nil, err
@@ -73,8 +77,9 @@ func StreamCreateChatHandler(
 			otherUser.NodeId,
 			event.PUBLIC_POST_CHAT,
 			domain.Chat{
-				CreatedAt:   time.Now(),
-				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId), // switch users
+				CreatedAt: ownerChat.CreatedAt,
+				// switch users
+				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId),
 				OtherUserId: ownerChat.OwnerId,
 				OwnerId:     ownerChat.OtherUserId,
 			},
@@ -268,24 +273,10 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 		if len(messages) == 0 {
 			return event.ChatMessagesResponse{
 				ChatId:   ev.ChatId,
-				Cursor:   "",
+				Cursor:   cursor,
 				Messages: []domain.ChatMessage{},
 				OwnerId:  ev.OwnerId,
 			}, nil
-		}
-		var (
-			ownerId      = messages[0].OwnerId
-			userId       = messages[0].OtherUserId
-			remotePeerId = s.Conn().RemotePeer()
-		)
-
-		user, err := userRepo.GetByNodeID(remotePeerId.String())
-		if err != nil {
-			return nil, err
-		}
-
-		if user.Id != userId || userId != ownerId {
-			return nil, errors.New("unauthorized user")
 		}
 
 		return event.ChatMessagesResponse{
