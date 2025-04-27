@@ -96,6 +96,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			response = event.ErrorResponse{Message: ErrStreamReadError.Error()}
 			return
 		}
+		//log.Infof(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(data))
 
 		if response == nil {
 			response, err = fn(data, s)
@@ -106,6 +107,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 				response = event.ErrorResponse{Code: 500, Message: err.Error()}
 			}
 		}
+		//log.Infof("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), response)
 
 		switch response.(type) {
 		case []byte:
@@ -120,7 +122,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			return
 		default:
 			if err := encoder.Encode(response); err != nil {
-				log.Errorf("middleware: failed encoding generic response: %v", err)
+				log.Errorf("middleware: failed encoding generic response: %v %v", response, err)
 			}
 		}
 

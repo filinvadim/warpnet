@@ -121,8 +121,6 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
 github.com/fatih/color v1.18.0/go.mod h1:4FelSpRwEGDpQ12mAdzqdOukCy4u8WUtOY6lkT/6HfU=
-github.com/filinvadim/warpnet-frontend v0.0.411 h1:Edl1Px0q33ka46bQUCsJntkhzT8kGLEm0TUBxhU5L5U=
-github.com/filinvadim/warpnet-frontend v0.0.411/go.mod h1:jZ1sALG6byGMnCkF6RUzFFiiP8Ak9KQMe7aDh1rAFBo=
 github.com/filinvadim/warpnet-frontend v0.0.414 h1:cjdD3Qb8605mZyAliGtsSYuztPez3ZtGMbzRedizn68=
 github.com/filinvadim/warpnet-frontend v0.0.414/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=

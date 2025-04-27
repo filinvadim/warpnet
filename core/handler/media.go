@@ -18,16 +18,20 @@ import (
 	_ "image/png"
 )
 
-// The system embeds encrypted metadata (node and user information) into the EXIF segment of media files
-// during upload.
-// A weak password is randomly generated for each file, used for encryption via Argon2id + AES-256-GCM,
-// and immediately discarded.
-// The password is never stored or logged.
-// Decryption is only possible through brute-force attacks, requiring massive computational resources.
-// Ordinary users cannot recover the metadata; only powerful entities (e.g., government data centers) can.
-// EXIF metadata acts as proof of ownership and responsibility without revealing sensitive data.
-// Salt and nonce are public and embedded with the media file.
-// Security relies entirely on computational difficulty, not on secrecy of the password.
+/*
+
+	The system embeds encrypted metadata (node and user information) into the EXIF segment of media files
+	during upload.
+	A weak password is randomly generated for each file, used for encryption via Argon2id + AES-256-GCM,
+	and immediately discarded.
+	The password is never stored or logged.
+	Decryption is only possible through brute-force attacks, requiring massive computational resources.
+	Ordinary users cannot recover the metadata; only powerful entities (e.g., government data centers) can.
+	EXIF metadata acts as proof of ownership and responsibility without revealing sensitive data.
+	Salt and nonce are public and embedded with the media file.
+	Security relies entirely on computational difficulty, not on secrecy of the password.
+
+*/
 
 const (
 	ifdPath  = "IFD/Exif"

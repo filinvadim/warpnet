@@ -92,10 +92,6 @@ func NewMemberNode(
 		return nil, fmt.Errorf("member: failed to init node: %v", err)
 	}
 
-	for i := range psk { // avoid RAM snapshot attack
-		psk[i] = 0
-	}
-
 	println()
 	fmt.Printf(
 		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",

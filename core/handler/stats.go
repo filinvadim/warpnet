@@ -21,8 +21,6 @@ func StreamGetStatsHandler(
 	consensus StatsProvider,
 ) middleware.WarpHandler {
 	return func(_ []byte, s warpnet.WarpStream) (any, error) {
-		defer func() { s.Close() }() //#nosec
-
 		sent, recv := warpnet.GetNetworkIO()
 
 		networkState := "Disconnected"

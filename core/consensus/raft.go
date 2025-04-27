@@ -335,6 +335,8 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
+	var prevAppliedIndex uint64
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -342,7 +344,12 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 		case <-ticker.C:
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
-			log.Infof("consensus: current node index: %d/%d", lastAppliedIndex, lastIndex)
+
+			if lastAppliedIndex != prevAppliedIndex {
+				log.Infof("consensus: current node index: %d/%d", lastAppliedIndex, lastIndex)
+			}
+			prevAppliedIndex = lastAppliedIndex
+
 			if lastAppliedIndex == lastIndex {
 				return nil
 			}
