@@ -269,11 +269,11 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 	log.Infoln("discovery: new user added:")
-	log.Infoln("name:", newUser.Username)
-	log.Infoln("id:", newUser.Id)
-	log.Infoln("node_id:", newUser.NodeId)
-	log.Infoln("created_at:", newUser.CreatedAt)
-	log.Infoln("latency:", newUser.Latency)
+	fmt.Println("    name:", newUser.Username)
+	fmt.Println("    id:", newUser.Id)
+	fmt.Println("    node_id:", newUser.NodeId)
+	fmt.Println("    created_at:", newUser.CreatedAt)
+	fmt.Println("    latency:", newUser.Latency)
 }
 
 func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {
