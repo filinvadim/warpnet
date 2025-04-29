@@ -276,6 +276,10 @@ func (m *MemberNode) setupHandlers(
 		event.PRIVATE_POST_UPLOAD_IMAGE,
 		logMw(authMw(unwrapMw(handler.StreamUploadImageHandler(m, mediaRepo, userRepo)))),
 	)
+	m.SetStreamHandler(
+		event.PUBLIC_GET_IMAGE,
+		logMw(authMw(unwrapMw(handler.StreamGetImageHandler(m, mediaRepo, userRepo)))),
+	)
 }
 
 func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {

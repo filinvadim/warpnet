@@ -38,5 +38,6 @@ const (
 	PUBLIC_POST_UNFOLLOW      = "/public/post/unfollow/0.0.0"
 	PUBLIC_POST_UNLIKE        = "/public/post/unlike/0.0.0"
 	PUBLIC_POST_UNRETWEET     = "/public/post/unretweet/0.0.0"
-	PRIVATE_POST_UPLOAD_IMAGE = "/private/post/uploadimage/0.0.0"
+	PRIVATE_POST_UPLOAD_IMAGE = "/private/post/image/0.0.0"
+	PUBLIC_GET_IMAGE          = "/public/get/image/0.0.0"
 )

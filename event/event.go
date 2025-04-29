@@ -6,15 +6,13 @@ import (
 	"time"
 )
 
-// Defines values for AcceptedResponse.
 const (
-	Accepted AcceptedResponse = "Accepted"
+	Accepted acceptedResponse = `["code":0,"message":"Accepted"]`
 )
 
 type ID = string
 
-// AcceptedResponse defines model for AcceptedResponse.
-type AcceptedResponse string
+type acceptedResponse string
 
 // ChatCreatedResponse defines model for ChatCreatedResponse.
 type ChatCreatedResponse = domain.Chat
@@ -326,8 +324,21 @@ type UsersResponse struct {
 }
 
 type UploadImageEvent struct {
-	// Key is image hash
-	Key string `json:"key"`
 	// Image mime type + "," + base64
-	Image string `json:"image"`
+	File string `json:"file"`
+}
+
+type UploadImageResponse struct {
+	Key string `json:"key"`
+}
+
+type GetImageEvent struct {
+	UserId string `json:"user_id"`
+	// Image mime type + "," + base64
+	Key string `json:"key"`
+}
+
+type GetImageResponse struct {
+	// Image mime type + "," + base64
+	File string `json:"file"`
 }

@@ -87,25 +87,25 @@ type Tweet struct {
 	Text        string  `json:"text"`
 	UserId      string  `json:"user_id"`
 	Username    string  `json:"username"`
+	ImageKey    string  `json:"image_key"`
 }
 
 // User defines model for User.
 type User struct {
 	// Avatar mime type + "," + base64
-	Avatar *string `json:"avatar,omitempty"`
+	AvatarKey string `json:"avatar_key,omitempty"`
 
 	// BackgroundImage mime type + "," + base64
-	BackgroundImage *string   `json:"background_image,omitempty"`
-	Bio             string    `json:"bio"`
-	Birthdate       string    `json:"birthdate"`
-	CreatedAt       time.Time `json:"created_at"`
-	FolloweesCount  uint64    `json:"followees_count"`
-	FollowersCount  uint64    `json:"followers_count"`
-	Id              string    `json:"id"`
-	IsOffline       bool      `json:"isOffline"`
-	NodeId          string    `json:"node_id"`
+	BackgroundImageKey string    `json:"background_image_key,omitempty"`
+	Bio                string    `json:"bio"`
+	Birthdate          string    `json:"birthdate"`
+	CreatedAt          time.Time `json:"created_at"`
+	FolloweesCount     uint64    `json:"followees_count"`
+	FollowersCount     uint64    `json:"followers_count"`
+	Id                 string    `json:"id"`
+	IsOffline          bool      `json:"isOffline"`
+	NodeId             string    `json:"node_id"`
 
-	// Rtt round trip time - nanoseconds, default - max int64
 	Latency     int64   `json:"latency"`
 	TweetsCount uint64  `json:"tweets_count"`
 	Username    string  `json:"username"`

@@ -82,7 +82,12 @@ const (
 
 func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
-		defer func() { s.Close() }() //#nosec
+		defer func() {
+			s.Close()
+			if r := recover(); r != nil {
+				log.Errorf("middleware: unwrap stream middleware panic: %v", r)
+			}
+		}() //#nosec
 
 		var (
 			response any

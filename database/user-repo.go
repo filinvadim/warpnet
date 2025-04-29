@@ -143,14 +143,14 @@ func (repo *UserRepo) Update(userId string, newUser domain.User) (domain.User, e
 	if newUser.Bio != "" {
 		existingUser.Bio = newUser.Bio
 	}
-	if newUser.Avatar != nil {
-		existingUser.Avatar = newUser.Avatar
+	if newUser.AvatarKey != "" {
+		existingUser.AvatarKey = newUser.AvatarKey
 	}
 	if newUser.Username != "" {
 		existingUser.Username = newUser.Username
 	}
-	if newUser.BackgroundImage != nil {
-		existingUser.BackgroundImage = newUser.BackgroundImage
+	if newUser.BackgroundImageKey != "" {
+		existingUser.BackgroundImageKey = newUser.BackgroundImageKey
 	}
 	if newUser.Website != nil {
 		existingUser.Website = newUser.Website

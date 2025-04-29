@@ -9,7 +9,9 @@ import (
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	jis "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
@@ -42,6 +44,8 @@ const (
 	nodeMetaKey = "node"
 	userMetaKey = "user"
 	macMetaKey  = "MAC"
+
+	imagePrefix = "data:image/jpeg;base64,"
 )
 
 type MediaNodeInformer interface {
@@ -49,8 +53,8 @@ type MediaNodeInformer interface {
 }
 
 type MediaStorer interface {
-	GetImage(key string) ([]byte, error)
-	SetImage(key string, img []byte) error
+	GetImage(userId, key string) (database.Base64Image, error)
+	SetImage(userId string, img database.Base64Image) (_ database.ImageKey, err error)
 }
 
 type MediaUserFetcher interface {
@@ -63,23 +67,19 @@ func StreamUploadImageHandler(
 	userRepo MediaUserFetcher,
 ) middleware.WarpHandler {
 	return func(input []byte, s warpnet.WarpStream) (any, error) {
-		if mediaRepo == nil {
-			return nil, nil
-		}
-
 		var ev event.UploadImageEvent
 		if err := json.JSON.Unmarshal(input, &ev); err != nil {
 			return nil, err
 		}
 
-		parts := strings.SplitN(ev.Image, ",", 2)
+		parts := strings.SplitN(ev.File, ",", 2)
 		if len(parts) != 2 {
 			return nil, errors.New("invalid base64 image data")
 		}
 
 		imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: base64 decoding: %w", err)
 		}
 
 		img, _, err := image.Decode(bytes.NewReader(imgBytes))
@@ -87,19 +87,19 @@ func StreamUploadImageHandler(
 			return nil, errors.New("invalid image format: PNG, JPG, JPEG, GIF are only allowed") // TODO add more types
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: image decoding: %w", err)
 		}
 
 		var imageBuf bytes.Buffer
 		err = jpeg.Encode(&imageBuf, img, &jpeg.Options{Quality: 100})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: JPEG encoding: %w", err)
 		}
 
 		nodeInfo := info.NodeInfo()
 		ownerUser, err := userRepo.Get(nodeInfo.OwnerId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: fetching user: %w", err)
 		}
 
 		metaData := map[string]any{
@@ -107,24 +107,65 @@ func StreamUploadImageHandler(
 		}
 		metaBytes, err := json.JSON.Marshal(metaData)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: marshalling meta data: %w", err)
 		}
 
 		encryptedMeta, err := security.EncryptAES(metaBytes, nil) // unknown password
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: AES encrypting: %w", err)
 		}
 
 		amendedImg, err := amendExifMetadata(imageBuf.Bytes(), encryptedMeta)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("upload: meta data amending: %w", err)
 		}
 
-		if err := mediaRepo.SetImage(ev.Key, amendedImg); err != nil {
-			return nil, err
+		encoded := base64.StdEncoding.EncodeToString(amendedImg)
+
+		key, err := mediaRepo.SetImage(ownerUser.Id, database.Base64Image(imagePrefix+encoded))
+		if err != nil {
+			return nil, fmt.Errorf("upload: storing media: %w", err)
 		}
 
-		return event.Accepted, nil
+		return event.UploadImageResponse{Key: string(key)}, nil
+	}
+}
+
+type MediaStreamer interface {
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+	NodeInfo() warpnet.NodeInfo
+}
+
+func StreamGetImageHandler(
+	streamer MediaStreamer,
+	mediaRepo MediaStorer,
+	userRepo MediaUserFetcher,
+) middleware.WarpHandler {
+	return func(input []byte, s warpnet.WarpStream) (any, error) {
+		var ev event.GetImageEvent
+		if err := json.JSON.Unmarshal(input, &ev); err != nil {
+			return nil, fmt.Errorf("get image: unmarshalling event: %w", err)
+		}
+
+		ownerId := streamer.NodeInfo().OwnerId
+		if ev.UserId == "" {
+			ev.UserId = ownerId
+		}
+
+		img, err := mediaRepo.GetImage(ev.UserId, ev.Key)
+		if err != nil && !errors.Is(err, database.ErrMediaNotFound) {
+			return nil, fmt.Errorf("get image: fetching media: %w", err)
+		}
+		if img != "" {
+			return event.GetImageResponse{File: string(img)}, nil
+		}
+
+		u, err := userRepo.Get(ev.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("get image: fetching user: %w", err)
+		}
+
+		return streamer.GenericStream(u.NodeId, event.PUBLIC_GET_IMAGE, ev)
 	}
 }
 
@@ -133,24 +174,24 @@ func amendExifMetadata(imageBytes, metadata []byte) ([]byte, error) {
 
 	intfc, err := parser.ParseBytes(imageBytes)
 	if err != nil {
-		return nil, fmt.Errorf("media: parse bytes: %w", err)
+		return nil, fmt.Errorf("amend EXIF: parse bytes: %w", err)
 	}
 
 	sl, ok := intfc.(*jis.SegmentList)
 	if !ok {
-		return nil, errors.New("amend: invalid exif type: not a segment list")
+		return nil, errors.New("amend EXIF: invalid exif type: not a segment list")
 	}
 
 	ifdMapping, err := exifcommon.NewIfdMappingWithStandard()
 	if err != nil {
-		return nil, fmt.Errorf("media: new IFD mapping: %w", err)
+		return nil, fmt.Errorf("amend EXIF: new IFD mapping: %w", err)
 	}
 
 	ti := exif.NewTagIndex()
 
 	err = exif.LoadStandardTags(ti)
 	if err != nil {
-		return nil, fmt.Errorf("media: load standard tags: %w", err)
+		return nil, fmt.Errorf("amend EXIF: load standard tags: %w", err)
 	}
 
 	identity := exifcommon.NewIfdIdentity(
@@ -167,18 +208,18 @@ func amendExifMetadata(imageBytes, metadata []byte) ([]byte, error) {
 
 	err = rootIb.SetStandardWithName(imageDescriptionTag, encodedMetadata)
 	if err != nil {
-		return nil, fmt.Errorf("media: add standard tag: %w", err)
+		return nil, fmt.Errorf("amend EXIF: add standard tag: %w", err)
 	}
 
 	err = sl.SetExif(rootIb)
 	if err != nil {
-		return nil, fmt.Errorf("media: set EXIF: %w", err)
+		return nil, fmt.Errorf("amend EXIF: set: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
 	err = sl.Write(buf)
 	if err != nil {
-		return nil, fmt.Errorf("media: write bytes: %w", err)
+		return nil, fmt.Errorf("amend EXIF: write bytes: %w", err)
 	}
 
 	return buf.Bytes(), nil

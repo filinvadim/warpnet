@@ -10,7 +10,10 @@ import (
 
 const ConsensusConfigNamespace = "/CONFIGS/"
 
-var ErrConsensusKeyNotFound = errors.New("consensus key not found")
+var (
+	ErrConsensusKeyNotFound        = errors.New("consensus key not found")
+	ErrConsensusRepoNotInitialized = errors.New("consensus repo not initialized")
+)
 
 type ConsensusStorer interface {
 	Set(key storage.DatabaseKey, value []byte) error
@@ -30,14 +33,23 @@ func NewConsensusRepo(db ConsensusStorer) *ConsensusRepo {
 }
 
 func (cr *ConsensusRepo) Sync() error {
+	if cr == nil || cr.db == nil {
+		return nil
+	}
 	return cr.db.Sync()
 }
 
 func (cr *ConsensusRepo) SnapshotsPath() (path string) {
+	if cr == nil || cr.db == nil {
+		return "/tmp/snapshot"
+	}
 	return cr.db.Path() + "/snapshots"
 }
 
 func (cr *ConsensusRepo) Reset() error {
+	if cr == nil || cr.db == nil {
+		return nil
+	}
 	txn, err := cr.db.NewReadTxn()
 	if err != nil {
 		return err
@@ -58,11 +70,17 @@ func (cr *ConsensusRepo) Reset() error {
 
 // Set is used to set a key/value set outside of the raft log.
 func (cr *ConsensusRepo) Set(key []byte, val []byte) error {
+	if cr == nil || cr.db == nil {
+		return ErrConsensusRepoNotInitialized
+	}
 	return cr.db.Set(storage.DatabaseKey(append([]byte(ConsensusConfigNamespace), key...)), val)
 }
 
 // Get is used to retrieve a value from the k/v store by key
 func (cr *ConsensusRepo) Get(key []byte) ([]byte, error) {
+	if cr == nil || cr.db == nil {
+		return nil, ErrConsensusRepoNotInitialized
+	}
 	prefix := storage.DatabaseKey(append([]byte(ConsensusConfigNamespace), key...))
 	val, err := cr.db.Get(prefix)
 	if errors.Is(err, badger.ErrKeyNotFound) {
@@ -73,11 +91,17 @@ func (cr *ConsensusRepo) Get(key []byte) ([]byte, error) {
 
 // SetUint64 is like Set, but handles uint64 values
 func (cr *ConsensusRepo) SetUint64(key []byte, val uint64) error {
+	if cr == nil || cr.db == nil {
+		return ErrConsensusRepoNotInitialized
+	}
 	fullKey := storage.DatabaseKey(append([]byte(ConsensusConfigNamespace), key...))
 	return cr.db.Set(fullKey, uint64ToBytes(val))
 }
 
 func (cr *ConsensusRepo) GetUint64(key []byte) (uint64, error) {
+	if cr == nil || cr.db == nil {
+		return 0, ErrConsensusRepoNotInitialized
+	}
 	fullKey := storage.DatabaseKey(append([]byte(ConsensusConfigNamespace), key...))
 	val, err := cr.db.Get(fullKey)
 	if errors.Is(err, badger.ErrKeyNotFound) {

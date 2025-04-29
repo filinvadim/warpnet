@@ -22,8 +22,7 @@ const testImagePNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYA
 
 func TestUploadImage_Success(t *testing.T) {
 	ev := event.UploadImageEvent{
-		Key:   "test",
-		Image: testImagePNG,
+		File: testImagePNG,
 	}
 	bt, err := json.JSON.Marshal(ev)
 	assert.NoError(t, err)
@@ -96,6 +95,18 @@ type (
 	s struct{}
 )
 
+func (m m) GetImage(userId, key string) ([]byte, error) {
+	return nil, nil
+}
+
+func (m m) SetImage(userId string, img []byte) (key string, err error) {
+	return "", nil
+}
+
+func (n n) NodeInfo() warpnet.NodeInfo {
+	return warpnet.NodeInfo{}
+}
+
 func (s s) Read(p []byte) (n int, err error) {
 	return 0, nil
 }
@@ -162,18 +173,4 @@ func (s s) Scope() network.StreamScope {
 
 func (u u) Get(userId string) (user domain.User, err error) {
 	return domain.User{}, nil
-}
-
-func (m m) GetImage(key string) ([]byte, error) {
-	return []byte{}, nil
-
-}
-
-func (m m) SetImage(key string, img []byte) error {
-	return nil
-}
-
-func (n n) NodeInfo() warpnet.NodeInfo {
-	return warpnet.NodeInfo{}
-
 }
