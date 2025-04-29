@@ -86,7 +86,7 @@ func (s *TweetRepoTestSuite) TestListTweets() {
 	tweets, cursor, err := s.repo.List(userId, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(tweets, 3)
-	s.Empty(cursor)
+	s.Equal(cursor, "end")
 }
 
 func (s *TweetRepoTestSuite) TestRetweetAndRetweeters() {

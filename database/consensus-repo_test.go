@@ -2,6 +2,7 @@ package database
 
 import (
 	"go.uber.org/goleak"
+	"os"
 	"testing"
 
 	"github.com/filinvadim/warpnet/database/storage"
@@ -65,13 +66,33 @@ func (s *ConsensusRepoTestSuite) TestGetUint64_DefaultZero() {
 }
 
 func (s *ConsensusRepoTestSuite) TestPath() {
-	path := s.repo.Path()
+	path := s.repo.SnapshotsPath()
 	s.Contains(path, "/snapshots")
 }
 
 func (s *ConsensusRepoTestSuite) TestSync() {
 	err := s.repo.Sync()
 	s.NoError(err)
+}
+
+func (s *ConsensusRepoTestSuite) TestReset() {
+	err := s.repo.Set([]byte("testkey"), []byte("testvalue"))
+	s.Require().NoError(err)
+
+	err = os.MkdirAll(s.repo.SnapshotsPath(), 0o755)
+	s.Require().NoError(err)
+
+	_, err = os.Stat(s.repo.SnapshotsPath())
+	s.Require().NoError(err)
+
+	err = s.repo.Reset()
+	s.Require().NoError(err)
+
+	_, err = s.repo.Get([]byte("testkey"))
+	s.Require().ErrorIs(err, ErrConsensusKeyNotFound)
+
+	_, err = os.Stat(s.repo.SnapshotsPath())
+	s.Require().True(os.IsNotExist(err))
 }
 
 func TestConsensusRepoTestSuite(t *testing.T) {

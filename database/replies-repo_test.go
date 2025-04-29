@@ -122,7 +122,7 @@ func (s *ReplyRepoTestSuite) TestGetRepliesTree() {
 	tree, cursor, err := s.repo.GetRepliesTree(rootID, parentID, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(tree, 3)
-	s.Empty(cursor)
+	s.Equal(cursor, "end")
 
 	for _, node := range tree {
 		s.Equal("child", node.Reply.Text)

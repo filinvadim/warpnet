@@ -49,7 +49,7 @@ func (s *TimelineRepoTestSuite) TestAddAndGetTimeline() {
 	timeline, cursor, err := s.repo.GetTimeline(userID, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(timeline, 1)
-	s.Empty(cursor)
+	s.Equal(cursor, "end")
 	s.Equal(tweet.Text, timeline[0].Text)
 	s.Equal(tweet.Id, timeline[0].Id)
 }

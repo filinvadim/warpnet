@@ -54,7 +54,7 @@ type (
 
 type ConsensusStorer interface {
 	raft.StableStore
-	Path() string
+	SnapshotsPath() string
 }
 
 type NodeServicesProvider interface {
@@ -106,18 +106,18 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	snapshotLogger := newConsensusLogger("error", "consensus-snapshot")
+	l := newConsensusLogger("error", "consensus-snapshot")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
-		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, snapshotLogger)
+		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, l)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
-		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(consRepo.Path(), 5, snapshotLogger)
+		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(consRepo.SnapshotsPath(), 5, l)
 		if err != nil {
 			log.Fatalf("consensus: failed to create snapshot store: %v", err)
 		}

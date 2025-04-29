@@ -1,7 +1,0 @@
-Package: warpnet
-Version: 0.2.200
-Section: utils
-Priority: optional
-Architecture: amd64
-Maintainer: Vadim <filinvadim@protonmail.com>
-Description: Decentralized social networking node

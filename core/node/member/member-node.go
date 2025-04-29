@@ -113,12 +113,12 @@ func NewMemberNode(
 		userRepo:      userRepo,
 	}
 
-	mn.setupHandlers(authRepo, userRepo, followRepo, db)
+	mn.setupHandlers(authRepo, userRepo, followRepo, consensusRepo, db)
 	return mn, nil
 }
 
 func (m *MemberNode) setupHandlers(
-	authRepo AuthProvider, userRepo UserProvider, followRepo FollowStorer, db Storer,
+	authRepo AuthProvider, userRepo UserProvider, followRepo FollowStorer, consRepo ConsensusStorer, db Storer,
 ) {
 	timelineRepo := database.NewTimelineRepo(db)
 	tweetRepo := database.NewTweetRepo(db)
@@ -143,6 +143,10 @@ func (m *MemberNode) setupHandlers(
 	m.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
 		logMw(handler.StreamGetInfoHandler(m, m.discService.HandlePeerFound)),
+	)
+	m.SetStreamHandler(
+		event.PRIVATE_POST_RESET,
+		logMw(authMw(unwrapMw(handler.StreamConsensusResetHandler(consRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_STATS,
@@ -269,7 +273,7 @@ func (m *MemberNode) setupHandlers(
 		logMw(authMw(unwrapMw(handler.StreamGetUserChatHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
-		event.PUBLIC_POST_UPLOAD_IMAGE,
+		event.PRIVATE_POST_UPLOAD_IMAGE,
 		logMw(authMw(unwrapMw(handler.StreamUploadImageHandler(m, mediaRepo, userRepo)))),
 	)
 }

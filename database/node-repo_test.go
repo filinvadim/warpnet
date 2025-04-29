@@ -128,25 +128,6 @@ func (s *NodeRepoTestSuite) TestAddProviderAndList() {
 	s.NotEmpty(all)
 }
 
-func (s *NodeRepoTestSuite) TestAddAndRemoveInfo() {
-	pk, err := security.GenerateKeyFromSeed([]byte("peerXYZ"))
-	s.Require().NoError(err)
-
-	warpPrivKey := pk.(warpnet.WarpPrivateKey)
-	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
-	s.Require().NoError(err)
-
-	info := warpnet.NodeInfo{
-		ID: id,
-	}
-
-	err = s.repo.AddInfo(s.ctx, id, info)
-	s.Require().NoError(err)
-
-	err = s.repo.RemoveInfo(s.ctx, id)
-	s.Require().NoError(err)
-}
-
 func (s *NodeRepoTestSuite) TestQuerySimple() {
 	key := datastore.NewKey("query/key")
 	val := []byte("qval")

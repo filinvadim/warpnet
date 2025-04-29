@@ -5,6 +5,7 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 )
@@ -15,6 +16,10 @@ type AdminStreamer interface {
 
 type AdminStateCommitter interface {
 	CommitState(newState consensus.KVState) (_ *consensus.KVState, err error)
+}
+
+type ConsensusResetter interface {
+	Reset() error
 }
 
 func StreamVerifyHandler(state AdminStateCommitter) middleware.WarpHandler {
@@ -36,5 +41,15 @@ func StreamVerifyHandler(state AdminStateCommitter) middleware.WarpHandler {
 		}
 
 		return updatedState, nil
+	}
+}
+
+func StreamConsensusResetHandler(consRepo ConsensusResetter) middleware.WarpHandler {
+	return func(buf []byte, s warpnet.WarpStream) (any, error) {
+		if consRepo == nil {
+			return nil, nil
+		}
+
+		return event.Accepted, consRepo.Reset()
 	}
 }

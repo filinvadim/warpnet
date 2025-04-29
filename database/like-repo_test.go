@@ -55,7 +55,7 @@ func (s *LikeRepoTestSuite) TestLikeAndUnlike() {
 	likers, cur, err := s.repo.Likers(tweetId, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(likers, 1)
-	s.Empty(cur)
+	s.Equal(cur, "end")
 	s.Equal(userId, likers[0])
 
 	// Unlike
@@ -109,7 +109,7 @@ func (s *LikeRepoTestSuite) TestLikers_Empty() {
 	likers, cur, err := s.repo.Likers(tweetId, &limit, nil)
 	s.Require().NoError(err)
 	s.Empty(likers)
-	s.Empty(cur)
+	s.Equal(cur, "end")
 }
 
 func TestLikeRepoTestSuite(t *testing.T) {

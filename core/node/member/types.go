@@ -74,6 +74,10 @@ type ClientNodeStreamer interface {
 	ClientStream(nodeId string, path string, data any) (_ []byte, err error)
 }
 
+type ConsensusStorer interface {
+	Reset() error
+}
+
 type FollowStorer interface {
 	GetFollowersCount(userId string) (uint64, error)
 	GetFolloweesCount(userId string) (uint64, error)

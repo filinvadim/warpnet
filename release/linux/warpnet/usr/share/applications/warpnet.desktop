@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=WarpNet
-Comment=Decentralized Social Node
-Exec=gnome-terminal -- /usr/local/bin/warpnet
-Icon=logo
-Terminal=false
-Type=Application
-Categories=Network;Chat;

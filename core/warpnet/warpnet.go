@@ -41,7 +41,7 @@ type NodeStats struct {
 	Version *semver.Version `json:"version"`
 	Addrs   AddrsInfo       `json:"addrs"`
 
-	StartTime time.Time `json:"start_time"`
+	StartTime string `json:"start_time"`
 
 	NetworkState string `json:"network_state"`
 

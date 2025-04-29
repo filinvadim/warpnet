@@ -2,8 +2,11 @@ package handler
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/dsoprea/go-exif/v3"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	jis "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -11,11 +14,11 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
-	log "github.com/sirupsen/logrus"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
+	"strings"
 )
 
 /*
@@ -34,8 +37,7 @@ import (
 */
 
 const (
-	ifdPath  = "IFD/Exif"
-	warpMeta = "WarpMeta"
+	imageDescriptionTag = "ImageDescription"
 
 	nodeMetaKey = "node"
 	userMetaKey = "user"
@@ -70,7 +72,17 @@ func StreamUploadImageHandler(
 			return nil, err
 		}
 
-		img, _, err := image.Decode(bytes.NewBuffer([]byte(ev.Image)))
+		parts := strings.SplitN(ev.Image, ",", 2)
+		if len(parts) != 2 {
+			return nil, errors.New("invalid base64 image data")
+		}
+
+		imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil {
+			return nil, err
+		}
+
+		img, _, err := image.Decode(bytes.NewReader(imgBytes))
 		if errors.Is(err, image.ErrFormat) {
 			return nil, errors.New("invalid image format: PNG, JPG, JPEG, GIF are only allowed") // TODO add more types
 		}
@@ -98,16 +110,7 @@ func StreamUploadImageHandler(
 			return nil, err
 		}
 
-		c := security.NewArgon2Cipher(&security.DefaultArgon2Params)
-
-		password := security.GenerateWeakPassword()
-		defer func() {
-			for i := range password { // avoid RAM snapshot attack
-				password[i] = 0
-			}
-		}()
-
-		encryptedMeta, err := c.EncryptA2id(metaBytes, password)
+		encryptedMeta, err := security.EncryptAES(metaBytes, nil) // unknown password
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +133,7 @@ func amendExifMetadata(imageBytes, metadata []byte) ([]byte, error) {
 
 	intfc, err := parser.ParseBytes(imageBytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: parse bytes: %w", err)
 	}
 
 	sl, ok := intfc.(*jis.SegmentList)
@@ -138,67 +141,45 @@ func amendExifMetadata(imageBytes, metadata []byte) ([]byte, error) {
 		return nil, errors.New("amend: invalid exif type: not a segment list")
 	}
 
-	// Update the tag.
-	rootIb, err := sl.ConstructExifBuilder()
+	ifdMapping, err := exifcommon.NewIfdMappingWithStandard()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: new IFD mapping: %w", err)
 	}
 
-	ifdIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	ti := exif.NewTagIndex()
+
+	err = exif.LoadStandardTags(ti)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: load standard tags: %w", err)
 	}
 
-	err = ifdIb.SetStandardWithName(warpMeta, string(metadata))
+	identity := exifcommon.NewIfdIdentity(
+		exifcommon.IfdStandardIfdIdentity.IfdTag(),
+		exifcommon.IfdIdentityPart{
+			Name:  exifcommon.IfdStandardIfdIdentity.Name(),
+			Index: exifcommon.IfdStandardIfdIdentity.Index(),
+		},
+	)
+
+	rootIb := exif.NewIfdBuilder(ifdMapping, ti, identity, exifcommon.EncodeDefaultByteOrder)
+
+	encodedMetadata := base64.StdEncoding.EncodeToString(metadata)
+
+	err = rootIb.SetStandardWithName(imageDescriptionTag, encodedMetadata)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: add standard tag: %w", err)
 	}
 
-	// Update the exif segment.
 	err = sl.SetExif(rootIb)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: set EXIF: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
 	err = sl.Write(buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("media: write bytes: %w", err)
 	}
 
-	bt := buf.Bytes()
-
-	return bt, validateExif(bt)
-}
-
-func validateExif(data []byte) error {
-	parser := jis.NewJpegMediaParser()
-
-	intfc, err := parser.ParseBytes(data)
-	if err != nil {
-		return err
-	}
-
-	sl, ok := intfc.(*jis.SegmentList)
-	if !ok {
-		return errors.New("validate: invalid exif type: not a segment list")
-	}
-
-	_, _, exifTags, err := sl.DumpExif()
-	if err != nil {
-		return err
-	}
-
-	var isFound bool
-	for _, et := range exifTags {
-		if et.IfdPath == ifdPath && et.TagName == warpMeta {
-			log.Infof("EXIF tag value: %s \n", et.FormattedFirst)
-			isFound = true
-			break
-		}
-	}
-	if !isFound {
-		return errors.New("invalid exif: meta tag not found")
-	}
-	return nil
+	return buf.Bytes(), nil
 }

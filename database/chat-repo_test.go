@@ -73,7 +73,7 @@ func (s *ChatRepoTestSuite) TestGetUserChats() {
 	chats, cursor, err := s.repo.GetUserChats(userID, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(chats, 3)
-	s.Empty(cursor)
+	s.Equal(cursor, "end")
 }
 
 func (s *ChatRepoTestSuite) TestCreateAndGetMessage() {
@@ -115,7 +115,7 @@ func (s *ChatRepoTestSuite) TestListMessages() {
 	msgs, cursor, err := s.repo.ListMessages(chat.Id, &limit, nil)
 	s.Require().NoError(err)
 	s.Len(msgs, 5)
-	s.Empty(cursor)
+	s.Equal(cursor, "end")
 }
 
 func (s *ChatRepoTestSuite) TestDeleteMessage() {

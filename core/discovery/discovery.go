@@ -30,8 +30,6 @@ type DiscoveryInfoStorer interface {
 }
 
 type NodeStorer interface {
-	AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error
-	RemoveInfo(ctx context.Context, peerId peer.ID) (err error)
 	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
 	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
 	Blocklist(ctx context.Context, peerId peer.ID) error
@@ -206,7 +204,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !isConnected {
-		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
+		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m", pi.String(), peerState)
 
 		if err := s.node.Connect(pi); err != nil {
 			log.Errorf("discovery: failed to connect to new peer: %s...", err)
@@ -235,10 +233,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if err != nil {
 		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)
 		return
-	}
-
-	if err = s.nodeRepo.AddInfo(s.ctx, pi.ID, info); err != nil {
-		log.Errorf("discovery: failed to store info of new peer: %s", err)
 	}
 
 	if info.OwnerId == "" {
@@ -274,8 +268,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
 		return
 	}
-	bt, _ := json.JSON.MarshalIndent(newUser, "", "  ")
-	log.Infoln("discovery: new user added:", string(bt))
+	log.Infoln("discovery: new user added:")
+	log.Infoln("name:", newUser.Username)
+	log.Infoln("id:", newUser.Id)
+	log.Infoln("node_id:", newUser.NodeId)
+	log.Infoln("created_at:", newUser.CreatedAt)
+	log.Infoln("latency:", newUser.Latency)
 }
 
 func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {

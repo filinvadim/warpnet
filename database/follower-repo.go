@@ -121,18 +121,32 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 		AddParentId(fromUserId).
 		Build()
 
+	fixedFollowerKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerSubName).
+		AddRootID(fromUserId).
+		AddRange(storage.FixedRangeKey).
+		AddParentId(toUserId).
+		Build()
+
 	followeesCountKey := storage.NewPrefixBuilder(FollowRepoName).
 		AddSubPrefix(followeeCountSubName).
 		AddRootID(toUserId).
 		Build()
 
+	followersCountKey := storage.NewPrefixBuilder(FollowRepoName).
+		AddSubPrefix(followerCountSubName).
+		AddRootID(fromUserId).
+		Build()
+
 	sortableFolloweeKey, err := repo.db.Get(fixedFolloweeKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return err
 	}
+	sortableFollowerKey, err := repo.db.Get(fixedFollowerKey)
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		return err
+	}
+
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
 		return err
@@ -145,9 +159,19 @@ func (repo *FollowRepo) Unfollow(fromUserId, toUserId string) error {
 	if err := txn.Delete(storage.DatabaseKey(sortableFolloweeKey)); err != nil {
 		return err
 	}
+	if err := txn.Delete(fixedFollowerKey); err != nil {
+		return err
+	}
+	if err := txn.Delete(storage.DatabaseKey(sortableFollowerKey)); err != nil {
+		return err
+	}
 	if _, err := txn.Decrement(followeesCountKey); err != nil {
 		return err
 	}
+	if _, err := txn.Decrement(followersCountKey); err != nil {
+		return err
+	}
+
 	return txn.Commit()
 }
 

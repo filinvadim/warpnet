@@ -781,57 +781,6 @@ func (d *NodeRepo) BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerI
 	return err
 }
 
-func (d *NodeRepo) AddInfo(ctx context.Context, peerId warpnet.WarpPeerID, info warpnet.NodeInfo) error {
-	if d == nil {
-		return ErrNilNodeRepo
-	}
-	if peerId == "" {
-		return errors.New("empty peer ID")
-	}
-	infoKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(InfoSubNamespace).
-		AddRootID(peerId.String()).
-		Build()
-
-	bt, err := json.JSON.Marshal(info)
-	if err != nil {
-		return err
-	}
-
-	return d.Put(ctx, ds.NewKey(infoKey.String()), bt)
-}
-
-func (d *NodeRepo) HasInfo(ctx context.Context, peerId warpnet.WarpPeerID) bool {
-	if d == nil {
-		return false
-	}
-	if peerId == "" {
-		return false
-	}
-	infoKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(InfoSubNamespace).
-		AddRootID(peerId.String()).
-		Build()
-
-	v, err := d.Get(ctx, ds.NewKey(infoKey.String()))
-	return err == nil && v != nil
-}
-
-func (d *NodeRepo) RemoveInfo(ctx context.Context, peerId warpnet.WarpPeerID) (err error) {
-	if d == nil {
-		return ErrNilNodeRepo
-	}
-	if peerId == "" {
-		return errors.New("empty peer ID")
-	}
-	infoKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(InfoSubNamespace).
-		AddRootID(peerId.String()).
-		Build()
-
-	return d.Delete(ctx, ds.NewKey(infoKey.String()))
-}
-
 func buildRootKey(key ds.Key) string {
 	rootKey := strings.TrimPrefix(key.String(), "/")
 	if len(rootKey) == 0 {
