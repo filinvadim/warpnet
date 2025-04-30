@@ -83,7 +83,7 @@ func (c *consensusLogger) Error(msg string, args ...interface{}) {
 			return
 		}
 		if strings.Contains(err.Error(), "failed to decode incoming command") {
-			if c.count < 5 {
+			if c.count < 1 {
 				c.count++
 				return
 			}
