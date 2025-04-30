@@ -1,9 +1,11 @@
 package event
 
 const (
+	// admin
 	PUBLIC_POST_NODE_VERIFY = "/public/post/admin/verifynode/0.0.0"
 	PRIVATE_POST_PAIR       = "/private/post/admin/pair/0.0.0"
-
+	PRIVATE_GET_STATS       = "/private/get/admin/stats/0.0.0"
+	// application
 	PRIVATE_DELETE_CHAT       = "/private/delete/chat/0.0.0"
 	PRIVATE_DELETE_MESSAGE    = "/private/delete/message/0.0.0"
 	PRIVATE_DELETE_TWEET      = "/private/delete/tweet/0.0.0"
@@ -20,7 +22,6 @@ const (
 	PUBLIC_GET_FOLLOWEES      = "/public/get/followees/0.0.0"
 	PUBLIC_GET_FOLLOWERS      = "/public/get/followers/0.0.0"
 	PUBLIC_GET_INFO           = "/public/get/info/0.0.0"
-	PRIVATE_GET_STATS         = "/private/get/stats/0.0.0"
 	PRIVATE_POST_RESET        = "/private/post/reset/0.0.0"
 	PUBLIC_GET_REPLIES        = "/public/get/replies/0.0.0"
 	PUBLIC_GET_REPLY          = "/public/get/reply/0.0.0"

@@ -204,7 +204,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !isConnected {
-		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m", pi.String(), peerState)
+		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 		if err := s.node.Connect(pi); err != nil {
 			log.Errorf("discovery: failed to connect to new peer: %s...", err)
@@ -268,12 +268,14 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to create user from new peer: %s", err)
 		return
 	}
-	log.Infoln("discovery: new user added:")
-	fmt.Println("    name:", newUser.Username)
-	fmt.Println("    id:", newUser.Id)
-	fmt.Println("    node_id:", newUser.NodeId)
-	fmt.Println("    created_at:", newUser.CreatedAt)
-	fmt.Println("    latency:", newUser.Latency)
+	log.Infof(
+		"discovery: new user added: id %s, name %s, node_id %s, created_at %s, latency: %d",
+		newUser.Id,
+		newUser.Username,
+		newUser.NodeId,
+		newUser.CreatedAt,
+		newUser.Latency,
+	)
 }
 
 func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {
