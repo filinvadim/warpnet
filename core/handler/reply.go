@@ -201,15 +201,15 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
 		parentId := strings.TrimPrefix(ev.ParentId, domain.RetweetPrefix)
 
-		tree, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
+		replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
 
 		if err != nil {
 			return nil, err
 		}
-		return event.RepliesTreeResponse{
-			Cursor: cursor,
-			Tree:   tree,
-			UserId: &parentId,
+		return event.RepliesResponse{
+			Cursor:  cursor,
+			Replies: replies,
+			UserId:  &parentId,
 		}, nil
 	}
 }

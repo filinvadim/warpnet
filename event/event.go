@@ -281,11 +281,11 @@ type Owner = domain.Owner
 // ReTweetsCountResponse defines model for ReTweetsCountResponse.
 type ReTweetsCountResponse = LikesCountResponse
 
-// RepliesTreeResponse defines model for RepliesTreeResponse.
-type RepliesTreeResponse struct {
-	Cursor string             `json:"cursor"`
-	Tree   []domain.ReplyNode `json:"tree"`
-	UserId *string            `json:"user_id,omitempty"`
+// RepliesResponse defines model for RepliesTreeResponse.
+type RepliesResponse struct {
+	Cursor  string             `json:"cursor"`
+	Replies []domain.ReplyNode `json:"replies"`
+	UserId  *string            `json:"user_id,omitempty"`
 }
 
 // TweetsResponse defines model for TweetsResponse.

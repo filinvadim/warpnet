@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	jis "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/filinvadim/warpnet/database"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
@@ -95,11 +96,11 @@ type (
 	s struct{}
 )
 
-func (m m) GetImage(userId, key string) ([]byte, error) {
-	return nil, nil
+func (m m) GetImage(userId, key string) (database.Base64Image, error) {
+	return "", nil
 }
 
-func (m m) SetImage(userId string, img []byte) (key string, err error) {
+func (m m) SetImage(userId string, img database.Base64Image) (key database.ImageKey, err error) {
 	return "", nil
 }
 

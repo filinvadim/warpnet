@@ -180,7 +180,7 @@ func StreamUnfollowHandler(
 }
 
 func validateResponse(resp []byte) error {
-	if strings.Contains(string(resp), string(event.Accepted)) {
+	if strings.Contains(string(resp), "Accepted") {
 		return nil
 	}
 
