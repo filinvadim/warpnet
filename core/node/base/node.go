@@ -32,7 +32,7 @@ type Streamer interface {
 }
 
 const (
-	DefaultTimeout = 180 * time.Second
+	DefaultTimeout = 360 * time.Second
 	ServiceName    = "warpnet"
 )
 

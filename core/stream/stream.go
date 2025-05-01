@@ -33,8 +33,10 @@ func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byt
 	if p == nil {
 		return nil, errors.New("nil stream pool")
 	}
-
-	return send(p.ctx, p.n, peerAddr, r, data)
+	if p.ctx.Err() != nil {
+		return nil, p.ctx.Err()
+	}
+	return send(context.Background(), p.n, peerAddr, r, data)
 }
 
 func send(
@@ -72,13 +74,13 @@ func send(
 	}
 
 	buf := bytes.NewBuffer(nil)
-	_, err = buf.ReadFrom(rw)
+	num, err := buf.ReadFrom(rw)
 	if err != nil {
 		log.Errorf("stream: reading response: %v", err)
 		return nil, fmt.Errorf("reading response: %s", err)
 	}
 
-	if buf.Len() == 0 {
+	if num == 0 {
 		return nil, fmt.Errorf("stream: empty response")
 	}
 	return buf.Bytes(), nil

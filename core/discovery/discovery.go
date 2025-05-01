@@ -227,7 +227,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
-		log.Errorf("discovery: failed to get info from new peer: %s", err)
+		log.Errorf("discovery: failed to get info from new peer %s: %v", pi.ID.String(), err)
+		return
+	}
+
+	if infoResp == nil || len(infoResp) == 0 {
+		log.Warnf("discovery: info from new peer %s is empty", pi.ID.String())
 		return
 	}
 
@@ -247,7 +252,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
-		log.Errorf("discovery: failed to get info from new peer: %s", err)
+		log.Errorf("discovery: failed to user data from new peer %s: %v", pi.ID.String(), err)
 		return
 	}
 	latency := s.node.Peerstore().LatencyEWMA(pi.ID)
@@ -255,7 +260,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	var user domain.User
 	err = json.JSON.Unmarshal(userResp, &user)
 	if err != nil {
-		log.Errorf("discovery: failed to unmarshal user from new peer: %s", err)
+		log.Errorf("discovery: failed to unmarshal user from new peer: %v", err)
 		return
 	}
 

@@ -572,7 +572,6 @@ func iterateKeysValues(
 	if startCursor.String() == endCursor {
 		return endCursor, nil
 	}
-	var lastKey DatabaseKey
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = true
 	opts.PrefetchSize = 20
@@ -584,9 +583,14 @@ func iterateKeysValues(
 	if !startCursor.IsEmpty() {
 		p = startCursor.Bytes()
 	}
-	iterNum := uint64(0)
+
+	var (
+		lastKey DatabaseKey
+		iterNum uint64
+	)
+
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		p = prefix.Bytes() // starting point found
+		//p = prefix.Bytes() // starting point found
 
 		item := it.Item()
 		key := string(item.Key())
@@ -599,7 +603,6 @@ func iterateKeysValues(
 			lastKey = DatabaseKey(key)
 			break
 		}
-		iterNum++
 
 		val, err := item.ValueCopy(nil)
 		if err != nil {
@@ -608,6 +611,8 @@ func iterateKeysValues(
 		if err := handler(key, val); err != nil {
 			return "", err
 		}
+		iterNum++
+
 	}
 
 	if iterNum < *limit {
