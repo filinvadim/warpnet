@@ -65,9 +65,8 @@ func StreamFollowHandler(
 
 		if isMeFollowed {
 			if err := followRepo.Follow(ev.Follower, ownerUserId, domain.Following{
-				Followee:         ownerUserId,
-				Follower:         ev.Follower,
-				FollowerUsername: ev.FollowerUsername,
+				Followee: ownerUserId,
+				Follower: ev.Follower,
 			}); err != nil && !errors.Is(err, database.ErrAlreadyFollowed) {
 				return nil, err
 			}
@@ -76,9 +75,8 @@ func StreamFollowHandler(
 
 		// I follow someone
 		err = followRepo.Follow(ownerUserId, ev.Followee, domain.Following{
-			Followee:         ev.Followee,
-			Follower:         ownerUserId,
-			FollowerUsername: ev.FollowerUsername,
+			Followee: ev.Followee,
+			Follower: ownerUserId,
 		})
 		if errors.Is(err, database.ErrAlreadyFollowed) {
 			return event.Accepted, nil
@@ -101,9 +99,8 @@ func StreamFollowHandler(
 			followeeUser.NodeId,
 			event.PUBLIC_POST_FOLLOW,
 			event.NewFollowEvent{
-				Followee:         ev.Followee,
-				Follower:         ev.Follower,
-				FollowerUsername: ev.FollowerUsername,
+				Followee: ev.Followee,
+				Follower: ev.Follower,
 			},
 		)
 		if errors.Is(err, warpnet.ErrNodeIsOffline) {
@@ -166,9 +163,8 @@ func StreamUnfollowHandler(
 			followeeUser.NodeId,
 			event.PUBLIC_POST_UNFOLLOW,
 			event.NewUnfollowEvent{
-				Followee:         followeeUser.Id,
-				Follower:         ownerUserId,
-				FollowerUsername: ev.FollowerUsername,
+				Followee: followeeUser.Id,
+				Follower: ownerUserId,
 			},
 		)
 		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {

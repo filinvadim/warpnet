@@ -165,8 +165,11 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	}
 
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
-		log.Errorf("discovery: channel overflow %d", cap(s.discoveryChan))
+		log.Warnf("discovery: channel overflow %d", cap(s.discoveryChan))
 		<-s.discoveryChan // drop old data
+		<-s.discoveryChan
+		<-s.discoveryChan
+		time.Sleep(time.Second * 1)
 	}
 	s.discoveryChan <- pi
 }

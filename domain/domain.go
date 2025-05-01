@@ -43,8 +43,7 @@ type Following struct {
 	Followee string `json:"followee"`
 
 	// Follower from user
-	Follower         string  `json:"follower"`
-	FollowerUsername *string `json:"follower_username,omitempty"`
+	Follower string `json:"follower"`
 }
 
 // Identity defines model for Identity.
@@ -96,7 +95,7 @@ type User struct {
 	AvatarKey string `json:"avatar_key,omitempty"`
 
 	// BackgroundImage mime type + "," + base64
-	BackgroundImageKey string    `json:"background_image_key,omitempty"`
+	BackgroundImageKey string    `json:"background_image_key"`
 	Bio                string    `json:"bio"`
 	Birthdate          string    `json:"birthdate"`
 	CreatedAt          time.Time `json:"created_at"`

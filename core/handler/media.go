@@ -146,6 +146,9 @@ func StreamGetImageHandler(
 		if err := json.JSON.Unmarshal(input, &ev); err != nil {
 			return nil, fmt.Errorf("get image: unmarshalling event: %w", err)
 		}
+		if ev.Key == "" {
+			return nil, fmt.Errorf("get image: empty image key")
+		}
 
 		ownerId := streamer.NodeInfo().OwnerId
 		if ev.UserId == "" {
