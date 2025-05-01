@@ -234,7 +234,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	var info warpnet.NodeInfo
 	err = json.JSON.Unmarshal(infoResp, &info)
 	if err != nil {
-		log.Errorf("discovery: failed to unmarshal info from new peer: %s", err)
+		log.Errorf("discovery: failed to unmarshal info from new peer: %s %v", infoResp, err)
 		return
 	}
 

@@ -308,19 +308,26 @@ type streamNodeID = string
 func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	bt, err := m.Stream(nodeIdStr, path, data)
 	if errors.Is(err, warpnet.ErrNodeIsOffline) {
-		u, err := m.userRepo.GetByNodeID(nodeIdStr)
-		if err != nil {
-			log.Warningf("member: stream: failed to get user: %v", err)
-			return nil, nil
-		}
-		u.IsOffline = true
-		_, err = m.userRepo.Update(u.Id, u)
-		if err != nil {
-			log.Warningf("member: stream: failed to set user offline: %v", err)
-			return nil, nil
-		}
+		m.setUserOffline(nodeIdStr)
 	}
 	return bt, err
+}
+
+func (m *MemberNode) setUserOffline(nodeIdStr streamNodeID) {
+	u, err := m.userRepo.GetByNodeID(nodeIdStr)
+	if errors.Is(err, database.ErrUserNotFound) {
+		return
+	}
+	if err != nil {
+		log.Warningf("member: stream: failed to get user: %v", err)
+		return
+	}
+	u.IsOffline = true
+	_, err = m.userRepo.Update(u.Id, u)
+	if err != nil {
+		log.Warningf("member: stream: failed to set user offline: %v", err)
+		return
+	}
 }
 
 func (m *MemberNode) Stop() {
