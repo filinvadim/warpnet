@@ -197,11 +197,11 @@ func isPublicIP(addr string) bool {
 
 	// private ranges
 	privateBlocks := []string{
-		"10.0.0.0/8",
+		"10.0.0.0/8", // VPN
 		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"100.64.0.0/10", // CG-NAT
-		"127.0.0.0/8",
+		"192.168.0.0/16", // private network
+		"100.64.0.0/10",  // CG-NAT
+		"127.0.0.0/8",    // local
 		"169.254.0.0/16", // link-local
 	}
 
