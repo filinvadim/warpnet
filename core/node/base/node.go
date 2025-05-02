@@ -134,13 +134,6 @@ func NewWarpNode(
 
 	ipv4, ipv6 := parseAddresses(node)
 
-	if !isPublicIP(ipv4) {
-		log.Warningf("node: IPv4 address is not public: %s", ipv4)
-	}
-	if !isPublicIP(ipv6) {
-		log.Warningf("node: IPv6 address is not public: %s", ipv6)
-	}
-
 	id := node.ID()
 	peerInfo := node.Peerstore().PeerInfo(id)
 
@@ -182,45 +175,6 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	log.Infoln("node: connect attempt successful:", p.ID.String())
 
 	return nil
-}
-
-func isPublicIP(addr string) bool {
-	if addr == "" {
-		return true
-	}
-	maddr, err := warpnet.NewMultiaddr(addr)
-	if err != nil {
-		return false
-	}
-	ipStr, err := maddr.ValueForProtocol(multiaddr.P_IP4)
-	if err != nil {
-		ipStr, err = maddr.ValueForProtocol(multiaddr.P_IP6)
-		if err != nil {
-			return false
-		}
-	}
-	ip := net.ParseIP(ipStr)
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
-		return false
-	}
-
-	// private ranges
-	privateBlocks := []string{
-		"10.0.0.0/8", // VPN
-		"172.16.0.0/12",
-		"192.168.0.0/16", // private network
-		"100.64.0.0/10",  // CG-NAT
-		"127.0.0.0/8",    // local
-		"169.254.0.0/16", // link-local
-	}
-
-	for _, block := range privateBlocks {
-		_, cidr, _ := net.ParseCIDR(block)
-		if cidr.Contains(ip) {
-			return false
-		}
-	}
-	return true
 }
 
 func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
@@ -268,16 +222,58 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 		return warpnet.NodeInfo{}
 	}
 
+	addrs := n.node.Addrs()
+	addresses := make([]string, 0, len(addrs))
+	for _, a := range addrs {
+		addresses = append(addresses, a.String())
+	}
+
 	return warpnet.NodeInfo{
-		ID: n.node.ID(),
-		Addrs: warpnet.AddrsInfo{
-			IPv4: n.ipv4,
-			IPv6: n.ipv6,
-		},
+		ID:        n.node.ID(),
+		Addresses: addresses,
 		Version:   n.version,
 		OwnerId:   n.ownerId,
 		StartTime: n.startTime,
 	}
+}
+
+func isPublicIP(addr string) bool {
+	if addr == "" {
+		return true
+	}
+	maddr, err := warpnet.NewMultiaddr(addr)
+	if err != nil {
+		return false
+	}
+	ipStr, err := maddr.ValueForProtocol(multiaddr.P_IP4)
+	if err != nil {
+		ipStr, err = maddr.ValueForProtocol(multiaddr.P_IP6)
+		if err != nil {
+			return false
+		}
+	}
+	ip := net.ParseIP(ipStr)
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return false
+	}
+
+	// private ranges
+	privateBlocks := []string{
+		"10.0.0.0/8", // VPN
+		"172.16.0.0/12",
+		"192.168.0.0/16", // private network
+		"100.64.0.0/10",  // CG-NAT
+		"127.0.0.0/8",    // local
+		"169.254.0.0/16", // link-local
+	}
+
+	for _, block := range privateBlocks {
+		_, cidr, _ := net.ParseCIDR(block)
+		if cidr.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
 func (n *WarpNode) Node() warpnet.P2PNode {

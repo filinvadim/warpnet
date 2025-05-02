@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"strings"
 	"time"
 )
 
@@ -37,7 +38,7 @@ func StreamGetStatsHandler(
 			UserId:         nodeInfo.OwnerId,
 			NodeID:         nodeInfo.ID,
 			Version:        nodeInfo.Version,
-			Addrs:          nodeInfo.Addrs,
+			Addresses:      strings.Join(nodeInfo.Addresses, ","),
 			StartTime:      nodeInfo.StartTime.Format(time.DateTime),
 			NetworkState:   networkState,
 			DatabaseStats:  db.Stats(),

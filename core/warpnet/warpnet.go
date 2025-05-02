@@ -33,16 +33,16 @@ type NodeInfo struct {
 	OwnerId    string          `json:"owner_id"`
 	ID         WarpPeerID      `json:"node_id"`
 	Version    *semver.Version `json:"version"`
-	Addrs      AddrsInfo       `json:"addrs"`
+	Addresses  []string        `json:"addresses"`
 	StartTime  time.Time       `json:"start_time"`
 	RemoteAddr string          `json:"remote_addr"`
 }
 
 type NodeStats struct {
-	UserId  string          `json:"user_id"`
-	NodeID  WarpPeerID      `json:"node_id"`
-	Version *semver.Version `json:"version"`
-	Addrs   AddrsInfo       `json:"addrs"`
+	UserId    string          `json:"user_id"`
+	NodeID    WarpPeerID      `json:"node_id"`
+	Version   *semver.Version `json:"version"`
+	Addresses string          `json:"addresses"`
 
 	StartTime string `json:"start_time"`
 
@@ -117,11 +117,6 @@ func GetNetworkIO() (bytesSent int64, bytesRecv int64) {
 	}
 	stats := ioCounters[0]
 	return int64(stats.BytesSent), int64(stats.BytesRecv)
-}
-
-type AddrsInfo struct {
-	IPv4 string `json:"ipv4"`
-	IPv6 string `json:"ipv6,omitempty"`
 }
 
 var (

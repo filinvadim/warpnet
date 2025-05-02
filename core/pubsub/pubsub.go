@@ -502,11 +502,10 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 			return
 		case <-ticker.C:
 			info := g.serverNode.NodeInfo()
-			addrs := info.Addrs
 
 			msg := warpnet.WarpAddrInfo{
 				ID:    info.ID,
-				Addrs: []string{addrs.IPv4, addrs.IPv6},
+				Addrs: info.Addresses,
 			}
 			data, err := json.Marshal(msg)
 			if err != nil {
