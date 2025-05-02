@@ -27,12 +27,15 @@ import (
 	"time"
 )
 
+const BootstrapOwner = "bootstrap"
+
 type NodeInfo struct {
-	OwnerId   string          `json:"owner_id"`
-	ID        WarpPeerID      `json:"node_id"`
-	Version   *semver.Version `json:"version"`
-	Addrs     AddrsInfo       `json:"addrs"`
-	StartTime time.Time       `json:"start_time"`
+	OwnerId    string          `json:"owner_id"`
+	ID         WarpPeerID      `json:"node_id"`
+	Version    *semver.Version `json:"version"`
+	Addrs      AddrsInfo       `json:"addrs"`
+	StartTime  time.Time       `json:"start_time"`
+	RemoteAddr string          `json:"remote_addr"`
 }
 
 type NodeStats struct {

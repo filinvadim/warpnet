@@ -96,6 +96,10 @@ type (
 	s struct{}
 )
 
+func (m m) SetForeignImageWithTTL(userId, key string, img database.Base64Image) error {
+	return nil
+}
+
 func (m m) GetImage(userId, key string) (database.Base64Image, error) {
 	return "", nil
 }

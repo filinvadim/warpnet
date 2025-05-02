@@ -90,7 +90,7 @@ func NewBootstrapNode(
 		ctx,
 		warpPrivKey,
 		memoryStore,
-		base.BootstrapOwner,
+		warpnet.BootstrapOwner,
 		psk,
 		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
 		dHashTable.StartRouting,
@@ -119,9 +119,14 @@ func NewBootstrapNode(
 	}
 
 	mw := middleware.NewWarpMiddleware()
+	logMw := mw.LoggingMiddleware
 	bn.SetStreamHandler(
 		event.PUBLIC_POST_NODE_VERIFY,
 		mw.LoggingMiddleware(mw.UnwrapStreamMiddleware(handler.StreamVerifyHandler(bn.raft))),
+	)
+	bn.SetStreamHandler(
+		event.PUBLIC_GET_INFO,
+		logMw(handler.StreamGetInfoHandler(bn, nil)),
 	)
 
 	return bn, nil

@@ -27,6 +27,7 @@ type DiscoveryInfoStorer interface {
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
 	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
+	AddOwnPublicAddress(remoteAddr string) error
 }
 
 type NodeStorer interface {
@@ -183,7 +184,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: peer %s has no ID", pi.ID.String())
 		return
 	}
-	if pi.ID == s.node.NodeInfo().ID {
+
+	myID := s.node.NodeInfo().ID
+
+	if pi.ID.String() == "" || pi.ID == myID {
 		return
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
@@ -216,15 +220,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Infof("discovery: connected to new peer: %s", pi.ID)
 	}
 
-	if s.isBootstrapNode(pi) {
-		return
-	}
-
-	existedUser, err := s.userRepo.GetByNodeID(pi.ID.String())
-	if !errors.Is(err, database.ErrUserNotFound) && !existedUser.IsOffline {
-		return
-	}
-
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
 		log.Errorf("discovery: failed to get info from new peer %s: %v", pi.ID.String(), err)
@@ -243,8 +238,22 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
+	if info.RemoteAddr != "" {
+		if err := s.node.AddOwnPublicAddress(info.RemoteAddr); err != nil {
+			log.Errorf("discovery: failed to add own public address: %s %v", info.RemoteAddr, err)
+		}
+	}
+
 	if info.OwnerId == "" {
 		log.Infof("discovery: peer %s has no owner", pi.ID.String())
+		return
+	}
+	if info.OwnerId == warpnet.BootstrapOwner { // bootstrap node
+		return
+	}
+
+	existedUser, err := s.userRepo.GetByNodeID(pi.ID.String())
+	if !errors.Is(err, database.ErrUserNotFound) && !existedUser.IsOffline {
 		return
 	}
 
@@ -284,18 +293,4 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		newUser.CreatedAt,
 		newUser.Latency,
 	)
-}
-
-func (s *discoveryService) isBootstrapNode(pi warpnet.PeerAddrInfo) bool {
-	otherProtocols, err := s.node.Peerstore().GetProtocols(pi.ID)
-	if err != nil {
-		log.Errorf("discovery: failed to get new node protocols: %s", err)
-		return false
-	}
-	mineProtocols := s.node.Mux().Protocols()
-	if len(otherProtocols) < len(mineProtocols) {
-		// bootstrap node supports only routing protocols
-		return true
-	}
-	return false
 }

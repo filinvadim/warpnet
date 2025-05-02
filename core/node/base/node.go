@@ -34,16 +34,21 @@ type Streamer interface {
 	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
+type AddressManager interface {
+	Add(addr warpnet.WarpAddress, ttl time.Duration)
+}
+
 const (
 	DefaultTimeout = 360 * time.Second
 	ServiceName    = "warpnet"
-	BootstrapOwner = "bootstrap"
 )
 
 type WarpNode struct {
-	ctx      context.Context
-	node     warpnet.P2PNode
-	relay    warpnet.WarpRelayCloser
+	ctx         context.Context
+	node        warpnet.P2PNode
+	addrManager AddressManager
+	relay       warpnet.WarpRelayCloser
+
 	streamer Streamer
 
 	ipv4, ipv6, ownerId string
@@ -85,11 +90,14 @@ func NewWarpNode(
 		return nil, err
 	}
 
+	addrManager := NewAddressManager()
+
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
 			listenAddr,
 		),
+		libp2p.AddrsFactory(addrManager.Factory()),
 		libp2p.SwarmOpts(
 			swarm.WithDialTimeout(DefaultTimeout),
 			swarm.WithDialTimeoutLocal(DefaultTimeout),
@@ -142,16 +150,17 @@ func NewWarpNode(
 	}
 
 	wn := &WarpNode{
-		ctx:       ctx,
-		node:      node,
-		relay:     nodeRelay,
-		ipv6:      ipv6,
-		ipv4:      ipv4,
-		ownerId:   ownerId,
-		streamer:  stream.NewStreamPool(ctx, node),
-		isClosed:  new(atomic.Bool),
-		version:   config.ConfigFile.Version,
-		startTime: time.Now(),
+		ctx:         ctx,
+		node:        node,
+		relay:       nodeRelay,
+		addrManager: addrManager,
+		ipv6:        ipv6,
+		ipv4:        ipv4,
+		ownerId:     ownerId,
+		streamer:    stream.NewStreamPool(ctx, node),
+		isClosed:    new(atomic.Bool),
+		version:     config.ConfigFile.Version,
+		startTime:   time.Now(),
 	}
 
 	return wn, nil
@@ -329,6 +338,17 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 	return n.streamer.Send(peerInfo, path, bt)
 }
 
+func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
+	addr, err := warpnet.NewMultiaddr(remoteAddr)
+	if err != nil {
+		return err
+	}
+	week := time.Hour * 24 * 7
+	n.Peerstore().AddAddr(n.node.ID(), addr, week)
+	n.addrManager.Add(addr, week)
+	return nil
+}
+
 func (n *WarpNode) StopNode() {
 	log.Infoln("node: shutting down node...")
 	defer func() {
@@ -347,6 +367,7 @@ func (n *WarpNode) StopNode() {
 	}
 	n.isClosed.Store(true)
 	n.node = nil
+	n.addrManager = nil
 	time.Sleep(time.Duration(rand.Intn(999)) * time.Millisecond) // jitter
 
 	return
