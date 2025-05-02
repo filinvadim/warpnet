@@ -175,9 +175,6 @@ func StreamGetUsersHandler(
 		}
 
 		for _, user := range usersResp.Users {
-			if user.Id == ownerId {
-				continue
-			}
 			_, err := userRepo.Create(user)
 			if errors.Is(err, database.ErrUserAlreadyExists) {
 				_, _ = userRepo.Update(user.Id, user)

@@ -211,13 +211,11 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !isConnected {
-		fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
-
 		if err := s.node.Connect(pi); err != nil {
 			log.Errorf("discovery: failed to connect to new peer: %s...", err)
 			return
 		}
-		log.Infof("discovery: connected to new peer: %s", pi.ID)
+		log.Infof("discovery: connected to peer: %s", pi.ID)
 	}
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
@@ -251,6 +249,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if info.OwnerId == warpnet.BootstrapOwner { // bootstrap node
 		return
 	}
+
+	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 	existedUser, err := s.userRepo.GetByNodeID(pi.ID.String())
 	if !errors.Is(err, database.ErrUserNotFound) && !existedUser.IsOffline {
