@@ -33,7 +33,10 @@ func StreamVerifyHandler(state AdminStateCommitter) middleware.WarpHandler {
 			return nil, err
 		}
 
-		log.Infof("node verify request received: %v", newState)
+		log.Infof(
+			"node verify request received: %s %s",
+			s.Conn().RemotePeer().String(), s.Conn().RemoteMultiaddr().String(),
+		)
 
 		updatedState, err := state.CommitState(newState)
 		if err != nil {

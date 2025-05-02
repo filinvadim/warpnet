@@ -11,6 +11,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
+	"github.com/labstack/gommon/bytes"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/pnet"
@@ -20,8 +21,10 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
+	"net"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -34,6 +37,7 @@ type Streamer interface {
 const (
 	DefaultTimeout = 360 * time.Second
 	ServiceName    = "warpnet"
+	BootstrapOwner = "bootstrap"
 )
 
 type WarpNode struct {
@@ -101,13 +105,16 @@ func NewWarpNode(
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
-		libp2p.EnableRelay(),
 		libp2p.ResourceManager(rm),
-		libp2p.EnableRelayService(relayv2.WithInfiniteLimits()),
+		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{ // libp2p.EnableRelay() enabled by default
+			Duration: 5 * time.Minute,
+			Data:     bytes.MiB,
+		})),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("node: failed to init node: %v", err)
 	}
@@ -118,6 +125,14 @@ func NewWarpNode(
 	}
 
 	ipv4, ipv6 := parseAddresses(node)
+
+	if !isPublicIP(ipv4) {
+		log.Warningf("node: IPv4 address is not public: %s", ipv4)
+	}
+	if !isPublicIP(ipv6) {
+		log.Warningf("node: IPv6 address is not public: %s", ipv6)
+	}
+
 	id := node.ID()
 	peerInfo := node.Peerstore().PeerInfo(id)
 
@@ -158,6 +173,45 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	log.Infoln("node: connect attempt successful:", p.ID.String())
 
 	return nil
+}
+
+func isPublicIP(addr string) bool {
+	if addr == "" {
+		return true
+	}
+	maddr, err := warpnet.NewMultiaddr(addr)
+	if err != nil {
+		return false
+	}
+	ipStr, err := maddr.ValueForProtocol(multiaddr.P_IP4)
+	if err != nil {
+		ipStr, err = maddr.ValueForProtocol(multiaddr.P_IP6)
+		if err != nil {
+			return false
+		}
+	}
+	ip := net.ParseIP(ipStr)
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return false
+	}
+
+	// private ranges
+	privateBlocks := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"100.64.0.0/10", // CG-NAT
+		"127.0.0.0/8",
+		"169.254.0.0/16", // link-local
+	}
+
+	for _, block := range privateBlocks {
+		_, cidr, _ := net.ParseCIDR(block)
+		if cidr.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
 func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.WarpStreamHandler) {
@@ -272,7 +326,6 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 			}
 		}
 	}
-
 	return n.streamer.Send(peerInfo, path, bt)
 }
 

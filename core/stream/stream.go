@@ -81,7 +81,10 @@ func send(
 	}
 
 	if num == 0 {
-		return nil, fmt.Errorf("stream: empty response")
+		return nil, fmt.Errorf(
+			"stream: protocol %s, peer ID %s, addresses %v: empty response",
+			r.ProtocolID(), serverInfo.ID.String(), serverInfo.Addrs,
+		)
 	}
 	return buf.Bytes(), nil
 }

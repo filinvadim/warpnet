@@ -90,7 +90,7 @@ func NewBootstrapNode(
 		ctx,
 		warpPrivKey,
 		memoryStore,
-		"bootstrap",
+		base.BootstrapOwner,
 		psk,
 		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
 		dHashTable.StartRouting,

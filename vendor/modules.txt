@@ -85,7 +85,7 @@ github.com/elastic/gosigar/sys/windows
 # github.com/fatih/color v1.18.0
 ## explicit; go 1.17
 github.com/fatih/color
-# github.com/filinvadim/warpnet-frontend v0.0.469
+# github.com/filinvadim/warpnet-frontend v0.0.470
 ## explicit; go 1.24.0
 github.com/filinvadim/warpnet-frontend
 # github.com/flynn/noise v1.1.0

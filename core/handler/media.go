@@ -55,6 +55,7 @@ type MediaNodeInformer interface {
 type MediaStorer interface {
 	GetImage(userId, key string) (database.Base64Image, error)
 	SetImage(userId string, img database.Base64Image) (_ database.ImageKey, err error)
+	SetForeignImageWithTTL(userId, key string, img database.Base64Image) error
 }
 
 type MediaUserFetcher interface {
@@ -168,7 +169,20 @@ func StreamGetImageHandler(
 			return nil, fmt.Errorf("get image: fetching user: %w", err)
 		}
 
-		return streamer.GenericStream(u.NodeId, event.PUBLIC_GET_IMAGE, ev)
+		resp, err := streamer.GenericStream(u.NodeId, event.PUBLIC_GET_IMAGE, ev)
+		if errors.Is(err, warpnet.ErrNodeIsOffline) {
+			return event.GetImageResponse{File: ""}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var imgResp event.GetImageResponse
+		if err := json.JSON.Unmarshal(resp, &imgResp); err != nil {
+			return nil, fmt.Errorf("get image: unmarshalling response: %w", err)
+		}
+
+		return resp, mediaRepo.SetForeignImageWithTTL(u.Id, ev.Key, database.Base64Image(imgResp.File))
 	}
 }
 
