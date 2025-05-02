@@ -1,9 +1,13 @@
 package relay
 
 import (
+	"context"
+	"errors"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/ipfs/go-log/v2"
+	golog "github.com/ipfs/go-log/v2"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	log "github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
@@ -38,7 +42,7 @@ import (
 */
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	log.SetLogLevel("autorelay", "INFO")
+	golog.SetLogLevel("autorelay", "INFO")
 	relay, err := relayv2.New(
 		node,
 		relayv2.WithLimit(&relayv2.RelayLimit{
@@ -47,4 +51,27 @@ func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
 		}),
 	)
 	return relay, err
+}
+
+// TODO
+func waitRelayReadiness(node warpnet.P2PNode) error {
+	ctx, cancelF := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelF()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			for _, addr := range node.Addrs() {
+				if strings.Contains(addr.String(), "p2p-circuit") {
+					log.Infoln("relay: is active, address:", addr)
+					return nil
+				}
+			}
+		case <-ctx.Done():
+			return errors.New("relay readiness timeout")
+		}
+	}
 }

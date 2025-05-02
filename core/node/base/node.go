@@ -97,7 +97,6 @@ func NewWarpNode(
 		libp2p.EnableAutoNATv2(),
 		libp2p.EnableNATService(),
 		libp2p.NATPortMap(),
-		libp2p.ForceReachabilityPrivate(),
 		libp2p.PrivateNetwork(pnet.PSK(psk)),
 		libp2p.UserAgent(ServiceName),
 		libp2p.EnableHolePunching(),
