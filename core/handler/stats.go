@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"net"
@@ -25,8 +24,6 @@ func StreamGetStatsHandler(
 	consensus StatsProvider,
 ) middleware.WarpHandler {
 	return func(_ []byte, s warpnet.WarpStream) (any, error) {
-
-		fmt.Println(s)
 		sent, recv := warpnet.GetNetworkIO()
 
 		networkState := "Disconnected"

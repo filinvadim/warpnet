@@ -237,7 +237,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if info.RequesterAddr != "" {
-		fmt.Println("received requester address from new peer:", info.RequesterAddr)
 		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
 			log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
 		}

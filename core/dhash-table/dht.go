@@ -10,6 +10,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/sec"
+	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -50,6 +52,8 @@ import (
   implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
+const WarpnetRendezvous = "WarpnetRendezvous"
+
 var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
 
 type RoutingStorer interface {
@@ -70,6 +74,7 @@ type DistributedHashTable struct {
 	addFuncs      []discovery.DiscoveryHandler
 	removeF       func(warpnet.WarpPeerID)
 	dht           *dht.IpfsDHT
+	stopChan      chan struct{}
 }
 
 func defaultNodeRemovedCallback(id warpnet.WarpPeerID) {
@@ -95,6 +100,7 @@ func NewDHTable(
 		boostrapNodes: bootstrapAddrs,
 		addFuncs:      addFuncs,
 		removeF:       removeF,
+		stopChan:      make(chan struct{}),
 	}
 }
 
@@ -136,26 +142,53 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	d.dht = dhTable
 
-	go func() {
-		// force node to know its external address (in case of local network)
-		for _, info := range d.boostrapNodes {
-			d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
-		}
-
-		if err := d.dht.Bootstrap(d.ctx); err != nil {
-			log.Errorf("dht: bootstrap: %s", err)
-		}
-
-		d.correctPeerIdMismatch(d.boostrapNodes)
-
-		<-d.dht.RefreshRoutingTable()
-	}()
+	go d.setupDHT()
 
 	<-d.dht.RefreshRoutingTable()
 
 	log.Infoln("dht: routing started")
 
 	return d.dht, nil
+}
+
+func (d *DistributedHashTable) setupDHT() {
+	if d == nil || d.dht != nil {
+		return
+	}
+	// force node to know its external address (in case of local network)
+	for _, info := range d.boostrapNodes {
+		d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
+	}
+
+	if err := d.dht.Bootstrap(d.ctx); err != nil {
+		log.Errorf("dht: bootstrap: %s", err)
+	}
+
+	d.correctPeerIdMismatch(d.boostrapNodes)
+
+	<-d.dht.RefreshRoutingTable()
+
+	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
+	dutil.Advertise(d.ctx, routingDiscovery, WarpnetRendezvous)
+
+	peerChan, err := routingDiscovery.FindPeers(d.ctx, WarpnetRendezvous)
+	if err != nil {
+		log.Errorf("dht rendezvous: find peers: %s", err)
+		return
+	}
+
+	log.Infoln("dht rendezvous set up")
+
+	select {
+	case peerInfo := <-peerChan:
+		for _, addF := range d.addFuncs {
+			addF(peerInfo)
+		}
+	case <-d.stopChan:
+		return
+	case <-d.ctx.Done():
+		return
+	}
 }
 
 func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
@@ -191,6 +224,7 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 }
 
 func (d *DistributedHashTable) Close() {
+	defer func() { recover() }()
 	if d == nil || d.dht == nil {
 		return
 	}
@@ -198,5 +232,6 @@ func (d *DistributedHashTable) Close() {
 		log.Errorf("dht: table close: %v\n", err)
 	}
 	d.dht = nil
+	close(d.stopChan)
 	log.Infoln("dht: table closed")
 }

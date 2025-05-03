@@ -27,7 +27,9 @@ import (
 	"time"
 )
 
-const BootstrapOwner = "bootstrap"
+const (
+	BootstrapOwner = "bootstrap"
+)
 
 type NodeInfo struct {
 	OwnerId       string          `json:"owner_id"`
