@@ -154,19 +154,29 @@ func (db *DB) Run(username, password string) (err error) {
 
 func (db *DB) runEventualGC() {
 	log.Infoln("database garbage collection started")
+	gcTicker := time.NewTicker(time.Minute * 5)
+	defer gcTicker.Stop()
+
+	dirTicker := time.NewTicker(time.Second)
+	defer dirTicker.Stop()
+
 	_ = db.badger.RunValueLogGC(discardRatio)
 	for {
-		isEmpty, err := isDirectoryEmpty(db.dbPath)
-		if isEmpty && err == nil {
-			log.Fatalln("database folder was emptied")
-		}
+
 		select {
-		case <-time.After(time.Hour):
+		case <-dirTicker.C:
+			isEmpty, err := isDirectoryEmpty(db.dbPath)
+			if isEmpty && err == nil {
+				log.Errorln("database folder was emptied")
+				os.Exit(1)
+			}
+		case <-gcTicker.C:
 			for {
 				err := db.badger.RunValueLogGC(discardRatio)
 				if errors.Is(err, badger.ErrNoRewrite) {
 					break
 				}
+				log.Infoln("database garbage collection complete")
 				time.Sleep(time.Second)
 			}
 		case <-db.stopChan:
