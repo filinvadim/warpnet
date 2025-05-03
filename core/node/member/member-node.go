@@ -95,7 +95,7 @@ func NewMemberNode(
 	println()
 	fmt.Printf(
 		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
-		node.Node().ID, node.Node().Addrs(),
+		node.Node().ID().String(), node.Node().Addrs(),
 	)
 	println()
 

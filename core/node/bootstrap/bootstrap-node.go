@@ -102,7 +102,7 @@ func NewBootstrapNode(
 	println()
 	fmt.Printf(
 		"\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
-		node.NodeInfo().ID, node.NodeInfo().Addresses,
+		node.NodeInfo().ID.String(), node.NodeInfo().Addresses,
 	)
 	println()
 
