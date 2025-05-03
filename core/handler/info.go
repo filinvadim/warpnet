@@ -28,7 +28,7 @@ func StreamGetInfoHandler(
 		}
 
 		info := i.NodeInfo()
-		info.RemoteAddr = remoteAddr.String()
+		info.RequesterAddr = remoteAddr.String()
 
 		if err := json.JSON.NewEncoder(s).Encode(info); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)

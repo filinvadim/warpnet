@@ -126,7 +126,7 @@ func NewBootstrapNode(
 	)
 	bn.SetStreamHandler(
 		event.PUBLIC_GET_INFO,
-		logMw(handler.StreamGetInfoHandler(bn, nil)),
+		logMw(handler.StreamGetInfoHandler(bn, discService.DefaultDiscoveryHandler)),
 	)
 
 	return bn, nil

@@ -207,8 +207,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if ok {
 		// update local bootstrap addresses with public ones
 		pi.Addrs = append(pi.Addrs, bAddrs...)
-		s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour*24)
 	}
+	s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour*24)
 
 	if !isConnected {
 		if err := s.node.Connect(pi); err != nil {
@@ -236,9 +236,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if info.RemoteAddr != "" {
-		if err := s.node.AddOwnPublicAddress(info.RemoteAddr); err != nil {
-			log.Errorf("discovery: failed to add own public address: %s %v", info.RemoteAddr, err)
+	if info.RequesterAddr != "" {
+		fmt.Println("received requester address from new peer:", info.RequesterAddr)
+		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+			log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
 		}
 	}
 

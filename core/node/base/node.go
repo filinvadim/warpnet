@@ -21,10 +21,8 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
-	"net"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -222,58 +220,27 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 		return warpnet.NodeInfo{}
 	}
 
-	addrs := n.node.Addrs()
+	addrs := n.node.Peerstore().Addrs(n.node.ID())
 	addresses := make([]string, 0, len(addrs))
 	for _, a := range addrs {
 		addresses = append(addresses, a.String())
 	}
 
+	relayState := "Waiting..."
+	for _, addr := range n.node.Addrs() {
+		if strings.Contains(addr.String(), "p2p-circuit") {
+			relayState = "Running"
+		}
+	}
+
 	return warpnet.NodeInfo{
-		ID:        n.node.ID(),
-		Addresses: addresses,
-		Version:   n.version,
-		OwnerId:   n.ownerId,
-		StartTime: n.startTime,
+		ID:         n.node.ID(),
+		Addresses:  addresses,
+		Version:    n.version,
+		OwnerId:    n.ownerId,
+		StartTime:  n.startTime,
+		RelayState: relayState,
 	}
-}
-
-func isPublicIP(addr string) bool {
-	if addr == "" {
-		return true
-	}
-	maddr, err := warpnet.NewMultiaddr(addr)
-	if err != nil {
-		return false
-	}
-	ipStr, err := maddr.ValueForProtocol(multiaddr.P_IP4)
-	if err != nil {
-		ipStr, err = maddr.ValueForProtocol(multiaddr.P_IP6)
-		if err != nil {
-			return false
-		}
-	}
-	ip := net.ParseIP(ipStr)
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
-		return false
-	}
-
-	// private ranges
-	privateBlocks := []string{
-		"10.0.0.0/8", // VPN
-		"172.16.0.0/12",
-		"192.168.0.0/16", // private network
-		"100.64.0.0/10",  // CG-NAT
-		"127.0.0.0/8",    // local
-		"169.254.0.0/16", // link-local
-	}
-
-	for _, block := range privateBlocks {
-		_, cidr, _ := net.ParseCIDR(block)
-		if cidr.Contains(ip) {
-			return false
-		}
-	}
-	return true
 }
 
 func (n *WarpNode) Node() warpnet.P2PNode {
@@ -335,13 +302,31 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 }
 
 func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
-	addr, err := warpnet.NewMultiaddr(remoteAddr)
+	maddr, err := warpnet.NewMultiaddr(remoteAddr)
 	if err != nil {
 		return err
 	}
+
+	proto := "ip4"
+	ipStr, err := maddr.ValueForProtocol(warpnet.P_IP4)
+	if err != nil {
+		proto = "ip6"
+		ipStr, err = maddr.ValueForProtocol(warpnet.P_IP6)
+		if err != nil {
+			return err
+		}
+	}
+
+	newMAddr, err := warpnet.NewMultiaddr(
+		fmt.Sprintf("/%s/%s/tcp/%s", proto, ipStr, config.ConfigFile.Node.Port), // default: 4001 port
+	)
+	if err != nil {
+		return err
+	}
+
 	week := time.Hour * 24 * 7
-	n.Peerstore().AddAddr(n.node.ID(), addr, week)
-	n.addrManager.Add(addr, week)
+	n.Peerstore().AddAddr(n.node.ID(), newMAddr, week)
+	n.addrManager.Add(newMAddr, week)
 	return nil
 }
 

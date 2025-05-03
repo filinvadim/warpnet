@@ -17,7 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	"github.com/multiformats/go-multiaddr"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/net"
 	log "github.com/sirupsen/logrus"
@@ -30,19 +30,21 @@ import (
 const BootstrapOwner = "bootstrap"
 
 type NodeInfo struct {
-	OwnerId    string          `json:"owner_id"`
-	ID         WarpPeerID      `json:"node_id"`
-	Version    *semver.Version `json:"version"`
-	Addresses  []string        `json:"addresses"`
-	StartTime  time.Time       `json:"start_time"`
-	RemoteAddr string          `json:"remote_addr"`
+	OwnerId       string          `json:"owner_id"`
+	ID            WarpPeerID      `json:"node_id"`
+	Version       *semver.Version `json:"version"`
+	Addresses     []string        `json:"addresses"`
+	StartTime     time.Time       `json:"start_time"`
+	RequesterAddr string          `json:"requester_addr"`
+	RelayState    string          `json:"relay_state"`
 }
 
 type NodeStats struct {
-	UserId    string          `json:"user_id"`
-	NodeID    WarpPeerID      `json:"node_id"`
-	Version   *semver.Version `json:"version"`
-	Addresses string          `json:"addresses"`
+	UserId          string          `json:"user_id"`
+	NodeID          WarpPeerID      `json:"node_id"`
+	Version         *semver.Version `json:"version"`
+	PublicAddresses string          `json:"public_addresses"`
+	RelayState      string          `json:"relay_state"`
 
 	StartTime string `json:"start_time"`
 
@@ -172,6 +174,11 @@ func FromStringToPeerID(s string) WarpPeerID {
 	}
 	return peerID
 }
+
+const (
+	P_IP4 = multiaddr.P_IP4
+	P_IP6 = multiaddr.P_IP6
+)
 
 func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {
 	return multiaddr.NewMultiaddr(s)
