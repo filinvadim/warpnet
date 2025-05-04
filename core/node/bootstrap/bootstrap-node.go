@@ -21,7 +21,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"strings"
 )
 
 type BootstrapNode struct {
@@ -99,13 +98,6 @@ func NewBootstrapNode(
 		return nil, fmt.Errorf("bootstrap: failed to init node: %v", err)
 	}
 
-	println()
-	fmt.Printf(
-		"\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
-		node.NodeInfo().ID.String(), node.NodeInfo().Addresses,
-	)
-	println()
-
 	bn := &BootstrapNode{
 		WarpNode:          node,
 		discService:       discService,
@@ -141,7 +133,14 @@ func (bn *BootstrapNode) Start() error {
 		return err
 	}
 
-	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(bn.SupportedProtocols(), ","))
+	nodeInfo := bn.NodeInfo()
+
+	println()
+	fmt.Printf(
+		"\033[1mBOOTSTRAP NODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
+		nodeInfo.ID.String(), nodeInfo.Addresses,
+	)
+	println()
 	return nil
 }
 

@@ -103,17 +103,11 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 			continue
 		}
 		var info warpnet.NodeInfo
-		err = json.JSON.Unmarshal(infoResp, &info)
-		if err != nil {
-			log.Errorf("discovery: initial unmarshal info from new peer: %s %v", infoResp, err)
-			continue
+		_ = json.JSON.Unmarshal(infoResp, &info)
+		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+			log.Errorf("discovery: initial adding own public address: %s %v", info.RequesterAddr, err)
 		}
-
-		if info.RequesterAddr != "" {
-			if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-				log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
-			}
-		}
+		log.Infoln("discovery: adding own public address", info.RequesterAddr)
 	}
 
 	for {

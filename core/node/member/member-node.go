@@ -21,7 +21,6 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 
@@ -91,13 +90,6 @@ func NewMemberNode(
 	if err != nil {
 		return nil, fmt.Errorf("member: failed to init node: %v", err)
 	}
-
-	println()
-	fmt.Printf(
-		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
-		node.Node().ID().String(), node.NodeInfo().Addresses,
-	)
-	println()
 
 	mn := &MemberNode{
 		WarpNode:      node,
@@ -288,19 +280,28 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	go m.pubsubService.Run(m, clientNode)
 
 	if err := m.raft.Sync(m); err != nil {
-		return fmt.Errorf("consensus: failed to sync: %v", err)
+		return fmt.Errorf("member: consensus failed to sync: %v", err)
 	}
 
-	log.Debugln("SUPPORTED PROTOCOLS:", strings.Join(m.SupportedProtocols(), ","))
-
-	ownerUser, err := m.userRepo.Get(m.NodeInfo().OwnerId)
+	nodeInfo := m.NodeInfo()
+	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
 	if err != nil {
 		return fmt.Errorf("member: failed to get owner user: %v", err)
 	}
 
-	return m.retrier.Try(m.ctx, func() error {
+	err = m.retrier.Try(m.ctx, func() error {
 		return m.raft.AskUserValidation(ownerUser)
 	})
+	if err != nil {
+		return fmt.Errorf("member: to validate owner user by consensus: %v", err)
+	}
+	println()
+	fmt.Printf(
+		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
+		nodeInfo.ID.String(), nodeInfo.Addresses,
+	)
+	println()
+	return nil
 }
 
 type streamNodeID = string

@@ -303,6 +303,9 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 }
 
 func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
+	if remoteAddr == "" {
+		return errors.New("node: empty remote address")
+	}
 	maddr, err := warpnet.NewMultiaddr(remoteAddr)
 	if err != nil {
 		return err
