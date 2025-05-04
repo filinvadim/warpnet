@@ -486,7 +486,11 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	duration := time.Second
+	duration := time.Second * 5
+	if g.ownerId != warpnet.BootstrapOwner {
+		duration = time.Minute // member node
+	}
+
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
