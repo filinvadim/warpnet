@@ -275,14 +275,14 @@ func (m *MemberNode) setupHandlers(
 }
 
 func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
-	go m.discService.Run(m)
-	go m.mdnsService.Start(m)
-	go m.pubsubService.Run(m, clientNode)
-
 	if err := m.raft.Sync(m); err != nil {
 		return fmt.Errorf("member: consensus failed to sync: %v", err)
 	}
 
+	go m.discService.Run(m)
+	go m.mdnsService.Start(m)
+	go m.pubsubService.Run(m, clientNode)
+	
 	nodeInfo := m.NodeInfo()
 	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
 	if err != nil {

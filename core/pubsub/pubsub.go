@@ -448,6 +448,8 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 		return
 	}
 
+	log.Debugf("pubsub: discovery handling peer %s %v", discoveryMsg.ID.String(), discoveryMsg.Addrs)
+
 	peerInfo := warpnet.PeerAddrInfo{
 		ID:    discoveryMsg.ID,
 		Addrs: make([]warpnet.WarpAddress, 0, len(discoveryMsg.Addrs)),
@@ -486,7 +488,7 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	duration := time.Second * 5
+	duration := time.Minute * 30
 	if g.ownerId != warpnet.BootstrapOwner {
 		duration = time.Minute // member node
 	}
@@ -514,11 +516,6 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 				log.Errorf("pubsub: failed to publish peer info: %v", err)
 				continue
 			}
-			if g.ownerId == warpnet.BootstrapOwner {
-				continue
-			}
-			duration = duration * 2
-			ticker.Reset(duration) // exponential prolonging
 		}
 	}
 }

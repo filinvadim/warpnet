@@ -181,6 +181,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
+	log.Debugf("discovery: handling peer %s %v", pi.ID.String(), pi.Addrs)
+
 	myID := s.node.NodeInfo().ID
 
 	if pi.ID == myID {

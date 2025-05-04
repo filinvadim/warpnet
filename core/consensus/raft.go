@@ -274,7 +274,7 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*2)
+	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
 	defer updatesCancel()
 
 	if err = cs.waitForUpdates(updatesCtx); err != nil {
