@@ -510,7 +510,8 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 				log.Errorf("pubsub: failed to publish peer info: %v", err)
 				continue
 			}
-			ticker.Reset(duration * 2) // exponential prolonging
+			duration = duration * 2
+			ticker.Reset(duration) // exponential prolonging
 		}
 	}
 }
