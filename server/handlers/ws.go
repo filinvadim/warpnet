@@ -89,7 +89,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			break
 		}
 		loginResp, err := c.auth.AuthLogin(ev)
-		if err != nil || loginResp.Identity.Token == "" {
+		if err != nil {
 			log.Errorf("websocket: auth: %v", err)
 			response = newErrorResp(err.Error())
 			break

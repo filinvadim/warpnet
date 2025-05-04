@@ -106,7 +106,7 @@ func NewDHTable(
 }
 
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
-	dhTable, err := dht.New(
+	d.dht, err = dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
 		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
@@ -124,24 +124,27 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		return nil, err
 	}
 
-	dhTable.RoutingTable().PeerAdded = defaultNodeAddedCallback
+	d.dht.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addFuncs != nil {
-		dhTable.RoutingTable().PeerAdded = func(id peer.ID) {
+		d.dht.RoutingTable().PeerAdded = func(id peer.ID) {
+			if addrs := d.dht.Host().Peerstore().Addrs(id); len(addrs) > 0 {
+				return
+			}
 			log.Infof("dht: new peer added: %s", id)
 			info := peer.AddrInfo{ID: id}
 			for _, addF := range d.addFuncs {
 				addF(info)
 			}
+			<-d.dht.RefreshRoutingTable()
 		}
 	}
-	dhTable.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
+	d.dht.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
 	if d.removeF != nil {
-		dhTable.RoutingTable().PeerRemoved = func(id peer.ID) {
+		d.dht.RoutingTable().PeerRemoved = func(id peer.ID) {
 			d.removeF(id)
 		}
+		<-d.dht.RefreshRoutingTable()
 	}
-
-	d.dht = dhTable
 
 	go d.setupDHT()
 

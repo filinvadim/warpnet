@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 /*
@@ -124,6 +125,11 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	m.service.mx.Unlock()
 
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
+
+	// start it a little bit later,
+	// wait and try trivial discovery first,
+	// MDNS discovery might hide potential bugs
+	time.Sleep(time.Minute * 5)
 
 	if err := m.mdns.Start(); err != nil {
 		log.Errorf("mdns: failed to start: %v", err)
