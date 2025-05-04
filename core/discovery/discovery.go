@@ -164,6 +164,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	if s == nil {
 		return
 	}
+	defer func() { recover() }()
 
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
 		log.Warnf("discovery: channel overflow %d", cap(s.discoveryChan))
@@ -208,7 +209,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		// update local bootstrap addresses with public ones
 		pi.Addrs = append(pi.Addrs, bAddrs...)
 	}
-	s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour*24)
+	s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour)
 
 	if !isConnected {
 		if err := s.node.Connect(pi); err != nil {
@@ -250,12 +251,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
-
 	existedUser, err := s.userRepo.GetByNodeID(pi.ID.String())
 	if !errors.Is(err, database.ErrUserNotFound) && !existedUser.IsOffline {
 		return
 	}
+
+	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
 
 	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
 
@@ -276,6 +277,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	user.IsOffline = false
 	user.NodeId = pi.ID.String()
 	user.Latency = int64(latency)
+
 	newUser, err := s.userRepo.Create(user)
 	if errors.Is(err, database.ErrUserAlreadyExists) {
 		newUser, _ = s.userRepo.Update(user.Id, user)

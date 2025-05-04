@@ -457,6 +457,7 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 		ma, _ := warpnet.NewMultiaddr(addr)
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
+	log.Infof("pubsub: discovery: found new peer: %s", msg.Data)
 
 	if g.discoveryHandlers != nil {
 		for _, handler := range g.discoveryHandlers {
@@ -486,11 +487,15 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 
 	log.Infoln("pubsub: publisher started")
 	defer log.Infoln("pubsub: publisher stopped")
+
+	if err := g.publishPeerInfo(discTopic); err != nil {
+		log.Errorf("pubsub: failed to publish peer info: %v", err)
+	}
 
 	for {
 		if !g.isRunning.Load() {
@@ -501,23 +506,29 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		case <-g.ctx.Done():
 			return
 		case <-ticker.C:
-			info := g.serverNode.NodeInfo()
-
-			msg := warpnet.WarpAddrInfo{
-				ID:    info.ID,
-				Addrs: info.Addresses,
-			}
-			data, err := json.Marshal(msg)
-			if err != nil {
-				log.Errorf("pubsub: failed to marshal peer info message: %v", err)
-				return
-			}
-			err = discTopic.Publish(g.ctx, data)
-			if err != nil && !errors.Is(err, pubsub.ErrTopicClosed) {
-				log.Errorf("pubsub: failed to publish peer info message: %v", err)
+			if err := g.publishPeerInfo(discTopic); err != nil {
+				log.Errorf("pubsub: failed to publish peer info: %v", err)
 			}
 		}
 	}
+}
+
+func (g *warpPubSub) publishPeerInfo(topic *pubsub.Topic) error {
+	info := g.serverNode.NodeInfo()
+
+	msg := warpnet.WarpAddrInfo{
+		ID:    info.ID,
+		Addrs: info.Addresses,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal peer info message: %v", err)
+	}
+	err = topic.Publish(g.ctx, data)
+	if err != nil && !errors.Is(err, pubsub.ErrTopicClosed) {
+		return err
+	}
+	return nil
 }
 
 func (g *warpPubSub) Close() (err error) {

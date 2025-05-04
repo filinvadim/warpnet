@@ -5,13 +5,14 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
+	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
+
 	"github.com/filinvadim/warpnet/core/warpnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/sec"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -52,7 +53,7 @@ import (
   implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
-const WarpnetRendezvous = "WarpnetRendezvous"
+const WarpnetRendezvous = "rendezvous-point@warpnet"
 
 var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
 
@@ -169,9 +170,13 @@ func (d *DistributedHashTable) setupDHT() {
 	<-d.dht.RefreshRoutingTable()
 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
-	dutil.Advertise(d.ctx, routingDiscovery, WarpnetRendezvous)
+	_, err := routingDiscovery.Advertise(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
+	if err != nil {
+		log.Errorf("dht rendezvous: advertise: %s", err)
+		return
+	}
 
-	peerChan, err := routingDiscovery.FindPeers(d.ctx, WarpnetRendezvous)
+	peerChan, err := routingDiscovery.FindPeers(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
@@ -181,6 +186,8 @@ func (d *DistributedHashTable) setupDHT() {
 
 	select {
 	case peerInfo := <-peerChan:
+		log.Infof("dht rendezvous: found new peer: %s", peerInfo.String())
+
 		for _, addF := range d.addFuncs {
 			addF(peerInfo)
 		}
@@ -199,7 +206,7 @@ func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.Pee
 	for _, addr := range boostrapNodes {
 		addr := addr // this is important!
 		g.Go(func() error {
-			localCtx, localCancel := context.WithTimeout(ctx, 1*time.Second) // local timeout
+			localCtx, localCancel := context.WithTimeout(ctx, time.Second) // local timeout
 			defer localCancel()
 
 			err := d.dht.Ping(localCtx, addr.ID)
