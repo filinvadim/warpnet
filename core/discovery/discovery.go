@@ -96,6 +96,26 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 		return
 	}
 
+	for id, addrs := range s.bootstrapAddrs {
+		infoResp, err := s.node.GenericStream(id.String(), event.PUBLIC_GET_INFO, nil)
+		if err != nil {
+			log.Errorf("discovery: initial get info from new peer %s %v: %v", id.String(), addrs, err)
+			continue
+		}
+		var info warpnet.NodeInfo
+		err = json.JSON.Unmarshal(infoResp, &info)
+		if err != nil {
+			log.Errorf("discovery: initial unmarshal info from new peer: %s %v", infoResp, err)
+			continue
+		}
+
+		if info.RequesterAddr != "" {
+			if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+				log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
+			}
+		}
+	}
+
 	for {
 		select {
 		case <-s.ctx.Done():

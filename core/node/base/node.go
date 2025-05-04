@@ -116,6 +116,7 @@ func NewWarpNode(
 			Duration: 5 * time.Minute,
 			Data:     bytes.MiB,
 		})),
+		libp2p.EnableRelay(),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
