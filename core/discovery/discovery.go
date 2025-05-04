@@ -197,17 +197,17 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 			log.Errorf("discovery: failed to connect to new peer: %s...", err)
 			return
 		}
-		log.Infof("discovery: connected to peer: %s", pi.ID)
+		log.Infof("discovery: connected to peer: %s", pi.String())
 	}
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
-		log.Errorf("discovery: failed to get info from new peer %s: %v", pi.ID.String(), err)
+		log.Errorf("discovery: failed to get info from new peer %s: %v", pi.String(), err)
 		return
 	}
 
 	if infoResp == nil || len(infoResp) == 0 {
-		log.Warnf("discovery: info from new peer %s is empty", pi.ID.String())
+		log.Warnf("discovery: info from new peer %s is empty", pi.String())
 		return
 	}
 
@@ -218,6 +218,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
+	log.Infof("discovery: requester address from new peer: %s", info.RequesterAddr)
 	if info.RequesterAddr != "" {
 		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
 			log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)

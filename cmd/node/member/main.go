@@ -47,7 +47,7 @@ func main() {
 
 	var _ = ipfslog.LevelInfo
 	//ipfslog.SetDebugLogging()
-	
+
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		log.Fatal(err)
@@ -106,7 +106,7 @@ func main() {
 
 	var serverNodeAuthInfo domain.AuthNodeInfo
 	select {
-	case <-time.After(time.Minute * 2):
+	case <-time.After(time.Minute * 5):
 		log.Errorln("timed out waiting for auth info")
 		return
 	case <-interruptChan:

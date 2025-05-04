@@ -96,7 +96,7 @@ func NewPubSubBootstrap(
 	ctx context.Context,
 	discoveryHandlers ...discovery.DiscoveryHandler,
 ) *warpPubSub {
-	return NewPubSub(ctx, nil, "", discoveryHandlers...)
+	return NewPubSub(ctx, nil, warpnet.BootstrapOwner, discoveryHandlers...)
 }
 
 func (g *warpPubSub) Run(
@@ -486,7 +486,7 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	duration := time.Minute
+	duration := time.Second
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
@@ -508,6 +508,9 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		case <-ticker.C:
 			if err := g.publishPeerInfo(discTopic); err != nil {
 				log.Errorf("pubsub: failed to publish peer info: %v", err)
+				continue
+			}
+			if g.ownerId == warpnet.BootstrapOwner {
 				continue
 			}
 			duration = duration * 2

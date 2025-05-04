@@ -19,6 +19,9 @@ func StreamGetInfoHandler(
 		defer func() { s.Close() }() //#nosec
 
 		remoteAddr := s.Conn().RemoteMultiaddr()
+		s.Conn().RemotePeer().String()
+
+		log.Infof("node info request received: %s %s", s.Conn().RemotePeer().String(), remoteAddr)
 
 		if handler != nil {
 			handler(warpnet.PeerAddrInfo{
