@@ -36,6 +36,9 @@ func StreamGetInfoHandler(
 		if err := json.JSON.NewEncoder(s).Encode(info); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)
 		}
+
+		log.Infof("node info response sent: %v", info)
+
 		return
 	}
 }
