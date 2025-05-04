@@ -31,7 +31,7 @@ func init() {
 		"Bootstrap nodes multiaddr list, comma separated",
 	)
 	pflag.String("node.metrics.server", "", "Metrics server address")
-	pflag.String("logging.level", "DEBUG", "Logging level")
+	pflag.String("logging.level", "INFO", "Logging level")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
