@@ -89,7 +89,6 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 		return
 	}
 	log.Infoln("discovery: service started")
-	printPeers(n)
 
 	s.node = n
 
@@ -111,23 +110,6 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 			}
 			s.handle(info)
 		}
-	}
-}
-
-func printPeers(n DiscoveryInfoStorer) {
-	defer func() {
-		if r := recover(); r != nil { // could panic
-			log.Errorf("discovery: print peers: recovered from panic: %v", r)
-		}
-	}()
-	for _, id := range n.Peerstore().Peers() {
-		if n.NodeInfo().ID == id {
-			continue
-		}
-
-		info := n.Peerstore().PeerInfo(id)
-
-		fmt.Printf("\033[1mdiscovery: known peer: %s \033[0m\n", info.String())
 	}
 }
 
@@ -171,7 +153,6 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 		<-s.discoveryChan // drop old data
 		<-s.discoveryChan
 		<-s.discoveryChan
-		time.Sleep(time.Second * 1)
 	}
 	s.discoveryChan <- pi
 }
@@ -188,7 +169,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	myID := s.node.NodeInfo().ID
 
-	if pi.ID.String() == "" || pi.ID == myID {
+	if pi.ID == myID {
 		return
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
@@ -288,7 +269,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 	log.Infof(
-		"discovery: new user added: id %s, name %s, node_id %s, created_at %s, latency: %d",
+		"discovery: new user added: id: %s, name: %s, node_id: %s, created_at: %s, latency: %d",
 		newUser.Id,
 		newUser.Username,
 		newUser.NodeId,

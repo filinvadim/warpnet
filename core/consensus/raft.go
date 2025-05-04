@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	"github.com/filinvadim/warpnet/retrier"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -89,6 +90,7 @@ type consensusService struct {
 	transport     *raft.NetworkTransport
 	raftID        raft.ServerID
 	syncMx        *sync.RWMutex
+	retrier       retrier.Retrier
 }
 
 func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
@@ -135,6 +137,7 @@ func NewRaft(
 		cache:         newVotersCache(),
 		consensus:     cons,
 		syncMx:        new(sync.RWMutex),
+		retrier:       retrier.New(1, 5, retrier.ArithmeticalBackoff),
 	}, nil
 }
 
@@ -390,12 +393,15 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, err := c.cache.getVoter(id); err == nil {
 		return
 	}
-	log.Infof("consensus: adding new voter %s", info.ID.String())
 
-	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
-	if wait.Error() != nil {
-		log.Errorf("consensus: failed to add voted: %v", wait.Error())
+	err := c.retrier.Try(c.ctx, func() error {
+		return c.raft.AddVoter(id, addr, 0, 10*time.Second).Error()
+	})
+	if err != nil {
+		log.Errorf("consensus: failed to add voted: %v", err)
+		return
 	}
+	log.Infof("consensus: new voter added %s", info.ID.String())
 
 	c.cache.addVoter(id, raft.Server{
 		Suffrage: raft.Voter,
@@ -424,9 +430,9 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	}
 	log.Infof("consensus: removing voter %s", id.String())
 
-	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
-	if err := wait.Error(); err != nil {
-		log.Errorf("consensus: failed to remove node: %s", wait.Error())
+	err := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second).Error()
+	if err != nil {
+		log.Errorf("consensus: failed to remove node: %v", err)
 		return
 	}
 	c.cache.removeVoter(raft.ServerID(id.String()))
@@ -501,8 +507,8 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 
 	c.waitSync()
 
-	wait := c.raft.GetConfiguration()
-	if len(wait.Configuration().Servers) <= 1 {
+	servers := c.raft.GetConfiguration().Configuration().Servers
+	if len(servers) <= 1 {
 		return nil, ErrNoRaftCluster
 	}
 

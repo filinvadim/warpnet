@@ -457,7 +457,6 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 		ma, _ := warpnet.NewMultiaddr(addr)
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
-	log.Infof("pubsub: discovery: found new peer: %s", msg.Data)
 
 	if g.discoveryHandlers != nil {
 		for _, handler := range g.discoveryHandlers {
@@ -487,13 +486,14 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	ticker := time.NewTicker(time.Minute * 10)
+	duration := time.Minute
+	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
 	log.Infoln("pubsub: publisher started")
 	defer log.Infoln("pubsub: publisher stopped")
 
-	if err := g.publishPeerInfo(discTopic); err != nil {
+	if err := g.publishPeerInfo(discTopic); err != nil { // initial publishing
 		log.Errorf("pubsub: failed to publish peer info: %v", err)
 	}
 
@@ -508,7 +508,9 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		case <-ticker.C:
 			if err := g.publishPeerInfo(discTopic); err != nil {
 				log.Errorf("pubsub: failed to publish peer info: %v", err)
+				continue
 			}
+			ticker.Reset(duration * 2) // exponential prolonging
 		}
 	}
 }

@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 type API struct {
@@ -37,11 +38,16 @@ type API struct {
 func main() {
 	defer closeWriter()
 
-	log.Infoln("config bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
+	log.Infoln("config bootstrap nodes:")
+	for _, n := range config.ConfigFile.Node.Bootstrap {
+		fmt.Println("         ", n)
+	}
+
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
 	var _ = ipfslog.LevelInfo
 	//ipfslog.SetDebugLogging()
+	
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		log.Fatal(err)
@@ -100,6 +106,9 @@ func main() {
 
 	var serverNodeAuthInfo domain.AuthNodeInfo
 	select {
+	case <-time.After(time.Minute * 2):
+		log.Errorln("timed out waiting for auth info")
+		return
 	case <-interruptChan:
 		log.Infoln("logged out")
 		return
