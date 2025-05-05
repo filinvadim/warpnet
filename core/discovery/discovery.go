@@ -284,9 +284,6 @@ func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpne
 	if s == nil {
 		return
 	}
-	if s.ctx.Err() != nil {
-		return info, s.ctx.Err()
-	}
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
@@ -294,7 +291,7 @@ func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpne
 	}
 
 	if infoResp == nil || len(infoResp) == 0 {
-		return info, fmt.Errorf("info from new peer %s is empty", pi.String())
+		return info, fmt.Errorf("no info response from new peer %s", pi.String())
 	}
 
 	err = json.JSON.Unmarshal(infoResp, &info)
@@ -311,15 +308,16 @@ func (s *discoveryService) requestNodeUser(pi warpnet.PeerAddrInfo, userId strin
 	if s == nil {
 		return
 	}
-	if s.ctx.Err() != nil {
-		return user, s.ctx.Err()
-	}
 
 	getUserEvent := event.GetUserEvent{UserId: userId}
 
 	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
 	if err != nil {
 		return user, fmt.Errorf("failed to user data from new peer %s: %v", pi.ID.String(), err)
+	}
+
+	if userResp == nil || len(userResp) == 0 {
+		return user, fmt.Errorf("no user response from new peer %s", pi.String())
 	}
 
 	err = json.JSON.Unmarshal(userResp, &user)

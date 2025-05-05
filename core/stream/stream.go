@@ -36,7 +36,7 @@ func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byt
 	if p.ctx.Err() != nil {
 		return nil, p.ctx.Err()
 	}
-	return send(context.Background(), p.n, peerAddr, r, data)
+	return send(p.ctx, p.n, peerAddr, r, data)
 }
 
 func send(

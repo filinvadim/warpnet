@@ -49,9 +49,9 @@ type WarpNode struct {
 
 	streamer Streamer
 
-	ipv4, ipv6, ownerId string
-	isClosed            *atomic.Bool
-	version             *semver.Version
+	ownerId  string
+	isClosed *atomic.Bool
+	version  *semver.Version
 
 	startTime time.Time
 }
@@ -131,8 +131,6 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	ipv4, ipv6 := parseAddresses(node)
-
 	id := node.ID()
 	peerInfo := node.Peerstore().PeerInfo(id)
 
@@ -146,8 +144,6 @@ func NewWarpNode(
 		node:        node,
 		relay:       nodeRelay,
 		addrManager: addrManager,
-		ipv6:        ipv6,
-		ipv4:        ipv4,
 		ownerId:     ownerId,
 		streamer:    stream.NewStreamPool(ctx, node),
 		isClosed:    new(atomic.Bool),
@@ -166,7 +162,7 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	peerState := n.node.Network().Connectedness(p.ID)
 	isConnected := peerState == network.Connected || peerState == network.Limited
 	if isConnected {
-		log.Infoln("node: already connected:", p.ID.String(), p.Addrs)
+		log.Infoln("node: already connected:", p.ID.String())
 		return nil
 	}
 
@@ -275,6 +271,8 @@ func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
 	return n.node.Mux()
 }
 
+var ErrSelfRequest = errors.New("self request")
+
 func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, errors.New("node is not initialized")
@@ -285,7 +283,7 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 		return nil, fmt.Errorf("node: invalid node id: %v", nodeIdStr)
 	}
 	if n.NodeInfo().ID == nodeId {
-		return nil, nil // self request discarded
+		return nil, ErrSelfRequest
 	}
 
 	peerInfo := n.Peerstore().PeerInfo(nodeId)
@@ -362,25 +360,4 @@ func (n *WarpNode) StopNode() {
 	time.Sleep(time.Duration(rand.Intn(999)) * time.Millisecond) // jitter
 
 	return
-}
-
-func parseAddresses(node warpnet.P2PNode) (string, string) {
-	var (
-		ipv4, ipv6 string
-	)
-	for _, a := range node.Addrs() {
-		if strings.HasPrefix(a.String(), "/ip4/127.0.0.1") { // localhost is default
-			continue
-		}
-		if strings.HasPrefix(a.String(), "/ip6/::1") { // localhost is default
-			continue
-		}
-		if strings.HasPrefix(a.String(), "/ip4") {
-			ipv4 = a.String()
-		}
-		if strings.HasPrefix(a.String(), "/ip6") {
-			ipv6 = a.String()
-		}
-	}
-	return ipv4, ipv6
 }
