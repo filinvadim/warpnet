@@ -125,13 +125,13 @@ func NewBootstrapNode(
 }
 
 func (bn *BootstrapNode) Start() error {
-	go bn.discService.Run(bn)
-	go bn.mdnsService.Start(bn)
-	go bn.pubsubService.Run(bn, nil)
-
 	if err := bn.raft.Sync(bn); err != nil {
 		return err
 	}
+
+	go bn.discService.Run(bn)
+	go bn.mdnsService.Start(bn)
+	go bn.pubsubService.Run(bn, nil)
 
 	nodeInfo := bn.NodeInfo()
 

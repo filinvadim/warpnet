@@ -91,12 +91,14 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 
 	s.node = n
 
-	err := s.retrier.Try(s.ctx, func() error {
-		return s.getPublicAddress()
-	})
-	if err != nil {
-		log.Infof("discovery: %v", err)
-		return
+	if s.node.NodeInfo().ID.String() != warpnet.BootstrapOwner {
+		err := s.retrier.Try(s.ctx, func() error {
+			return s.getPublicAddress()
+		})
+		if err != nil {
+			log.Infof("discovery: %v", err)
+			return
+		}
 	}
 
 	if s.discoveryChan == nil {
@@ -125,7 +127,7 @@ func (s *discoveryService) getPublicAddress() error {
 	for id, addrs := range s.bootstrapAddrs {
 		info, err := s.requestNodeInfo(warpnet.PeerAddrInfo{ID: id, Addrs: addrs})
 		if err != nil {
-			log.Errorf("discovery: initial request node info %v", err)
+			log.Errorf("discovery: initial public address request: %v", err)
 			continue
 		}
 		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
