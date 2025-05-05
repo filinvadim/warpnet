@@ -137,7 +137,7 @@ func NewRaft(
 		cache:         newVotersCache(),
 		consensus:     cons,
 		syncMx:        new(sync.RWMutex),
-		retrier:       retrier.New(1, 5, retrier.ArithmeticalBackoff),
+		retrier:       retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 	}, nil
 }
 

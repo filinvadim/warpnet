@@ -163,7 +163,10 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		return nil
 	}
 
-	if n.node.Network().Connectedness(p.ID) == network.Connected {
+	peerState := n.node.Network().Connectedness(p.ID)
+	isConnected := peerState == network.Connected || peerState == network.Limited
+	if isConnected {
+		log.Infoln("node: already connected:", p.ID.String(), p.Addrs)
 		return nil
 	}
 
@@ -304,7 +307,7 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 
 func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
 	if remoteAddr == "" {
-		return errors.New("node: empty remote address")
+		return errors.New("node: empty node info public address")
 	}
 	maddr, err := warpnet.NewMultiaddr(remoteAddr)
 	if err != nil {

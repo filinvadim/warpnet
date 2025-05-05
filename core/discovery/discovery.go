@@ -12,7 +12,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
-	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
 	"time"
@@ -49,6 +49,8 @@ type discoveryService struct {
 	nodeRepo       NodeStorer
 	version        *semver.Version
 	bootstrapAddrs map[warpnet.WarpPeerID][]warpnet.WarpAddress
+	retrier        retrier.Retrier
+	limiter        *leakyBucketRateLimiter
 
 	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
@@ -67,7 +69,8 @@ func NewDiscoveryService(
 	}
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version,
-		addrs, make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
+		addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
+		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }
 
@@ -92,22 +95,16 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 
 	s.node = n
 
-	if s.discoveryChan == nil {
+	err := s.retrier.Try(s.ctx, func() error {
+		return s.getPublicAddress()
+	})
+	if err != nil {
+		log.Infof("discovery: %v", err)
 		return
 	}
 
-	for id, addrs := range s.bootstrapAddrs {
-		infoResp, err := s.node.GenericStream(id.String(), event.PUBLIC_GET_INFO, nil)
-		if err != nil {
-			log.Errorf("discovery: initial get info from new peer %s %v: %v", id.String(), addrs, err)
-			continue
-		}
-		var info warpnet.NodeInfo
-		_ = json.JSON.Unmarshal(infoResp, &info)
-		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-			log.Errorf("discovery: initial adding own public address: %s %v", info.RequesterAddr, err)
-		}
-		log.Infoln("discovery: adding own public address", info.RequesterAddr)
+	if s.discoveryChan == nil {
+		return
 	}
 
 	for {
@@ -127,6 +124,26 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 	}
 }
 
+func (s *discoveryService) getPublicAddress() error {
+	isAddrAdded := false
+	for id, addrs := range s.bootstrapAddrs {
+		info, err := s.requestNodeInfo(warpnet.PeerAddrInfo{ID: id, Addrs: addrs})
+		if err != nil {
+			log.Errorf("discovery: %v", err)
+			continue
+		}
+		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+			log.Errorf("discovery: initial adding own public address: %s %v", info.RequesterAddr, err)
+			continue
+		}
+		isAddrAdded = true
+	}
+	if !isAddrAdded {
+		return errors.New("discovery: no public address found")
+	}
+	return nil
+}
+
 func (s *discoveryService) Close() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -144,6 +161,14 @@ func (s *discoveryService) Close() {
 }
 
 func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo) {
+	if s == nil {
+		return
+	}
+	defer func() { recover() }()
+
+	if !s.limiter.Allow() {
+		return
+	}
 	if err := s.node.Connect(peerInfo); err != nil {
 		log.Errorf(
 			"discovery: default handler: failed to connect to peer %s: %v",
@@ -162,6 +187,10 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	}
 	defer func() { recover() }()
 
+	if !s.limiter.Allow() {
+		return
+	}
+
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
 		log.Warnf("discovery: channel overflow %d", cap(s.discoveryChan))
 		<-s.discoveryChan // drop old data
@@ -172,7 +201,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 }
 
 func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
-	if s == nil || s.node == nil || s.userRepo == nil || s.nodeRepo == nil {
+	if s == nil || s.node == nil {
 		return
 	}
 
@@ -183,9 +212,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	log.Debugf("discovery: handling peer %s %v", pi.ID.String(), pi.Addrs)
 
-	myID := s.node.NodeInfo().ID
-
-	if pi.ID == myID {
+	if pi.ID == s.node.NodeInfo().ID {
 		return
 	}
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
@@ -197,10 +224,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	peerState := s.node.Network().Connectedness(pi.ID)
-
-	isConnected := peerState == network.Connected || peerState == network.Limited
-
 	bAddrs, ok := s.bootstrapAddrs[pi.ID]
 	if ok {
 		// update local bootstrap addresses with public ones
@@ -208,42 +231,20 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 	s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour)
 
-	if !isConnected {
-		if err := s.node.Connect(pi); err != nil {
-			log.Errorf("discovery: failed to connect to new peer: %s...", err)
-			return
-		}
-		log.Infof("discovery: connected to peer: %s", pi.String())
+	if err := s.node.Connect(pi); err != nil {
+		log.Errorf("discovery: failed to connect to new peer: %s...", err)
+		return
 	}
 
-	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
+	info, err := s.requestNodeInfo(pi)
 	if err != nil {
-		log.Errorf("discovery: failed to get info from new peer %s: %v", pi.String(), err)
+		log.Errorf("discovery: %v", err)
 		return
 	}
-
-	if infoResp == nil || len(infoResp) == 0 {
-		log.Warnf("discovery: info from new peer %s is empty", pi.String())
-		return
+	if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+		log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
 	}
 
-	var info warpnet.NodeInfo
-	err = json.JSON.Unmarshal(infoResp, &info)
-	if err != nil {
-		log.Errorf("discovery: failed to unmarshal info from new peer: %s %v", infoResp, err)
-		return
-	}
-
-	if info.RequesterAddr != "" {
-		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-			log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
-		}
-	}
-
-	if info.OwnerId == "" {
-		log.Infof("discovery: peer %s has no owner", pi.ID.String())
-		return
-	}
 	if info.OwnerId == warpnet.BootstrapOwner { // bootstrap node
 		return
 	}
@@ -253,27 +254,13 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	fmt.Printf("\033[1mdiscovery: found new peer: %s - %s \033[0m\n", pi.String(), peerState)
+	fmt.Printf("\033[1mdiscovery: connected to new peer: %s \033[0m\n", pi.String())
 
-	getUserEvent := event.GetUserEvent{UserId: info.OwnerId}
-
-	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
+	user, err := s.requestNodeUser(pi, info.OwnerId)
 	if err != nil {
-		log.Errorf("discovery: failed to user data from new peer %s: %v", pi.ID.String(), err)
+		log.Errorf("discovery: %v", err)
 		return
 	}
-	latency := s.node.Peerstore().LatencyEWMA(pi.ID)
-
-	var user domain.User
-	err = json.JSON.Unmarshal(userResp, &user)
-	if err != nil {
-		log.Errorf("discovery: failed to unmarshal user from new peer: %v", err)
-		return
-	}
-
-	user.IsOffline = false
-	user.NodeId = pi.ID.String()
-	user.Latency = int64(latency)
 
 	newUser, err := s.userRepo.Create(user)
 	if errors.Is(err, database.ErrUserAlreadyExists) {
@@ -292,4 +279,57 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		newUser.CreatedAt,
 		newUser.Latency,
 	)
+}
+
+func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpnet.NodeInfo, err error) {
+	if s == nil {
+		return
+	}
+	if s.ctx.Err() != nil {
+		return info, s.ctx.Err()
+	}
+
+	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
+	if err != nil {
+		return info, fmt.Errorf("failed to get info from new peer %s: %v", pi.String(), err)
+	}
+
+	if infoResp == nil || len(infoResp) == 0 {
+		return info, fmt.Errorf("info from new peer %s is empty", pi.String())
+	}
+
+	err = json.JSON.Unmarshal(infoResp, &info)
+	if err != nil {
+		return info, fmt.Errorf("failed to unmarshal info from new peer: %s %v", infoResp, err)
+	}
+	if info.OwnerId == "" {
+		return info, fmt.Errorf("node info %s has no owner", pi.ID.String())
+	}
+	return info, nil
+}
+
+func (s *discoveryService) requestNodeUser(pi warpnet.PeerAddrInfo, userId string) (user domain.User, err error) {
+	if s == nil {
+		return
+	}
+	if s.ctx.Err() != nil {
+		return user, s.ctx.Err()
+	}
+
+	getUserEvent := event.GetUserEvent{UserId: userId}
+
+	userResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_USER, getUserEvent)
+	if err != nil {
+		return user, fmt.Errorf("failed to user data from new peer %s: %v", pi.ID.String(), err)
+	}
+
+	err = json.JSON.Unmarshal(userResp, &user)
+	if err != nil {
+		return user, fmt.Errorf("failed to unmarshal user from new peer: %v", err)
+	}
+
+	user.IsOffline = false
+	user.NodeId = pi.ID.String()
+	user.Latency = int64(s.node.Peerstore().LatencyEWMA(pi.ID))
+	return user, nil
 }
