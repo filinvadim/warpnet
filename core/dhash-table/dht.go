@@ -127,9 +127,6 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addFuncs != nil {
 		d.dht.RoutingTable().PeerAdded = func(id peer.ID) {
-			if addrs := d.dht.Host().Peerstore().Addrs(id); len(addrs) > 0 {
-				return
-			}
 			log.Infof("dht: new peer added: %s", id)
 			info := peer.AddrInfo{ID: id}
 			for _, addF := range d.addFuncs {

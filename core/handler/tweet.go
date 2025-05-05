@@ -275,72 +275,60 @@ func StreamGetTweetStatsHandler(
 		}
 
 		var (
-			retweetsCount    uint64
-			likesCount       uint64
-			repliesCount     uint64
-			retweeters       []string
-			retweetersCursor string
-			likers           []string
-			likersCursor     string
-			ctx, cancelF     = context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
-			g, _             = errgroup.WithContext(ctx)
-			tweetId          = strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
+			retweetsCount uint64
+			likesCount    uint64
+			repliesCount  uint64
+			ctx, cancelF  = context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+			g, _          = errgroup.WithContext(ctx)
+			tweetId       = strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
 		)
 		defer cancelF()
 
-		g.Go(func() error {
-			retweetsCount, err = retweetRepo.RetweetsCount(tweetId)
-			if errors.Is(err, database.ErrTweetNotFound) {
+		g.Go(func() (retweetsErr error) {
+			retweetsCount, retweetsErr = retweetRepo.RetweetsCount(tweetId)
+			if errors.Is(retweetsErr, database.ErrTweetNotFound) {
 				return nil
 			}
-			return err
+			return retweetsErr
 		})
-		g.Go(func() error {
-			likesCount, err = likeRepo.LikesCount(tweetId)
-			if errors.Is(err, database.ErrLikesNotFound) {
+		g.Go(func() (likesErr error) {
+			likesCount, likesErr = likeRepo.LikesCount(tweetId)
+			if errors.Is(likesErr, database.ErrLikesNotFound) {
 				return nil
 			}
-			return err
+			return likesErr
 		})
-		g.Go(func() error {
-			repliesCount, err = replyRepo.RepliesCount(tweetId)
-			if errors.Is(err, database.ErrReplyNotFound) {
+		g.Go(func() (repliesErr error) {
+			repliesCount, repliesErr = replyRepo.RepliesCount(tweetId)
+			if errors.Is(repliesErr, database.ErrReplyNotFound) {
 				return nil
 			}
-			return err
-		})
-		g.Go(func() error {
-			retweeters, retweetersCursor, err = retweetRepo.Retweeters(tweetId, ev.Limit, ev.Cursor)
-			if errors.Is(err, database.ErrTweetNotFound) {
-				return nil
-			}
-			return err
-		})
-		g.Go(func() error {
-			likers, likersCursor, err = likeRepo.Likers(tweetId, ev.Limit, ev.Cursor)
-			if errors.Is(err, database.ErrLikesNotFound) {
-				return nil
-			}
-			return err
+			return repliesErr
 		})
 		if err = g.Wait(); err != nil {
 			log.Errorf("get tweet stats: %s %v", buf, err)
 		}
-
 		return event.TweetStatsResponse{
 			TweetId:       ev.TweetId,
 			ViewsCount:    0, // TODO
 			RetweetsCount: retweetsCount,
 			LikeCount:     likesCount,
 			RepliesCount:  repliesCount,
-			Retweeters: event.IDsResponse{
-				Cursor: retweetersCursor,
-				Users:  retweeters,
-			},
-			Likers: event.IDsResponse{
-				Cursor: likersCursor,
-				Users:  likers,
-			},
 		}, nil
 	}
 }
+
+//g.Go(func() error {
+//	retweeters, retweetersCursor, err = retweetRepo.Retweeters(tweetId, ev.Limit, ev.Cursor)
+//	if errors.Is(err, database.ErrTweetNotFound) {
+//		return nil
+//	}
+//	return err
+//})
+//g.Go(func() error {
+//	likers, likersCursor, err = likeRepo.Likers(tweetId, ev.Limit, ev.Cursor)
+//	if errors.Is(err, database.ErrLikesNotFound) {
+//		return nil
+//	}
+//	return err
+//})

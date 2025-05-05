@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/raft"
 	gostream "github.com/libp2p/go-libp2p-gostream"
 	"github.com/libp2p/go-libp2p/core/peer"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"time"
 )
@@ -72,7 +73,7 @@ func NewWarpnetConsensusTransport(node NodeServicesProvider) (*raft.NetworkTrans
 
 	transportConfig := &raft.NetworkTransportConfig{
 		ServerAddressProvider: &addrProvider{},
-		Logger:                newConsensusLogger("error", "consensus-transport"),
+		Logger:                newConsensusLogger(log.DebugLevel.String(), "consensus-transport"),
 		Stream:                p2pStream,
 		MaxPool:               0,
 		Timeout:               time.Minute,

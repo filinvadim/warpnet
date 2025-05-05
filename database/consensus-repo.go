@@ -6,6 +6,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/database/storage"
 	"os"
+	"path/filepath"
 )
 
 const ConsensusConfigNamespace = "/CONFIGS/"
@@ -43,7 +44,7 @@ func (cr *ConsensusRepo) SnapshotsPath() (path string) {
 	if cr == nil || cr.db == nil {
 		return "/tmp/snapshot"
 	}
-	return cr.db.Path() + "/snapshots"
+	return filepath.Join(cr.db.Path(), "snapshots")
 }
 
 func (cr *ConsensusRepo) Reset() error {
@@ -117,9 +118,7 @@ func (cr *ConsensusRepo) Close() error {
 
 func bytesToUint64(b []byte) uint64 {
 	if len(b) < 8 {
-		var padded [8]byte
-		copy(padded[8-len(b):], b)
-		return binary.BigEndian.Uint64(padded[:])
+		return 0
 	}
 	return binary.BigEndian.Uint64(b)
 }

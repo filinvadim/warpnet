@@ -132,27 +132,24 @@ func (g *warpPubSub) runListener() error {
 		if !g.isRunning.Load() {
 			return nil
 		}
-
+		if err := g.ctx.Err(); err != nil {
+			return err
+		}
 		g.mx.RLock()
-		subscriptions := g.subs
-		g.mx.RUnlock()
-
-		for _, sub := range subscriptions {
-			if err := g.ctx.Err(); err != nil {
-				return err
-			}
-
+		for _, sub := range g.subs {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+
 			msg, err := sub.Next(ctx)
 			cancel()
 			if errors.Is(err, pubsub.ErrSubscriptionCancelled) {
-				return nil
+				continue
 			}
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				continue
 			}
 			if err != nil {
-				return err
+				log.Errorf("pubsub: failed to listen subscription to topic: %v", err)
+				continue
 			}
 			if msg.Topic == nil {
 				continue
@@ -180,6 +177,7 @@ func (g *warpPubSub) runListener() error {
 				log.Warnf("pubsub: unknown topic: %s, message: %s", *msg.Topic, string(msg.Data))
 			}
 		}
+		g.mx.RUnlock()
 	}
 }
 

@@ -16,4 +16,4 @@ EXPOSE 4001 4002
 
 VOLUME /tmp/snapshot
 
-CMD ["/warpnet/warpnet", "--logging.level", "DEBUG"]
+CMD ["/warpnet/warpnet"]

@@ -108,7 +108,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger("error", "consensus-snapshot")
+	l := newConsensusLogger(log.WarnLevel.String(), "consensus-snapshot")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -137,11 +137,15 @@ func NewRaft(
 		cache:         newVotersCache(),
 		consensus:     cons,
 		syncMx:        new(sync.RWMutex),
-		retrier:       retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
+		retrier:       retrier.New(time.Second, 3, retrier.ArithmeticalBackoff),
 	}, nil
 }
 
 func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
+	if c == nil {
+		return errors.New("consensus: nil consensus service")
+	}
+
 	c.syncMx.Lock()
 	defer c.syncMx.Unlock()
 
@@ -152,7 +156,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.ElectionTimeout = config.HeartbeatTimeout
 	config.LeaderLeaseTimeout = config.HeartbeatTimeout
 	config.CommitTimeout = time.Second * 30
-	config.Logger = newConsensusLogger("error", "consensus")
+	config.Logger = newConsensusLogger(log.WarnLevel.String(), "consensus")
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
 	config.SnapshotThreshold = 8192
@@ -187,15 +191,17 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: failed to create node: %w", err)
 	}
 
-	if err := c.raft.GetConfiguration().Error(); err != nil {
+	wait := c.raft.GetConfiguration()
+	if err := wait.Error(); err != nil {
 		log.Errorf("consensus: node configuration error: %v", err)
+	}
+	if len(wait.Configuration().Servers) == 0 {
+		return fmt.Errorf("consensus: failed to bootstrap node: no servers available")
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
-	err = c.retrier.Try(c.ctx, func() error {
-		return c.sync()
-	})
+	err = c.sync()
 	if err != nil {
 		return err
 	}
@@ -246,6 +252,10 @@ func (c *consensusService) sync() error {
 		panic("consensus: node id is not initialized")
 	}
 
+	if c.ctx.Err() != nil {
+		return c.ctx.Err()
+	}
+
 	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
 	defer leaderCancel()
 
@@ -275,10 +285,7 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	updatesCtx, updatesCancel := context.WithTimeout(c.ctx, time.Minute*5)
-	defer updatesCancel()
-
-	if err = cs.waitForUpdates(updatesCtx); err != nil {
+	if err = cs.waitForUpdates(c.ctx); err != nil {
 		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
 	}
 
@@ -394,15 +401,12 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, err := c.cache.getVoter(id); err == nil {
 		return
 	}
+	log.Infof("consensus: adding new voter %s", info.ID.String())
 
-	err := c.retrier.Try(c.ctx, func() error {
-		return c.raft.AddVoter(id, addr, 0, 10*time.Second).Error()
-	})
-	if err != nil {
-		log.Errorf("consensus: failed to add voted: %v", err)
-		return
+	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
+	if wait.Error() != nil {
+		log.Errorf("consensus: failed to add voted: %v", wait.Error())
 	}
-	log.Infof("consensus: new voter added %s", info.ID.String())
 
 	c.cache.addVoter(id, raft.Server{
 		Suffrage: raft.Voter,
@@ -431,9 +435,9 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	}
 	log.Infof("consensus: removing voter %s", id.String())
 
-	err := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second).Error()
-	if err != nil {
-		log.Errorf("consensus: failed to remove node: %v", err)
+	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
+	if err := wait.Error(); err != nil {
+		log.Errorf("consensus: failed to remove node: %s", wait.Error())
 		return
 	}
 	c.cache.removeVoter(raft.ServerID(id.String()))
@@ -508,8 +512,8 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 
 	c.waitSync()
 
-	servers := c.raft.GetConfiguration().Configuration().Servers
-	if len(servers) <= 1 {
+	wait := c.raft.GetConfiguration()
+	if len(wait.Configuration().Servers) <= 1 {
 		return nil, ErrNoRaftCluster
 	}
 

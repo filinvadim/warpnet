@@ -8,6 +8,7 @@ services:
     environment:
       - NODE_PORT=4001
       - NODE_HOST=207.154.221.44
+      - LOGGING_LEVEL=DEBUG
     volumes:
     - /tmp/snapshot1:/tmp/snapshot:rw
 
@@ -20,6 +21,8 @@ services:
     environment:
       - NODE_PORT=4002
       - NODE_HOST=207.154.221.44
+      - LOGGING_LEVEL=DEBUG
+
     volumes:
     - /tmp/snapshot2:/tmp/snapshot:rw
 
@@ -32,6 +35,8 @@ services:
     environment:
       - NODE_PORT=4003
       - NODE_HOST=207.154.221.44
+      - LOGGING_LEVEL=DEBUG
+
     volumes:
     - /tmp/snapshot3:/tmp/snapshot:rw
 
