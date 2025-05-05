@@ -91,18 +91,15 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 
 	s.node = n
 
-	if s.node.NodeInfo().OwnerId != warpnet.BootstrapOwner {
-		err := s.retrier.Try(s.ctx, func() error {
-			return s.getPublicAddress()
-		})
-		if err != nil {
-			log.Infof("discovery: %v", err)
-			return
-		}
-	}
-
 	if s.discoveryChan == nil {
 		return
+	}
+
+	for id, addrs := range s.bootstrapAddrs {
+		if s.node.NodeInfo().ID == id {
+			continue
+		}
+		s.discoveryChan <- warpnet.PeerAddrInfo{ID: id, Addrs: addrs}
 	}
 
 	for {
@@ -120,26 +117,6 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 			s.handle(info)
 		}
 	}
-}
-
-func (s *discoveryService) getPublicAddress() error {
-	isAddrAdded := false
-	for id, addrs := range s.bootstrapAddrs {
-		info, err := s.requestNodeInfo(warpnet.PeerAddrInfo{ID: id, Addrs: addrs})
-		if err != nil {
-			log.Errorf("discovery: initial public address request: %v", err)
-			continue
-		}
-		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-			log.Errorf("discovery: initial adding own public address: %s %v", info.RequesterAddr, err)
-			continue
-		}
-		isAddrAdded = true
-	}
-	if !isAddrAdded {
-		return errors.New("discovery: no public address found")
-	}
-	return nil
 }
 
 func (s *discoveryService) Close() {

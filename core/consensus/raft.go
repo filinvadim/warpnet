@@ -108,7 +108,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.WarnLevel.String(), "consensus-snapshot")
+	l := newConsensusLogger(log.ErrorLevel.String(), "consensus-snapshot")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
