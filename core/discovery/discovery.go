@@ -224,6 +224,11 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
+	if !s.hasPublicAddresses(pi.Addrs) {
+		log.Infof("discovery: peer %s has no public addresses", pi.ID.String())
+		return
+	}
+
 	bAddrs, ok := s.bootstrapAddrs[pi.ID]
 	if ok {
 		// update local bootstrap addresses with public ones
@@ -332,4 +337,13 @@ func (s *discoveryService) requestNodeUser(pi warpnet.PeerAddrInfo, userId strin
 	user.NodeId = pi.ID.String()
 	user.Latency = int64(s.node.Peerstore().LatencyEWMA(pi.ID))
 	return user, nil
+}
+
+func (s *discoveryService) hasPublicAddresses(addrs []warpnet.WarpAddress) bool {
+	for _, addr := range addrs {
+		if warpnet.IsPublicMultiAddress(addr) {
+			return true
+		}
+	}
+	return false
 }

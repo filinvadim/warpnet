@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"net"
 	"strings"
 	"time"
 )
@@ -37,7 +36,7 @@ func StreamGetStatsHandler(
 
 		publicAddrs := make([]string, 0, len(nodeInfo.Addresses))
 		for _, addr := range nodeInfo.Addresses {
-			if !isPublicIP(addr) {
+			if !warpnet.IsPublicAddress(addr) {
 				continue
 			}
 			publicAddrs = append(publicAddrs, addr)
@@ -67,44 +66,4 @@ func StreamGetStatsHandler(
 		}
 		return stats, nil
 	}
-}
-
-func isPublicIP(addr string) bool {
-	if addr == "" {
-		return false
-	}
-	if strings.Contains(addr, "p2p-circuit") {
-		return false
-	}
-	maddr, _ := warpnet.NewMultiaddr(addr)
-
-	ipStr, err := maddr.ValueForProtocol(warpnet.P_IP4)
-	if err != nil {
-		ipStr, err = maddr.ValueForProtocol(warpnet.P_IP6)
-		if err != nil {
-			return false
-		}
-	}
-	ip := net.ParseIP(ipStr)
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
-		return false
-	}
-
-	// private ranges
-	privateBlocks := []string{
-		"10.0.0.0/8", // VPN
-		"172.16.0.0/12",
-		"192.168.0.0/16", // private network
-		"100.64.0.0/10",  // CG-NAT
-		"127.0.0.0/8",    // local
-		"169.254.0.0/16", // link-local
-	}
-
-	for _, block := range privateBlocks {
-		_, cidr, _ := net.ParseCIDR(block)
-		if cidr.Contains(ip) {
-			return false
-		}
-	}
-	return true
 }

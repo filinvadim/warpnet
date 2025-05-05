@@ -21,6 +21,7 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/net"
 	log "github.com/sirupsen/logrus"
+	gonet "net"
 	"runtime"
 	"strconv"
 	"strings"
@@ -177,11 +178,6 @@ func FromStringToPeerID(s string) WarpPeerID {
 	return peerID
 }
 
-const (
-	P_IP4 = multiaddr.P_IP4
-	P_IP6 = multiaddr.P_IP6
-)
-
 func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {
 	return multiaddr.NewMultiaddr(s)
 }
@@ -200,3 +196,51 @@ func NewPeerstore(ctx context.Context, db datastore.Batching) (WarpPeerstore, er
 }
 
 type WarpRoutingFunc func(node P2PNode) (WarpPeerRouting, error)
+
+const (
+	P_IP4 = multiaddr.P_IP4
+	P_IP6 = multiaddr.P_IP6
+)
+
+func IsPublicMultiAddress(maddr WarpAddress) bool {
+	ipStr, err := maddr.ValueForProtocol(P_IP4)
+	if err != nil {
+		ipStr, err = maddr.ValueForProtocol(P_IP6)
+		if err != nil {
+			return false
+		}
+	}
+	ip := gonet.ParseIP(ipStr)
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return false
+	}
+
+	// private ranges
+	privateBlocks := []string{
+		"10.0.0.0/8", // VPN
+		"172.16.0.0/12",
+		"192.168.0.0/16", // private network
+		"100.64.0.0/10",  // CG-NAT
+		"127.0.0.0/8",    // local
+		"169.254.0.0/16", // link-local
+	}
+
+	for _, block := range privateBlocks {
+		_, cidr, _ := gonet.ParseCIDR(block)
+		if cidr.Contains(ip) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPublicAddress(addr string) bool {
+	if addr == "" {
+		return false
+	}
+	if strings.Contains(addr, "p2p-circuit") {
+		return false
+	}
+	maddr, _ := NewMultiaddr(addr)
+	return IsPublicMultiAddress(maddr)
+}
