@@ -25,11 +25,7 @@ func init() {
 	pflag.String("node.host", "0.0.0.0", "Node host")
 	pflag.String("node.port", "4001", "Node port")
 	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
-	pflag.String(
-		"node.bootstrap",
-		strings.Join(defaultBootstrapNodes, ","),
-		"Bootstrap nodes multiaddr list, comma separated",
-	)
+	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
 	pflag.String("node.metrics.server", "", "Metrics server address")
 	pflag.String("logging.level", "INFO", "Logging level")
 
@@ -42,13 +38,18 @@ func init() {
 	_ = viper.BindPFlags(pflag.CommandLine)
 
 	bootstrapAddrs := viper.GetString("node.bootstrap")
+	bootstrapAddrList := make([]string, 0, len(defaultBootstrapNodes))
+	if strings.Contains(bootstrapAddrs, ",") {
+		bootstrapAddrList = strings.Split(bootstrapAddrs, ",")
+	}
+	bootstrapAddrList = append(bootstrapAddrList, defaultBootstrapNodes...)
 
 	version := root.GetVersion()
 
 	ConfigFile = Config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
-			Bootstrap: strings.Split(bootstrapAddrs, ","),
+			Bootstrap: bootstrapAddrList,
 			Host:      viper.GetString("node.host"),
 			Port:      viper.GetString("node.port"),
 			Prefix:    viper.GetString("node.network.prefix"),

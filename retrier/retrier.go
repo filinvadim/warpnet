@@ -78,5 +78,5 @@ func (r *retrier) Try(ctx context.Context, f RetrierFunc) error {
 }
 
 func jitter(minInterval time.Duration) time.Duration {
-	return time.Duration(rand.Int63n(int64(minInterval) / 2)) // Add jitter
+	return time.Duration(rand.Int63n(int64(minInterval / 2))) // Add jitter
 }

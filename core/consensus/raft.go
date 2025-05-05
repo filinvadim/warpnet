@@ -187,14 +187,15 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: failed to create node: %w", err)
 	}
 
-	wait := c.raft.GetConfiguration()
-	if err := wait.Error(); err != nil {
+	if err := c.raft.GetConfiguration().Error(); err != nil {
 		log.Errorf("consensus: node configuration error: %v", err)
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
-	err = c.sync()
+	err = c.retrier.Try(c.ctx, func() error {
+		return c.sync()
+	})
 	if err != nil {
 		return err
 	}
