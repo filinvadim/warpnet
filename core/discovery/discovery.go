@@ -91,7 +91,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) {
 
 	s.node = n
 
-	if s.node.NodeInfo().ID.String() != warpnet.BootstrapOwner {
+	if s.node.NodeInfo().OwnerId != warpnet.BootstrapOwner {
 		err := s.retrier.Try(s.ctx, func() error {
 			return s.getPublicAddress()
 		})
