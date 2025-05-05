@@ -34,17 +34,9 @@ func StreamGetStatsHandler(
 		storedPeers := i.Peerstore().Peers()
 		nodeInfo := i.NodeInfo()
 
-		publicAddrs := make([]string, 0, len(nodeInfo.Addresses))
-		for _, addr := range nodeInfo.Addresses {
-			if !warpnet.IsPublicAddress(addr) {
-				continue
-			}
-			publicAddrs = append(publicAddrs, addr)
-		}
-
 		publicAddrsStr := "Waiting..."
-		if len(publicAddrs) > 0 {
-			publicAddrsStr = strings.Join(publicAddrs, ",")
+		if len(nodeInfo.Addresses) > 0 {
+			publicAddrsStr = strings.Join(nodeInfo.Addresses, ",")
 		}
 
 		stats := warpnet.NodeStats{

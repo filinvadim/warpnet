@@ -80,11 +80,7 @@ func NewBootstrapDiscoveryService(ctx context.Context) *discoveryService {
 	for _, info := range addrInfos {
 		addrs[info.ID] = info.Addrs
 	}
-	return &discoveryService{
-		ctx:            ctx,
-		version:        config.ConfigFile.Version,
-		bootstrapAddrs: addrs,
-	}
+	return NewDiscoveryService(ctx, nil, nil)
 }
 
 func (s *discoveryService) Run(n DiscoveryInfoStorer) {
@@ -194,14 +190,12 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
 		log.Warnf("discovery: channel overflow %d", cap(s.discoveryChan))
 		<-s.discoveryChan // drop old data
-		<-s.discoveryChan
-		<-s.discoveryChan
 	}
 	s.discoveryChan <- pi
 }
 
 func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
-	if s == nil || s.node == nil {
+	if s == nil || s.node == nil || s.nodeRepo == nil || s.userRepo == nil {
 		return
 	}
 

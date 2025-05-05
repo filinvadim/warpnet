@@ -227,6 +227,9 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	addrs := n.node.Peerstore().Addrs(n.node.ID())
 	addresses := make([]string, 0, len(addrs))
 	for _, a := range addrs {
+		if !warpnet.IsPublicMultiAddress(a) {
+			continue
+		}
 		addresses = append(addresses, a.String())
 	}
 
