@@ -125,7 +125,7 @@ func (s *discoveryService) getPublicAddress() error {
 	for id, addrs := range s.bootstrapAddrs {
 		info, err := s.requestNodeInfo(warpnet.PeerAddrInfo{ID: id, Addrs: addrs})
 		if err != nil {
-			log.Errorf("discovery: %v", err)
+			log.Errorf("discovery: initial request node info %v", err)
 			continue
 		}
 		if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
@@ -282,7 +282,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpnet.NodeInfo, err error) {
 	if s == nil {
-		return
+		return info, err
 	}
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
@@ -306,7 +306,7 @@ func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpne
 
 func (s *discoveryService) requestNodeUser(pi warpnet.PeerAddrInfo, userId string) (user domain.User, err error) {
 	if s == nil {
-		return
+		return user, err
 	}
 
 	getUserEvent := event.GetUserEvent{UserId: userId}

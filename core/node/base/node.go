@@ -162,7 +162,6 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	peerState := n.node.Network().Connectedness(p.ID)
 	isConnected := peerState == network.Connected || peerState == network.Limited
 	if isConnected {
-		log.Infoln("node: already connected:", p.ID.String())
 		return nil
 	}
 
