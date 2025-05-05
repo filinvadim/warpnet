@@ -73,7 +73,7 @@ func NewWarpnetConsensusTransport(node NodeServicesProvider) (*raft.NetworkTrans
 
 	transportConfig := &raft.NetworkTransportConfig{
 		ServerAddressProvider: &addrProvider{},
-		Logger:                newConsensusLogger(log.DebugLevel.String(), "consensus-transport"),
+		Logger:                newConsensusLogger(log.WarnLevel.String(), "consensus-transport"),
 		Stream:                p2pStream,
 		MaxPool:               0,
 		Timeout:               time.Minute,

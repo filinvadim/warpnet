@@ -518,9 +518,7 @@ func (t *WarpReadTxn) ReverseIterateKeys(prefix DatabaseKey, handler IterKeysFun
 	it := t.txn.NewIterator(opts)
 	defer it.Close()
 	p := []byte(prefix)
-
-	fmt.Println("REVERSE", prefix)
-
+	
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 		item := it.Item()
 		key := string(item.KeyCopy(nil))

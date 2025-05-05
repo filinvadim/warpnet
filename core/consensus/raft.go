@@ -160,7 +160,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
 	config.SnapshotThreshold = 8192
-	config.SnapshotInterval = 20 * time.Second
+	config.SnapshotInterval = 20 * time.Minute
 	config.NoSnapshotRestoreOnStart = true
 
 	if err := raft.ValidateConfig(config); err != nil {
@@ -194,9 +194,6 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	wait := c.raft.GetConfiguration()
 	if err := wait.Error(); err != nil {
 		log.Errorf("consensus: node configuration error: %v", err)
-	}
-	if len(wait.Configuration().Servers) == 0 {
-		return fmt.Errorf("consensus: failed to bootstrap node: no servers available")
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
@@ -486,7 +483,7 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 		return fmt.Errorf("consensus: node verify stream: %w", err)
 	}
 	if len(resp) == 0 {
-		return nil
+		return errors.New("consensus: node verify stream returned empty response")
 	}
 
 	var errResp event.ErrorResponse

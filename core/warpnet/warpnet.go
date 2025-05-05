@@ -33,13 +33,14 @@ const (
 )
 
 type NodeInfo struct {
-	OwnerId       string          `json:"owner_id"`
-	ID            WarpPeerID      `json:"node_id"`
-	Version       *semver.Version `json:"version"`
-	Addresses     []string        `json:"addresses"`
-	StartTime     time.Time       `json:"start_time"`
-	RequesterAddr string          `json:"requester_addr"`
-	RelayState    string          `json:"relay_state"`
+	OwnerId        string          `json:"owner_id"`
+	ID             WarpPeerID      `json:"node_id"`
+	Version        *semver.Version `json:"version"`
+	Addresses      []string        `json:"addresses"`
+	StartTime      time.Time       `json:"start_time"`
+	RequesterAddr  string          `json:"requester_addr"`
+	RelayState     string          `json:"relay_state"`
+	BootstrapPeers []PeerAddrInfo  `json:"bootstrap_peers"`
 }
 
 type NodeStats struct {

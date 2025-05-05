@@ -554,9 +554,8 @@ func (g *warpPubSub) Close() (err error) {
 		delete(g.relayCancelFuncs, t)
 	}
 
-	for i, sub := range g.subs {
+	for _, sub := range g.subs {
 		sub.Cancel()
-		g.subs[i] = nil
 	}
 
 	for t, topic := range g.topics {
