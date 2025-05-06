@@ -196,6 +196,9 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 	if !s.limiter.Allow() {
 		return
 	}
+
+	log.Infof("discovery: handling peer %s %v", peerInfo.ID.String(), peerInfo.Addrs)
+
 	if err := s.node.Connect(peerInfo); err != nil {
 		log.Errorf(
 			"discovery: default handler: failed to connect to peer %s: %v",
