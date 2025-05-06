@@ -47,6 +47,9 @@ import (
 	  - **Optimized for P2P Environments**
 	    - Unlike the traditional Raft, it is adapted for dynamically changing networks.
 */
+
+const initiatorServerID raft.ServerID = "12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j"
+
 var ErrNoRaftCluster = errors.New("consensus: no cluster found")
 
 type (
@@ -184,7 +187,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: failed to check existing state: %v", err)
 	}
 
-	isInitiator := config.ConfigFile.Node.ConsensusInitiator
+	isInitiator := raftConfig.LocalID == initiatorServerID
 	infos, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
 		return err
@@ -309,15 +312,6 @@ func (c *consensusService) sync() error {
 		log.Errorf("consensus: waiting for consensus updates: %v", err)
 	}
 
-	wait := c.raft.GetConfiguration()
-	if err := wait.Error(); err != nil {
-		return fmt.Errorf("consensus: node sync configuration error: %v", err)
-	}
-
-	for _, srv := range wait.Configuration().Servers {
-		id := warpnet.FromStringToPeerID(string(srv.ID))
-		c.AddVoter(warpnet.PeerAddrInfo{ID: id})
-	}
 	log.Infoln("consensus: sync complete")
 	return nil
 }
@@ -372,8 +366,6 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	var prevAppliedIndex uint64
-
 	for {
 		if c.ctx.Err() != nil {
 			return c.ctx.Err()
@@ -385,10 +377,7 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 			lastAppliedIndex := c.raft.AppliedIndex()
 			lastIndex := c.raft.LastIndex()
 
-			if lastAppliedIndex != prevAppliedIndex {
-				log.Infof("consensus: current node index: %d/%d", lastAppliedIndex, lastIndex)
-			}
-			prevAppliedIndex = lastAppliedIndex
+			log.Infof("consensus: current node index: %d/%d", lastAppliedIndex, lastIndex)
 
 			if lastAppliedIndex == lastIndex {
 				return nil
