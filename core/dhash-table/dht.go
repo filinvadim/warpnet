@@ -168,7 +168,9 @@ func (d *DistributedHashTable) setupDHT() {
 
 	d.correctPeerIdMismatch(d.boostrapNodes)
 
+	fmt.Println("HERE????")
 	<-d.dht.RefreshRoutingTable()
+	fmt.Println("HERE?22222222")
 
 	go d.runRendezvousDiscovery()
 }

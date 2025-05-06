@@ -82,21 +82,20 @@ type Streamer interface {
 }
 
 type consensusService struct {
-	ctx             context.Context
-	consensus       *Consensus
-	streamer        Streamer
-	fsm             *fsm
-	cache           votersCacher
-	raft            *raft.Raft
-	logStore        raft.LogStore
-	stableStore     raft.StableStore
-	snapshotStore   raft.SnapshotStore
-	transport       *raft.NetworkTransport
-	raftID          raft.ServerID
-	syncMx          *sync.RWMutex
-	retrier         retrier.Retrier
-	l               *consensusLogger
-	leaderFoundChan chan raft.ServerID
+	ctx           context.Context
+	consensus     *Consensus
+	streamer      Streamer
+	fsm           *fsm
+	cache         votersCacher
+	raft          *raft.Raft
+	logStore      raft.LogStore
+	stableStore   raft.StableStore
+	snapshotStore raft.SnapshotStore
+	transport     *raft.NetworkTransport
+	raftID        raft.ServerID
+	syncMx        *sync.RWMutex
+	retrier       retrier.Retrier
+	l             *consensusLogger
 }
 
 func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
@@ -174,7 +173,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
+		node, newConsensusLogger(log.DebugLevel.String(), "raft-libp2p-transport"),
 	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
@@ -198,10 +197,6 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		if err := c.bootstrap(raftConfig.LocalID, infos); err != nil {
 			return fmt.Errorf("consensus: setting up new cluster failed: %w", err)
 		}
-	}
-
-	if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
-		return fmt.Errorf("consensus: failed to save current term: %v", err)
 	}
 
 	c.raft, err = raft.NewRaft(
@@ -409,6 +404,8 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 
 	c.waitSync()
 
+	log.Infof("consensus: adding new voter %s...", info.ID.String())
+
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
@@ -419,7 +416,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, err := c.cache.getVoter(id); err == nil {
 		return
 	}
-	log.Infof("consensus: adding new voter %s...", info.ID.String())
 
 	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
