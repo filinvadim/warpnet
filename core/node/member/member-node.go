@@ -304,7 +304,8 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		return m.raft.AskUserValidation(ownerUser)
 	})
 	if err != nil {
-		return fmt.Errorf("member: validate owner user by consensus: %v", err)
+		log.Errorf("member: validate owner user by consensus: %v", err)
+		//return fmt.Errorf("member: validate owner user by consensus: %v", err)
 	}
 	println()
 	fmt.Printf(

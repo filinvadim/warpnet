@@ -62,7 +62,7 @@ func NewBootstrapNode(
 	discService := discovery.NewBootstrapDiscoveryService(ctx, raft.AddVoter)
 
 	mdnsService := mdns.NewMulticastDNS(ctx, discService.DefaultDiscoveryHandler)
-	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler)
+	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler, raft.HandleLeaderFound)
 
 	memoryStore, err := pstoremem.NewPeerstore()
 	if err != nil {
