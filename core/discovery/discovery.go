@@ -136,6 +136,10 @@ func (s *discoveryService) syncBootstrapDiscovery() error {
 	}
 	s.mx.RUnlock()
 
+	if s.node.NodeInfo().OwnerId == warpnet.BootstrapOwner {
+		return nil
+	}
+
 	tryouts := 30
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
