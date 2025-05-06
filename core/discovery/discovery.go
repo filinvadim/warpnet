@@ -205,6 +205,9 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 		return
 	}
 	log.Debugf("discovery: default handler: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	for _, h := range s.handlers {
+		h(peerInfo)
+	}
 	return
 }
 
