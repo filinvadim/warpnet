@@ -190,12 +190,14 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	case <-c.ctx.Done():
 		return
 	case <-ticker.C:
-	case <-c.leaderFoundChan:
+		log.Infoln("consensus: leader looking timeout")
+	case leader := <-c.leaderFoundChan:
+		log.Infoln("consensus: leader found:", leader)
 		hasLeader = true
 	}
 
 	if !hasLeader {
-		log.Infoln("consensus: no state found - setting up new cluster")
+		log.Infoln("consensus: no leader found - setting up new cluster")
 		// It seems node is alone here
 		if err := c.bootstrap(config.LocalID); err != nil {
 			return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
