@@ -113,7 +113,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.DebugLevel.String(), "raft")
+	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -173,7 +173,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.DebugLevel.String(), "raft-libp2p-transport"),
+		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
 	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)

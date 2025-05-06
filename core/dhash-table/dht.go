@@ -147,11 +147,13 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 
 	<-d.dht.RefreshRoutingTable()
 
+	go d.runRendezvousDiscovery()
 	log.Infoln("dht: routing started")
 
 	return d.dht, nil
 }
 
+// DO NOT add any functionality here
 func (d *DistributedHashTable) setupDHT() {
 	if d == nil || d.dht == nil {
 		return
@@ -164,15 +166,20 @@ func (d *DistributedHashTable) setupDHT() {
 	if err := d.dht.Bootstrap(d.ctx); err != nil {
 		log.Errorf("dht: bootstrap: %s", err)
 	}
+	log.Infoln("dht: bootstrap complete")
 
 	d.correctPeerIdMismatch(d.boostrapNodes)
-
-	<-d.dht.RefreshRoutingTable()
-
-	go d.runRendezvousDiscovery()
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery() {
+	if d == nil || d.dht == nil {
+		return
+	}
+
+	for len(d.dht.RoutingTable().ListPeers()) == 0 {
+		time.Sleep(time.Second)
+	}
+
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
 	_, err := routingDiscovery.Advertise(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {

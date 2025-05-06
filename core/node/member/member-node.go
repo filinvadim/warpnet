@@ -298,8 +298,8 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		return m.raft.AskUserValidation(ownerUser)
 	})
 	if err != nil {
-		log.Errorf("member: validate owner user by consensus: %v", err)
-		//return fmt.Errorf("member: validate owner user by consensus: %v", err)
+		//log.Errorf("member: validate owner user by consensus: %v", err)
+		return fmt.Errorf("member: validate owner user by consensus: %v", err)
 	}
 	println()
 	fmt.Printf(
@@ -344,44 +344,30 @@ func (m *MemberNode) Stop() {
 	if m.discService != nil {
 		m.discService.Close()
 	}
-	fmt.Println("1")
 	if m.mdnsService != nil {
 		m.mdnsService.Close()
 	}
-	fmt.Println("2")
-
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
 			log.Errorf("member: failed to close pubsub: %v", err)
 		}
 	}
-	fmt.Println("3")
-
 	if m.providerStore != nil {
 		if err := m.providerStore.Close(); err != nil {
 			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
-	fmt.Println("4")
-
 	if m.dHashTable != nil {
 		m.dHashTable.Close()
 	}
-	fmt.Println("5")
-
 	if m.raft != nil {
 		m.raft.Shutdown()
 	}
-	fmt.Println("6")
-
 	if m.nodeRepo != nil {
 		if err := m.nodeRepo.Close(); err != nil {
 			log.Errorf("member: failed to close node repo: %v", err)
 		}
 	}
-	fmt.Println("7")
 
 	m.StopNode()
-	fmt.Println("8")
-
 }
