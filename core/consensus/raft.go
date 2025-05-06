@@ -235,6 +235,9 @@ func (c *consensusService) bootstrap(id raft.ServerID, infos []warpnet.PeerAddrI
 		Address:  raft.ServerAddress(id),
 	})
 	for _, info := range infos {
+		if string(id) == info.ID.String() {
+			continue
+		}
 		raftConf.Servers = append(raftConf.Servers, raft.Server{
 			Suffrage: raft.Voter,
 			ID:       raft.ServerID(info.ID.String()),
@@ -403,8 +406,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	}
 
 	c.waitSync()
-
-	log.Infof("consensus: adding new voter %s...", info.ID.String())
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return

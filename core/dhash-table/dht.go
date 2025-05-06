@@ -3,7 +3,6 @@ package dhash_table
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
@@ -154,7 +153,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 }
 
 func (d *DistributedHashTable) setupDHT() {
-	if d == nil || d.dht != nil {
+	if d == nil || d.dht == nil {
 		return
 	}
 	// force node to know its external address (in case of local network)
@@ -168,9 +167,7 @@ func (d *DistributedHashTable) setupDHT() {
 
 	d.correctPeerIdMismatch(d.boostrapNodes)
 
-	fmt.Println("HERE????")
 	<-d.dht.RefreshRoutingTable()
-	fmt.Println("HERE?22222222")
 
 	go d.runRendezvousDiscovery()
 }
@@ -243,11 +240,9 @@ func (d *DistributedHashTable) Close() {
 		return
 	}
 
-	fmt.Println("??????????????")
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@")
 	d.dht = nil
 	close(d.stopChan)
 	log.Infoln("dht: table closed")
