@@ -235,7 +235,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	log.Debugf("discovery: handling peer %s %v", pi.ID.String(), pi.Addrs)
+	log.Infof("discovery: handling peer %s %v", pi.ID.String(), pi.Addrs)
 
 	if pi.ID == s.node.NodeInfo().ID {
 		return
