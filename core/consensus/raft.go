@@ -170,7 +170,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return err
 	}
 
-	c.transport, err = NewWarpnetConsensusTransport(node, c.l)
+	c.transport, err = NewWarpnetConsensusTransport(
+		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
+	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
 		return
@@ -185,7 +187,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	if !hasState {
-		log.Infoln("consensus: no peers found - setting up new cluster")
+		log.Infoln("consensus: no state found - setting up new cluster")
 		// It seems node is alone here
 		if err := c.bootstrap(config.LocalID); err != nil {
 			return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
