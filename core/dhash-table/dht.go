@@ -199,7 +199,7 @@ func (d *DistributedHashTable) setupDHT() {
 }
 
 func (d *DistributedHashTable) correctPeerIdMismatch(boostrapNodes []warpnet.PeerAddrInfo) {
-	ctx, cancel := context.WithTimeout(d.ctx, 10*time.Second) // common timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // common timeout
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)

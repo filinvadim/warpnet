@@ -91,12 +91,14 @@ type consensusService struct {
 	raftID        raft.ServerID
 	syncMx        *sync.RWMutex
 	retrier       retrier.Retrier
+	l             *consensusLogger
 }
 
 func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
 	return NewRaft(ctx, nil, true, validators...)
 }
 
+// self-healing Raft ring
 func NewRaft(
 	ctx context.Context,
 	consRepo ConsensusStorer,
@@ -108,7 +110,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.ErrorLevel.String(), "consensus-snapshot")
+	l := newConsensusLogger(log.DebugLevel.String(), "raft-libp2p")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -137,7 +139,8 @@ func NewRaft(
 		cache:         newVotersCache(),
 		consensus:     cons,
 		syncMx:        new(sync.RWMutex),
-		retrier:       retrier.New(time.Second, 3, retrier.ArithmeticalBackoff),
+		retrier:       retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
+		l:             l,
 	}, nil
 }
 
@@ -152,11 +155,11 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	c.raftID = raft.ServerID(node.NodeInfo().ID.String())
 
 	config := raft.DefaultConfig()
-	config.HeartbeatTimeout = time.Second * 5
+	config.HeartbeatTimeout = time.Second * 10
 	config.ElectionTimeout = config.HeartbeatTimeout
 	config.LeaderLeaseTimeout = config.HeartbeatTimeout
 	config.CommitTimeout = time.Second * 30
-	config.Logger = newConsensusLogger(log.WarnLevel.String(), "consensus")
+	config.Logger = c.l
 	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	config.NoLegacyTelemetry = true
 	config.SnapshotThreshold = 8192
@@ -167,18 +170,21 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return err
 	}
 
-	c.transport, err = NewWarpnetConsensusTransport(node)
+	c.transport, err = NewWarpnetConsensusTransport(node, c.l)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
 		return
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	if err := c.forceBootstrap(config.LocalID); err != nil {
-		return err
+	if len(node.Node().Network().Peers()) == 0 {
+		log.Infoln("consensus: no peers found - setting up new cluster")
+		// It seems node is alone here
+		if err := c.forceBootstrap(config.LocalID); err != nil {
+			return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
+		}
 	}
 
-	log.Infof("consensus: node %s starting...", c.raftID)
 	c.raft, err = raft.NewRaft(
 		config,
 		c.fsm,
@@ -193,7 +199,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	wait := c.raft.GetConfiguration()
 	if err := wait.Error(); err != nil {
-		log.Errorf("consensus: node configuration error: %v", err)
+		return fmt.Errorf("consensus: node configuration error: %v", err)
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
@@ -207,6 +213,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	return nil
 }
 
+// full-mesh self-bootstrapping Raft
 func (c *consensusService) forceBootstrap(id raft.ServerID) error {
 	lastIndex, err := c.logStore.LastIndex()
 	if err != nil {
@@ -240,6 +247,7 @@ func (c *consensusService) forceBootstrap(id raft.ServerID) error {
 }
 
 type consensusSync struct {
+	ctx    context.Context
 	raft   *raft.Raft
 	raftID raft.ServerID
 }
@@ -253,10 +261,11 @@ func (c *consensusService) sync() error {
 		return c.ctx.Err()
 	}
 
-	leaderCtx, leaderCancel := context.WithTimeout(c.ctx, time.Minute)
+	leaderCtx, leaderCancel := context.WithTimeout(context.Background(), time.Minute)
 	defer leaderCancel()
 
 	cs := consensusSync{
+		ctx:    c.ctx,
 		raft:   c.raft,
 		raftID: c.raftID,
 	}
@@ -274,7 +283,7 @@ func (c *consensusService) sync() error {
 	}
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
-	voterCtx, voterCancel := context.WithTimeout(c.ctx, time.Minute)
+	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Minute)
 	defer voterCancel()
 
 	if err = cs.waitForVoter(voterCtx); err != nil {
@@ -304,6 +313,9 @@ func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
 	defer ticker.Stop()
 
 	for {
+		if c.ctx.Err() != nil {
+			return "", c.ctx.Err()
+		}
 		select {
 		case <-ticker.C:
 			if addr, id := c.raft.LeaderWithID(); addr != "" {
@@ -321,6 +333,9 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 
 	id := c.raftID
 	for {
+		if c.ctx.Err() != nil {
+			return c.ctx.Err()
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -346,6 +361,9 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 	var prevAppliedIndex uint64
 
 	for {
+		if c.ctx.Err() != nil {
+			return c.ctx.Err()
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -398,12 +416,14 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, err := c.cache.getVoter(id); err == nil {
 		return
 	}
-	log.Infof("consensus: adding new voter %s", info.ID.String())
+	log.Infof("consensus: adding new voter %s...", info.ID.String())
 
 	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
 	}
+
+	log.Infof("consensus: new voter added %s", info.ID.String())
 
 	c.cache.addVoter(id, raft.Server{
 		Suffrage: raft.Voter,
@@ -470,15 +490,20 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 	}
 
 	leaderId := c.LeaderID().String()
+	if leaderId == "" {
+		return errors.New("consensus: no leader found")
+	}
 	if leaderId == string(c.raftID) {
 		_, err := c.CommitState(newState)
 		if errors.Is(err, ErrNoRaftCluster) {
 			return nil
 		}
+		log.Errorf("consensus: failed to add user validation to raft cluster: %v", err)
 		return fmt.Errorf("consensus: failed to commit validate user state: %w", err)
 	}
 
 	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
+	log.Errorf("consensus: failed to stream user validation to raft cluster: %v", err)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		return fmt.Errorf("consensus: node verify stream: %w", err)
 	}

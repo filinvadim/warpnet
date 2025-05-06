@@ -1,3 +1,6 @@
+kill:
+	pkill -9 main
+
 second-member:
 	go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
 

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/Masterminds/semver/v3"
 	root "github.com/filinvadim/warpnet"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"strings"
@@ -96,13 +96,17 @@ type Server struct {
 	Port string
 }
 
-func (n *Node) AddrInfos() (infos []peer.AddrInfo, err error) {
+func (n *Node) AddrInfos() (infos []warpnet.PeerAddrInfo, err error) {
 	for _, addr := range n.Bootstrap {
-		ai, err := peer.AddrInfoFromString(addr)
+		maddr, err := warpnet.NewMultiaddr(addr)
 		if err != nil {
 			return nil, err
 		}
-		infos = append(infos, *ai)
+		addrInfo, err := warpnet.AddrInfoFromP2pAddr(maddr)
+		if err != nil {
+			return nil, err
+		}
+		infos = append(infos, *addrInfo)
 	}
 	return infos, nil
 }

@@ -53,23 +53,23 @@ func newConsensusLogger(logLevel, name string) *consensusLogger {
 
 func (c *consensusLogger) Log(level hclog.Level, msg string, args ...interface{}) {
 	lvl, _ := logrus.ParseLevel(strings.TrimSpace(strings.ToLower(level.String())))
-	c.l.Logln(lvl, msg, args)
+	c.l.Logln(lvl, c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) Trace(msg string, args ...interface{}) {
-	c.l.Traceln(msg, args)
+	c.l.Traceln(c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) Debug(msg string, args ...interface{}) {
-	c.l.Debugln(msg, args)
+	c.l.Debugln(c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) Info(msg string, args ...interface{}) {
-	c.l.Infoln(msg, args)
+	c.l.Infoln(c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) Warn(msg string, args ...interface{}) {
-	c.l.Warnln(msg, args)
+	c.l.Warnln(c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) Error(msg string, args ...interface{}) {
@@ -90,7 +90,7 @@ func (c *consensusLogger) Error(msg string, args ...interface{}) {
 			c.count = 0
 		}
 	}
-	c.l.Errorln(msg, args)
+	c.l.Errorln(c.name+": "+msg, args)
 }
 
 func (c *consensusLogger) IsTrace() bool {

@@ -15,6 +15,7 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
+	"sync"
 	"time"
 )
 
@@ -42,15 +43,25 @@ type UserStorer interface {
 	GetByNodeID(nodeID string) (user domain.User, err error)
 }
 
+type discoveryBoostrapNode struct {
+	addrs        []warpnet.WarpAddress
+	isDiscovered bool
+}
+
 type discoveryService struct {
-	ctx            context.Context
-	node           DiscoveryInfoStorer
-	userRepo       UserStorer
-	nodeRepo       NodeStorer
-	version        *semver.Version
-	bootstrapAddrs map[warpnet.WarpPeerID][]warpnet.WarpAddress
-	retrier        retrier.Retrier
-	limiter        *leakyBucketRateLimiter
+	ctx      context.Context
+	node     DiscoveryInfoStorer
+	userRepo UserStorer
+	nodeRepo NodeStorer
+	version  *semver.Version
+
+	handlers []DiscoveryHandler
+
+	mx             *sync.RWMutex
+	bootstrapAddrs map[warpnet.WarpPeerID]discoveryBoostrapNode
+
+	retrier retrier.Retrier
+	limiter *leakyBucketRateLimiter
 
 	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
@@ -61,60 +72,100 @@ func NewDiscoveryService(
 	ctx context.Context,
 	userRepo UserStorer,
 	nodeRepo NodeStorer,
+	handlers ...DiscoveryHandler,
 ) *discoveryService {
-	addrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress)
+	addrs := make(map[warpnet.WarpPeerID]discoveryBoostrapNode)
 	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
 	for _, info := range addrInfos {
-		addrs[info.ID] = info.Addrs
+		addrs[info.ID] = discoveryBoostrapNode{info.Addrs, false}
 	}
 	return &discoveryService{
-		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version,
-		addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
+		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version, handlers,
+		new(sync.RWMutex), addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
 	}
 }
 
-func NewBootstrapDiscoveryService(ctx context.Context) *discoveryService {
+func NewBootstrapDiscoveryService(ctx context.Context, handlers ...DiscoveryHandler) *discoveryService {
 	addrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress)
 	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
 	for _, info := range addrInfos {
 		addrs[info.ID] = info.Addrs
 	}
-	return NewDiscoveryService(ctx, nil, nil)
+	return NewDiscoveryService(ctx, nil, nil, handlers...)
 }
 
-func (s *discoveryService) Run(n DiscoveryInfoStorer) {
+func (s *discoveryService) Run(n DiscoveryInfoStorer) error {
 	if s == nil {
-		return
+		return errors.New("nil discovery service")
+	}
+	if s.discoveryChan == nil {
+		return errors.New("discovery channel is nil")
 	}
 	log.Infoln("discovery: service started")
 
 	s.node = n
 
-	if s.discoveryChan == nil {
-		return
-	}
+	go func() {
+		for {
+			select {
+			case <-s.ctx.Done():
+				log.Errorf("discovery: context closed")
+				return
+			case <-s.stopChan:
+				return
+			case info, ok := <-s.discoveryChan:
+				if !ok {
+					log.Infoln("discovery: service closed")
+					return
+				}
+				s.handle(info)
+			}
+		}
+	}()
+	return s.syncBootstrapDiscovery()
+}
 
-	for id, addrs := range s.bootstrapAddrs {
+func (s *discoveryService) syncBootstrapDiscovery() error {
+	s.mx.RLock()
+	for id, discNode := range s.bootstrapAddrs {
 		if s.node.NodeInfo().ID == id {
 			continue
 		}
-		s.discoveryChan <- warpnet.PeerAddrInfo{ID: id, Addrs: addrs}
+		s.discoveryChan <- warpnet.PeerAddrInfo{ID: id, Addrs: discNode.addrs}
 	}
+	s.mx.RUnlock()
+
+	tryouts := 30
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	for {
+		var isAllDiscovered = true
+
 		select {
 		case <-s.ctx.Done():
-			log.Errorf("discovery: context closed")
-			return
+			return s.ctx.Err()
 		case <-s.stopChan:
-			return
-		case info, ok := <-s.discoveryChan:
-			if !ok {
-				log.Infoln("discovery: service closed")
-				return
+			return nil
+		case <-ticker.C:
+			s.mx.RLock()
+			for _, discNode := range s.bootstrapAddrs {
+				if !discNode.isDiscovered {
+					isAllDiscovered = false
+					break
+				}
 			}
-			s.handle(info)
+			s.mx.RUnlock()
+			if isAllDiscovered {
+				log.Infof("discovery: all bootstrap addresses discovered")
+				return nil
+			}
+
+			tryouts--
+			if tryouts == 0 {
+				return errors.New("discovery: all discovery attempts failed")
+			}
 		}
 	}
 }
@@ -129,9 +180,6 @@ func (s *discoveryService) Close() {
 		return
 	}
 	close(s.stopChan)
-	for len(s.discoveryChan) > 0 {
-		<-s.discoveryChan
-	}
 	close(s.discoveryChan)
 }
 
@@ -198,20 +246,17 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !s.hasPublicAddresses(pi.Addrs) {
-		log.Infof("discovery: peer %s has no public addresses", pi.ID.String())
+		log.Infof("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
 		return
 	}
-
-	bAddrs, ok := s.bootstrapAddrs[pi.ID]
-	if ok {
-		// update local bootstrap addresses with public ones
-		pi.Addrs = append(pi.Addrs, bAddrs...)
-	}
-	s.node.Peerstore().AddAddrs(pi.ID, pi.Addrs, time.Hour)
 
 	if err := s.node.Connect(pi); err != nil {
 		log.Errorf("discovery: failed to connect to new peer: %s...", err)
 		return
+	}
+
+	for _, h := range s.handlers {
+		h(pi)
 	}
 
 	info, err := s.requestNodeInfo(pi)
@@ -224,6 +269,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if info.OwnerId == warpnet.BootstrapOwner { // bootstrap node
+		s.markBootstrapDiscovered(pi)
 		return
 	}
 
@@ -257,6 +303,19 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		newUser.CreatedAt,
 		newUser.Latency,
 	)
+}
+
+func (s *discoveryService) markBootstrapDiscovered(pi warpnet.PeerAddrInfo) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	bNode, ok := s.bootstrapAddrs[pi.ID]
+	if !ok {
+		return
+	}
+	s.node.Peerstore().AddAddrs(pi.ID, bNode.addrs, time.Hour*24) // update local bootstrap addresses with public ones
+	bNode.isDiscovered = true
+	s.bootstrapAddrs[pi.ID] = bNode
 }
 
 func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpnet.NodeInfo, err error) {

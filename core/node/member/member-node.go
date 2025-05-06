@@ -65,9 +65,9 @@ func NewMemberNode(
 		return nil, fmt.Errorf("member: consensus initialization: %v", err)
 	}
 
-	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo)
-	mdnsService := mdns.NewMulticastDNS(ctx, raft.AddVoter, discService.HandlePeerFound)
-	pubsubService := pubsub.NewPubSub(ctx, followRepo, owner.UserId, raft.AddVoter, discService.HandlePeerFound)
+	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo, raft.AddVoter)
+	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
+	pubsubService := pubsub.NewPubSub(ctx, followRepo, owner.UserId, discService.HandlePeerFound)
 	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
 	if err != nil {
 		return nil, fmt.Errorf("member: failed to init providers: %v", err)
@@ -101,7 +101,7 @@ func NewMemberNode(
 		dHashTable:    dHashTable,
 		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
-		retrier:       retrier.New(time.Second, 3, retrier.ArithmeticalBackoff),
+		retrier:       retrier.New(time.Second*10, 3, retrier.ArithmeticalBackoff),
 		userRepo:      userRepo,
 	}
 
@@ -275,14 +275,16 @@ func (m *MemberNode) setupHandlers(
 }
 
 func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
-	go m.pubsubService.Run(m, clientNode)
-	go m.discService.Run(m)
+	m.pubsubService.Run(m, clientNode)
+	if err := m.discService.Run(m); err != nil {
+		return err
+	}
 
 	if err := m.raft.Sync(m); err != nil {
 		return fmt.Errorf("member: consensus failed to sync: %v", err)
 	}
 
-	go m.mdnsService.Start(m)
+	m.mdnsService.Start(m)
 
 	nodeInfo := m.NodeInfo()
 	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
@@ -290,11 +292,11 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		return fmt.Errorf("member: failed to get owner user: %v", err)
 	}
 
-	err = m.retrier.Try(m.ctx, func() error {
+	err = m.retrier.Try(context.Background(), func() error {
 		return m.raft.AskUserValidation(ownerUser)
 	})
 	if err != nil {
-		return fmt.Errorf("member: to validate owner user by consensus: %v", err)
+		return fmt.Errorf("member: validate owner user by consensus: %v", err)
 	}
 	println()
 	fmt.Printf(

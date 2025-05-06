@@ -10,7 +10,7 @@ services:
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=DEBUG
     volumes:
-    - /tmp/snapshot1:/tmp/snapshot:rw
+    - snapshot1:/tmp/snapshot:rw
 
   warpnet2:
     container_name: warpnet2
@@ -22,9 +22,8 @@ services:
       - NODE_PORT=4002
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=DEBUG
-
     volumes:
-    - /tmp/snapshot2:/tmp/snapshot:rw
+    - snapshot2:/tmp/snapshot:rw
 
   warpnet3:
     container_name: warpnet3
@@ -38,5 +37,10 @@ services:
       - LOGGING_LEVEL=DEBUG
 
     volumes:
-    - /tmp/snapshot3:/tmp/snapshot:rw
+    - snapshot3:/tmp/snapshot:rw
+
+volumes:
+  snapshot1:
+  snapshot2:
+  snapshot3:
 

@@ -54,14 +54,15 @@ func NewBootstrapNode(
 		return nil, fmt.Errorf("bootstrap: fail getting ID: %v", err)
 	}
 
-	discService := discovery.NewBootstrapDiscoveryService(ctx)
 	raft, err := consensus.NewBootstrapRaft(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	mdnsService := mdns.NewMulticastDNS(ctx, discService.DefaultDiscoveryHandler, raft.AddVoter)
-	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler, raft.AddVoter)
+	discService := discovery.NewBootstrapDiscoveryService(ctx, raft.AddVoter)
+
+	mdnsService := mdns.NewMulticastDNS(ctx, discService.DefaultDiscoveryHandler)
+	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler)
 
 	memoryStore, err := pstoremem.NewPeerstore()
 	if err != nil {
@@ -125,8 +126,12 @@ func NewBootstrapNode(
 }
 
 func (bn *BootstrapNode) Start() error {
-	go bn.pubsubService.Run(bn, nil)
-	go bn.discService.Run(bn)
+	bn.pubsubService.Run(bn, nil)
+	if err := bn.discService.Run(bn); err != nil {
+		return err
+	}
+
+	// TODO wait for discovery service to be ready
 	if err := bn.raft.Sync(bn); err != nil {
 		return err
 	}

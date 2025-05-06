@@ -53,10 +53,10 @@ type MulticastDNS struct {
 }
 
 type mdnsDiscoveryService struct {
-	ctx               context.Context
-	discoveryHandlers []discovery.DiscoveryHandler
-	node              NodeConnector
-	mx                *sync.Mutex
+	ctx              context.Context
+	discoveryHandler discovery.DiscoveryHandler
+	node             NodeConnector
+	mx               *sync.Mutex
 }
 
 func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
@@ -72,10 +72,8 @@ func (m *mdnsDiscoveryService) HandlePeerFound(p peer.AddrInfo) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	if m.discoveryHandlers != nil {
-		for _, h := range m.discoveryHandlers {
-			h(p)
-		}
+	if m.discoveryHandler != nil {
+		m.discoveryHandler(p)
 		return
 	}
 	m.defaultDiscoveryHandler(p)
@@ -94,12 +92,12 @@ func (m *mdnsDiscoveryService) defaultDiscoveryHandler(peerInfo warpnet.PeerAddr
 	return
 }
 
-func NewMulticastDNS(ctx context.Context, discoveryHandlers ...discovery.DiscoveryHandler) *MulticastDNS {
+func NewMulticastDNS(ctx context.Context, discoveryHandler discovery.DiscoveryHandler) *MulticastDNS {
 	service := &mdnsDiscoveryService{
-		ctx:               ctx,
-		discoveryHandlers: discoveryHandlers,
-		node:              nil,
-		mx:                new(sync.Mutex),
+		ctx:              ctx,
+		discoveryHandler: discoveryHandler,
+		node:             nil,
+		mx:               new(sync.Mutex),
 	}
 
 	return &MulticastDNS{nil, service, new(atomic.Bool)}
@@ -120,21 +118,22 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 
 	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
 
-	// start it a little bit later,
-	// wait and try trivial discovery first,
-	// MDNS discovery might hide potential bugs
-	for i := 0; i < 300; i++ { // 5 minutes
-		time.Sleep(time.Second)
-		if !m.isRunning.Load() {
+	go func() {
+		// start it a little bit later,
+		// wait and try trivial discovery first,
+		// MDNS discovery might hide potential bugs
+		for i := 0; i < 300; i++ { // 5 minutes
+			time.Sleep(time.Second)
+			if !m.isRunning.Load() {
+				return
+			}
+		}
+		if err := m.mdns.Start(); err != nil {
+			log.Errorf("mdns: failed to start: %v", err)
 			return
 		}
-	}
-
-	if err := m.mdns.Start(); err != nil {
-		log.Errorf("mdns: failed to start: %v", err)
-		return
-	}
-	log.Infoln("mdns: service started")
+		log.Infoln("mdns: service started")
+	}()
 }
 
 func (m *MulticastDNS) Close() {

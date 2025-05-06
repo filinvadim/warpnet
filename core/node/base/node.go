@@ -276,7 +276,9 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 	if n == nil || n.streamer == nil {
 		return nil, errors.New("node is not initialized")
 	}
-
+	if nodeIdStr == "" {
+		return nil, errors.New("node: empty node id")
+	}
 	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
 	if nodeId == "" {
 		return nil, fmt.Errorf("node: invalid node id: %v", nodeIdStr)

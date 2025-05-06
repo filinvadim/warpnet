@@ -15,7 +15,7 @@ import (
 
 type DiscoveryHandler interface {
 	HandlePeerFound(pi warpnet.PeerAddrInfo)
-	Run(n discovery.DiscoveryInfoStorer)
+	Run(n discovery.DiscoveryInfoStorer) error
 	Close()
 }
 

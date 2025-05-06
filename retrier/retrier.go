@@ -2,6 +2,7 @@ package retrier
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -12,7 +13,7 @@ func (e retrierError) Error() string {
 	return string(e)
 }
 
-const ErrDeadlineReached retrierError = "deadline reached"
+const ErrDeadlineReached retrierError = "retrier: deadline reached"
 
 type (
 	backoff byte
@@ -45,7 +46,7 @@ func New(minInterval time.Duration, maxAttempts uint32, b backoff) Retrier {
 	}
 }
 
-func (r *retrier) Try(ctx context.Context, f RetrierFunc) error {
+func (r *retrier) Try(ctx context.Context, f RetrierFunc) (err error) {
 	var (
 		attempt  uint32
 		interval = r.minInterval
@@ -58,13 +59,14 @@ func (r *retrier) Try(ctx context.Context, f RetrierFunc) error {
 		default:
 		}
 
-		if err := f(); err == nil {
+		err = f()
+		if err == nil {
 			return nil
 		}
 
 		switch r.backoff {
 		case NoBackoff:
-			interval = interval
+
 		case ArithmeticalBackoff:
 			interval = interval + interval
 		case ExponentialBackoff:
@@ -74,7 +76,7 @@ func (r *retrier) Try(ctx context.Context, f RetrierFunc) error {
 		time.Sleep(sleepDuration)
 	}
 
-	return ErrDeadlineReached
+	return fmt.Errorf("%v %w", err, ErrDeadlineReached)
 }
 
 func jitter(minInterval time.Duration) time.Duration {

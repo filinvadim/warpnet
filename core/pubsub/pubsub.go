@@ -58,11 +58,11 @@ type warpPubSub struct {
 
 	ownerId string
 
-	mx                *sync.RWMutex
-	subs              []*pubsub.Subscription
-	relayCancelFuncs  map[string]pubsub.RelayCancelFunc
-	topics            map[string]*pubsub.Topic
-	discoveryHandlers []discovery.DiscoveryHandler
+	mx               *sync.RWMutex
+	subs             []*pubsub.Subscription
+	relayCancelFuncs map[string]pubsub.RelayCancelFunc
+	topics           map[string]*pubsub.Topic
+	discoveryHandler discovery.DiscoveryHandler
 
 	isRunning *atomic.Bool
 }
@@ -71,22 +71,22 @@ func NewPubSub(
 	ctx context.Context,
 	followRepo PubsubFollowingStorer,
 	ownerId string,
-	discoveryHandlers ...discovery.DiscoveryHandler,
+	discoveryHandler discovery.DiscoveryHandler,
 ) *warpPubSub {
 
 	g := &warpPubSub{
-		ctx:               ctx,
-		pubsub:            nil,
-		serverNode:        nil,
-		clientNode:        nil,
-		discoveryHandlers: discoveryHandlers,
-		mx:                new(sync.RWMutex),
-		subs:              []*pubsub.Subscription{},
-		topics:            map[string]*pubsub.Topic{},
-		relayCancelFuncs:  map[string]pubsub.RelayCancelFunc{},
-		followRepo:        followRepo,
-		ownerId:           ownerId,
-		isRunning:         new(atomic.Bool),
+		ctx:              ctx,
+		pubsub:           nil,
+		serverNode:       nil,
+		clientNode:       nil,
+		discoveryHandler: discoveryHandler,
+		mx:               new(sync.RWMutex),
+		subs:             []*pubsub.Subscription{},
+		topics:           map[string]*pubsub.Topic{},
+		relayCancelFuncs: map[string]pubsub.RelayCancelFunc{},
+		followRepo:       followRepo,
+		ownerId:          ownerId,
+		isRunning:        new(atomic.Bool),
 	}
 
 	return g
@@ -94,9 +94,9 @@ func NewPubSub(
 
 func NewPubSubBootstrap(
 	ctx context.Context,
-	discoveryHandlers ...discovery.DiscoveryHandler,
+	discoveryHandler discovery.DiscoveryHandler,
 ) *warpPubSub {
-	return NewPubSub(ctx, nil, warpnet.BootstrapOwner, discoveryHandlers...)
+	return NewPubSub(ctx, nil, warpnet.BootstrapOwner, discoveryHandler)
 }
 
 func (g *warpPubSub) Run(
@@ -105,7 +105,6 @@ func (g *warpPubSub) Run(
 	if g.isRunning.Load() {
 		return
 	}
-	defer log.Infoln("pubsub: stopped")
 
 	g.clientNode = clientNode
 	g.serverNode = serverNode
@@ -118,10 +117,14 @@ func (g *warpPubSub) Run(
 		log.Errorf("pubsub: presubscribe: %v", err)
 		return
 	}
-	if err := g.runListener(); err != nil {
-		log.Errorf("pubsub: listener: %v", err)
-		return
-	}
+
+	go func() {
+		if err := g.runListener(); err != nil {
+			log.Errorf("pubsub: listener: %v", err)
+			return
+		}
+		log.Infoln("pubsub: listener stopped")
+	}()
 }
 
 func (g *warpPubSub) runListener() error {
@@ -136,7 +139,11 @@ func (g *warpPubSub) runListener() error {
 			return err
 		}
 		g.mx.RLock()
-		for _, sub := range g.subs {
+		subs := make([]*pubsub.Subscription, len(g.subs))
+		copy(subs, g.subs)
+		g.mx.RUnlock()
+
+		for _, sub := range subs {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
 			msg, err := sub.Next(ctx)
@@ -177,7 +184,6 @@ func (g *warpPubSub) runListener() error {
 				log.Warnf("pubsub: unknown topic: %s, message: %s", *msg.Topic, string(msg.Data))
 			}
 		}
-		g.mx.RUnlock()
 	}
 }
 
@@ -251,24 +257,22 @@ func (g *warpPubSub) subscribe(topics ...string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub: service not initialized")
 	}
+	g.mx.Lock()
+	defer g.mx.Unlock()
+
 	for _, topicName := range topics {
 		if topicName == "" {
 			return errors.New("pubsub: topic name is empty")
 		}
 
-		g.mx.RLock()
 		topic, ok := g.topics[topicName]
-		g.mx.RUnlock()
 		if !ok {
 			topic, err = g.pubsub.Join(topicName)
 			if err != nil {
 				return err
 			}
+			g.topics[topicName] = topic
 		}
-
-		g.mx.Lock()
-		g.topics[topicName] = topic
-		g.mx.Unlock()
 
 		relayCancel, err := topic.Relay()
 		if err != nil {
@@ -282,20 +286,19 @@ func (g *warpPubSub) subscribe(topics ...string) (err error) {
 
 		log.Infof("pubsub: subscribed to topic: %s", topicName)
 
-		g.mx.Lock()
 		g.relayCancelFuncs[topicName] = relayCancel
 		g.subs = append(g.subs, sub)
-		g.mx.Unlock()
 	}
 
 	return nil
 }
 
 func (g *warpPubSub) GetSubscribers() peer.IDSlice {
-	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, g.ownerId)
 	g.mx.RLock()
+	defer g.mx.RUnlock()
+
+	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, g.ownerId)
 	topic, ok := g.topics[topicName]
-	g.mx.RUnlock()
 	if !ok {
 		return nil
 	}
@@ -307,20 +310,19 @@ func (g *warpPubSub) unsubscribe(topics ...string) (err error) {
 	if g == nil || !g.isRunning.Load() {
 		return errors.New("pubsub: service not initialized")
 	}
+	g.mx.Lock()
+	defer g.mx.Unlock()
 
 	for _, topicName := range topics {
-		g.mx.RLock()
 		topic, ok := g.topics[topicName]
-		g.mx.RUnlock()
 		if !ok {
 			return nil
 		}
 
-		g.mx.Lock()
 		for i, s := range g.subs {
 			if s.Topic() == topicName {
 				s.Cancel()
-				slices.Delete(g.subs, i, i+1)
+				g.subs = slices.Delete(g.subs, i, i+1)
 				break
 			}
 		}
@@ -334,7 +336,6 @@ func (g *warpPubSub) unsubscribe(topics ...string) (err error) {
 			g.relayCancelFuncs[topicName]()
 		}
 		delete(g.relayCancelFuncs, topicName)
-		g.mx.Unlock()
 	}
 
 	return err
@@ -345,20 +346,18 @@ func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 		return errors.New("pubsub: service not initialized")
 	}
 
+	g.mx.Lock()
+	defer g.mx.Unlock()
+
 	for _, topicName := range topics {
-		g.mx.RLock()
 		topic, ok := g.topics[topicName]
-		g.mx.RUnlock()
 		if !ok {
 			topic, err = g.pubsub.Join(topicName)
 			if err != nil {
 				return err
 			}
+			g.topics[topicName] = topic
 		}
-
-		g.mx.Lock()
-		g.topics[topicName] = topic
-		g.mx.Unlock()
 
 		data, err := json.Marshal(msg)
 		if err != nil {
@@ -458,10 +457,8 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 		peerInfo.Addrs = append(peerInfo.Addrs, ma)
 	}
 
-	if g.discoveryHandlers != nil {
-		for _, handler := range g.discoveryHandlers {
-			handler(peerInfo) // add new user
-		}
+	if g.discoveryHandler != nil {
+		g.discoveryHandler(peerInfo) // add new user
 	}
 }
 
@@ -541,24 +538,25 @@ func (g *warpPubSub) Close() (err error) {
 		return
 	}
 
-	g.mx.RLock()
-	defer g.mx.RUnlock()
+	g.mx.Lock()
+	defer g.mx.Unlock()
 
-	for t, relayCancel := range g.relayCancelFuncs {
-		relayCancel()
-		delete(g.relayCancelFuncs, t)
+	for t := range g.relayCancelFuncs {
+		g.relayCancelFuncs[t]()
 	}
 
 	for _, sub := range g.subs {
 		sub.Cancel()
 	}
 
-	for t, topic := range g.topics {
+	for _, topic := range g.topics {
 		_ = topic.Close()
-		delete(g.topics, t)
 	}
 
 	g.isRunning.Store(false)
 	g.pubsub = nil
+	g.relayCancelFuncs = nil
+	g.topics = nil
+	g.subs = nil
 	return
 }
