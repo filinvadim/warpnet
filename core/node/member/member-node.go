@@ -68,7 +68,7 @@ func NewMemberNode(
 	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo, raft.AddVoter)
 	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
 	pubsubService := pubsub.NewPubSub(
-		ctx, followRepo, owner.UserId, discService.HandlePeerFound, raft.HandleLeaderFound,
+		ctx, followRepo, owner.UserId, discService.HandlePeerFound,
 	)
 	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
 	if err != nil {
@@ -287,12 +287,6 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	}
 	nodeInfo := m.NodeInfo()
 
-	if m.raft.LeaderID().String() == nodeInfo.ID.String() {
-		if err := m.pubsubService.PublishLeaderAnnouncement(nodeInfo.ID.String()); err != nil {
-			return fmt.Errorf("member: failed to publish leader announcement: %v", err)
-		}
-	}
-
 	m.mdnsService.Start(m)
 
 	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
@@ -350,30 +344,44 @@ func (m *MemberNode) Stop() {
 	if m.discService != nil {
 		m.discService.Close()
 	}
+	fmt.Println("1")
 	if m.mdnsService != nil {
 		m.mdnsService.Close()
 	}
+	fmt.Println("2")
+
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
 			log.Errorf("member: failed to close pubsub: %v", err)
 		}
 	}
+	fmt.Println("3")
+
 	if m.providerStore != nil {
 		if err := m.providerStore.Close(); err != nil {
 			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
+	fmt.Println("4")
+
 	if m.dHashTable != nil {
 		m.dHashTable.Close()
 	}
+	fmt.Println("5")
+
 	if m.raft != nil {
 		m.raft.Shutdown()
 	}
+	fmt.Println("6")
+
 	if m.nodeRepo != nil {
 		if err := m.nodeRepo.Close(); err != nil {
 			log.Errorf("member: failed to close node repo: %v", err)
 		}
 	}
+	fmt.Println("7")
 
 	m.StopNode()
+	fmt.Println("8")
+
 }

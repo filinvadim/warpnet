@@ -13,7 +13,6 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
-	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -112,7 +111,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.DebugLevel.String(), "raft-libp2p")
+	l := newConsensusLogger(log.DebugLevel.String(), "raft")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -133,17 +132,16 @@ func NewRaft(
 	cons := libp2praft.NewConsensus(finiteStateMachine.state)
 
 	return &consensusService{
-		ctx:             ctx,
-		logStore:        raft.NewInmemStore(),
-		stableStore:     stableStore,
-		snapshotStore:   snapshotStore,
-		fsm:             finiteStateMachine,
-		cache:           newVotersCache(),
-		consensus:       cons,
-		syncMx:          new(sync.RWMutex),
-		retrier:         retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
-		l:               l,
-		leaderFoundChan: make(chan raft.ServerID, 1),
+		ctx:           ctx,
+		logStore:      raft.NewInmemStore(),
+		stableStore:   stableStore,
+		snapshotStore: snapshotStore,
+		fsm:           finiteStateMachine,
+		cache:         newVotersCache(),
+		consensus:     cons,
+		syncMx:        new(sync.RWMutex),
+		retrier:       retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
+		l:             l,
 	}, nil
 }
 
@@ -181,27 +179,16 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	var hasLeader bool
-	leaderTimeout := (time.Second * 10) + (time.Duration(rand.IntN(1000)) * time.Millisecond)
-	ticker := time.NewTicker(leaderTimeout)
-	defer ticker.Stop()
+	//if !hasState {
+	//	log.Infoln("consensus: no state found - setting up new cluster")
+	//	// It seems node is alone here
+	//	if err := c.bootstrap(config.LocalID); err != nil {
+	//		return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
+	//	}
+	//}
 
-	select {
-	case <-c.ctx.Done():
-		return
-	case <-ticker.C:
-		log.Infoln("consensus: leader looking timeout")
-	case leader := <-c.leaderFoundChan:
-		log.Infoln("consensus: leader found:", leader)
-		hasLeader = true
-	}
-
-	if !hasLeader {
-		log.Infoln("consensus: no leader found - setting up new cluster")
-		// It seems node is alone here
-		if err := c.bootstrap(config.LocalID); err != nil {
-			return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
-		}
+	if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
+		return fmt.Errorf("consensus: failed to save current term: %v", err)
 	}
 
 	c.raft, err = raft.NewRaft(
@@ -221,19 +208,20 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: node configuration error: %v", err)
 	}
 
+	for _, srv := range wait.Configuration().Servers {
+		id := warpnet.FromStringToPeerID(string(srv.ID))
+		c.AddVoter(warpnet.PeerAddrInfo{ID: id})
+	}
+
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
-	err = c.sync()
-	if err != nil {
-		return err
-	}
+	//err = c.sync()
+	//if err != nil {
+	//	return err
+	//}
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	c.streamer = node
 	return nil
-}
-
-func (c *consensusService) HandleLeaderFound(pi warpnet.PeerAddrInfo) {
-	c.leaderFoundChan <- raft.ServerID(pi.ID.String())
 }
 
 // full-mesh self-bootstrapping Raft
@@ -305,15 +293,6 @@ func (c *consensusService) sync() error {
 
 	if err = cs.waitForUpdates(c.ctx); err != nil {
 		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
-	}
-
-	wait := c.raft.GetConfiguration()
-	if err := wait.Error(); err != nil {
-		return err
-	}
-
-	for _, srv := range wait.Configuration().Servers {
-		c.cache.addVoter(srv.ID, srv)
 	}
 
 	log.Infoln("consensus: sync complete")
