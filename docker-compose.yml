@@ -22,7 +22,6 @@ services:
       - NODE_PORT=4002
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=DEBUG
-
     volumes:
     - /tmp/snapshot2:/tmp/snapshot:rw
 
@@ -40,3 +39,7 @@ services:
     volumes:
     - /tmp/snapshot3:/tmp/snapshot:rw
 
+volumes:
+  snapshot1:
+  snapshot2:
+  snapshot3:
