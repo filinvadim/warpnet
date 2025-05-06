@@ -79,20 +79,21 @@ type Streamer interface {
 }
 
 type consensusService struct {
-	ctx           context.Context
-	consensus     *Consensus
-	streamer      Streamer
-	fsm           *fsm
-	cache         votersCacher
-	raft          *raft.Raft
-	logStore      raft.LogStore
-	stableStore   raft.StableStore
-	snapshotStore raft.SnapshotStore
-	transport     *raft.NetworkTransport
-	raftID        raft.ServerID
-	syncMx        *sync.RWMutex
-	retrier       retrier.Retrier
-	l             *consensusLogger
+	ctx             context.Context
+	consensus       *Consensus
+	streamer        Streamer
+	fsm             *fsm
+	cache           votersCacher
+	raft            *raft.Raft
+	logStore        raft.LogStore
+	stableStore     raft.StableStore
+	snapshotStore   raft.SnapshotStore
+	transport       *raft.NetworkTransport
+	raftID          raft.ServerID
+	syncMx          *sync.RWMutex
+	retrier         retrier.Retrier
+	l               *consensusLogger
+	leaderFoundChan chan raft.ServerID
 }
 
 func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
@@ -132,16 +133,17 @@ func NewRaft(
 	cons := libp2praft.NewConsensus(finiteStateMachine.state)
 
 	return &consensusService{
-		ctx:           ctx,
-		logStore:      raft.NewInmemStore(),
-		stableStore:   stableStore,
-		snapshotStore: snapshotStore,
-		fsm:           finiteStateMachine,
-		cache:         newVotersCache(),
-		consensus:     cons,
-		syncMx:        new(sync.RWMutex),
-		retrier:       retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
-		l:             l,
+		ctx:             ctx,
+		logStore:        raft.NewInmemStore(),
+		stableStore:     stableStore,
+		snapshotStore:   snapshotStore,
+		fsm:             finiteStateMachine,
+		cache:           newVotersCache(),
+		consensus:       cons,
+		syncMx:          new(sync.RWMutex),
+		retrier:         retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
+		l:               l,
+		leaderFoundChan: make(chan raft.ServerID, 1),
 	}, nil
 }
 
@@ -179,14 +181,20 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	wait()
+	var hasLeader bool
+	leaderTimeout := (time.Second * 10) + (time.Duration(rand.IntN(1000)) * time.Millisecond)
+	ticker := time.NewTicker(leaderTimeout)
+	defer ticker.Stop()
 
-	hasState, err := raft.HasExistingState(c.logStore, c.stableStore, c.snapshotStore)
-	if err != nil {
-		return fmt.Errorf("consensus: failed to check raft state: %v", err)
+	select {
+	case <-c.ctx.Done():
+		return
+	case <-ticker.C:
+	case <-c.leaderFoundChan:
+		hasLeader = true
 	}
 
-	if !hasState {
+	if !hasLeader {
 		log.Infoln("consensus: no state found - setting up new cluster")
 		// It seems node is alone here
 		if err := c.bootstrap(config.LocalID); err != nil {
@@ -222,8 +230,8 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	return nil
 }
 
-func wait() {
-	time.Sleep(time.Millisecond * time.Duration(rand.IntN(1000)))
+func (c *consensusService) HandleLeaderFound(pi warpnet.PeerAddrInfo) {
+	c.leaderFoundChan <- raft.ServerID(pi.ID.String())
 }
 
 // full-mesh self-bootstrapping Raft

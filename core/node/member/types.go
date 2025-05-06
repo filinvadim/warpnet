@@ -29,6 +29,7 @@ type PubSubProvider interface {
 	UnsubscribeUserUpdate(userId string) (err error)
 	Run(m pubsub.PubsubServerNodeConnector, clientNode pubsub.PubsubClientNodeStreamer)
 	PublishOwnerUpdate(ownerId string, msg event.Message) (err error)
+	PublishLeaderAnnouncement(nodeId string) (err error)
 	Close() error
 }
 

@@ -63,6 +63,7 @@ type warpPubSub struct {
 	relayCancelFuncs map[string]pubsub.RelayCancelFunc
 	topics           map[string]*pubsub.Topic
 	discoveryHandler discovery.DiscoveryHandler
+	leaderHandler    discovery.DiscoveryHandler
 
 	isRunning *atomic.Bool
 }
@@ -72,6 +73,7 @@ func NewPubSub(
 	followRepo PubsubFollowingStorer,
 	ownerId string,
 	discoveryHandler discovery.DiscoveryHandler,
+	leaderHandler discovery.DiscoveryHandler,
 ) *warpPubSub {
 
 	g := &warpPubSub{
@@ -80,6 +82,7 @@ func NewPubSub(
 		serverNode:       nil,
 		clientNode:       nil,
 		discoveryHandler: discoveryHandler,
+		leaderHandler:    leaderHandler,
 		mx:               new(sync.RWMutex),
 		subs:             []*pubsub.Subscription{},
 		topics:           map[string]*pubsub.Topic{},
@@ -95,8 +98,9 @@ func NewPubSub(
 func NewPubSubBootstrap(
 	ctx context.Context,
 	discoveryHandler discovery.DiscoveryHandler,
+	leaderHandler discovery.DiscoveryHandler,
 ) *warpPubSub {
-	return NewPubSub(ctx, nil, warpnet.BootstrapOwner, discoveryHandler)
+	return NewPubSub(ctx, nil, warpnet.BootstrapOwner, discoveryHandler, leaderHandler)
 }
 
 func (g *warpPubSub) Run(
@@ -168,7 +172,8 @@ func (g *warpPubSub) runListener() error {
 				g.handlePubSubDiscovery(msg)
 				continue
 			case leaderAnnouncementsTopic:
-				log.WithField("topic", *msg.Topic).Info("pubsub: leader announcement:", string(msg.Data)) // TODO
+				log.WithField("topic", *msg.Topic).Info("pubsub: leader announcement:", string(msg.Data))
+				g.leaderHandler(warpnet.PeerAddrInfo{ID: warpnet.FromStringToPeerID(string(msg.Data))})
 				continue
 			default:
 			}
@@ -470,6 +475,23 @@ func (g *warpPubSub) PublishOwnerUpdate(ownerId string, msg event.Message) (err 
 	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, ownerId)
 
 	return g.publish(msg, topicName)
+}
+
+func (g *warpPubSub) PublishLeaderAnnouncement(nodeId string) (err error) {
+	if g == nil || !g.isRunning.Load() {
+		return errors.New("pubsub: service not initialized")
+	}
+	g.mx.RLock()
+	topic, ok := g.topics[leaderAnnouncementsTopic]
+	g.mx.RUnlock()
+	if !ok {
+		log.Fatalf("pubsub: discovery topic not found: %s", pubSubDiscoveryTopic)
+	}
+	defer func() {
+		_ = topic.Close()
+	}()
+
+	return topic.Publish(g.ctx, []byte(nodeId))
 }
 
 func (g *warpPubSub) runPeerInfoPublishing() {

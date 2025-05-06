@@ -67,7 +67,9 @@ func NewMemberNode(
 
 	discService := discovery.NewDiscoveryService(ctx, userRepo, nodeRepo, raft.AddVoter)
 	mdnsService := mdns.NewMulticastDNS(ctx, discService.HandlePeerFound)
-	pubsubService := pubsub.NewPubSub(ctx, followRepo, owner.UserId, discService.HandlePeerFound)
+	pubsubService := pubsub.NewPubSub(
+		ctx, followRepo, owner.UserId, discService.HandlePeerFound, raft.HandleLeaderFound,
+	)
 	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
 	if err != nil {
 		return nil, fmt.Errorf("member: failed to init providers: %v", err)
@@ -283,10 +285,16 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 	if err := m.raft.Sync(m); err != nil {
 		return fmt.Errorf("member: consensus failed to sync: %v", err)
 	}
+	nodeInfo := m.NodeInfo()
+
+	if m.raft.LeaderID().String() == nodeInfo.ID.String() {
+		if err := m.pubsubService.PublishLeaderAnnouncement(nodeInfo.ID.String()); err != nil {
+			return fmt.Errorf("member: failed to publish leader announcement: %v", err)
+		}
+	}
 
 	m.mdnsService.Start(m)
 
-	nodeInfo := m.NodeInfo()
 	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
 	if err != nil {
 		return fmt.Errorf("member: failed to get owner user: %v", err)
