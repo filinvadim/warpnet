@@ -162,7 +162,6 @@ func (db *DB) runEventualGC() {
 
 	_ = db.badger.RunValueLogGC(discardRatio)
 	for {
-
 		select {
 		case <-dirTicker.C:
 			isEmpty, err := isDirectoryEmpty(db.dbPath)
@@ -176,9 +175,9 @@ func (db *DB) runEventualGC() {
 				if errors.Is(err, badger.ErrNoRewrite) {
 					break
 				}
-				log.Infoln("database garbage collection complete")
 				time.Sleep(time.Second)
 			}
+			log.Infoln("database garbage collection complete")
 		case <-db.stopChan:
 			return
 		}
@@ -518,7 +517,7 @@ func (t *WarpReadTxn) ReverseIterateKeys(prefix DatabaseKey, handler IterKeysFun
 	it := t.txn.NewIterator(opts)
 	defer it.Close()
 	p := []byte(prefix)
-	
+
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
 		item := it.Item()
 		key := string(item.KeyCopy(nil))

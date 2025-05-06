@@ -164,7 +164,6 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	config.NoLegacyTelemetry = true
 	config.SnapshotThreshold = 8192
 	config.SnapshotInterval = 20 * time.Minute
-	config.NoSnapshotRestoreOnStart = true
 
 	if err := raft.ValidateConfig(config); err != nil {
 		return err
@@ -177,7 +176,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	if len(node.Node().Network().Peers()) == 0 {
+	if len(node.Node().Peerstore().Peers()) == 0 {
 		log.Infoln("consensus: no peers found - setting up new cluster")
 		// It seems node is alone here
 		if err := c.bootstrap(config.LocalID); err != nil {
