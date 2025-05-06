@@ -100,7 +100,6 @@ func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc)
 	return NewRaft(ctx, nil, true, validators...)
 }
 
-// self-healing Raft ring
 func NewRaft(
 	ctx context.Context,
 	consRepo ConsensusStorer,
@@ -185,9 +184,15 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: failed to check existing state: %v", err)
 	}
 
-	if !hasState && config.ConfigFile.Node.ConsensusInitiator {
+	isInitiator := config.ConfigFile.Node.ConsensusInitiator
+	infos, err := config.ConfigFile.Node.AddrInfos()
+	if err != nil {
+		return err
+	}
+
+	if !hasState && isInitiator {
 		log.Infoln("consensus: node is initiator - setting up new cluster")
-		if err := c.bootstrap(raftConfig.LocalID); err != nil {
+		if err := c.bootstrap(raftConfig.LocalID, infos); err != nil {
 			return fmt.Errorf("consensus: setting up new cluster failed: %w", err)
 		}
 	}
@@ -224,14 +229,20 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	return nil
 }
 
-// full-mesh self-bootstrapping Raft
-func (c *consensusService) bootstrap(id raft.ServerID) error {
+func (c *consensusService) bootstrap(id raft.ServerID, infos []warpnet.PeerAddrInfo) error {
 	raftConf := raft.Configuration{}
 	raftConf.Servers = append(raftConf.Servers, raft.Server{
 		Suffrage: raft.Voter,
 		ID:       id,
 		Address:  raft.ServerAddress(id),
 	})
+	for _, info := range infos {
+		raftConf.Servers = append(raftConf.Servers, raft.Server{
+			Suffrage: raft.Voter,
+			ID:       raft.ServerID(info.ID.String()),
+			Address:  raft.ServerAddress(info.ID.String()),
+		})
+	}
 
 	if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
 		return fmt.Errorf("consensus: failed to save current term: %v", err)
