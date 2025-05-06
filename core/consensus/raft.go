@@ -180,7 +180,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	if len(node.Node().Network().Peers()) == 0 {
 		log.Infoln("consensus: no peers found - setting up new cluster")
 		// It seems node is alone here
-		if err := c.forceBootstrap(config.LocalID); err != nil {
+		if err := c.bootstrap(config.LocalID); err != nil {
 			return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
 		}
 	}
@@ -214,18 +214,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 }
 
 // full-mesh self-bootstrapping Raft
-func (c *consensusService) forceBootstrap(id raft.ServerID) error {
-	lastIndex, err := c.logStore.LastIndex()
-	if err != nil {
-		return fmt.Errorf("consensus: failed to read last log index: %v", err)
-	}
-
-	if lastIndex != 0 {
-		return nil
-	}
-	log.Infoln("consensus: bootstrapping a new cluster with server id:", id)
-
-	// force Raft to create a cluster no matter what
+func (c *consensusService) bootstrap(id raft.ServerID) error {
 	raftConf := raft.Configuration{}
 	raftConf.Servers = append(raftConf.Servers, raft.Server{
 		Suffrage: raft.Voter,
