@@ -3,6 +3,7 @@ package dhash_table
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
@@ -169,6 +170,10 @@ func (d *DistributedHashTable) setupDHT() {
 
 	<-d.dht.RefreshRoutingTable()
 
+	go d.runRendezvousDiscovery()
+}
+
+func (d *DistributedHashTable) runRendezvousDiscovery() {
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
 	_, err := routingDiscovery.Advertise(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
@@ -182,7 +187,7 @@ func (d *DistributedHashTable) setupDHT() {
 		return
 	}
 
-	log.Infoln("dht rendezvous set up")
+	log.Infoln("dht rendezvous: is running")
 
 	select {
 	case peerInfo := <-peerChan:
@@ -235,9 +240,12 @@ func (d *DistributedHashTable) Close() {
 	if d == nil || d.dht == nil {
 		return
 	}
+
+	fmt.Println("??????????????")
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@")
 	d.dht = nil
 	close(d.stopChan)
 	log.Infoln("dht: table closed")

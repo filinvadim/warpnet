@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
@@ -155,18 +156,18 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 
 	c.raftID = raft.ServerID(node.NodeInfo().ID.String())
 
-	config := raft.DefaultConfig()
-	config.HeartbeatTimeout = time.Second * 10
-	config.ElectionTimeout = config.HeartbeatTimeout
-	config.LeaderLeaseTimeout = config.HeartbeatTimeout
-	config.CommitTimeout = time.Second * 30
-	config.Logger = c.l
-	config.LocalID = raft.ServerID(node.NodeInfo().ID.String())
-	config.NoLegacyTelemetry = true
-	config.SnapshotThreshold = 8192
-	config.SnapshotInterval = 20 * time.Minute
+	raftConfig := raft.DefaultConfig()
+	raftConfig.HeartbeatTimeout = time.Second * 10
+	raftConfig.ElectionTimeout = raftConfig.HeartbeatTimeout
+	raftConfig.LeaderLeaseTimeout = raftConfig.HeartbeatTimeout
+	raftConfig.CommitTimeout = time.Second * 30
+	raftConfig.Logger = c.l
+	raftConfig.LocalID = raft.ServerID(node.NodeInfo().ID.String())
+	raftConfig.NoLegacyTelemetry = true
+	raftConfig.SnapshotThreshold = 8192
+	raftConfig.SnapshotInterval = 20 * time.Minute
 
-	if err := raft.ValidateConfig(config); err != nil {
+	if err := raft.ValidateConfig(raftConfig); err != nil {
 		return err
 	}
 
@@ -179,20 +180,24 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	//if !hasState {
-	//	log.Infoln("consensus: no state found - setting up new cluster")
-	//	// It seems node is alone here
-	//	if err := c.bootstrap(config.LocalID); err != nil {
-	//		return fmt.Errorf("consensus: node bootstrapping failed: %w", err)
-	//	}
-	//}
+	hasState, err := raft.HasExistingState(c.logStore, c.stableStore, c.snapshotStore)
+	if err != nil {
+		return fmt.Errorf("consensus: failed to check existing state: %v", err)
+	}
+
+	if !hasState && config.ConfigFile.Node.ConsensusInitiator {
+		log.Infoln("consensus: node is initiator - setting up new cluster")
+		if err := c.bootstrap(raftConfig.LocalID); err != nil {
+			return fmt.Errorf("consensus: setting up new cluster failed: %w", err)
+		}
+	}
 
 	if err := c.stableStore.SetUint64([]byte("CurrentTerm"), 1); err != nil {
 		return fmt.Errorf("consensus: failed to save current term: %v", err)
 	}
 
 	c.raft, err = raft.NewRaft(
-		config,
+		raftConfig,
 		c.fsm,
 		c.logStore,
 		c.stableStore,
@@ -208,17 +213,12 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: node configuration error: %v", err)
 	}
 
-	for _, srv := range wait.Configuration().Servers {
-		id := warpnet.FromStringToPeerID(string(srv.ID))
-		c.AddVoter(warpnet.PeerAddrInfo{ID: id})
-	}
-
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
-	//err = c.sync()
-	//if err != nil {
-	//	return err
-	//}
+	err = c.sync()
+	if err != nil {
+		return err
+	}
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	c.streamer = node
 	return nil
@@ -291,10 +291,22 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	if err = cs.waitForUpdates(c.ctx); err != nil {
-		return fmt.Errorf("consensus: waiting for consensus updates: %w", err)
+	updatesCtx, updatesCancel := context.WithTimeout(context.Background(), time.Minute*2)
+	defer updatesCancel()
+
+	if err = cs.waitForUpdates(updatesCtx); err != nil {
+		log.Errorf("consensus: waiting for consensus updates: %v", err)
 	}
 
+	wait := c.raft.GetConfiguration()
+	if err := wait.Error(); err != nil {
+		return fmt.Errorf("consensus: node sync configuration error: %v", err)
+	}
+
+	for _, srv := range wait.Configuration().Servers {
+		id := warpnet.FromStringToPeerID(string(srv.ID))
+		c.AddVoter(warpnet.PeerAddrInfo{ID: id})
+	}
 	log.Infoln("consensus: sync complete")
 	return nil
 }

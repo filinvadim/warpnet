@@ -27,6 +27,7 @@ func init() {
 	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
 	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
 	pflag.String("node.metrics.server", "", "Metrics server address")
+	pflag.Bool("node.consensus.initiator", false, "Initiator of consensus cluster")
 	pflag.String("logging.level", "INFO", "Logging level")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -49,10 +50,11 @@ func init() {
 	ConfigFile = Config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
-			Bootstrap: bootstrapAddrList,
-			Host:      viper.GetString("node.host"),
-			Port:      viper.GetString("node.port"),
-			Prefix:    viper.GetString("node.network.prefix"),
+			Bootstrap:          bootstrapAddrList,
+			Host:               viper.GetString("node.host"),
+			Port:               viper.GetString("node.port"),
+			Prefix:             viper.GetString("node.network.prefix"),
+			ConsensusInitiator: viper.GetBool("node.consensus.initiator"),
 			Metrics: Metrics{
 				Server: viper.GetString("node.metrics.server"),
 			},
@@ -74,11 +76,12 @@ type Config struct {
 	Logging  Logging
 }
 type Node struct {
-	Bootstrap []string
-	Host      string
-	Port      string
-	Prefix    string
-	Metrics   Metrics
+	Bootstrap          []string
+	Host               string
+	Port               string
+	Prefix             string
+	ConsensusInitiator bool
+	Metrics            Metrics
 }
 
 type Metrics struct {
