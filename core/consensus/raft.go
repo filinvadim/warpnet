@@ -13,6 +13,7 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -176,7 +177,14 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 	log.Infoln("consensus: transport configured with local address:", c.transport.LocalAddr())
 
-	if len(node.Node().Peerstore().Peers()) == 0 {
+	wait()
+
+	hasState, err := raft.HasExistingState(c.logStore, c.stableStore, c.snapshotStore)
+	if err != nil {
+		return fmt.Errorf("consensus: failed to check raft state: %v", err)
+	}
+
+	if !hasState {
 		log.Infoln("consensus: no peers found - setting up new cluster")
 		// It seems node is alone here
 		if err := c.bootstrap(config.LocalID); err != nil {
@@ -210,6 +218,10 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	c.streamer = node
 	return nil
+}
+
+func wait() {
+	time.Sleep(time.Millisecond * time.Duration(rand.IntN(1000)))
 }
 
 // full-mesh self-bootstrapping Raft
