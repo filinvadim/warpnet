@@ -37,20 +37,23 @@ func (d *votersCache) addVoter(key raft.ServerID, srv raft.Server) {
 	d.m[key] = voterTimed{srv, time.Now()}
 }
 
-func (d *votersCache) removeVoter(key raft.ServerID) {
+var ErrTooSoonToRemoveVoter = errors.New("consensus:too soon to remove voter")
+
+func (d *votersCache) removeVoter(key raft.ServerID) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	v, ok := d.m[key]
 	if !ok {
-		return
+		return nil
 	}
 
-	if time.Since(v.addedAt) < time.Minute {
-		return // flapping prevention
+	if time.Since(v.addedAt) < (time.Minute * 5) {
+		return ErrTooSoonToRemoveVoter // flapping prevention
 	}
 
 	delete(d.m, key)
+	return nil
 }
 
 func (d *votersCache) getVoter(key raft.ServerID) (_ raft.Server, err error) {

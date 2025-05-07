@@ -71,7 +71,7 @@ type NodeServicesProvider interface {
 type votersCacher interface {
 	addVoter(key raft.ServerID, srv raft.Server)
 	getVoter(key raft.ServerID) (_ raft.Server, err error)
-	removeVoter(key raft.ServerID)
+	removeVoter(key raft.ServerID) error
 	print()
 	close()
 }
@@ -477,13 +477,15 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	}
 	log.Infof("consensus: removing voter %s", id.String())
 
+	if err := c.cache.removeVoter(raft.ServerID(id.String())); errors.Is(err, ErrTooSoonToRemoveVoter) {
+		return
+	}
+
 	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {
 		log.Errorf("consensus: failed to remove node: %s", wait.Error())
 		return
 	}
-	c.cache.removeVoter(raft.ServerID(id.String()))
-	return
 }
 
 func (c *consensusService) Stats() map[string]string {
