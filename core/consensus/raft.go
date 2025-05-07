@@ -113,7 +113,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.DebugLevel.String(), "raft")
+	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -158,22 +158,25 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	c.raftID = raft.ServerID(node.NodeInfo().ID.String())
 
 	raftConfig := raft.DefaultConfig()
-	raftConfig.HeartbeatTimeout = time.Second * 10
+	raftConfig.HeartbeatTimeout = time.Second * 5
 	raftConfig.ElectionTimeout = raftConfig.HeartbeatTimeout
 	raftConfig.LeaderLeaseTimeout = raftConfig.HeartbeatTimeout
-	raftConfig.CommitTimeout = time.Second * 30
+	raftConfig.CommitTimeout = time.Second
+	raftConfig.MaxAppendEntries = 128
+	raftConfig.TrailingLogs = 256
 	raftConfig.Logger = c.l
 	raftConfig.LocalID = raft.ServerID(node.NodeInfo().ID.String())
 	raftConfig.NoLegacyTelemetry = true
 	raftConfig.SnapshotThreshold = 8192
 	raftConfig.SnapshotInterval = 20 * time.Minute
+	raftConfig.NoSnapshotRestoreOnStart = true
 
 	if err := raft.ValidateConfig(raftConfig); err != nil {
 		return err
 	}
 
 	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.DebugLevel.String(), "raft-libp2p-transport"),
+		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
 	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
@@ -475,11 +478,11 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	if _, err := c.cache.getVoter(raft.ServerID(id.String())); errors.Is(err, errVoterNotFound) {
 		return
 	}
-	log.Infof("consensus: removing voter %s", id.String())
 
-	if err := c.cache.removeVoter(raft.ServerID(id.String())); errors.Is(err, ErrTooSoonToRemoveVoter) {
+	if err := c.cache.removeVoter(raft.ServerID(id.String())); errors.Is(err, errTooSoonToRemoveVoter) {
 		return
 	}
+	log.Infof("consensus: removing voter %s", id.String())
 
 	wait := c.raft.RemoveServer(raft.ServerID(id.String()), 0, 30*time.Second)
 	if err := wait.Error(); err != nil {

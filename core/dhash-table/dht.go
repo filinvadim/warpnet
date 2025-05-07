@@ -138,6 +138,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
 	if d.removeF != nil {
 		d.dht.RoutingTable().PeerRemoved = func(id peer.ID) {
+			log.Infof("dht: peer removed: %s", id)
 			d.removeF(id)
 		}
 	}
@@ -179,7 +180,6 @@ func (d *DistributedHashTable) runRendezvousDiscovery() {
 	if d == nil || d.dht == nil {
 		return
 	}
-	log.Infoln("dht rendezvous: initialized")
 
 	tryouts := 30
 	for len(d.dht.RoutingTable().ListPeers()) == 0 {

@@ -196,6 +196,9 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 	if !s.limiter.Allow() {
 		return
 	}
+	if peerInfo.ID == s.node.NodeInfo().ID {
+		return
+	}
 
 	if err := s.node.Connect(peerInfo); err != nil {
 		log.Errorf(
