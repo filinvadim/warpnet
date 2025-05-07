@@ -24,7 +24,7 @@ import (
   minimal latency and high throughput.
 
   Key Features:
-    - Embedded: Operates within the application without the need for a separate database server.
+    - Embedded: Operates within the application without the need for a separate database: server.
     - Key-Value Store: Enables storing and retrieving data by key using efficient indexing.
     - LSM Architecture: Provides high write speed due to log-structured data storage.
     - Zero GC Overhead: Minimizes garbage collection impact by directly working with mmap and byte slices.
@@ -34,13 +34,13 @@ import (
 
   BadgerDB is used in cases where:
     - High Performance is required: It is faster than traditional disk-based databases (e.g., BoltDB) due to the LSM structure.
-    - Embedded Storage is needed: No need to run a separate database server (unlike Redis, PostgreSQL, etc.).
+    - Embedded Storage is needed: No need to run a separate database: server (unlike Redis, PostgreSQL, etc.).
     - Efficient Streaming Writes are required: Suitable for logs, caches, message brokers, and other write-intensive workloads.
     - Transaction Support is necessary: Allows safely executing multiple operations within a single transaction.
     - Large Data Volumes are handled: Supports sharding and disk offloading, useful for processing massive datasets.
     - Flexibility is key: Easily integrates into distributed systems and P2P applications.
 
-  BadgerDB is especially useful for systems where high write speed, low overhead, and the ability to operate without an external database server are critical.
+  BadgerDB is especially useful for systems where high write speed, low overhead, and the ability to operate without an external database: server are critical.
   https://github.com/dgraph-io/badger
 */
 
@@ -127,7 +127,7 @@ func (db *DB) IsFirstRun() bool {
 
 func (db *DB) Run(username, password string) (err error) {
 	if username == "" || password == "" {
-		return errors.New("database username or password is empty")
+		return errors.New("database: username or password is empty")
 	}
 	hashSum := security.ConvertToSHA256([]byte(username + "@" + password))
 	execOpts := db.storedOpts.WithEncryptionKey(hashSum)
@@ -153,7 +153,7 @@ func (db *DB) Run(username, password string) (err error) {
 }
 
 func (db *DB) runEventualGC() {
-	log.Infoln("database garbage collection started")
+	log.Infoln("database: garbage collection started")
 	gcTicker := time.NewTicker(time.Minute * 5)
 	defer gcTicker.Stop()
 
@@ -166,7 +166,7 @@ func (db *DB) runEventualGC() {
 		case <-dirTicker.C:
 			isEmpty, err := isDirectoryEmpty(db.dbPath)
 			if isEmpty && err == nil {
-				log.Errorln("database folder was emptied")
+				log.Errorln("database: folder was emptied")
 				os.Exit(1)
 			}
 		case <-gcTicker.C:
@@ -177,7 +177,7 @@ func (db *DB) runEventualGC() {
 				}
 				time.Sleep(time.Second)
 			}
-			log.Infoln("database garbage collection complete")
+			log.Infoln("database: garbage collection complete")
 		case <-db.stopChan:
 			return
 		}
@@ -771,7 +771,7 @@ func (db *DB) Close() {
 
 	_ = db.Sync()
 	if err := db.badger.Close(); err != nil {
-		log.Infoln("database close: ", err)
+		log.Infoln("database: close: ", err)
 		return
 	}
 	db.isRunning.Store(false)

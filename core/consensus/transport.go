@@ -71,7 +71,7 @@ func (sl *streamLayer) Accept() (conn net.Conn, err error) {
 	err = sl.retrier.Try(context.Background(), func() error {
 		conn, err = sl.l.Accept()
 		if err != nil {
-			sl.lg.Debug("raft-trasport: accept: " + err.Error())
+			sl.lg.Debug("raft-transport: accept: " + err.Error())
 		}
 		return err
 	})
