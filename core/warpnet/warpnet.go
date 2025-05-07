@@ -43,6 +43,10 @@ type NodeInfo struct {
 	BootstrapPeers []PeerAddrInfo  `json:"bootstrap_peers"`
 }
 
+func (ni NodeInfo) IsBootstrap() bool {
+	return ni.OwnerId == BootstrapOwner
+}
+
 type NodeStats struct {
 	UserId          string          `json:"user_id"`
 	NodeID          WarpPeerID      `json:"node_id"`

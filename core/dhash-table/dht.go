@@ -94,6 +94,7 @@ func NewDHTable(
 	addFuncs ...discovery.DiscoveryHandler,
 ) *DistributedHashTable {
 	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
+	log.Infoln("dht: bootstrap addresses:", bootstrapAddrs)
 	return &DistributedHashTable{
 		ctx:           ctx,
 		db:            db,
@@ -132,7 +133,6 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 			for _, addF := range d.addFuncs {
 				addF(info)
 			}
-			<-d.dht.RefreshRoutingTable()
 		}
 	}
 	d.dht.RoutingTable().PeerRemoved = defaultNodeRemovedCallback
@@ -140,44 +140,55 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		d.dht.RoutingTable().PeerRemoved = func(id peer.ID) {
 			d.removeF(id)
 		}
-		<-d.dht.RefreshRoutingTable()
 	}
 
-	go d.setupDHT()
-
-	<-d.dht.RefreshRoutingTable()
-
-	go d.runRendezvousDiscovery()
+	go d.bootstrapDHT()
 	log.Infoln("dht: routing started")
-
 	return d.dht, nil
 }
 
-// DO NOT add any functionality here
-func (d *DistributedHashTable) setupDHT() {
+func (d *DistributedHashTable) bootstrapDHT() {
 	if d == nil || d.dht == nil {
 		return
 	}
-	// force node to know its external address (in case of local network)
+	// force dht to know it's bootstrap nodes, force libp2p node to know its external address (in case of local network)
 	for _, info := range d.boostrapNodes {
+		if d.dht.Host().ID() == info.ID {
+			continue
+		}
+		isAdded, err := d.dht.RoutingTable().TryAddPeer(info.ID, true, false)
+		if !isAdded || err != nil {
+			log.Errorf("dht: failed to add peer %s: %v", info.String(), err)
+		}
 		d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
 	}
 
 	if err := d.dht.Bootstrap(d.ctx); err != nil {
 		log.Errorf("dht: bootstrap: %s", err)
 	}
-	log.Infoln("dht: bootstrap complete")
 
 	d.correctPeerIdMismatch(d.boostrapNodes)
+
+	<-d.dht.RefreshRoutingTable()
+
+	log.Infoln("dht: bootstrap complete")
+	go d.runRendezvousDiscovery()
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery() {
 	if d == nil || d.dht == nil {
 		return
 	}
+	log.Infoln("dht rendezvous: initialized")
 
+	tryouts := 30
 	for len(d.dht.RoutingTable().ListPeers()) == 0 {
+		if tryouts == 0 {
+			log.Infoln("dht rendezvous: timeout - no peers found")
+			return
+		}
 		time.Sleep(time.Second)
+		tryouts--
 	}
 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
@@ -198,7 +209,6 @@ func (d *DistributedHashTable) runRendezvousDiscovery() {
 	select {
 	case peerInfo := <-peerChan:
 		log.Infof("dht rendezvous: found new peer: %s", peerInfo.String())
-
 		for _, addF := range d.addFuncs {
 			addF(peerInfo)
 		}

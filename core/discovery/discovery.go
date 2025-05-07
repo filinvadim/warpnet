@@ -136,7 +136,7 @@ func (s *discoveryService) syncBootstrapDiscovery() error {
 	}
 	s.mx.RUnlock()
 
-	if s.node.NodeInfo().OwnerId == warpnet.BootstrapOwner {
+	if s.node.NodeInfo().IsBootstrap() {
 		return nil
 	}
 
@@ -205,7 +205,9 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 		)
 		return
 	}
-	log.Debugf("discovery: default handler: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
+	s.node.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, time.Hour*8)
+
+	log.Infof("discovery: default handler: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
 	for _, h := range s.handlers {
 		h(peerInfo)
 	}
@@ -234,8 +236,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if pi.ID == "" {
-		log.Errorf("discovery: peer %s has no ID", pi.ID.String())
+	if pi.ID == "" || len(pi.Addrs) == 0 {
 		return
 	}
 
@@ -276,7 +277,7 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
 	}
 
-	if info.OwnerId == warpnet.BootstrapOwner { // bootstrap node
+	if info.IsBootstrap() {
 		s.markBootstrapDiscovered(pi)
 		return
 	}
