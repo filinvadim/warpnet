@@ -113,20 +113,20 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
+	l := newConsensusLogger(log.DebugLevel.String(), "raft")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
 		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, l)
 		if err != nil {
-			log.Fatalf("consensus: failed to create snapshot store: %v", err)
+			return nil, fmt.Errorf("consensus: failed to create snapshot store: %v", err)
 		}
 		stableStore = raft.NewInmemStore()
 	} else {
 		stableStore = consRepo
 		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(consRepo.SnapshotsPath(), 5, l)
 		if err != nil {
-			log.Fatalf("consensus: failed to create snapshot store: %v", err)
+			return nil, fmt.Errorf("consensus: failed to create snapshot store: %v", err)
 		}
 	}
 
@@ -173,7 +173,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
+		node, newConsensusLogger(log.DebugLevel.String(), "raft-libp2p-transport"),
 	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
@@ -211,9 +211,8 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return fmt.Errorf("consensus: failed to create node: %w", err)
 	}
 
-	wait := c.raft.GetConfiguration()
-	if err := wait.Error(); err != nil {
-		return fmt.Errorf("consensus: node configuration error: %v", err)
+	if err := c.waitClusterReady(); err != nil {
+		return err
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
@@ -258,6 +257,29 @@ func (c *consensusService) bootstrap(id raft.ServerID, infos []warpnet.PeerAddrI
 	return c.logStore.GetLog(1, &raft.Log{})
 }
 
+func (c *consensusService) waitClusterReady() error {
+	clusterReadyChan := make(chan error, 1)
+
+	timeoutTimer := time.NewTimer(time.Second * 10)
+	defer timeoutTimer.Stop()
+
+	go func(crChan chan error) {
+		wait := c.raft.GetConfiguration()
+		crChan <- wait.Error()
+	}(clusterReadyChan)
+
+	select {
+	case err := <-clusterReadyChan:
+		if err != nil {
+			return fmt.Errorf("consensus: config fetch error: %w", err)
+		}
+		break
+	case <-timeoutTimer.C:
+		return errors.New("consensus: getting configuration timeout — possibly broken cluster")
+	}
+	return nil
+}
+
 type consensusSync struct {
 	ctx    context.Context
 	raft   *raft.Raft
@@ -266,7 +288,7 @@ type consensusSync struct {
 
 func (c *consensusService) sync() error {
 	if c.raftID == "" {
-		panic("consensus: node id is not initialized")
+		return errors.New("consensus: node id is not initialized")
 	}
 
 	if c.ctx.Err() != nil {
@@ -379,6 +401,9 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 
 			if lastAppliedIndex == lastIndex {
 				return nil
+			}
+			if lastAppliedIndex > lastIndex {
+				return errors.New("consensus: last applied index is greater than current index")
 			}
 		}
 	}
@@ -503,8 +528,8 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 	}
 
 	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
-	log.Errorf("consensus: failed to stream user validation to raft cluster: %v", err)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+		log.Errorf("consensus: failed to stream user validation to raft cluster: %v", err)
 		return fmt.Errorf("consensus: node verify stream: %w", err)
 	}
 	if len(resp) == 0 {

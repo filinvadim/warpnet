@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -40,7 +41,7 @@ func NewBootstrapNode(
 	ctx context.Context,
 	psk security.PSK,
 ) (_ *BootstrapNode, err error) {
-	seed := []byte("bootstrap")
+	seed := []byte(rand.Text())
 	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
 		seed = []byte(hostname)
 	}

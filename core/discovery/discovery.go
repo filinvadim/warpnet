@@ -207,7 +207,6 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 	}
 	s.node.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, time.Hour*8)
 
-	log.Infof("discovery: default handler: connected to peer: %s %s", peerInfo.Addrs, peerInfo.ID)
 	for _, h := range s.handlers {
 		h(peerInfo)
 	}
@@ -239,8 +238,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if pi.ID == "" || len(pi.Addrs) == 0 {
 		return
 	}
-
-	log.Infof("discovery: handling peer %s %v", pi.ID.String(), pi.Addrs)
 
 	if pi.ID == s.node.NodeInfo().ID {
 		return

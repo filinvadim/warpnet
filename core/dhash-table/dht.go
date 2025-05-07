@@ -187,7 +187,7 @@ func (d *DistributedHashTable) runRendezvousDiscovery() {
 			log.Infoln("dht rendezvous: timeout - no peers found")
 			return
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 5)
 		tryouts--
 	}
 
