@@ -43,9 +43,10 @@ const (
 )
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	golog.SetLogLevel("autorelay", "DEBUG")
+	golog.SetLogLevel("ERROR", "DEBUG")
 	relay, err := relayv2.New(
 		node,
+		relayv2.WithResources(relayv2.DefaultResources()),
 		relayv2.WithLimit(&relayv2.RelayLimit{
 			Duration: DefaultRelayDurationLimit,
 			Data:     DefaultRelayDataLimit,

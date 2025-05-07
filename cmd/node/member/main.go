@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"time"
 )
 
 type API struct {
@@ -106,9 +105,6 @@ func main() {
 
 	var serverNodeAuthInfo domain.AuthNodeInfo
 	select {
-	case <-time.After(time.Minute * 2):
-		log.Errorln("timed out waiting for auth info")
-		return
 	case <-interruptChan:
 		log.Infoln("logged out")
 		return

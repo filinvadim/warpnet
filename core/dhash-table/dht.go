@@ -152,14 +152,10 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	if d == nil || d.dht == nil {
 		return
 	}
-	// force dht to know it's bootstrap nodes, force libp2p node to know its external address (in case of local network)
+	// force dht to know its bootstrap nodes, force libp2p node to know its external address (in case of local network)
 	for _, info := range d.boostrapNodes {
 		if d.dht.Host().ID() == info.ID {
 			continue
-		}
-		isAdded, err := d.dht.RoutingTable().TryAddPeer(info.ID, true, false)
-		if !isAdded || err != nil {
-			log.Errorf("dht: failed to add peer %s: %v", info.String(), err)
 		}
 		d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
 	}
@@ -170,15 +166,25 @@ func (d *DistributedHashTable) bootstrapDHT() {
 
 	d.correctPeerIdMismatch(d.boostrapNodes)
 
+	log.Infoln("dht: bootstrap complete")
 	<-d.dht.RefreshRoutingTable()
 
-	log.Infoln("dht: bootstrap complete")
 	go d.runRendezvousDiscovery()
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery() {
 	if d == nil || d.dht == nil {
 		return
+	}
+
+	for _, info := range d.boostrapNodes {
+		if d.dht.Host().ID() == info.ID {
+			continue
+		}
+		isAdded, err := d.dht.RoutingTable().TryAddPeer(info.ID, true, false)
+		if !isAdded || err != nil {
+			log.Errorf("dht: failed to add peer %s: %v", info.String(), err)
+		}
 	}
 
 	tryouts := 30
