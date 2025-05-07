@@ -12,7 +12,6 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
-	libp2pConfig "github.com/libp2p/go-libp2p/config"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/pnet"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
@@ -90,15 +89,8 @@ func NewWarpNode(
 	if err != nil {
 		return nil, err
 	}
-	
-	addrManager := NewAddressManager()
 
-	ForcePrivateOption := libp2p.ForceReachabilityPrivate
-	if ownerId == warpnet.BootstrapOwner {
-		ForcePrivateOption = func() libp2p.Option {
-			return func(cfg *libp2pConfig.Config) error { return nil }
-		}
-	}
+	addrManager := NewAddressManager()
 
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
@@ -131,7 +123,7 @@ func NewWarpNode(
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
-		ForcePrivateOption(),
+		libp2p.ForceReachabilityPrivate(),
 	)
 
 	if err != nil {
