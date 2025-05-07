@@ -15,6 +15,8 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
+	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -259,7 +261,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !s.hasPublicAddresses(pi.Addrs) {
-		log.Infof("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
+		log.Warnf("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
+		return
+	}
+
+	if err := pingTCP(pi); err != nil {
+		log.Errorf("discovery: failed to TCP ping peer %s: %v", pi.String(), err)
 		return
 	}
 
@@ -312,6 +319,35 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		newUser.CreatedAt,
 		newUser.Latency,
 	)
+}
+
+func pingTCP(pi warpnet.PeerAddrInfo) error {
+	id := pi.ID.String()
+	for _, addr := range pi.Addrs {
+		if strings.Contains(addr.String(), "p2p-circuit") {
+			continue
+		}
+		ip, err := addr.ValueForProtocol(warpnet.P_IP4)
+		if err != nil {
+			ip, err = addr.ValueForProtocol(warpnet.P_IP6)
+			if err != nil {
+				return fmt.Errorf("no IP4 or IP6 in multiaddr %s: %w", id, err)
+			}
+		}
+		port, err := addr.ValueForProtocol(warpnet.P_TCP)
+		if err != nil {
+			return fmt.Errorf("no TCP port in multiaddr %s: %w", id, err)
+		}
+
+		standardAddr := fmt.Sprintf("%s:%s", ip, port)
+		conn, err := net.DialTimeout("tcp", standardAddr, time.Second*3)
+		if err == nil {
+			_ = conn.Close()
+			return nil
+		}
+		log.Errorf("discovery: failed to TCP ping to peer %s %s: %s", id, standardAddr, err)
+	}
+	return fmt.Errorf("discovery: failed to TCP ping any address of peer %s", id)
 }
 
 func (s *discoveryService) markBootstrapDiscovered(pi warpnet.PeerAddrInfo) {

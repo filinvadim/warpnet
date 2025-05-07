@@ -1,13 +1,9 @@
 package relay
 
 import (
-	"context"
-	"errors"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	golog "github.com/ipfs/go-log/v2"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	log "github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 
@@ -41,37 +37,19 @@ import (
   - **DCUtR is used** to attempt NAT traversal before falling back to a relay.
 */
 
+const (
+	DefaultRelayDataLimit     = 32 << 20 // 32 MiB
+	DefaultRelayDurationLimit = 5 * time.Minute
+)
+
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	golog.SetLogLevel("autorelay", "INFO")
+	golog.SetLogLevel("autorelay", "DEBUG")
 	relay, err := relayv2.New(
 		node,
 		relayv2.WithLimit(&relayv2.RelayLimit{
-			Duration: 5 * time.Minute,
-			Data:     1 << 19, // 512kb
+			Duration: DefaultRelayDurationLimit,
+			Data:     DefaultRelayDataLimit,
 		}),
 	)
 	return relay, err
-}
-
-// TODO
-func waitRelayReadiness(node warpnet.P2PNode) error {
-	ctx, cancelF := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancelF()
-
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			for _, addr := range node.Addrs() {
-				if strings.Contains(addr.String(), "p2p-circuit") {
-					log.Infoln("relay: is active, address:", addr)
-					return nil
-				}
-			}
-		case <-ctx.Done():
-			return errors.New("relay readiness timeout")
-		}
-	}
 }

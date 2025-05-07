@@ -11,8 +11,8 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
-	"github.com/labstack/gommon/bytes"
 	"github.com/libp2p/go-libp2p"
+	libp2pConfig "github.com/libp2p/go-libp2p/config"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/pnet"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
@@ -65,7 +65,8 @@ func NewWarpNode(
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
-	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
+	defaultLimits := rcmgr.DefaultLimits.AutoScale()
+	limiter := rcmgr.NewFixedLimiter(defaultLimits)
 
 	manager, err := connmgr.NewConnManager(
 		100,
@@ -76,10 +77,12 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	peersList := store.PeersWithAddrs()
-	staticRelaysList := make([]warpnet.PeerAddrInfo, 0, len(peersList))
-	for _, p := range peersList {
-		info := store.PeerInfo(p)
+	infos, err := config.ConfigFile.Node.AddrInfos()
+	if err != nil {
+		return nil, err
+	}
+	staticRelaysList := make([]warpnet.PeerAddrInfo, 0, len(infos))
+	for _, info := range infos {
 		staticRelaysList = append(staticRelaysList, info)
 	}
 
@@ -87,8 +90,15 @@ func NewWarpNode(
 	if err != nil {
 		return nil, err
 	}
-
+	
 	addrManager := NewAddressManager()
+
+	ForcePrivateOption := libp2p.ForceReachabilityPrivate
+	if ownerId == warpnet.BootstrapOwner {
+		ForcePrivateOption = func() libp2p.Option {
+			return func(cfg *libp2pConfig.Config) error { return nil }
+		}
+	}
 
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
@@ -112,14 +122,16 @@ func NewWarpNode(
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
-		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{ // libp2p.EnableRelay() enabled by default
-			Duration: 5 * time.Minute,
-			Data:     bytes.MiB,
+		libp2p.EnableRelay(),
+		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{
+			Duration: relay.DefaultRelayDurationLimit,
+			Data:     relay.DefaultRelayDataLimit,
 		})),
 		libp2p.EnableRelay(),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
+		ForcePrivateOption(),
 	)
 
 	if err != nil {
@@ -223,6 +235,9 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	addresses := make([]string, 0, len(addrs))
 	for _, a := range addrs {
 		if !warpnet.IsPublicMultiAddress(a) {
+			continue
+		}
+		if strings.Contains(a.String(), "p2p-circuit") {
 			continue
 		}
 		addresses = append(addresses, a.String())

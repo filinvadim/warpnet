@@ -205,6 +205,7 @@ type WarpRoutingFunc func(node P2PNode) (WarpPeerRouting, error)
 const (
 	P_IP4 = multiaddr.P_IP4
 	P_IP6 = multiaddr.P_IP6
+	P_TCP = multiaddr.P_TCP
 )
 
 func IsPublicMultiAddress(maddr WarpAddress) bool {

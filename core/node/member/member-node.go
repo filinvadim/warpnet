@@ -111,6 +111,67 @@ func NewMemberNode(
 	return mn, nil
 }
 
+func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
+	m.pubsubService.Run(m, clientNode)
+	if err := m.discService.Run(m); err != nil {
+		return err
+	}
+
+	if err := m.raft.Sync(m); err != nil {
+		return fmt.Errorf("member: consensus failed to sync: %v", err)
+	}
+	nodeInfo := m.NodeInfo()
+
+	m.mdnsService.Start(m)
+
+	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
+	if err != nil {
+		return fmt.Errorf("member: failed to get owner user: %v", err)
+	}
+
+	err = m.retrier.Try(context.Background(), func() error {
+		return m.raft.AskUserValidation(ownerUser)
+	})
+	if err != nil {
+		//log.Errorf("member: validate owner user by consensus: %v", err)
+		return fmt.Errorf("member: validate owner user by consensus: %v", err)
+	}
+	println()
+	fmt.Printf(
+		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
+		nodeInfo.ID.String(), nodeInfo.Addresses,
+	)
+	println()
+	return nil
+}
+
+type streamNodeID = string
+
+func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
+	bt, err := m.Stream(nodeIdStr, path, data)
+	if errors.Is(err, warpnet.ErrNodeIsOffline) {
+		m.setUserOffline(nodeIdStr)
+	}
+	return bt, err
+}
+
+func (m *MemberNode) setUserOffline(nodeIdStr streamNodeID) {
+	u, err := m.userRepo.GetByNodeID(nodeIdStr)
+	if errors.Is(err, database.ErrUserNotFound) {
+		return
+	}
+	if err != nil {
+		log.Warningf("member: stream: failed to get user: %v", err)
+		return
+	}
+	u.IsOffline = true
+	_, err = m.userRepo.Update(u.Id, u)
+	if err != nil {
+		log.Warningf("member: stream: failed to set user offline: %v", err)
+		return
+	}
+}
+
 func (m *MemberNode) setupHandlers(
 	authRepo AuthProvider, userRepo UserProvider, followRepo FollowStorer, consRepo ConsensusStorer, db Storer,
 ) {
@@ -276,98 +337,53 @@ func (m *MemberNode) setupHandlers(
 	)
 }
 
-func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
-	m.pubsubService.Run(m, clientNode)
-	if err := m.discService.Run(m); err != nil {
-		return err
-	}
-
-	if err := m.raft.Sync(m); err != nil {
-		return fmt.Errorf("member: consensus failed to sync: %v", err)
-	}
-	nodeInfo := m.NodeInfo()
-
-	m.mdnsService.Start(m)
-
-	ownerUser, err := m.userRepo.Get(nodeInfo.OwnerId)
-	if err != nil {
-		return fmt.Errorf("member: failed to get owner user: %v", err)
-	}
-
-	err = m.retrier.Try(context.Background(), func() error {
-		return m.raft.AskUserValidation(ownerUser)
-	})
-	if err != nil {
-		//log.Errorf("member: validate owner user by consensus: %v", err)
-		return fmt.Errorf("member: validate owner user by consensus: %v", err)
-	}
-	println()
-	fmt.Printf(
-		"\033[1mNODE STARTED WITH ID %s AND ADDRESSES %v\033[0m\n",
-		nodeInfo.ID.String(), nodeInfo.Addresses,
-	)
-	println()
-	return nil
-}
-
-type streamNodeID = string
-
-func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
-	bt, err := m.Stream(nodeIdStr, path, data)
-	if errors.Is(err, warpnet.ErrNodeIsOffline) {
-		m.setUserOffline(nodeIdStr)
-	}
-	return bt, err
-}
-
-func (m *MemberNode) setUserOffline(nodeIdStr streamNodeID) {
-	u, err := m.userRepo.GetByNodeID(nodeIdStr)
-	if errors.Is(err, database.ErrUserNotFound) {
-		return
-	}
-	if err != nil {
-		log.Warningf("member: stream: failed to get user: %v", err)
-		return
-	}
-	u.IsOffline = true
-	_, err = m.userRepo.Update(u.Id, u)
-	if err != nil {
-		log.Warningf("member: stream: failed to set user offline: %v", err)
-		return
-	}
-}
-
 func (m *MemberNode) Stop() {
 	if m == nil {
 		return
 	}
+	log.Infoln("8")
+
 	if m.discService != nil {
 		m.discService.Close()
 	}
+	log.Infoln("7")
+
 	if m.mdnsService != nil {
 		m.mdnsService.Close()
 	}
+	log.Infoln("6")
+
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
 			log.Errorf("member: failed to close pubsub: %v", err)
 		}
 	}
+	log.Infoln("5")
+
 	if m.providerStore != nil {
 		if err := m.providerStore.Close(); err != nil {
 			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
+	log.Infoln("4")
+
 	if m.dHashTable != nil {
 		m.dHashTable.Close()
 	}
+	log.Infoln("3")
+
 	if m.raft != nil {
 		m.raft.Shutdown()
 	}
+	log.Infoln("2")
+
 	if m.nodeRepo != nil {
 		if err := m.nodeRepo.Close(); err != nil {
 			log.Errorf("member: failed to close node repo: %v", err)
 		}
 	}
+	log.Infoln("1")
 
 	m.StopNode()
+	log.Infoln("0")
 }

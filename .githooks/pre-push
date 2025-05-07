@@ -9,6 +9,7 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
+# CURRENT_VERSION=$(grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z\.-]+)?' "$FILE")
 CURRENT_VERSION=$(grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+' "$FILE")
 
 # Проверяем, что пушится

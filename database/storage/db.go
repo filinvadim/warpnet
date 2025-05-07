@@ -88,7 +88,8 @@ func New(
 		WithIndexCacheSize(256 << 20).
 		WithCompression(options.Snappy).
 		WithNumCompactors(2).
-		WithLoggingLevel(badger.WARNING)
+		WithLoggingLevel(badger.ERROR).
+		WithBlockCacheSize(512 << 20)
 	if isInMemory {
 		opts = opts.WithDir("")
 		opts = opts.WithValueDir("")
@@ -154,7 +155,7 @@ func (db *DB) Run(username, password string) (err error) {
 
 func (db *DB) runEventualGC() {
 	log.Infoln("database: garbage collection started")
-	gcTicker := time.NewTicker(time.Minute * 5)
+	gcTicker := time.NewTicker(time.Hour * 8)
 	defer gcTicker.Stop()
 
 	dirTicker := time.NewTicker(time.Second)
