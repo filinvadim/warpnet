@@ -426,22 +426,18 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 }
 
 func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
-	fmt.Println("consensus: adding voter func !!!!!!!!!!!!!!!!!!!!!!!", info.String())
 	if c.raft == nil {
-		fmt.Println("		no raft")
 		return
 	}
 	if info.ID.String() == "" {
-		fmt.Println("		no info ID")
-
+		log.Warningf("consensus: add voter: no voter id: %s", info.String())
 		return
 	}
 
 	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		fmt.Println("		not a leader")
-
+		log.Infof("consensus: add voter %s: not a leader", info.String())
 		return
 	}
 
@@ -449,7 +445,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	addr := raft.ServerAddress(info.ID.String())
 
 	if _, err := c.cache.getVoter(id); err == nil {
-		fmt.Println("		voter already cached")
+		log.Infof("consensus: add voter: already cached: %s", info.String())
 		return
 	}
 
