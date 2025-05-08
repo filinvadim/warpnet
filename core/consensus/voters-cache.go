@@ -48,7 +48,7 @@ func (d *votersCache) removeVoter(key raft.ServerID) error {
 		return nil
 	}
 
-	if time.Since(v.addedAt) < (time.Hour * 8) {
+	if time.Since(v.addedAt) < (time.Minute * 5) {
 		return errTooSoonToRemoveVoter // flapping prevention
 	}
 

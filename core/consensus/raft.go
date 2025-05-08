@@ -426,6 +426,8 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 }
 
 func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
+	c.waitSync()
+
 	if c.raft == nil {
 		return
 	}
@@ -433,8 +435,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		log.Warningf("consensus: add voter: no voter id: %s", info.String())
 		return
 	}
-
-	c.waitSync()
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		log.Infof("consensus: add voter %s: not a leader", info.String())
@@ -451,7 +451,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 
 	log.Infof("consensus: new voter added %s", info.ID.String())
 
-	c.cache.addVoter(id, raft.Server{
+	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal flapping
 		Suffrage: raft.Voter,
 		ID:       id,
 		Address:  addr,
@@ -460,6 +460,8 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 }
 
 func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
+	c.waitSync()
+
 	if c.raft == nil {
 		return
 	}
@@ -467,13 +469,7 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 		return
 	}
 
-	c.waitSync()
-
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		return
-	}
-
-	if _, err := c.cache.getVoter(raft.ServerID(id.String())); errors.Is(err, errVoterNotFound) {
 		return
 	}
 
@@ -590,11 +586,11 @@ func (c *consensusService) AskLeaderValidation() error {
 }
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
+	c.waitSync()
+
 	if c.raft == nil {
 		return nil, errors.New("consensus: nil node")
 	}
-
-	c.waitSync()
 
 	wait := c.raft.GetConfiguration()
 	if len(wait.Configuration().Servers) <= 1 {
@@ -622,11 +618,11 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 }
 
 func (c *consensusService) CurrentState() (*KVState, error) {
+	c.waitSync()
+
 	if c.raft == nil {
 		return nil, errors.New("consensus: nil node")
 	}
-
-	c.waitSync()
 
 	currentState, err := c.consensus.GetCurrentState()
 	if err != nil {
