@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
+	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
@@ -21,43 +22,12 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
-	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
 )
 
 var _ = golog.Config{}
-
-/*
-  The libp2p Relay v2 library is an improved version of the connection relay mechanism in libp2p,
-  designed for scenarios where nodes cannot establish direct connections due to NAT, firewalls,
-  or other network restrictions.
-
-  In a standard P2P network, nodes are expected to connect directly to each other. However, if one
-  or both nodes are behind NAT or a firewall, direct connections may be impossible. In such cases,
-  Relay v2 enables traffic to be relayed through intermediary nodes (relay nodes), allowing communication
-  even in restricted network environments.
-
-  ### **Key Features of libp2p Relay v2:**
-  - **Automatic Relay Discovery and Usage**
-    - If a node cannot establish a direct connection, it automatically finds a relay node.
-  - **Operating Modes:**
-    - **Active relay:** A node can act as a relay for others.
-    - **Passive relay:** A node uses relay services without providing its own resources.
-  - **Hole Punching**
-    - Uses NAT traversal techniques (e.g., **DCUtR – Direct Connection Upgrade through Relay**)
-      to attempt a direct connection before falling back to a relay.
-  - **More Efficient Routing**
-    - Relay v2 selects low-latency routes instead of simply forwarding all traffic through a single node.
-  - **Bandwidth Optimization**
-
-  ### **When is Relay v2 Needed?**
-  - Nodes do not have a public IP address and are behind NAT.
-  - A connection is required between network participants who cannot connect directly.
-  - Reducing relay server load is important (compared to Relay v1).
-  - **DCUtR is used** to attempt NAT traversal before falling back to a relay.
-*/
 
 const (
 	DefaultRelayDataLimit     = 32 << 20 // 32 MiB
@@ -79,8 +49,8 @@ type WarpNode struct {
 	ctx         context.Context
 	node        warpnet.P2PNode
 	addrManager AddressManager
-
-	streamer Streamer
+	relay       *relayv2.Relay
+	streamer    Streamer
 
 	ownerId  string
 	isClosed *atomic.Bool
@@ -132,7 +102,7 @@ func NewWarpNode(
 	addrManager := NewAddressManager()
 
 	_ = golog.SetLogLevel("autorelay", "DEBUG")
-	_ = golog.SetLogLevel("relay-v2-hop", "DEBUG")
+	_ = golog.SetLogLevel("relay", "DEBUG")
 	_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
 	_ = golog.SetLogLevel("autonatv2", "DEBUG")
 	_ = golog.SetLogLevel("nat", "DEBUG")
@@ -175,23 +145,25 @@ func NewWarpNode(
 		return nil, fmt.Errorf("node: failed to init node: %v", err)
 	}
 
-	id := node.ID()
-	peerInfo := node.Peerstore().PeerInfo(id)
-
-	plainAddrs := make([]string, 0, len(peerInfo.Addrs))
-	for _, a := range peerInfo.Addrs {
-		plainAddrs = append(plainAddrs, a.String())
+	relayService, err := relay.NewRelay(node)
+	if err != nil {
+		return nil, fmt.Errorf("node: failed to create relay: %v", err)
 	}
 
 	wn := &WarpNode{
 		ctx:         ctx,
 		node:        node,
 		addrManager: addrManager,
+		relay:       relayService,
 		ownerId:     ownerId,
 		streamer:    stream.NewStreamPool(ctx, node),
 		isClosed:    new(atomic.Bool),
 		version:     config.ConfigFile.Version,
 		startTime:   time.Now(),
+	}
+
+	for _, p := range wn.SupportedProtocols() {
+		log.Infoln("base node: supported protocol:", p)
 	}
 
 	return wn, nil
@@ -224,43 +196,15 @@ func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.Warp
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
-func (n *WarpNode) SupportedProtocols() []string {
-	protocols := n.node.Mux().Protocols()
-	filtered := make([]string, 0, len(protocols))
-	for _, p := range protocols {
-		if strings.HasPrefix(string(p), "/ipfs") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/libp2p") {
-			continue
-		}
-		if strings.Contains(string(p), "/kad/") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/meshsub") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/floodsub") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/private") { // hide it just in case
-			continue
-		}
-		if strings.Contains(string(p), "/admin/") {
-			continue
-		}
-		if strings.HasPrefix(string(p), "/raft") {
-			continue
-		}
-		filtered = append(filtered, string(p))
-	}
-	return filtered
+func (n *WarpNode) SupportedProtocols() []warpnet.WarpProtocolID {
+	return n.node.Mux().Protocols()
 }
 
 func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	if n == nil || n.node == nil || n.node.Network() == nil || n.node.Peerstore() == nil {
 		return warpnet.NodeInfo{}
 	}
+	relayState := "Waiting..."
 
 	addrs := n.node.Peerstore().Addrs(n.node.ID())
 	addresses := make([]string, 0, len(addrs))
@@ -269,16 +213,10 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 			continue
 		}
 		if strings.Contains(a.String(), "p2p-circuit") {
+			relayState = "Running"
 			continue
 		}
 		addresses = append(addresses, a.String())
-	}
-
-	relayState := "Waiting..."
-	for _, addr := range n.node.Addrs() {
-		if strings.Contains(addr.String(), "p2p-circuit") {
-			relayState = "Running"
-		}
 	}
 
 	return warpnet.NodeInfo{
@@ -379,13 +317,15 @@ func (n *WarpNode) StopNode() {
 		return
 	}
 
+	if n.relay != nil {
+		_ = n.relay.Close()
+	}
+
 	if err := n.node.Close(); err != nil {
 		log.Errorf("node: failed to close: %v", err)
 	}
 	n.isClosed.Store(true)
 	n.node = nil
 	n.addrManager = nil
-	time.Sleep(time.Duration(rand.Intn(999)) * time.Millisecond) // jitter
-
 	return
 }

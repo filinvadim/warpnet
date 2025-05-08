@@ -21,6 +21,7 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"time"
 )
 
@@ -341,49 +342,65 @@ func (m *MemberNode) Stop() {
 	if m == nil {
 		return
 	}
-	log.Infoln("8")
 
-	if m.discService != nil {
-		m.discService.Close()
-	}
-	log.Infoln("7")
-
-	if m.mdnsService != nil {
-		m.mdnsService.Close()
-	}
-	log.Infoln("6")
-
-	if m.pubsubService != nil {
-		if err := m.pubsubService.Close(); err != nil {
-			log.Errorf("member: failed to close pubsub: %v", err)
+	g, _ := errgroup.WithContext(m.ctx)
+	g.Go(func() error {
+		if m.discService != nil {
+			m.discService.Close()
 		}
-	}
-	log.Infoln("5")
+		return nil
+	})
 
-	if m.providerStore != nil {
-		if err := m.providerStore.Close(); err != nil {
-			log.Errorf("member: failed to close provider: %v", err)
+	g.Go(func() error {
+		if m.mdnsService != nil {
+			m.mdnsService.Close()
 		}
-	}
-	log.Infoln("4")
+		return nil
+	})
 
-	if m.dHashTable != nil {
-		m.dHashTable.Close()
-	}
-	log.Infoln("3")
-
-	if m.raft != nil {
-		m.raft.Shutdown()
-	}
-	log.Infoln("2")
-
-	if m.nodeRepo != nil {
-		if err := m.nodeRepo.Close(); err != nil {
-			log.Errorf("member: failed to close node repo: %v", err)
+	g.Go(func() error {
+		if m.pubsubService != nil {
+			if err := m.pubsubService.Close(); err != nil {
+				log.Errorf("member: failed to close pubsub: %v", err)
+			}
 		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if m.providerStore != nil {
+			if err := m.providerStore.Close(); err != nil {
+				log.Errorf("member: failed to close provider: %v", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if m.dHashTable != nil {
+			m.dHashTable.Close()
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if m.raft != nil {
+			m.raft.Shutdown()
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if m.nodeRepo != nil {
+			if err := m.nodeRepo.Close(); err != nil {
+				log.Errorf("member: failed to close node repo: %v", err)
+			}
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		log.Errorf("member: closing failed %v", err)
 	}
-	log.Infoln("1")
 
 	m.StopNode()
-	log.Infoln("0")
 }

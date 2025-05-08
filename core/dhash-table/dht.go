@@ -3,6 +3,7 @@ package dhash_table
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
@@ -203,16 +204,21 @@ func (d *DistributedHashTable) runRendezvousDiscovery() {
 
 	log.Infoln("dht rendezvous: is running")
 
-	select {
-	case peerInfo := <-peerChan:
-		log.Infof("dht rendezvous: found new peer: %s", peerInfo.String())
-		for _, addF := range d.addFuncs {
-			addF(peerInfo)
+	for {
+		select {
+		case peerInfo := <-peerChan:
+			if len(peerInfo.Addrs) == 0 {
+				continue
+			}
+			log.Infof("dht rendezvous: found new peer: %s", peerInfo.String())
+			for _, addF := range d.addFuncs {
+				addF(peerInfo)
+			}
+		case <-d.stopChan:
+			return
+		case <-d.ctx.Done():
+			return
 		}
-	case <-d.stopChan:
-		return
-	case <-d.ctx.Done():
-		return
 	}
 }
 
@@ -253,11 +259,12 @@ func (d *DistributedHashTable) Close() {
 	if d == nil || d.dht == nil {
 		return
 	}
+	fmt.Println("closing dht............................................")
+	close(d.stopChan)
 
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
 	d.dht = nil
-	close(d.stopChan)
 	log.Infoln("dht: table closed")
 }
