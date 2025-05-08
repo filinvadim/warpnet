@@ -444,11 +444,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	id := raft.ServerID(info.ID.String())
 	addr := raft.ServerAddress(info.ID.String())
 
-	if _, err := c.cache.getVoter(id); err == nil {
-		log.Infof("consensus: add voter: already cached: %s", info.String())
-		return
-	}
-
 	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
