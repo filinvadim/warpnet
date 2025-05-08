@@ -125,6 +125,8 @@ func NewWarpNode(
 	addrManager := NewAddressManager()
 
 	_ = golog.SetLogLevel("autorelay", "DEBUG")
+	_ = golog.SetLogLevel("relay", "DEBUG")
+	_ = golog.SetLogLevel("relayv2", "DEBUG")
 
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
