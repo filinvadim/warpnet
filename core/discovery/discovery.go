@@ -200,9 +200,6 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 	}
 	defer func() { recover() }()
 
-	if !s.limiter.Allow() {
-		return
-	}
 	if peerInfo.ID == s.node.NodeInfo().ID {
 		return
 	}
@@ -253,10 +250,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if s.isMineBootstrapNodes(pi) {
-		return
-	}
-
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
 	if err != nil {
 		log.Errorf("discovery: failed to check blocklist: %s", err)
@@ -268,6 +261,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	for _, h := range s.handlers {
 		h(pi)
+	}
+
+	if s.isMineBootstrapNodes(pi) {
+		return
 	}
 
 	if !s.hasPublicAddresses(pi.Addrs) {
