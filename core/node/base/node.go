@@ -27,6 +27,8 @@ import (
 	"time"
 )
 
+var _ = golog.Config{}
+
 /*
   The libp2p Relay v2 library is an improved version of the connection relay mechanism in libp2p,
   designed for scenarios where nodes cannot establish direct connections due to NAT, firewalls,
@@ -112,8 +114,13 @@ func NewWarpNode(
 	if err != nil {
 		return nil, err
 	}
+
+	currentNodeID, _ := warpnet.IDFromPrivateKey(privKey)
 	staticRelaysList := make([]warpnet.PeerAddrInfo, 0, len(infos))
 	for _, info := range infos {
+		if info.ID == currentNodeID {
+			continue
+		}
 		staticRelaysList = append(staticRelaysList, info)
 	}
 
@@ -125,8 +132,11 @@ func NewWarpNode(
 	addrManager := NewAddressManager()
 
 	_ = golog.SetLogLevel("autorelay", "DEBUG")
-	_ = golog.SetLogLevel("relay", "DEBUG")
-	_ = golog.SetLogLevel("relayv2", "DEBUG")
+	_ = golog.SetLogLevel("relay-v2-hop", "DEBUG")
+	_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
+	_ = golog.SetLogLevel("autonatv2", "DEBUG")
+	_ = golog.SetLogLevel("nat", "DEBUG")
+	_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
 
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
