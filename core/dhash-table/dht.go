@@ -76,6 +76,7 @@ type DistributedHashTable struct {
 	removeF       func(warpnet.WarpPeerID)
 	dht           *dht.IpfsDHT
 	stopChan      chan struct{}
+	cancelFunc    context.CancelFunc
 }
 
 func defaultNodeRemovedCallback(id warpnet.WarpPeerID) {
@@ -196,7 +197,10 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		return
 	}
 
-	peerChan, err := routingDiscovery.FindPeers(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
+	rendezvousCtx, cancel := context.WithCancel(context.Background())
+	d.cancelFunc = cancel
+
+	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
@@ -261,6 +265,9 @@ func (d *DistributedHashTable) Close() {
 	defer func() { recover() }()
 	if d == nil || d.dht == nil {
 		return
+	}
+	if d.cancelFunc != nil {
+		d.cancelFunc()
 	}
 	close(d.stopChan)
 
