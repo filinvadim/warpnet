@@ -453,7 +453,9 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 
-	log.Infof("consensus: new voter added %s", info.ID.String())
+	if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
+		log.Infof("consensus: new voter added %s", info.ID.String())
+	}
 
 	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal flapping
 		Suffrage: raft.Voter,
