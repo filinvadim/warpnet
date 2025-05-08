@@ -450,6 +450,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	wait := c.raft.AddVoter(id, addr, 0, 30*time.Second)
 	if wait.Error() != nil {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
+		return
 	}
 
 	log.Infof("consensus: new voter added %s", info.ID.String())

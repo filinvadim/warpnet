@@ -534,7 +534,7 @@ func (g *warpPubSub) publishPeerInfo(topic *pubsub.Topic) error {
 			break
 		}
 		pi := g.serverNode.Node().Peerstore().PeerInfo(id)
-		addrInfo := warpnet.WarpAddrInfo{pi.ID, make([]string, 0, len(pi.Addrs))}
+		addrInfo := warpnet.WarpAddrInfo{ID: pi.ID, Addrs: make([]string, 0, len(pi.Addrs))}
 		for _, addr := range pi.Addrs {
 			addrInfo.Addrs = append(addrInfo.Addrs, addr.String())
 		}
