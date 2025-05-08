@@ -13,12 +13,16 @@ import (
 	"github.com/filinvadim/warpnet/security"
 	golog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
+	libp2pConfig "github.com/libp2p/go-libp2p/config"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/pnet"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
@@ -106,8 +110,22 @@ func NewWarpNode(
 	_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
 
 	reachibilityF := libp2p.ForceReachabilityPrivate
+	autotaticRelaysF := libp2p.EnableAutoRelayWithStaticRelays
+	natServiceF := func() libp2p.Option { disabled() }
+	natPortMapF := libp2p.NATPortMap
+	holePunchingF := libp2p.EnableHolePunching
 	if ownerId == warpnet.BootstrapOwner {
 		reachibilityF = libp2p.ForceReachabilityPublic
+		autotaticRelaysF = func(static []peer.AddrInfo, opts ...autorelay.Option) libp2p.Option {
+			return disabled()
+		}
+		natServiceF = libp2p.EnableNATService
+		natPortMapF = disabled
+		holePunchingF = func(opts ...holepunch.Option) libp2p.Option {
+			return func(cfg *libp2pConfig.Config) error {
+				return nil
+			}
+		}
 	}
 
 	node, err := libp2p.New(
@@ -125,21 +143,21 @@ func NewWarpNode(
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.EnableAutoNATv2(),
-		libp2p.EnableNATService(),
-		libp2p.NATPortMap(),
+		natServiceF(),
+		natPortMapF(),
 		libp2p.PrivateNetwork(pnet.PSK(psk)),
 		libp2p.UserAgent(ServiceName),
-		libp2p.EnableHolePunching(),
+		holePunchingF(),
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
+		libp2p.EnableRelay(),
 		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{
 			Duration: relay.DefaultRelayDurationLimit,
 			Data:     relay.DefaultRelayDataLimit,
 		}),
 			relayv2.WithResources(relayv2.DefaultResources()),
 		),
-		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
+		autotaticRelaysF(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 		reachibilityF(),
@@ -166,6 +184,10 @@ func NewWarpNode(
 	}
 
 	return wn, wn.validateSupportedProtocols()
+}
+
+func disabled() libp2p.Option {
+	return func(cfg *libp2pConfig.Config) error { return nil }
 }
 
 func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
