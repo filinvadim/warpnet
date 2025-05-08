@@ -113,7 +113,7 @@ func NewRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
+	l := newConsensusLogger(log.DebugLevel.String(), "raft")
 
 	if isBootstrap {
 		basePath := "/tmp/snapshot"
@@ -176,7 +176,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
+		node, newConsensusLogger(log.DebugLevel.String(), "raft-libp2p-transport"),
 	)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
@@ -212,10 +212,6 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	)
 	if err != nil {
 		return fmt.Errorf("consensus: failed to create node: %w", err)
-	}
-
-	if err := c.waitClusterReady(); err != nil {
-		return err
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
@@ -261,21 +257,21 @@ func (c *consensusService) bootstrap(id raft.ServerID, infos []warpnet.PeerAddrI
 }
 
 func (c *consensusService) waitClusterReady() error {
-	clusterReadyChan := make(chan error, 1)
+	clusterReadyChan := make(chan raft.ConfigurationFuture, 1)
 
 	timeoutTimer := time.NewTimer(time.Second * 10)
 	defer timeoutTimer.Stop()
 
-	go func(crChan chan error) {
-		wait := c.raft.GetConfiguration()
-		crChan <- wait.Error()
+	go func(crChan chan raft.ConfigurationFuture) {
+		crChan <- c.raft.GetConfiguration()
 	}(clusterReadyChan)
 
 	select {
-	case err := <-clusterReadyChan:
-		if err != nil {
-			return fmt.Errorf("consensus: config fetch error: %w", err)
+	case wait := <-clusterReadyChan:
+		if wait.Error() != nil {
+			return fmt.Errorf("consensus: config fetch error: %w", wait.Error())
 		}
+		log.Infof("consensus: cluster is ready: %v", wait.Configuration().Servers)
 		break
 	case <-timeoutTimer.C:
 		return errors.New("consensus: getting configuration timeout — possibly broken cluster")
@@ -296,6 +292,10 @@ func (c *consensusService) sync() error {
 
 	if c.ctx.Err() != nil {
 		return c.ctx.Err()
+	}
+
+	if err := c.waitClusterReady(); err != nil {
+		return err
 	}
 
 	leaderCtx, leaderCancel := context.WithTimeout(context.Background(), time.Minute)
@@ -479,7 +479,10 @@ func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 		return
 	}
 
-	if err := c.cache.removeVoter(raft.ServerID(id.String())); errors.Is(err, errTooSoonToRemoveVoter) {
+	err := c.cache.removeVoter(raft.ServerID(id.String()))
+
+	if errors.Is(err, errTooSoonToRemoveVoter) {
+		log.Infof("consensus: removing voter %s is too soon, abort", id.String())
 		return
 	}
 	log.Infof("consensus: removing voter %s", id.String())
