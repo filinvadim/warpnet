@@ -308,22 +308,13 @@ func (c *consensusService) sync() error {
 	}
 
 	log.Infoln("consensus: waiting for leader...")
-	leaderID, err := cs.waitForLeader(leaderCtx)
-	if err != nil {
-		log.Errorf("waiting for leader: %v", err)
-	}
-
-	if string(c.raftID) == leaderID {
-		log.Infoln("consensus: node is a leader!")
-	} else {
-		log.Infof("consensus: current leader: %s", leaderID)
-	}
+	go cs.waitForLeader(leaderCtx)
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
 	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Minute)
 	defer voterCancel()
 
-	if err = cs.waitForVoter(voterCtx); err != nil {
+	if err := cs.waitForVoter(voterCtx); err != nil {
 		return fmt.Errorf("consensus: waiting to become a voter: %w", err)
 	}
 	log.Infoln("consensus: node received voter status")
@@ -331,7 +322,7 @@ func (c *consensusService) sync() error {
 	updatesCtx, updatesCancel := context.WithTimeout(context.Background(), time.Minute*2)
 	defer updatesCancel()
 
-	if err = cs.waitForUpdates(updatesCtx); err != nil {
+	if err := cs.waitForUpdates(updatesCtx); err != nil {
 		log.Errorf("consensus: waiting for consensus updates: %v", err)
 	}
 
@@ -339,21 +330,30 @@ func (c *consensusService) sync() error {
 	return nil
 }
 
-func (c *consensusSync) waitForLeader(ctx context.Context) (string, error) {
+func (c *consensusSync) waitForLeader(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		if c.ctx.Err() != nil {
-			return "", c.ctx.Err()
+			return
 		}
 		select {
 		case <-ticker.C:
-			if addr, id := c.raft.LeaderWithID(); addr != "" {
-				return string(id), nil
+			addr, leaderID := c.raft.LeaderWithID()
+			if addr == "" {
+				continue
 			}
+			if c.raftID == leaderID {
+				log.Infoln("consensus: node is a leader!")
+				return
+			}
+			log.Infof("consensus: current leader: %s", leaderID)
+			return
+
 		case <-ctx.Done():
-			return "", ctx.Err()
+			log.Errorf("consensus: waiting for leader: %v", ctx.Err())
+			return
 		}
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
-	"github.com/filinvadim/warpnet/core/relay"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
@@ -27,6 +26,44 @@ import (
 	"time"
 )
 
+/*
+  The libp2p Relay v2 library is an improved version of the connection relay mechanism in libp2p,
+  designed for scenarios where nodes cannot establish direct connections due to NAT, firewalls,
+  or other network restrictions.
+
+  In a standard P2P network, nodes are expected to connect directly to each other. However, if one
+  or both nodes are behind NAT or a firewall, direct connections may be impossible. In such cases,
+  Relay v2 enables traffic to be relayed through intermediary nodes (relay nodes), allowing communication
+  even in restricted network environments.
+
+  ### **Key Features of libp2p Relay v2:**
+  - **Automatic Relay Discovery and Usage**
+    - If a node cannot establish a direct connection, it automatically finds a relay node.
+  - **Operating Modes:**
+    - **Active relay:** A node can act as a relay for others.
+    - **Passive relay:** A node uses relay services without providing its own resources.
+  - **Hole Punching**
+    - Uses NAT traversal techniques (e.g., **DCUtR – Direct Connection Upgrade through Relay**)
+      to attempt a direct connection before falling back to a relay.
+  - **More Efficient Routing**
+    - Relay v2 selects low-latency routes instead of simply forwarding all traffic through a single node.
+  - **Bandwidth Optimization**
+
+  ### **When is Relay v2 Needed?**
+  - Nodes do not have a public IP address and are behind NAT.
+  - A connection is required between network participants who cannot connect directly.
+  - Reducing relay server load is important (compared to Relay v1).
+  - **DCUtR is used** to attempt NAT traversal before falling back to a relay.
+*/
+
+const (
+	DefaultRelayDataLimit     = 32 << 20 // 32 MiB
+	DefaultRelayDurationLimit = 5 * time.Minute
+
+	DefaultTimeout = 360 * time.Second
+	ServiceName    = "warpnet"
+)
+
 type Streamer interface {
 	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
@@ -35,16 +72,10 @@ type AddressManager interface {
 	Add(addr warpnet.WarpAddress, ttl time.Duration)
 }
 
-const (
-	DefaultTimeout = 360 * time.Second
-	ServiceName    = "warpnet"
-)
-
 type WarpNode struct {
 	ctx         context.Context
 	node        warpnet.P2PNode
 	addrManager AddressManager
-	relay       warpnet.WarpRelayCloser
 
 	streamer Streamer
 
@@ -114,25 +145,19 @@ func NewWarpNode(
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
-		libp2p.EnableRelay(),
 		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{
-			Duration: relay.DefaultRelayDurationLimit,
-			Data:     relay.DefaultRelayDataLimit,
+			Duration: DefaultRelayDurationLimit,
+			Data:     DefaultRelayDataLimit,
 		})),
+
 		libp2p.EnableRelay(),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 		libp2p.ForceReachabilityPrivate(),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("node: failed to init node: %v", err)
-	}
-
-	nodeRelay, err := relay.NewRelay(node)
-	if err != nil {
-		return nil, err
 	}
 
 	id := node.ID()
@@ -146,7 +171,6 @@ func NewWarpNode(
 	wn := &WarpNode{
 		ctx:         ctx,
 		node:        node,
-		relay:       nodeRelay,
 		addrManager: addrManager,
 		ownerId:     ownerId,
 		streamer:    stream.NewStreamPool(ctx, node),
@@ -323,26 +347,9 @@ func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
 		return err
 	}
 
-	proto := "ip4"
-	ipStr, err := maddr.ValueForProtocol(warpnet.P_IP4)
-	if err != nil {
-		proto = "ip6"
-		ipStr, err = maddr.ValueForProtocol(warpnet.P_IP6)
-		if err != nil {
-			return err
-		}
-	}
-
-	newMAddr, err := warpnet.NewMultiaddr(
-		fmt.Sprintf("/%s/%s/tcp/%s", proto, ipStr, config.ConfigFile.Node.Port), // default: 4001 port
-	)
-	if err != nil {
-		return err
-	}
-
 	week := time.Hour * 24 * 7
-	n.Peerstore().AddAddr(n.node.ID(), newMAddr, week)
-	n.addrManager.Add(newMAddr, week)
+	n.Peerstore().AddAddr(n.node.ID(), maddr, week)
+	n.addrManager.Add(maddr, week)
 	return nil
 }
 
@@ -356,9 +363,7 @@ func (n *WarpNode) StopNode() {
 	if n == nil || n.node == nil {
 		return
 	}
-	if n.relay != nil {
-		_ = n.relay.Close()
-	}
+
 	if err := n.node.Close(); err != nil {
 		log.Errorf("node: failed to close: %v", err)
 	}

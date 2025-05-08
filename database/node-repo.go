@@ -388,6 +388,7 @@ func (d *NodeRepo) query(tx *storage.WarpTxn, q dsq.Query, implicit bool) (dsq.R
 			closedEarly = true
 			return
 		}
+		defer it.Close()
 
 		// this iterator is part of an implicit transaction, so when
 		// we're done we must discard the transaction. It's safe to
@@ -395,8 +396,6 @@ func (d *NodeRepo) query(tx *storage.WarpTxn, q dsq.Query, implicit bool) (dsq.R
 		if implicit {
 			defer tx.Discard()
 		}
-
-		defer it.Close()
 
 		// All iterators must be started by rewinding.
 		it.Rewind()

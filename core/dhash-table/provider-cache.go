@@ -69,13 +69,13 @@ func (d *ProviderCache) dumpProviders() {
 		now := time.Now()
 		select {
 		case <-tick.C:
-			d.mutex.RLock()
+			d.mutex.Lock()
 			for key, values := range d.m {
 				for i, v := range values {
 					valuesCopy := values
 					if v.readAt.Before(now.Add(-time.Hour*24)) && i < len(valuesCopy)-1 {
 						// drop outdated items from cache
-						slices.Delete(valuesCopy, i, i+1)
+						valuesCopy = slices.Delete(valuesCopy, i, i+1)
 						delete(d.m, key)
 						d.m[key] = valuesCopy
 						continue
@@ -85,8 +85,9 @@ func (d *ProviderCache) dumpProviders() {
 					}
 				}
 			}
-			d.mutex.RUnlock()
+			d.mutex.Unlock()
 		case <-d.stopChan:
+			log.Infoln("dht: providers cache: dumping stopped")
 			return
 		}
 	}
@@ -114,7 +115,7 @@ func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []p
 		return nil, ctx.Err()
 	}
 
-	d.mutex.RLock()
+	d.mutex.Lock()
 	entries, ok := d.m[string(key)]
 	if ok {
 		for _, entry := range entries {
@@ -122,7 +123,7 @@ func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []p
 		}
 		d.m[string(key)] = entries
 	}
-	d.mutex.RUnlock()
+	d.mutex.Unlock()
 	if ok {
 		return addrs, nil
 	}
@@ -157,16 +158,20 @@ func (d *ProviderCache) Close() (err error) {
 	if d.isClosed.Load() {
 		return nil
 	}
+
 	d.mutex.RLock()
 	for key, values := range d.m {
 		for _, v := range values {
-			_ = d.db.AddProvider(d.ctx, []byte(key), v.addr)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
+			_ = d.db.AddProvider(ctx, []byte(key), v.addr)
+			cancel()
 		}
 	}
 	d.mutex.RUnlock()
+
 	close(d.stopChan)
 	d.isClosed.Store(true)
 	d.m = nil
-	log.Infoln("dht: providers cache: shut down")
+	log.Infoln("dht: providers cache: stopped")
 	return err
 }
