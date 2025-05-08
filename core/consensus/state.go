@@ -36,6 +36,10 @@ func newFSM(validators ...ConsensusValidatorFunc) *fsm {
 	}
 }
 
+func (fsm *fsm) AmendValidator(validator ConsensusValidatorFunc) {
+	fsm.validators = append(fsm.validators, validator)
+}
+
 // Apply is invoked by Raft once a log entry is commited. Do not use directly.
 func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	fsm.mux.Lock()
@@ -56,7 +60,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 		log.Errorf("consensus: failed to decode log: %v", err)
 		return fmt.Errorf("consensus: failed to decode log: %w", err)
 	}
-	
+
 	for _, validator := range fsm.validators {
 		for k, v := range newState {
 			if err := validator(k, v); err != nil {

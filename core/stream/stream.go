@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 type NodeStreamer interface {
@@ -36,7 +37,11 @@ func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byt
 	if p.ctx.Err() != nil {
 		return nil, p.ctx.Err()
 	}
-	return send(context.Background(), p.n, peerAddr, r, data)
+	// long-long wait in case of p2p-circuit stream
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
+	defer cancel()
+
+	return send(ctx, p.n, peerAddr, r, data)
 }
 
 func send(

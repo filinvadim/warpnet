@@ -311,7 +311,7 @@ func (c *consensusService) sync() error {
 	go cs.waitForLeader(leaderCtx)
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
-	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Minute)
+	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Second*90)
 	defer voterCancel()
 
 	if err := cs.waitForVoter(voterCtx); err != nil {
@@ -547,13 +547,44 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 		return fmt.Errorf("consensus: verify response unmarshal failed: %w", errResp)
 	}
 
-	updatedState := make(map[string]string)
-	if err = json.JSON.Unmarshal(resp, &updatedState); err != nil {
-		log.Errorf("consensus: failed to unmarshal updated consensus state %s: %v", resp, err)
-		return ErrConsensusRejection
+	log.Infoln("consensus: user validated")
+	return nil
+}
+
+func (c *consensusService) AskLeaderValidation() error {
+	log.Infoln("consensus: asking for leader validation...")
+
+	leaderId := c.LeaderID().String()
+	if leaderId == "" {
+		return errors.New("consensus: no leader found")
 	}
 
-	log.Infoln("consensus: user validated")
+	newState := map[string]string{
+		"leader": leaderId,
+	}
+
+	if leaderId == string(c.raftID) {
+		_, err := c.CommitState(newState)
+		if errors.Is(err, ErrNoRaftCluster) {
+			return nil
+		}
+		return fmt.Errorf("consensus: failed to commit validate leader state: %w", err)
+	}
+
+	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
+	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+		return fmt.Errorf("consensus: leader verify stream: %w", err)
+	}
+	if len(resp) == 0 {
+		return errors.New("consensus: node leader verify stream returned empty response")
+	}
+
+	var errResp event.ErrorResponse
+	if _ = json.JSON.Unmarshal(resp, &errResp); errResp.Message != "" {
+		return fmt.Errorf("consensus: verify leader response unmarshal failed: %w", errResp)
+	}
+
+	log.Infoln("consensus: leader validated")
 	return nil
 }
 

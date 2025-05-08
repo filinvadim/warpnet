@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
+	"github.com/filinvadim/warpnet/core/node/base"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database"
@@ -85,7 +86,7 @@ func StreamCreateChatHandler(
 				OwnerId:     ownerChat.OtherUserId,
 			},
 		)
-		if err != nil {
+		if err != nil && !errors.Is(err, base.ErrSelfRequest) {
 			return nil, err
 		}
 

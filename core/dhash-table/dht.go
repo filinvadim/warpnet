@@ -264,6 +264,8 @@ func (d *DistributedHashTable) Close() {
 	}
 	close(d.stopChan)
 
+	log.Infoln("dht: closing table...")
+
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}

@@ -15,9 +15,8 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
-	"net"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -67,6 +66,7 @@ type discoveryService struct {
 
 	discoveryChan chan warpnet.PeerAddrInfo
 	stopChan      chan struct{}
+	syncDone      *atomic.Bool
 }
 
 //goland:noinspection ALL
@@ -85,6 +85,7 @@ func NewDiscoveryService(
 		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version, handlers,
 		new(sync.RWMutex), addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
+		new(atomic.Bool),
 	}
 }
 
@@ -129,6 +130,10 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) error {
 }
 
 func (s *discoveryService) syncBootstrapDiscovery() error {
+	defer func() {
+		s.syncDone.Store(true)
+	}()
+
 	s.mx.RLock()
 	for id, discNode := range s.bootstrapAddrs {
 		if s.node.NodeInfo().ID == id {
@@ -247,6 +252,11 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	if pi.ID == s.node.NodeInfo().ID {
 		return
 	}
+
+	if s.isMineBootstrapNodes(pi) {
+		return
+	}
+
 	ok, err := s.nodeRepo.IsBlocklisted(s.ctx, pi.ID)
 	if err != nil {
 		log.Errorf("discovery: failed to check blocklist: %s", err)
@@ -262,11 +272,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 
 	if !s.hasPublicAddresses(pi.Addrs) {
 		log.Warnf("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
-		return
-	}
-
-	if err := pingTCP(pi); err != nil {
-		log.Errorf("discovery: failed to TCP ping peer %s: %v", pi.String(), err)
 		return
 	}
 
@@ -321,33 +326,16 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	)
 }
 
-func pingTCP(pi warpnet.PeerAddrInfo) error {
-	id := pi.ID.String()
-	for _, addr := range pi.Addrs {
-		if strings.Contains(addr.String(), "p2p-circuit") {
-			continue
-		}
-		ip, err := addr.ValueForProtocol(warpnet.P_IP4)
-		if err != nil {
-			ip, err = addr.ValueForProtocol(warpnet.P_IP6)
-			if err != nil {
-				return fmt.Errorf("no IP4 or IP6 in multiaddr %s: %w", id, err)
-			}
-		}
-		port, err := addr.ValueForProtocol(warpnet.P_TCP)
-		if err != nil {
-			return fmt.Errorf("no TCP port in multiaddr %s: %w", id, err)
-		}
-
-		standardAddr := fmt.Sprintf("%s:%s", ip, port)
-		conn, err := net.DialTimeout("tcp", standardAddr, time.Second*3)
-		if err == nil {
-			_ = conn.Close()
-			return nil
-		}
-		log.Errorf("discovery: failed to TCP ping to peer %s %s: %s", id, standardAddr, err)
+func (s *discoveryService) isMineBootstrapNodes(pi warpnet.PeerAddrInfo) bool {
+	if !s.syncDone.Load() {
+		return false
 	}
-	return fmt.Errorf("discovery: failed to TCP ping any address of peer %s", id)
+
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	_, ok := s.bootstrapAddrs[pi.ID]
+	return ok
 }
 
 func (s *discoveryService) markBootstrapDiscovered(pi warpnet.PeerAddrInfo) {
@@ -368,13 +356,16 @@ func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpne
 		return info, err
 	}
 
+	newNodeInfo := s.node.Peerstore().PeerInfo(pi.ID)
+	log.Infof("discovery: requesting node info for peer %s", newNodeInfo.String())
+
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {
-		return info, fmt.Errorf("failed to get info from new peer %s: %v", pi.String(), err)
+		return info, fmt.Errorf("failed to get info from new peer %s: %v", pi.ID.String(), err)
 	}
 
 	if infoResp == nil || len(infoResp) == 0 {
-		return info, fmt.Errorf("no info response from new peer %s", pi.String())
+		return info, fmt.Errorf("no info response from new peer %s", pi.ID.String())
 	}
 
 	err = json.JSON.Unmarshal(infoResp, &info)

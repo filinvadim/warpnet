@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/base64"
+	"errors"
 	"github.com/filinvadim/warpnet/security"
 	ws "github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -76,6 +77,9 @@ func (s *EncryptedUpgrader) OnMessage(fn func(msg []byte) ([]byte, error)) {
 }
 
 func (s *EncryptedUpgrader) readLoop() error {
+	if s == nil || s.conn == nil {
+		return errors.New("websocket connection is closed")
+	}
 	for {
 		messageType, message, err := s.conn.ReadMessage()
 		if err != nil {

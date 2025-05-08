@@ -102,11 +102,6 @@ func NewWarpNode(
 
 	addrManager := NewAddressManager()
 
-	_ = golog.SetLogLevel("autorelay", "DEBUG")
-	_ = golog.SetLogLevel("autonatv2", "DEBUG")
-	_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
-	_ = golog.SetLogLevel("identify", "DEBUG")
-
 	reachibilityF := libp2p.ForceReachabilityPrivate
 	autotaticRelaysF := libp2p.EnableAutoRelayWithStaticRelays
 	natServiceF := func() libp2p.Option { return disabled() }
@@ -125,6 +120,9 @@ func NewWarpNode(
 			}
 		}
 
+		_ = golog.SetLogLevel("autorelay", "DEBUG")
+		_ = golog.SetLogLevel("autonatv2", "DEBUG")
+		_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
 		_ = golog.SetLogLevel("relay", "DEBUG")
 		_ = golog.SetLogLevel("nat", "DEBUG")
 		_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
@@ -259,7 +257,6 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 		}
 		if strings.Contains(a.String(), "p2p-circuit") {
 			relayState = "Running"
-			continue
 		}
 		addresses = append(addresses, a.String())
 	}
@@ -299,7 +296,7 @@ func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
 	return n.node.Mux()
 }
 
-var ErrSelfRequest = errors.New("self request")
+var ErrSelfRequest = errors.New("self request is not allowed")
 
 func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
@@ -336,6 +333,8 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 	return n.streamer.Send(peerInfo, path, bt)
 }
 
+const default4001Port = "4001"
+
 func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
 	if remoteAddr == "" {
 		return errors.New("node: empty node info public address")
@@ -345,9 +344,28 @@ func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
 		return err
 	}
 
+	proto := "ip4"
+	ipStr, err := maddr.ValueForProtocol(warpnet.P_IP4)
+	if err != nil {
+		proto = "ip6"
+		ipStr, err = maddr.ValueForProtocol(warpnet.P_IP6)
+		if err != nil {
+			return err
+		}
+	}
+
+	newMAddr, err := warpnet.NewMultiaddr(
+		fmt.Sprintf("/%s/%s/tcp/%s", proto, ipStr, default4001Port),
+	)
+	if err != nil {
+		return err
+	}
+
 	week := time.Hour * 24 * 7
 	n.Peerstore().AddAddr(n.node.ID(), maddr, week)
+	n.Peerstore().AddAddr(n.node.ID(), newMAddr, week)
 	n.addrManager.Add(maddr, week)
+	n.addrManager.Add(newMAddr, week)
 	return nil
 }
 
