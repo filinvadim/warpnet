@@ -10,6 +10,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
+	golog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/pnet"
@@ -122,6 +123,8 @@ func NewWarpNode(
 	}
 
 	addrManager := NewAddressManager()
+
+	_ = golog.SetLogLevel("autorelay", "DEBUG")
 
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
