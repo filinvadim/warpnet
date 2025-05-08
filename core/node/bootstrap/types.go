@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"github.com/filinvadim/warpnet/core/consensus"
 	"github.com/filinvadim/warpnet/core/discovery"
-	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/pubsub"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/event"
@@ -13,11 +12,6 @@ import (
 type DiscoveryHandler interface {
 	HandlePeerFound(pi warpnet.PeerAddrInfo)
 	Run(n discovery.DiscoveryInfoStorer) error
-	Close()
-}
-
-type MDNSStarterCloser interface {
-	Start(n mdns.NodeConnector)
 	Close()
 }
 

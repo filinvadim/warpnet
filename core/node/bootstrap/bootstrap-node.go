@@ -9,7 +9,6 @@ import (
 	dht "github.com/filinvadim/warpnet/core/dhash-table"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
-	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/base"
 	"github.com/filinvadim/warpnet/core/pubsub"
@@ -28,7 +27,6 @@ type BootstrapNode struct {
 	*base.WarpNode
 
 	discService       DiscoveryHandler
-	mdnsService       MDNSStarterCloser
 	pubsubService     PubSubProvider
 	raft              ConsensusProvider
 	dHashTable        DistributedHashTableCloser
@@ -62,7 +60,6 @@ func NewBootstrapNode(
 
 	discService := discovery.NewBootstrapDiscoveryService(ctx, raft.AddVoter)
 
-	mdnsService := mdns.NewMulticastDNS(ctx, discService.DefaultDiscoveryHandler)
 	pubsubService := pubsub.NewPubSubBootstrap(ctx, discService.DefaultDiscoveryHandler)
 
 	memoryStore, err := pstoremem.NewPeerstore()
@@ -103,7 +100,6 @@ func NewBootstrapNode(
 	bn := &BootstrapNode{
 		WarpNode:          node,
 		discService:       discService,
-		mdnsService:       mdnsService,
 		pubsubService:     pubsubService,
 		raft:              raft,
 		dHashTable:        dHashTable,
@@ -137,8 +133,6 @@ func (bn *BootstrapNode) Start() error {
 		return err
 	}
 
-	go bn.mdnsService.Start(bn)
-
 	nodeInfo := bn.NodeInfo()
 
 	println()
@@ -162,9 +156,7 @@ func (bn *BootstrapNode) Stop() {
 	if bn.discService != nil {
 		bn.discService.Close()
 	}
-	if bn.mdnsService != nil {
-		bn.mdnsService.Close()
-	}
+
 	if bn.pubsubService != nil {
 		if err := bn.pubsubService.Close(); err != nil {
 			log.Errorf("bootstrap: failed to close pubsub: %v", err)

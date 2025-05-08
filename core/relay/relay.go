@@ -2,7 +2,6 @@ package relay
 
 import (
 	"github.com/filinvadim/warpnet/core/warpnet"
-	golog "github.com/ipfs/go-log/v2"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"time"
 )
@@ -37,20 +36,31 @@ import (
   - **DCUtR is used** to attempt NAT traversal before falling back to a relay.
 */
 
+var DefaultResources = relayv2.Resources{
+	Limit: &relayv2.RelayLimit{
+		Duration: DefaultRelayDurationLimit,
+		Data:     DefaultRelayDataLimit,
+	},
+
+	ReservationTTL: time.Hour,
+
+	MaxReservations: 128,
+	MaxCircuits:     16,
+	BufferSize:      4096,
+
+	MaxReservationsPerIP:  8,
+	MaxReservationsPerASN: 32,
+}
+
 const (
 	DefaultRelayDataLimit     = 32 << 20 // 32 MiB
 	DefaultRelayDurationLimit = 5 * time.Minute
 )
 
 func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
-	_ = golog.SetLogLevel("autorelay", "DEBUG")
 	relay, err := relayv2.New(
 		node,
-		relayv2.WithResources(relayv2.DefaultResources()),
-		relayv2.WithLimit(&relayv2.RelayLimit{
-			Duration: DefaultRelayDurationLimit,
-			Data:     DefaultRelayDataLimit,
-		}),
+		relayv2.WithResources(DefaultResources),
 	)
 	return relay, err
 }

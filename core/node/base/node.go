@@ -103,11 +103,9 @@ func NewWarpNode(
 	addrManager := NewAddressManager()
 
 	_ = golog.SetLogLevel("autorelay", "DEBUG")
-	_ = golog.SetLogLevel("relay", "DEBUG")
-	_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
 	_ = golog.SetLogLevel("autonatv2", "DEBUG")
-	_ = golog.SetLogLevel("nat", "DEBUG")
 	_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
+	_ = golog.SetLogLevel("identify", "DEBUG")
 
 	reachibilityF := libp2p.ForceReachabilityPrivate
 	autotaticRelaysF := libp2p.EnableAutoRelayWithStaticRelays
@@ -126,6 +124,11 @@ func NewWarpNode(
 				return nil
 			}
 		}
+
+		_ = golog.SetLogLevel("relay", "DEBUG")
+		_ = golog.SetLogLevel("nat", "DEBUG")
+		_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
+
 	}
 
 	node, err := libp2p.New(
@@ -151,12 +154,7 @@ func NewWarpNode(
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelay(),
-		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{
-			Duration: relay.DefaultRelayDurationLimit,
-			Data:     relay.DefaultRelayDataLimit,
-		}),
-			relayv2.WithResources(relayv2.DefaultResources()),
-		),
+		libp2p.EnableRelayService(relayv2.WithResources(relay.DefaultResources)),
 		autotaticRelaysF(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),

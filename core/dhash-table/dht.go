@@ -3,7 +3,6 @@ package dhash_table
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
@@ -263,12 +262,12 @@ func (d *DistributedHashTable) Close() {
 	if d == nil || d.dht == nil {
 		return
 	}
-	fmt.Println("closing dht............................................")
 	close(d.stopChan)
 
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
 	d.dht = nil
+
 	log.Infoln("dht: table closed")
 }

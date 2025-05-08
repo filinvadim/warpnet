@@ -11,6 +11,7 @@ import (
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/peer"
+	log "github.com/sirupsen/logrus"
 	"math"
 	"runtime"
 	"strings"
@@ -388,7 +389,6 @@ func (d *NodeRepo) query(tx *storage.WarpTxn, q dsq.Query, implicit bool) (dsq.R
 			closedEarly = true
 			return
 		}
-		defer it.Close()
 
 		// this iterator is part of an implicit transaction, so when
 		// we're done we must discard the transaction. It's safe to
@@ -396,7 +396,7 @@ func (d *NodeRepo) query(tx *storage.WarpTxn, q dsq.Query, implicit bool) (dsq.R
 		if implicit {
 			defer tx.Discard()
 		}
-
+		defer it.Close()
 		// All iterators must be started by rewinding.
 		it.Rewind()
 
@@ -529,6 +529,8 @@ func (d *NodeRepo) Close() (err error) {
 		}
 	}()
 	close(d.stopChan)
+
+	log.Infoln("node repo: query interrupted")
 	return nil
 }
 

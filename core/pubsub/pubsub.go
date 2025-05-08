@@ -554,9 +554,11 @@ func (g *warpPubSub) Close() (err error) {
 	}
 
 	g.isRunning.Store(false)
+
 	g.pubsub = nil
 	g.relayCancelFuncs = nil
 	g.topics = nil
 	g.subs = nil
+	log.Infoln("pubsub: closed")
 	return
 }
