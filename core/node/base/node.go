@@ -30,9 +30,6 @@ import (
 var _ = golog.Config{}
 
 const (
-	DefaultRelayDataLimit     = 32 << 20 // 32 MiB
-	DefaultRelayDurationLimit = 5 * time.Minute
-
 	DefaultTimeout = 360 * time.Second
 	ServiceName    = "warpnet"
 )
@@ -108,6 +105,11 @@ func NewWarpNode(
 	_ = golog.SetLogLevel("nat", "DEBUG")
 	_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
 
+	reachibilityF := libp2p.ForceReachabilityPrivate
+	if ownerId == warpnet.BootstrapOwner {
+		reachibilityF = libp2p.ForceReachabilityPublic
+	}
+
 	node, err := libp2p.New(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
@@ -131,15 +133,16 @@ func NewWarpNode(
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
 		libp2p.EnableRelayService(relayv2.WithLimit(&relayv2.RelayLimit{
-			Duration: DefaultRelayDurationLimit,
-			Data:     DefaultRelayDataLimit,
-		})),
-
+			Duration: relay.DefaultRelayDurationLimit,
+			Data:     relay.DefaultRelayDataLimit,
+		}),
+			relayv2.WithResources(relayv2.DefaultResources()),
+		),
 		libp2p.EnableRelay(),
 		libp2p.EnableAutoRelayWithStaticRelays(staticRelaysList),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
-		libp2p.ForceReachabilityPrivate(),
+		reachibilityF(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("node: failed to init node: %v", err)
@@ -162,11 +165,7 @@ func NewWarpNode(
 		startTime:   time.Now(),
 	}
 
-	for _, p := range wn.SupportedProtocols() {
-		log.Infoln("base node: supported protocol:", p)
-	}
-
-	return wn, nil
+	return wn, wn.validateSupportedProtocols()
 }
 
 func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
@@ -196,8 +195,34 @@ func (n *WarpNode) SetStreamHandler(route stream.WarpRoute, handler warpnet.Warp
 	n.node.SetStreamHandler(route.ProtocolID(), handler)
 }
 
-func (n *WarpNode) SupportedProtocols() []warpnet.WarpProtocolID {
-	return n.node.Mux().Protocols()
+func (n *WarpNode) validateSupportedProtocols() error {
+	protocols := n.node.Mux().Protocols()
+	log.Infoln("node: supported protocols:", protocols)
+	var (
+		isAutoNatBackFound, isAutoNatRequestFound, isRelayHopFound, isRelayStopFound bool
+	)
+
+	for _, proto := range protocols {
+		if strings.Contains(string(proto), "autonat/2/dial-back") {
+			isAutoNatBackFound = true
+		}
+		if strings.Contains(string(proto), "autonat/2/dial-request") {
+			isAutoNatRequestFound = true
+		}
+		if strings.Contains(string(proto), "relay/0.2.0/hop") {
+			isRelayHopFound = true
+		}
+		if strings.Contains(string(proto), "relay/0.2.0/stop") {
+			isRelayStopFound = true
+		}
+	}
+	if isAutoNatBackFound && isAutoNatRequestFound && isRelayHopFound && isRelayStopFound {
+		return nil
+	}
+	return fmt.Errorf(
+		"node: not all supported protocols: autonat/dial-back=%t, autonat/dial-request=%t, relay/hop=%t, relay/stop=%t",
+		isAutoNatBackFound, isAutoNatRequestFound, isRelayHopFound, isRelayStopFound,
+	)
 }
 
 func (n *WarpNode) NodeInfo() warpnet.NodeInfo {

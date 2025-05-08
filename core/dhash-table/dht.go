@@ -153,10 +153,11 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	if d == nil || d.dht == nil {
 		return
 	}
+	ownID := d.dht.Host().ID()
 
 	// force dht to know its bootstrap nodes, force libp2p node to know its external address (in case of local network)
 	for _, info := range d.boostrapNodes {
-		if d.dht.Host().ID() == info.ID {
+		if ownID == info.ID {
 			continue
 		}
 		d.dht.Host().Peerstore().AddAddrs(info.ID, info.Addrs, warpnet.PermanentAddrTTL)
@@ -171,10 +172,10 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	log.Infoln("dht: bootstrap complete")
 	<-d.dht.RefreshRoutingTable()
 
-	go d.runRendezvousDiscovery()
+	go d.runRendezvousDiscovery(ownID)
 }
 
-func (d *DistributedHashTable) runRendezvousDiscovery() {
+func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
 	if d == nil || d.dht == nil {
 		return
 	}
@@ -207,6 +208,9 @@ func (d *DistributedHashTable) runRendezvousDiscovery() {
 	for {
 		select {
 		case peerInfo := <-peerChan:
+			if peerInfo.ID == ownID {
+				continue
+			}
 			if len(peerInfo.Addrs) == 0 {
 				continue
 			}
