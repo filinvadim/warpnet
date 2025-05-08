@@ -437,8 +437,12 @@ func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 	var discoveryAddrInfos []warpnet.WarpAddrInfo
 	if err := json.Unmarshal(msg.Data, &discoveryAddrInfos); err != nil {
-		log.Errorf("pubsub: discovery: failed to decode discovery message: %v %s", err, msg.Data)
-		return
+		var single warpnet.WarpAddrInfo
+		if err := json.Unmarshal(msg.Data, &single); err != nil {
+			log.Errorf("pubsub: discovery: failed to decode discovery message: %v %s", err, msg.Data)
+			return
+		}
+		discoveryAddrInfos = []warpnet.WarpAddrInfo{single}
 	}
 	if len(discoveryAddrInfos) == 0 {
 		return
