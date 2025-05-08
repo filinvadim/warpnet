@@ -172,7 +172,7 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	log.Infoln("dht: bootstrap complete")
 	<-d.dht.RefreshRoutingTable()
 
-	go d.runRendezvousDiscovery(ownID)
+	//go d.runRendezvousDiscovery(ownID)
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
@@ -190,15 +190,15 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		tryouts--
 	}
 
+	rendezvousCtx, cancel := context.WithCancel(context.Background())
+	d.cancelFunc = cancel
+
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
-	_, err := routingDiscovery.Advertise(d.ctx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
+	_, err := routingDiscovery.Advertise(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
 		log.Errorf("dht rendezvous: advertise: %s", err)
 		return
 	}
-
-	rendezvousCtx, cancel := context.WithCancel(context.Background())
-	d.cancelFunc = cancel
 
 	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
@@ -223,7 +223,7 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 			}
 		case <-d.stopChan:
 			return
-		case <-d.ctx.Done():
+		case <-rendezvousCtx.Done():
 			return
 		}
 	}
