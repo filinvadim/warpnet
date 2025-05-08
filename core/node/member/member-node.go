@@ -118,7 +118,7 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 		return err
 	}
 
-	if err := m.raft.Sync(m); err != nil {
+	if err := m.raft.Start(m); err != nil {
 		return fmt.Errorf("member: consensus failed to sync: %v", err)
 	}
 	nodeInfo := m.NodeInfo()

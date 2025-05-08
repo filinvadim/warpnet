@@ -22,7 +22,7 @@ type PubSubProvider interface {
 }
 
 type ConsensusProvider interface {
-	Sync(node consensus.NodeServicesProvider) (err error)
+	Start(node consensus.NodeTransporter) (err error)
 	LeaderID() warpnet.WarpPeerID
 	CommitState(newState consensus.KVState) (_ *consensus.KVState, err error)
 	Shutdown()

@@ -143,7 +143,7 @@ func (g *warpPubSub) runListener() error {
 		copy(subs, g.subs)
 		g.mx.RUnlock()
 
-		for _, sub := range subs {
+		for _, sub := range subs { // TODO scale this!
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
 			msg, err := sub.Next(ctx)
@@ -364,7 +364,10 @@ func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 			log.Errorf("pubsub: failed to marshal owner update message: %v", err)
 			return err
 		}
-		err = topic.Publish(g.ctx, data)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		err = topic.Publish(ctx, data)
+		cancel()
 		if err != nil && !errors.Is(err, pubsub.ErrTopicClosed) {
 			log.Errorf("pubsub: failed to publish owner update message: %v", err)
 			return err
@@ -432,33 +435,39 @@ func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 }
 
 func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
-	var discoveryMsg warpnet.WarpAddrInfo
-	if err := json.Unmarshal(msg.Data, &discoveryMsg); err != nil {
+	var discoveryAddrInfos []warpnet.WarpAddrInfo
+	if err := json.Unmarshal(msg.Data, &discoveryAddrInfos); err != nil {
 		log.Errorf("pubsub: discovery: failed to decode discovery message: %v %s", err, msg.Data)
 		return
 	}
-	if discoveryMsg.ID == "" {
-		log.Errorf("pubsub: discovery: message has no ID: %s", string(msg.Data))
-		return
-	}
-	if discoveryMsg.ID == g.serverNode.NodeInfo().ID {
+	if len(discoveryAddrInfos) == 0 {
 		return
 	}
 
-	log.Debugf("pubsub: discovery handling peer %s %v", discoveryMsg.ID.String(), discoveryMsg.Addrs)
+	for _, info := range discoveryAddrInfos {
+		if info.ID == "" {
+			log.Errorf("pubsub: discovery: message has no ID: %s", string(msg.Data))
+			return
+		}
+		if info.ID == g.serverNode.NodeInfo().ID {
+			return
+		}
 
-	peerInfo := warpnet.PeerAddrInfo{
-		ID:    discoveryMsg.ID,
-		Addrs: make([]warpnet.WarpAddress, 0, len(discoveryMsg.Addrs)),
-	}
+		log.Debugf("pubsub: discovery handling peer %s %v", info.ID.String(), info.Addrs)
 
-	for _, addr := range discoveryMsg.Addrs {
-		ma, _ := warpnet.NewMultiaddr(addr)
-		peerInfo.Addrs = append(peerInfo.Addrs, ma)
-	}
+		peerInfo := warpnet.PeerAddrInfo{
+			ID:    info.ID,
+			Addrs: make([]warpnet.WarpAddress, 0, len(info.Addrs)),
+		}
 
-	if g.discoveryHandler != nil {
-		g.discoveryHandler(peerInfo) // add new user
+		for _, addr := range info.Addrs {
+			ma, _ := warpnet.NewMultiaddr(addr)
+			peerInfo.Addrs = append(peerInfo.Addrs, ma)
+		}
+
+		if g.discoveryHandler != nil {
+			g.discoveryHandler(peerInfo)
+		}
 	}
 }
 
@@ -510,14 +519,30 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 	}
 }
 
-func (g *warpPubSub) publishPeerInfo(topic *pubsub.Topic) error {
-	info := g.serverNode.NodeInfo()
+const publishPeerInfoLimit = 10
 
-	msg := warpnet.WarpAddrInfo{
-		ID:    info.ID,
-		Addrs: info.Addresses,
+func (g *warpPubSub) publishPeerInfo(topic *pubsub.Topic) error {
+	myInfo := g.serverNode.NodeInfo()
+	addrInfosMessage := []warpnet.WarpAddrInfo{{
+		ID:    myInfo.ID,
+		Addrs: myInfo.Addresses,
+	}}
+
+	limit := publishPeerInfoLimit
+	for _, id := range g.serverNode.Node().Peerstore().PeersWithAddrs() {
+		if limit == 0 {
+			break
+		}
+		pi := g.serverNode.Node().Peerstore().PeerInfo(id)
+		addrInfo := warpnet.WarpAddrInfo{pi.ID, make([]string, 0, len(pi.Addrs))}
+		for _, addr := range pi.Addrs {
+			addrInfo.Addrs = append(addrInfo.Addrs, addr.String())
+		}
+		addrInfosMessage = append(addrInfosMessage, addrInfo)
+		limit--
 	}
-	data, err := json.Marshal(msg)
+
+	data, err := json.Marshal(addrInfosMessage)
 	if err != nil {
 		return fmt.Errorf("failed to marshal peer info message: %v", err)
 	}

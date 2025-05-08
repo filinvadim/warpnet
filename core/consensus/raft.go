@@ -14,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	log "github.com/sirupsen/logrus"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -62,9 +63,10 @@ type ConsensusStorer interface {
 	SnapshotsPath() string
 }
 
-type NodeServicesProvider interface {
+type NodeTransporter interface {
 	Node() warpnet.P2PNode
 	NodeInfo() warpnet.NodeInfo
+	Network() warpnet.WarpNetwork
 	GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
@@ -76,26 +78,23 @@ type votersCacher interface {
 	close()
 }
 
-type Streamer interface {
-	NodeInfo() warpnet.NodeInfo
-	GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error)
-}
-
 type consensusService struct {
-	ctx           context.Context
-	consensus     *Consensus
-	streamer      Streamer
-	fsm           *fsm
-	cache         votersCacher
-	raft          *raft.Raft
-	logStore      raft.LogStore
-	stableStore   raft.StableStore
-	snapshotStore raft.SnapshotStore
-	transport     *raft.NetworkTransport
-	raftID        raft.ServerID
-	syncMx        *sync.RWMutex
-	retrier       retrier.Retrier
-	l             *consensusLogger
+	ctx            context.Context
+	consensus      *Consensus
+	node           NodeTransporter
+	fsm            *fsm
+	cache          votersCacher
+	raft           *raft.Raft
+	logStore       raft.LogStore
+	stableStore    raft.StableStore
+	snapshotStore  raft.SnapshotStore
+	transport      *raft.NetworkTransport
+	raftID         raft.ServerID
+	syncMx         *sync.RWMutex
+	retrier        retrier.Retrier
+	l              *consensusLogger
+	bootstrapNodes []warpnet.PeerAddrInfo
+	isPrivate      bool
 }
 
 func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
@@ -112,6 +111,11 @@ func NewRaft(
 		stableStore   raft.StableStore
 		snapshotStore raft.SnapshotStore
 	)
+
+	infos, err := config.ConfigFile.Node.AddrInfos()
+	if err != nil {
+		return nil, err
+	}
 
 	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
 
@@ -134,20 +138,22 @@ func NewRaft(
 	cons := libp2praft.NewConsensus(finiteStateMachine.state)
 
 	return &consensusService{
-		ctx:           ctx,
-		logStore:      raft.NewInmemStore(),
-		stableStore:   stableStore,
-		snapshotStore: snapshotStore,
-		fsm:           finiteStateMachine,
-		cache:         newVotersCache(),
-		consensus:     cons,
-		syncMx:        new(sync.RWMutex),
-		retrier:       retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
-		l:             l,
+		ctx:            ctx,
+		logStore:       raft.NewInmemStore(),
+		stableStore:    stableStore,
+		snapshotStore:  snapshotStore,
+		fsm:            finiteStateMachine,
+		cache:          newVotersCache(),
+		consensus:      cons,
+		syncMx:         new(sync.RWMutex),
+		retrier:        retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
+		l:              l,
+		isPrivate:      !isBootstrap,
+		bootstrapNodes: infos,
 	}, nil
 }
 
-func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
+func (c *consensusService) Start(node NodeTransporter) (err error) {
 	if c == nil {
 		return errors.New("consensus: nil consensus service")
 	}
@@ -155,7 +161,9 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	c.syncMx.Lock()
 	defer c.syncMx.Unlock()
 
-	c.raftID = raft.ServerID(node.NodeInfo().ID.String())
+	nodeInfo := node.NodeInfo()
+
+	c.raftID = raft.ServerID(nodeInfo.ID.String())
 
 	raftConfig := raft.DefaultConfig()
 	raftConfig.HeartbeatTimeout = time.Second * 5
@@ -165,7 +173,7 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	raftConfig.MaxAppendEntries = 128
 	raftConfig.TrailingLogs = 256
 	raftConfig.Logger = c.l
-	raftConfig.LocalID = raft.ServerID(node.NodeInfo().ID.String())
+	raftConfig.LocalID = raft.ServerID(nodeInfo.ID.String())
 	raftConfig.NoLegacyTelemetry = true
 	raftConfig.SnapshotThreshold = 8192
 	raftConfig.SnapshotInterval = 20 * time.Minute
@@ -190,14 +198,10 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 	}
 
 	isInitiator := raftConfig.LocalID == initiatorServerID
-	infos, err := config.ConfigFile.Node.AddrInfos()
-	if err != nil {
-		return err
-	}
 
 	if !hasState && isInitiator {
 		log.Infoln("consensus: node is initiator - setting up new cluster")
-		if err := c.bootstrap(raftConfig.LocalID, infos); err != nil {
+		if err := c.bootstrap(raftConfig.LocalID); err != nil {
 			return fmt.Errorf("consensus: setting up new cluster failed: %w", err)
 		}
 	}
@@ -221,18 +225,18 @@ func (c *consensusService) Sync(node NodeServicesProvider) (err error) {
 		return err
 	}
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
-	c.streamer = node
+	c.node = node
 	return nil
 }
 
-func (c *consensusService) bootstrap(id raft.ServerID, infos []warpnet.PeerAddrInfo) error {
+func (c *consensusService) bootstrap(id raft.ServerID) error {
 	raftConf := raft.Configuration{}
 	raftConf.Servers = append(raftConf.Servers, raft.Server{
 		Suffrage: raft.Voter,
 		ID:       id,
 		Address:  raft.ServerAddress(id),
 	})
-	for _, info := range infos {
+	for _, info := range c.bootstrapNodes {
 		if string(id) == info.ID.String() {
 			continue
 		}
@@ -427,17 +431,16 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 
 func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	c.waitSync()
+	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return
 	}
 	if info.ID.String() == "" {
-		log.Warningf("consensus: add voter: no voter id: %s", info.String())
 		return
 	}
 
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
-		log.Infof("consensus: add voter %s: not a leader", info.String())
 		return
 	}
 
@@ -461,6 +464,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 
 func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	c.waitSync()
+	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return
@@ -529,7 +533,7 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 		return fmt.Errorf("consensus: failed to commit validate user state: %w", err)
 	}
 
-	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
+	resp, err := c.node.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		log.Errorf("consensus: failed to stream user validation to raft cluster: %v", err)
 		return fmt.Errorf("consensus: node verify stream: %w", err)
@@ -568,7 +572,7 @@ func (c *consensusService) AskLeaderValidation() error {
 		return fmt.Errorf("consensus: failed to commit validate leader state: %w", err)
 	}
 
-	resp, err := c.streamer.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
+	resp, err := c.node.GenericStream(leaderId, event.PUBLIC_POST_NODE_VERIFY, newState)
 	if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
 		return fmt.Errorf("consensus: leader verify stream: %w", err)
 	}
@@ -587,6 +591,7 @@ func (c *consensusService) AskLeaderValidation() error {
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	c.waitSync()
+	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return nil, errors.New("consensus: nil node")
@@ -638,6 +643,38 @@ func (c *consensusService) CurrentState() (*KVState, error) {
 func (c *consensusService) waitSync() {
 	c.syncMx.RLock()
 	c.syncMx.RUnlock()
+}
+
+func (c *consensusService) dropPrivateLeadership() {
+	if c == nil || c.raft == nil {
+		return
+	}
+	if !c.isPrivate {
+		return
+	}
+
+	addr, leaderID := c.raft.LeaderWithID()
+	if addr == "" {
+		return
+	}
+	if c.raftID != leaderID {
+		return
+	}
+
+	randomServer := c.bootstrapNodes[rand.Intn(len(c.bootstrapNodes))]
+
+	log.Infof("consensus: dropping leadership because of private reachability %s, transferring to %s", leaderID, randomServer.ID)
+
+	wait := c.raft.LeadershipTransferToServer(
+		raft.ServerID(randomServer.ID.String()), raft.ServerAddress(randomServer.ID.String()),
+	)
+	if wait.Error() == nil {
+		return
+	}
+	log.Errorf(
+		"consensus: failed to send leader ship transfer to server %s: %v",
+		randomServer.String(), wait.Error(),
+	)
 }
 
 func (c *consensusService) Shutdown() {

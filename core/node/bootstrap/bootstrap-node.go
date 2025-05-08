@@ -128,8 +128,7 @@ func (bn *BootstrapNode) Start() error {
 		return err
 	}
 
-	// TODO wait for discovery service to be ready
-	if err := bn.raft.Sync(bn); err != nil {
+	if err := bn.raft.Start(bn); err != nil {
 		return err
 	}
 

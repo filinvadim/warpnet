@@ -14,7 +14,6 @@ import (
 const raftProtocol warpnet.WarpProtocolID = "/raft/1.0.0/rpc"
 
 type addrProvider struct {
-	node NodeServicesProvider
 }
 
 func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error) {
@@ -27,13 +26,13 @@ func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error)
 }
 
 type streamLayer struct {
-	host    NodeServicesProvider
+	host    NodeTransporter
 	l       net.Listener
 	lg      *consensusLogger
 	retrier retrier.Retrier
 }
 
-func newStreamLayer(h NodeServicesProvider, lg *consensusLogger) (*streamLayer, error) {
+func newStreamLayer(h NodeTransporter, lg *consensusLogger) (*streamLayer, error) {
 	listener, err := gostream.Listen(h.Node(), raftProtocol)
 	if err != nil {
 		return nil, err
@@ -93,14 +92,14 @@ func (sl *streamLayer) Close() error {
 // Check https://github.com/hashicorp/raft/net_transport.go#L606
 const maxPoolConnections int = 0 //
 
-func NewWarpnetConsensusTransport(node NodeServicesProvider, l *consensusLogger) (*raft.NetworkTransport, error) {
+func NewWarpnetConsensusTransport(node NodeTransporter, l *consensusLogger) (*raft.NetworkTransport, error) {
 	p2pStream, err := newStreamLayer(node, l)
 	if err != nil {
 		return nil, err
 	}
 
 	transportConfig := &raft.NetworkTransportConfig{
-		ServerAddressProvider: &addrProvider{node},
+		ServerAddressProvider: &addrProvider{},
 		Logger:                l,
 		Stream:                p2pStream,
 		MaxPool:               maxPoolConnections,
