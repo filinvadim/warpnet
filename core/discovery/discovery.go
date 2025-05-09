@@ -13,7 +13,9 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
+	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,7 +30,6 @@ type DiscoveryInfoStorer interface {
 	Network() warpnet.WarpNetwork
 	Connect(p warpnet.PeerAddrInfo) error
 	GenericStream(nodeId string, path stream.WarpRoute, data any) ([]byte, error)
-	AddOwnPublicAddress(remoteAddr string) error
 }
 
 type NodeStorer interface {
@@ -281,9 +282,8 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: %v", err)
 		return
 	}
-	//if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-	//	log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
-	//}
+
+	s.amendPublicAddress(pi.ID, info.RequesterAddr)
 
 	if info.IsBootstrap() {
 		s.markBootstrapDiscovered(pi)
@@ -320,6 +320,48 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		newUser.CreatedAt,
 		newUser.Latency,
 	)
+}
+
+func (s *discoveryService) amendPublicAddress(id warpnet.WarpPeerID, remoteAddr string) {
+	if remoteAddr == "" {
+		return
+	}
+	maddr, err := warpnet.NewMultiaddr(remoteAddr)
+	if err != nil {
+		return
+	}
+
+	publicMaddr := pingTCP(maddr)
+	if publicMaddr == nil {
+		return
+	}
+
+	week := time.Hour * 24 * 7
+	s.node.Peerstore().AddAddr(id, publicMaddr, week)
+}
+
+func pingTCP(addr multiaddr.Multiaddr) multiaddr.Multiaddr {
+	ip, err := addr.ValueForProtocol(warpnet.P_IP4)
+	if err != nil {
+		ip, err = addr.ValueForProtocol(warpnet.P_IP6)
+		if err != nil {
+			return nil
+		}
+	}
+
+	port, err := addr.ValueForProtocol(warpnet.P_TCP)
+	if err != nil {
+		return nil
+	}
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", ip, port))
+	if err != nil {
+		return nil
+	}
+	if conn != nil {
+		_ = conn.Close()
+	}
+	return addr
+
 }
 
 func (s *discoveryService) isMineBootstrapNodes(pi warpnet.PeerAddrInfo) bool {

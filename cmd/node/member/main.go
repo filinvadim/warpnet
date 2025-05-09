@@ -19,7 +19,6 @@ import (
 	"github.com/filinvadim/warpnet/server/auth"
 	"github.com/filinvadim/warpnet/server/handlers"
 	"github.com/filinvadim/warpnet/server/server"
-	ipfslog "github.com/ipfs/go-log/v2"
 	writer "github.com/ipfs/go-log/writer"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -43,9 +42,6 @@ func main() {
 	}
 
 	log.Infoln("Warpnet version:", config.ConfigFile.Version)
-
-	var _ = ipfslog.LevelInfo
-	//ipfslog.SetDebugLogging()
 
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {

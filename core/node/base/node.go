@@ -27,16 +27,11 @@ type Streamer interface {
 	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
 }
 
-type AddressManager interface {
-	Add(addr warpnet.WarpAddress, ttl time.Duration)
-}
-
 type WarpNode struct {
-	ctx         context.Context
-	node        warpnet.P2PNode
-	addrManager AddressManager
-	relay       warpnet.WarpRelayCloser
-	streamer    Streamer
+	ctx      context.Context
+	node     warpnet.P2PNode
+	relay    warpnet.WarpRelayCloser
+	streamer Streamer
 
 	ownerId  string
 	isClosed *atomic.Bool
@@ -66,8 +61,6 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	addrManager := NewAddressManager()
-
 	infos, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
 		return nil, err
@@ -80,11 +73,9 @@ func NewWarpNode(
 
 	reachibilityOption := libp2p.ForceReachabilityPrivate
 	autoStaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
-	natPortMapOption := libp2p.NATPortMap
 	if ownerId == warpnet.BootstrapOwner {
 		reachibilityOption = libp2p.ForceReachabilityPublic
 		autoStaticRelaysOption = DisableOption()
-		natPortMapOption = DisableOption()
 	}
 
 	node, err := warpnet.NewP2PNode(
@@ -92,7 +83,6 @@ func NewWarpNode(
 		libp2p.ListenAddrStrings(
 			listenAddr,
 		),
-		//libp2p.AddrsFactory(addrManager.Factory()),
 		libp2p.SwarmOpts(
 			WithDialTimeout(DefaultTimeout),
 			WithDialTimeoutLocal(DefaultTimeout),
@@ -113,8 +103,8 @@ func NewWarpNode(
 		libp2p.EnableRelayService(relay.WithDefaultResources()), // for member nodes that have static IP
 		libp2p.EnableHolePunching(),
 		libp2p.EnableNATService(),
+		libp2p.NATPortMap(),
 
-		natPortMapOption(),
 		autoStaticRelaysOption(),
 		reachibilityOption(),
 	)
@@ -128,15 +118,14 @@ func NewWarpNode(
 	}
 
 	wn := &WarpNode{
-		ctx:         ctx,
-		node:        node,
-		addrManager: addrManager,
-		relay:       relayService,
-		ownerId:     ownerId,
-		streamer:    stream.NewStreamPool(ctx, node),
-		isClosed:    new(atomic.Bool),
-		version:     config.ConfigFile.Version,
-		startTime:   time.Now(),
+		ctx:       ctx,
+		node:      node,
+		relay:     relayService,
+		ownerId:   ownerId,
+		streamer:  stream.NewStreamPool(ctx, node),
+		isClosed:  new(atomic.Bool),
+		version:   config.ConfigFile.Version,
+		startTime: time.Now(),
 	}
 
 	return wn, wn.validateSupportedProtocols()
@@ -296,40 +285,6 @@ func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ 
 
 const default4001Port = "4001"
 
-func (n *WarpNode) AddOwnPublicAddress(remoteAddr string) error {
-	if remoteAddr == "" {
-		return errors.New("node: empty node info public address")
-	}
-	maddr, err := warpnet.NewMultiaddr(remoteAddr)
-	if err != nil {
-		return err
-	}
-
-	proto := "ip4"
-	ipStr, err := maddr.ValueForProtocol(warpnet.P_IP4)
-	if err != nil {
-		proto = "ip6"
-		ipStr, err = maddr.ValueForProtocol(warpnet.P_IP6)
-		if err != nil {
-			return err
-		}
-	}
-
-	newMAddr, err := warpnet.NewMultiaddr(
-		fmt.Sprintf("/%s/%s/tcp/%s", proto, ipStr, default4001Port),
-	)
-	if err != nil {
-		return err
-	}
-
-	week := time.Hour * 24 * 7
-	n.Peerstore().AddAddr(n.node.ID(), maddr, week)
-	n.Peerstore().AddAddr(n.node.ID(), newMAddr, week)
-	n.addrManager.Add(maddr, week)
-	n.addrManager.Add(newMAddr, week)
-	return nil
-}
-
 func (n *WarpNode) StopNode() {
 	log.Infoln("node: shutting down node...")
 	defer func() {
@@ -350,6 +305,5 @@ func (n *WarpNode) StopNode() {
 	}
 	n.isClosed.Store(true)
 	n.node = nil
-	n.addrManager = nil
 	return
 }
