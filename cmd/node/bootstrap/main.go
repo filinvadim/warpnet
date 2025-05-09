@@ -27,6 +27,12 @@ func main() {
 
 	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
+	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
+	if err != nil {
+		lvl = log.InfoLevel
+	}
+	log.SetLevel(lvl)
+
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
