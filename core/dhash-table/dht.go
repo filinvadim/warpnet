@@ -122,14 +122,14 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.BucketSize(50),
 	)
 	if err != nil {
-		log.Infof("dht: new: %v", err)
+		log.Errorf("dht: new: %v", err)
 		return nil, err
 	}
 
 	d.dht.RoutingTable().PeerAdded = defaultNodeAddedCallback
 	if d.addFuncs != nil {
 		d.dht.RoutingTable().PeerAdded = func(id peer.ID) {
-			log.Infof("dht: new peer added: %s", id)
+			log.Infof("dht: peer added: %s", id)
 			info := peer.AddrInfo{ID: id}
 			for _, addF := range d.addFuncs {
 				addF(info)
@@ -172,7 +172,7 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	log.Infoln("dht: bootstrap complete")
 	<-d.dht.RefreshRoutingTable()
 
-	//go d.runRendezvousDiscovery(ownID)
+	go d.runRendezvousDiscovery(ownID)
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {

@@ -239,3 +239,11 @@ func IsPublicMultiAddress(maddr WarpAddress) bool {
 	}
 	return true
 }
+
+func IsRelayAddress(addr string) bool {
+	return strings.Contains(addr, "p2p-circuit")
+}
+
+func IsRelayMultiaddress(maddr multiaddr.Multiaddr) bool {
+	return strings.Contains(maddr.String(), "p2p-circuit")
+}

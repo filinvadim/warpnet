@@ -219,8 +219,7 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
-
-	err = c.sync()
+	err = c.retrier.Try(c.ctx, c.sync)
 	if err != nil {
 		return err
 	}

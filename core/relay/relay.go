@@ -64,3 +64,7 @@ func NewRelay(node warpnet.P2PNode) (*relayv2.Relay, error) {
 	)
 	return relay, err
 }
+
+func WithDefaultResources() relayv2.Option {
+	return relayv2.WithResources(DefaultResources)
+}

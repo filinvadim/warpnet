@@ -13,16 +13,12 @@ import (
 	"github.com/filinvadim/warpnet/security"
 	golog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	libp2pConfig "github.com/libp2p/go-libp2p/config"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/pnet"
-	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
@@ -86,13 +82,9 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	currentNodeID, _ := warpnet.IDFromPrivateKey(privKey)
-	staticRelaysList := make([]warpnet.PeerAddrInfo, 0, len(infos))
-	for _, info := range infos {
-		if info.ID == currentNodeID {
-			continue
-		}
-		staticRelaysList = append(staticRelaysList, info)
+	currentNodeID, err := warpnet.IDFromPrivateKey(privKey)
+	if err != nil {
+		return nil, err
 	}
 
 	rm, err := rcmgr.NewResourceManager(limiter)
@@ -102,31 +94,15 @@ func NewWarpNode(
 
 	addrManager := NewAddressManager()
 
-	reachibilityF := libp2p.ForceReachabilityPrivate
-	autotaticRelaysF := libp2p.EnableAutoRelayWithStaticRelays
-	natServiceF := func() libp2p.Option { return disabled() }
-	natPortMapF := libp2p.NATPortMap
-	holePunchingF := libp2p.EnableHolePunching
+	reachibilityOption := libp2p.ForceReachabilityPrivate
+	autotaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
+	natServiceOption := DisableOption()
+	natPortMapOption := libp2p.NATPortMap
 	if ownerId == warpnet.BootstrapOwner {
-		reachibilityF = libp2p.ForceReachabilityPublic
-		autotaticRelaysF = func(static []peer.AddrInfo, opts ...autorelay.Option) libp2p.Option {
-			return disabled()
-		}
-		natServiceF = libp2p.EnableNATService
-		natPortMapF = disabled
-		holePunchingF = func(opts ...holepunch.Option) libp2p.Option {
-			return func(cfg *libp2pConfig.Config) error {
-				return nil
-			}
-		}
-
-		_ = golog.SetLogLevel("autorelay", "DEBUG")
-		_ = golog.SetLogLevel("autonatv2", "DEBUG")
-		_ = golog.SetLogLevel("p2p-holepunch", "DEBUG")
-		_ = golog.SetLogLevel("relay", "DEBUG")
-		_ = golog.SetLogLevel("nat", "DEBUG")
-		_ = golog.SetLogLevel("p2p-circuit", "DEBUG")
-
+		reachibilityOption = libp2p.ForceReachabilityPublic
+		autotaticRelaysOption = DisableOption()
+		natServiceOption = libp2p.EnableNATService
+		natPortMapOption = DisableOption()
 	}
 
 	node, err := libp2p.New(
@@ -143,20 +119,22 @@ func NewWarpNode(
 		libp2p.Identity(privKey),
 		libp2p.Ping(true),
 		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableAutoNATv2(),
-		natServiceF(),
-		natPortMapF(),
-		libp2p.PrivateNetwork(pnet.PSK(psk)),
-		libp2p.UserAgent(ServiceName),
-		holePunchingF(),
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
-		libp2p.EnableRelay(),
-		libp2p.EnableRelayService(relayv2.WithResources(relay.DefaultResources)),
-		autotaticRelaysF(staticRelaysList),
+		libp2p.PrivateNetwork(pnet.PSK(psk)),
+		libp2p.UserAgent(ServiceName),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
-		reachibilityF(),
+
+		libp2p.EnableAutoNATv2(),
+		libp2p.EnableRelay(),
+		libp2p.EnableRelayService(relay.WithDefaultResources()), // for member nodes that have static IP
+		libp2p.EnableHolePunching(),
+
+		natServiceOption(),
+		natPortMapOption(),
+		autotaticRelaysOption(),
+		reachibilityOption(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("node: failed to init node: %v", err)
@@ -180,10 +158,6 @@ func NewWarpNode(
 	}
 
 	return wn, wn.validateSupportedProtocols()
-}
-
-func disabled() libp2p.Option {
-	return func(cfg *libp2pConfig.Config) error { return nil }
 }
 
 func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
@@ -243,22 +217,27 @@ func (n *WarpNode) validateSupportedProtocols() error {
 	)
 }
 
+const (
+	relayStatusWaiting = "waiting"
+	relayStatusRunning = "running"
+)
+
 func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 	if n == nil || n.node == nil || n.node.Network() == nil || n.node.Peerstore() == nil {
 		return warpnet.NodeInfo{}
 	}
-	relayState := "Waiting..."
+	relayState := relayStatusWaiting
 
 	addrs := n.node.Peerstore().Addrs(n.node.ID())
 	addresses := make([]string, 0, len(addrs))
-	for _, a := range addrs {
-		if !warpnet.IsPublicMultiAddress(a) {
+	for _, ma := range addrs {
+		if !warpnet.IsPublicMultiAddress(ma) {
 			continue
 		}
-		if strings.Contains(a.String(), "p2p-circuit") {
-			relayState = "Running"
+		if warpnet.IsRelayMultiaddress(ma) {
+			relayState = relayStatusRunning
 		}
-		addresses = append(addresses, a.String())
+		addresses = append(addresses, ma.String())
 	}
 
 	return warpnet.NodeInfo{
