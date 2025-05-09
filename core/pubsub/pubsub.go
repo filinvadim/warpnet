@@ -458,8 +458,6 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 			return
 		}
 
-		log.Debugf("pubsub: discovery handling peer %s %v", info.ID.String(), info.Addrs)
-
 		peerInfo := warpnet.PeerAddrInfo{
 			ID:    info.ID,
 			Addrs: make([]warpnet.WarpAddress, 0, len(info.Addrs)),

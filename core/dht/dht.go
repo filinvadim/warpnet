@@ -176,6 +176,11 @@ func (d *DistributedHashTable) bootstrapDHT() {
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("dht rendezvous: recovered from panic: %v", r)
+		}
+	}()
 	if d == nil || d.dht == nil {
 		return
 	}
@@ -203,6 +208,9 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
 	if err != nil {
 		log.Errorf("dht rendezvous: find peers: %s", err)
+		return
+	}
+	if peerChan == nil {
 		return
 	}
 
