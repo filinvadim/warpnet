@@ -2,7 +2,6 @@ package base
 
 import (
 	golog "github.com/ipfs/go-log/v2"
-	"github.com/sirupsen/logrus"
 )
 
 var subsystems = []string{
@@ -56,7 +55,8 @@ var subsystems = []string{
 }
 
 func init() {
-	level := logrus.GetLevel().String()
+	//level := logrus.GetLevel().String()
+	level := "debug"
 	_ = golog.SetLogLevel("autonatv2", level)
 	_ = golog.SetLogLevel("autonat", level)
 	_ = golog.SetLogLevel("p2p-holepunch", level)

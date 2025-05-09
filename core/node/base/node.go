@@ -80,12 +80,10 @@ func NewWarpNode(
 
 	reachibilityOption := libp2p.ForceReachabilityPrivate
 	autoStaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
-	natServiceOption := DisableOption()
 	natPortMapOption := libp2p.NATPortMap
 	if ownerId == warpnet.BootstrapOwner {
 		reachibilityOption = libp2p.ForceReachabilityPublic
 		autoStaticRelaysOption = DisableOption()
-		natServiceOption = libp2p.EnableNATService
 		natPortMapOption = DisableOption()
 	}
 
@@ -114,8 +112,8 @@ func NewWarpNode(
 		libp2p.EnableRelay(),
 		libp2p.EnableRelayService(relay.WithDefaultResources()), // for member nodes that have static IP
 		libp2p.EnableHolePunching(),
-
-		natServiceOption(),
+		libp2p.EnableNATService(),
+		
 		natPortMapOption(),
 		autoStaticRelaysOption(),
 		reachibilityOption(),

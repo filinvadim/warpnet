@@ -281,9 +281,9 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		log.Errorf("discovery: %v", err)
 		return
 	}
-	if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
-		log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
-	}
+	//if err := s.node.AddOwnPublicAddress(info.RequesterAddr); err != nil {
+	//	log.Errorf("discovery: failed to add own public address: %s %v", info.RequesterAddr, err)
+	//}
 
 	if info.IsBootstrap() {
 		s.markBootstrapDiscovered(pi)

@@ -176,11 +176,7 @@ func (d *DistributedHashTable) bootstrapDHT() {
 }
 
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorf("dht rendezvous: recovered from panic: %v", r)
-		}
-	}()
+	defer func() { recover() }()
 	if d == nil || d.dht == nil {
 		return
 	}
