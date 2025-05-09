@@ -58,6 +58,7 @@ var subsystems = []string{
 func init() {
 	level := logrus.GetLevel().String()
 	_ = golog.SetLogLevel("autonatv2", level)
+	_ = golog.SetLogLevel("autonat", level)
 	_ = golog.SetLogLevel("p2p-holepunch", level)
 	_ = golog.SetLogLevel("relay", level)
 	_ = golog.SetLogLevel("nat", level)

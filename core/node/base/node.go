@@ -79,12 +79,12 @@ func NewWarpNode(
 	}
 
 	reachibilityOption := libp2p.ForceReachabilityPrivate
-	autotaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
+	autoStaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
 	natServiceOption := DisableOption()
 	natPortMapOption := libp2p.NATPortMap
 	if ownerId == warpnet.BootstrapOwner {
 		reachibilityOption = libp2p.ForceReachabilityPublic
-		autotaticRelaysOption = DisableOption()
+		autoStaticRelaysOption = DisableOption()
 		natServiceOption = libp2p.EnableNATService
 		natPortMapOption = DisableOption()
 	}
@@ -117,7 +117,7 @@ func NewWarpNode(
 
 		natServiceOption(),
 		natPortMapOption(),
-		autotaticRelaysOption(),
+		autoStaticRelaysOption(),
 		reachibilityOption(),
 	)
 	if err != nil {
