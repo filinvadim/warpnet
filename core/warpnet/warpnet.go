@@ -155,8 +155,8 @@ func NewP2PNode(opts ...libp2p.Option) (host.Host, error) {
 	return libp2p.New(opts...)
 }
 
-func NewNoise() func(id protocol.ID, privkey crypto.PrivKey, muxers []tptu.StreamMuxer) (*noise.Transport, error) {
-	return noise.New
+func NewNoise(id protocol.ID, pk crypto.PrivKey, mxs []tptu.StreamMuxer) (*noise.Transport, error) {
+	return noise.New(id, pk, mxs)
 }
 
 func NewTCPTransport(u transport.Upgrader, r network.ResourceManager, s *tcpreuse.ConnMgr, o ...tcp.Option) (*tcp.TcpTransport, error) {

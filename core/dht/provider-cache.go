@@ -167,9 +167,9 @@ func (d *ProviderCache) Close() (err error) {
 	}
 	d.mutex.RUnlock()
 
-	close(d.stopChan)
 	d.isClosed.Store(true)
 	d.m = nil
 	log.Infoln("dht: providers cache: stopped")
+	close(d.stopChan)
 	return err
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"time"
 )
 
@@ -343,63 +342,38 @@ func (m *MemberNode) Stop() {
 		return
 	}
 
-	g, _ := errgroup.WithContext(m.ctx)
-	g.Go(func() error {
-		if m.discService != nil {
-			m.discService.Close()
-		}
-		return nil
-	})
+	if m.discService != nil {
+		m.discService.Close()
+	}
 
-	g.Go(func() error {
-		if m.mdnsService != nil {
-			m.mdnsService.Close()
-		}
-		return nil
-	})
+	if m.mdnsService != nil {
+		m.mdnsService.Close()
+	}
 
-	g.Go(func() error {
-		if m.pubsubService != nil {
-			if err := m.pubsubService.Close(); err != nil {
-				log.Errorf("member: failed to close pubsub: %v", err)
-			}
+	if m.pubsubService != nil {
+		if err := m.pubsubService.Close(); err != nil {
+			log.Errorf("member: failed to close pubsub: %v", err)
 		}
-		return nil
-	})
+	}
 
-	g.Go(func() error {
-		if m.providerStore != nil {
-			if err := m.providerStore.Close(); err != nil {
-				log.Errorf("member: failed to close provider: %v", err)
-			}
+	if m.providerStore != nil {
+		if err := m.providerStore.Close(); err != nil {
+			log.Errorf("member: failed to close provider: %v", err)
 		}
-		return nil
-	})
+	}
 
-	g.Go(func() error {
-		if m.dHashTable != nil {
-			m.dHashTable.Close()
-		}
-		return nil
-	})
+	if m.dHashTable != nil {
+		m.dHashTable.Close()
+	}
 
-	g.Go(func() error {
-		if m.raft != nil {
-			m.raft.Shutdown()
-		}
-		return nil
-	})
+	if m.raft != nil {
+		m.raft.Shutdown()
+	}
 
-	g.Go(func() error {
-		if m.nodeRepo != nil {
-			if err := m.nodeRepo.Close(); err != nil {
-				log.Errorf("member: failed to close node repo: %v", err)
-			}
+	if m.nodeRepo != nil {
+		if err := m.nodeRepo.Close(); err != nil {
+			log.Errorf("member: failed to close node repo: %v", err)
 		}
-		return nil
-	})
-	if err := g.Wait(); err != nil {
-		log.Errorf("member: closing failed %v", err)
 	}
 
 	m.StopNode()
