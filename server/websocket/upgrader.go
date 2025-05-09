@@ -81,6 +81,9 @@ func (s *EncryptedUpgrader) readLoop() error {
 		return errors.New("websocket connection is closed")
 	}
 	for {
+		if s.conn == nil {
+			return errors.New("websocket connection is down")
+		}
 		messageType, message, err := s.conn.ReadMessage()
 		if err != nil {
 			return err
