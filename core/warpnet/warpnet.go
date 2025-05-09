@@ -41,6 +41,7 @@ import (
 
 const (
 	BootstrapOwner = "bootstrap"
+	WarpnetName    = "warpnet"
 	NoiseID        = noise.ID
 
 	Connected = network.Connected

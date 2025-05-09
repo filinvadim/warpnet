@@ -84,7 +84,7 @@ func NewDiscoveryService(
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version, handlers,
 		new(sync.RWMutex), addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
-		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 100), make(chan struct{}),
+		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 1000), make(chan struct{}),
 		new(atomic.Bool),
 	}
 }
@@ -220,6 +220,8 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 	return
 }
 
+const dropMessagesLimit = 5
+
 func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	if s == nil {
 		return
@@ -232,7 +234,10 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 
 	if len(s.discoveryChan) == cap(s.discoveryChan) {
 		log.Warnf("discovery: channel overflow %d", cap(s.discoveryChan))
-		<-s.discoveryChan // drop old data
+		for i := 0; i < dropMessagesLimit; i++ {
+			<-s.discoveryChan // drop old data
+		}
+
 	}
 	s.discoveryChan <- pi
 }

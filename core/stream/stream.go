@@ -7,12 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
+	"github.com/libp2p/go-libp2p/core/network"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
 
 type NodeStreamer interface {
 	NewStream(ctx context.Context, p warpnet.WarpPeerID, pids ...warpnet.WarpProtocolID) (warpnet.WarpStream, error)
+	Network() network.Network
 }
 
 type streamPool struct {
@@ -41,6 +43,13 @@ func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byt
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	connectedness := p.n.Network().Connectedness(peerAddr.ID)
+	switch connectedness {
+	case network.Limited:
+		log.Warnf("stream: peer %s has limited connection", peerAddr.ID.String())
+		ctx = network.WithAllowLimitedConn(ctx, warpnet.WarpnetName)
+	default:
+	}
 	return send(ctx, p.n, peerAddr, r, data)
 }
 
