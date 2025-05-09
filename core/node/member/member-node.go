@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
-	dht "github.com/filinvadim/warpnet/core/dhash-table"
+	"github.com/filinvadim/warpnet/core/dht"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
 	"github.com/filinvadim/warpnet/core/mdns"

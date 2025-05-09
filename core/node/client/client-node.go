@@ -14,10 +14,6 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/pnet"
-	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"sync/atomic"
@@ -82,12 +78,10 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 		libp2p.NoListenAddrs,
 		libp2p.DisableMetrics(),
 		libp2p.DisableRelay(),
-		libp2p.Ping(true),
 		libp2p.DisableIdentifyAddressDiscovery(),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.Transport(tcp.NewTCPTransport),
-		// TODO that's initial PSK but it must be updated thru consensus
-		libp2p.PrivateNetwork(pnet.PSK(n.psk)),
+		libp2p.Security(warpnet.NoiseID, warpnet.NewNoise),
+		libp2p.Transport(warpnet.NewTCPTransport),
+		libp2p.PrivateNetwork(warpnet.PSK(n.psk)),
 		libp2p.UserAgent("warpnet-client"),
 	)
 	if err != nil {
@@ -106,8 +100,10 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	if err != nil && !errors.Is(err, io.EOF) {
 		return err
 	}
+
 	log.Infoln("client-server nodes paired")
 	log.Infoln("client node created:", n.clientNode.ID())
+
 	n.isRunning.Store(true)
 	return nil
 }
@@ -150,7 +146,7 @@ func (n *WarpClientNode) ClientStream(nodeId string, path string, data any) (_ [
 		}
 	}
 
-	addrInfo, err := peer.AddrInfoFromString(n.serverNodeAddr + nodeId)
+	addrInfo, err := warpnet.AddrInfoFromString(n.serverNodeAddr + nodeId)
 	if err != nil {
 		return nil, err
 	}

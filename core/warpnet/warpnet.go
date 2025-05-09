@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -13,11 +14,21 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/libp2p/go-libp2p/core/transport"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	multiaddr "github.com/multiformats/go-multiaddr"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcpreuse"
+
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	tptu "github.com/libp2p/go-libp2p/p2p/net/upgrader"
+	"github.com/libp2p/go-libp2p/p2p/security/noise"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/net"
 	log "github.com/sirupsen/logrus"
@@ -30,7 +41,77 @@ import (
 
 const (
 	BootstrapOwner = "bootstrap"
+	NoiseID        = noise.ID
+
+	Connected = network.Connected
+	Limited   = network.Limited
+
+	P_IP4 = multiaddr.P_IP4
+	P_IP6 = multiaddr.P_IP6
+	P_TCP = multiaddr.P_TCP
+
+	PermanentAddrTTL = peerstore.PermanentAddrTTL
 )
+
+var (
+	ErrNodeIsOffline = errors.New("node is offline")
+	ErrUserIsOffline = errors.New("user is offline")
+
+	privateBlocks = []string{
+		"10.0.0.0/8", // VPN
+		"172.16.0.0/12",
+		"192.168.0.0/16", // private network
+		"100.64.0.0/10",  // CG-NAT
+		"127.0.0.0/8",    // local
+		"169.254.0.0/16", // link-local
+	}
+)
+
+// interfaces
+type (
+	WarpRelayCloser interface {
+		Close() error
+	}
+	WarpGossiper interface {
+		Close() error
+	}
+)
+
+type (
+	// types
+
+	WarpMDNS        mdns.Service
+	WarpPrivateKey  crypto.PrivKey
+	WarpRoutingFunc func(node P2PNode) (WarpPeerRouting, error)
+
+	// aliases
+	TCPTransport       = tcp.TcpTransport
+	TCPOption          = tcp.Option
+	Swarm              = swarm.Swarm
+	SwarmOption        = swarm.Option
+	PSK                = pnet.PSK
+	WarpProtocolID     = protocol.ID
+	WarpStream         = network.Stream
+	WarpStreamHandler  = network.StreamHandler
+	WarpBatching       = datastore.Batching
+	WarpProviderStore  = providers.ProviderStore
+	PeerAddrInfo       = peer.AddrInfo
+	WarpStreamStats    = network.Stats
+	WarpPeerRouting    = routing.PeerRouting
+	P2PNode            = host.Host
+	WarpPeerstore      = peerstore.Peerstore
+	WarpProtocolSwitch = protocol.Switch
+	WarpNetwork        = network.Network
+	WarpPeerID         = peer.ID
+	WarpDHT            = dht.IpfsDHT
+	WarpAddress        = multiaddr.Multiaddr
+)
+
+// structures
+type WarpAddrInfo struct {
+	ID    WarpPeerID `json:"peer_id"`
+	Addrs []string   `json:"addrs"`
+}
 
 type NodeInfo struct {
 	OwnerId        string          `json:"owner_id"`
@@ -68,6 +149,35 @@ type NodeStats struct {
 
 	PeersOnline int `json:"peers_online"`
 	PeersStored int `json:"peers_stored"`
+}
+
+func NewP2PNode(opts ...libp2p.Option) (host.Host, error) {
+	return libp2p.New(opts...)
+}
+
+func NewNoise() func(id protocol.ID, privkey crypto.PrivKey, muxers []tptu.StreamMuxer) (*noise.Transport, error) {
+	return noise.New
+}
+
+func NewTCPTransport(u transport.Upgrader, r network.ResourceManager, s *tcpreuse.ConnMgr, o ...tcp.Option) (*tcp.TcpTransport, error) {
+	return tcp.NewTCPTransport(u, r, s, o...)
+}
+
+func NewConnManager(limiter rcmgr.Limiter) (*connmgr.BasicConnMgr, error) {
+	return connmgr.NewConnManager(
+		100,
+		limiter.GetConnLimits().GetConnTotalLimit(),
+		connmgr.WithGracePeriod(time.Hour*12),
+	)
+}
+
+func NewResourceManager(limiter rcmgr.Limiter) (network.ResourceManager, error) {
+	return rcmgr.NewResourceManager(limiter)
+}
+
+func NewFixedLimiter() rcmgr.Limiter {
+	defaultLimits := rcmgr.DefaultLimits.AutoScale()
+	return rcmgr.NewFixedLimiter(defaultLimits)
 }
 
 func GetMacAddr() string {
@@ -129,52 +239,6 @@ func GetNetworkIO() (bytesSent int64, bytesRecv int64) {
 	return int64(stats.BytesSent), int64(stats.BytesRecv)
 }
 
-var (
-	ErrNodeIsOffline = errors.New("node is offline")
-	ErrUserIsOffline = errors.New("user is offline")
-)
-
-const PermanentAddrTTL = peerstore.PermanentAddrTTL
-
-type (
-	WarpRelayCloser interface {
-		Close() error
-	}
-	WarpGossiper interface {
-		Close() error
-	}
-)
-
-type (
-	WarpMDNS mdns.Service
-)
-
-type WarpAddrInfo struct {
-	ID    WarpPeerID `json:"peer_id"`
-	Addrs []string   `json:"addrs"`
-}
-
-type WarpPrivateKey crypto.PrivKey
-
-type (
-	WarpProtocolID    = protocol.ID
-	WarpStream        = network.Stream
-	WarpStreamHandler = network.StreamHandler
-	WarpBatching      = datastore.Batching
-	WarpProviderStore = providers.ProviderStore
-	PeerAddrInfo      = peer.AddrInfo
-	WarpStreamStats   = network.Stats
-	WarpPeerRouting   = routing.PeerRouting
-	P2PNode           = host.Host
-
-	WarpPeerstore      = peerstore.Peerstore
-	WarpProtocolSwitch = protocol.Switch
-	WarpNetwork        = network.Network
-	WarpPeerID         = peer.ID
-	WarpDHT            = dht.IpfsDHT
-	WarpAddress        = multiaddr.Multiaddr
-)
-
 func FromStringToPeerID(s string) WarpPeerID {
 	peerID, err := peer.Decode(s)
 	if err != nil {
@@ -195,18 +259,14 @@ func AddrInfoFromP2pAddr(m multiaddr.Multiaddr) (*PeerAddrInfo, error) {
 	return peer.AddrInfoFromP2pAddr(m)
 }
 
+func AddrInfoFromString(s string) (*PeerAddrInfo, error) {
+	return peer.AddrInfoFromString(s)
+}
+
 func NewPeerstore(ctx context.Context, db datastore.Batching) (WarpPeerstore, error) {
 	store, err := pstoreds.NewPeerstore(ctx, db, pstoreds.DefaultOpts())
 	return WarpPeerstore(store), err
 }
-
-type WarpRoutingFunc func(node P2PNode) (WarpPeerRouting, error)
-
-const (
-	P_IP4 = multiaddr.P_IP4
-	P_IP6 = multiaddr.P_IP6
-	P_TCP = multiaddr.P_TCP
-)
 
 func IsPublicMultiAddress(maddr WarpAddress) bool {
 	ipStr, err := maddr.ValueForProtocol(P_IP4)
@@ -219,16 +279,6 @@ func IsPublicMultiAddress(maddr WarpAddress) bool {
 	ip := gonet.ParseIP(ipStr)
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return false
-	}
-
-	// private ranges
-	privateBlocks := []string{
-		"10.0.0.0/8", // VPN
-		"172.16.0.0/12",
-		"192.168.0.0/16", // private network
-		"100.64.0.0/10",  // CG-NAT
-		"127.0.0.0/8",    // local
-		"169.254.0.0/16", // link-local
 	}
 
 	for _, block := range privateBlocks {

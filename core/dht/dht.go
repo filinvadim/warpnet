@@ -1,4 +1,4 @@
-package dhash_table
+package dht
 
 import (
 	"context"
@@ -270,8 +270,6 @@ func (d *DistributedHashTable) Close() {
 		d.cancelFunc()
 	}
 	close(d.stopChan)
-
-	log.Infoln("dht: closing table...")
 
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)

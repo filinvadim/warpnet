@@ -11,23 +11,12 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
-	golog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/pnet"
-	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	"github.com/libp2p/go-libp2p/p2p/net/swarm"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync/atomic"
 	"time"
 )
-
-var _ = golog.Config{}
 
 const (
 	DefaultTimeout = 360 * time.Second
@@ -46,7 +35,7 @@ type WarpNode struct {
 	ctx         context.Context
 	node        warpnet.P2PNode
 	addrManager AddressManager
-	relay       *relayv2.Relay
+	relay       warpnet.WarpRelayCloser
 	streamer    Streamer
 
 	ownerId  string
@@ -65,17 +54,19 @@ func NewWarpNode(
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
-	defaultLimits := rcmgr.DefaultLimits.AutoScale()
-	limiter := rcmgr.NewFixedLimiter(defaultLimits)
+	limiter := warpnet.NewFixedLimiter()
 
-	manager, err := connmgr.NewConnManager(
-		100,
-		limiter.GetConnLimits().GetConnTotalLimit(),
-		connmgr.WithGracePeriod(time.Hour*12),
-	)
+	manager, err := warpnet.NewConnManager(limiter)
 	if err != nil {
 		return nil, err
 	}
+
+	rm, err := warpnet.NewResourceManager(limiter)
+	if err != nil {
+		return nil, err
+	}
+
+	addrManager := NewAddressManager()
 
 	infos, err := config.ConfigFile.Node.AddrInfos()
 	if err != nil {
@@ -86,13 +77,6 @@ func NewWarpNode(
 	if err != nil {
 		return nil, err
 	}
-
-	rm, err := rcmgr.NewResourceManager(limiter)
-	if err != nil {
-		return nil, err
-	}
-
-	addrManager := NewAddressManager()
 
 	reachibilityOption := libp2p.ForceReachabilityPrivate
 	autotaticRelaysOption := EnableAutoRelayWithStaticRelays(infos, currentNodeID)
@@ -105,23 +89,23 @@ func NewWarpNode(
 		natPortMapOption = DisableOption()
 	}
 
-	node, err := libp2p.New(
+	node, err := warpnet.NewP2PNode(
 		libp2p.WithDialTimeout(DefaultTimeout),
 		libp2p.ListenAddrStrings(
 			listenAddr,
 		),
 		libp2p.AddrsFactory(addrManager.Factory()),
 		libp2p.SwarmOpts(
-			swarm.WithDialTimeout(DefaultTimeout),
-			swarm.WithDialTimeoutLocal(DefaultTimeout),
+			WithDialTimeout(DefaultTimeout),
+			WithDialTimeoutLocal(DefaultTimeout),
 		),
-		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(DefaultTimeout)),
+		libp2p.Transport(warpnet.NewTCPTransport, WithDefaultTCPConnectionTimeout(DefaultTimeout)),
 		libp2p.Identity(privKey),
 		libp2p.Ping(true),
-		libp2p.Security(noise.ID, noise.New),
+		libp2p.Security(warpnet.NoiseID, warpnet.NewNoise),
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
-		libp2p.PrivateNetwork(pnet.PSK(psk)),
+		libp2p.PrivateNetwork(warpnet.PSK(psk)),
 		libp2p.UserAgent(ServiceName),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
@@ -166,7 +150,7 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 	}
 
 	peerState := n.node.Network().Connectedness(p.ID)
-	isConnected := peerState == network.Connected || peerState == network.Limited
+	isConnected := peerState == warpnet.Connected || peerState == warpnet.Limited
 	if isConnected {
 		return nil
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
@@ -33,9 +32,9 @@ type DiscoveryInfoStorer interface {
 }
 
 type NodeStorer interface {
-	BlocklistRemove(ctx context.Context, peerId peer.ID) (err error)
-	IsBlocklisted(ctx context.Context, peerId peer.ID) (bool, error)
-	Blocklist(ctx context.Context, peerId peer.ID) error
+	BlocklistRemove(ctx context.Context, peerId warpnet.WarpPeerID) (err error)
+	IsBlocklisted(ctx context.Context, peerId warpnet.WarpPeerID) (bool, error)
+	Blocklist(ctx context.Context, peerId warpnet.WarpPeerID) error
 }
 
 type UserStorer interface {

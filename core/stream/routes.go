@@ -1,14 +1,14 @@
 package stream
 
 import (
-	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"strings"
 )
 
 type WarpRoute string
 
-func (r WarpRoute) ProtocolID() protocol.ID {
-	return protocol.ID(r)
+func (r WarpRoute) ProtocolID() warpnet.WarpProtocolID {
+	return warpnet.WarpProtocolID(r)
 }
 
 func (r WarpRoute) String() string {
@@ -41,19 +41,19 @@ func IsValidRoute(route WarpRoute) bool { // TODO
 
 type WarpRoutes []WarpRoute
 
-func (rs WarpRoutes) FromRoutesToPrIDs() []protocol.ID {
-	prIDs := make([]protocol.ID, 0, len(rs))
+func (rs WarpRoutes) FromRoutesToPrIDs() []warpnet.WarpProtocolID {
+	prIDs := make([]warpnet.WarpProtocolID, 0, len(rs))
 	for _, r := range rs {
 		prIDs = append(prIDs, r.ProtocolID())
 	}
 	return prIDs
 }
 
-func FromPrIDToRoute(prID protocol.ID) WarpRoute {
+func FromPrIDToRoute(prID warpnet.WarpProtocolID) WarpRoute {
 	return WarpRoute(prID)
 }
 
-func FromPrIDToRoutes(prIDs []protocol.ID) WarpRoutes {
+func FromProtocolIDToRoutes(prIDs []warpnet.WarpProtocolID) WarpRoutes {
 	rs := make(WarpRoutes, 0, len(prIDs))
 	for _, p := range prIDs {
 		rs = append(rs, WarpRoute(p))

@@ -1,10 +1,9 @@
-package dhash_table
+package dht
 
 import (
 	"context"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
-	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"slices"
@@ -14,9 +13,9 @@ import (
 )
 
 type ProviderCacheStorer interface {
-	ListProviders() (_ map[string][]peer.AddrInfo, err error)
-	AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error
-	GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo, error)
+	ListProviders() (_ map[string][]warpnet.PeerAddrInfo, err error)
+	AddProvider(ctx context.Context, key []byte, prov warpnet.PeerAddrInfo) error
+	GetProviders(ctx context.Context, key []byte) ([]warpnet.PeerAddrInfo, error)
 	io.Closer
 }
 
@@ -87,13 +86,12 @@ func (d *ProviderCache) dumpProviders() {
 			}
 			d.mutex.Unlock()
 		case <-d.stopChan:
-			log.Infoln("dht: providers cache: dumping stopped")
 			return
 		}
 	}
 }
 
-func (d *ProviderCache) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+func (d *ProviderCache) AddProvider(ctx context.Context, key []byte, prov warpnet.PeerAddrInfo) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -110,7 +108,7 @@ func (d *ProviderCache) AddProvider(ctx context.Context, key []byte, prov peer.A
 	return nil
 }
 
-func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []peer.AddrInfo, err error) {
+func (d *ProviderCache) GetProviders(ctx context.Context, key []byte) (addrs []warpnet.PeerAddrInfo, err error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
