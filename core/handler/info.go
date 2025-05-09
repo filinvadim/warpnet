@@ -20,7 +20,7 @@ func StreamGetInfoHandler(
 
 		remoteAddr := s.Conn().RemoteMultiaddr()
 
-		log.Debugf("node info request received: %s %s", s.Conn().RemotePeer().String(), remoteAddr)
+		log.Infof("node info request received: %s %s", s.Conn().RemotePeer().String(), remoteAddr)
 
 		if handler != nil {
 			handler(warpnet.PeerAddrInfo{
