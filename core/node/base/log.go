@@ -64,7 +64,7 @@ func init() {
 	_ = golog.SetLogLevel("nat", level)
 	_ = golog.SetLogLevel("p2p-circuit", level)
 	_ = golog.SetLogLevel("basichost", "error")
-	_ = golog.SetLogLevel("swarm2", "debug")
+	_ = golog.SetLogLevel("swarm2", "error")
 	_ = golog.SetLogLevel("autorelay", level)
 	_ = golog.SetLogLevel("net/identify", level)
 }

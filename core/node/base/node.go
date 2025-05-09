@@ -92,7 +92,7 @@ func NewWarpNode(
 		libp2p.ListenAddrStrings(
 			listenAddr,
 		),
-		libp2p.AddrsFactory(addrManager.Factory()),
+		//libp2p.AddrsFactory(addrManager.Factory()),
 		libp2p.SwarmOpts(
 			WithDialTimeout(DefaultTimeout),
 			WithDialTimeoutLocal(DefaultTimeout),
@@ -113,7 +113,7 @@ func NewWarpNode(
 		libp2p.EnableRelayService(relay.WithDefaultResources()), // for member nodes that have static IP
 		libp2p.EnableHolePunching(),
 		libp2p.EnableNATService(),
-		
+
 		natPortMapOption(),
 		autoStaticRelaysOption(),
 		reachibilityOption(),
