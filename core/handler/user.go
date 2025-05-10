@@ -82,6 +82,8 @@ func StreamGetUserHandler(
 
 			return u, nil
 		}
+
+		fmt.Println("??????????", u.TweetsCount, u.FollowersCount, u.FolloweesCount)
 		otherUser, err := repo.Get(ev.UserId)
 		if err != nil {
 			return nil, err

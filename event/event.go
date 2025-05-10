@@ -158,9 +158,7 @@ type GetMessageEvent struct {
 }
 
 type GetTweetStatsEvent struct {
-	TweetId string  `json:"tweet_id"`
-	Cursor  *string `json:"cursor,omitempty"`
-	Limit   *uint64 `json:"limit,omitempty"`
+	TweetId string `json:"tweet_id"`
 }
 
 // GetReTweetsCountEvent defines model for GetReTweetsCountEvent.

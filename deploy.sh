@@ -24,3 +24,4 @@ iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 touch /tmp/snapshot || true
 docker compose up -d --build
+docker image prune

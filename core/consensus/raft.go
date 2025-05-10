@@ -692,7 +692,7 @@ func (c *consensusService) dropPrivateLeadership() {
 }
 
 const (
-	syncFailedKey          = "sync-failed"
+	syncFailedKey          = "warpnet/sync-failed"
 	syncFailedLimit uint64 = 10
 )
 

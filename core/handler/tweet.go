@@ -67,6 +67,12 @@ func StreamNewTweetHandler(
 		}
 
 		owner := authRepo.GetOwner()
+		if ev.UserId == "" {
+			ev.UserId = owner.UserId
+		}
+		if ev.Username == "" {
+			ev.Username = owner.Username
+		}
 
 		if tweet.Id == "" {
 			return tweet, errors.New("tweet handler: empty tweet id")
