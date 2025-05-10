@@ -495,7 +495,7 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Minute * 5)
 	defer ticker.Stop()
 
 	log.Infoln("pubsub: publisher started")

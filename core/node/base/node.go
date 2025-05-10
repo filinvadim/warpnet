@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const DefaultTimeout = 360 * time.Second
+const DefaultTimeout = 60 * time.Second
 
 type Streamer interface {
 	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)

@@ -60,6 +60,7 @@ type (
 
 type ConsensusStorer interface {
 	raft.StableStore
+	Reset() error
 	SnapshotsPath() string
 }
 
@@ -79,8 +80,10 @@ type votersCacher interface {
 }
 
 type consensusService struct {
-	ctx            context.Context
-	consensus      *Consensus
+	ctx       context.Context
+	consensus *Consensus
+	consRepo  ConsensusStorer
+
 	node           NodeTransporter
 	fsm            *fsm
 	cache          votersCacher
@@ -142,6 +145,7 @@ func NewRaft(
 		logStore:       raft.NewInmemStore(),
 		stableStore:    stableStore,
 		snapshotStore:  snapshotStore,
+		consRepo:       consRepo,
 		fsm:            finiteStateMachine,
 		cache:          newVotersCache(),
 		consensus:      cons,
@@ -219,6 +223,13 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 	}
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
+
+	if c.isTooManySyncsFailed() {
+		if err := c.consRepo.Reset(); err != nil {
+			log.Errorf("consensus: failed to reset consensus state: %v", err)
+		}
+	}
+
 	err = c.retrier.Try(c.ctx, c.sync)
 	if err != nil {
 		return err
@@ -318,6 +329,7 @@ func (c *consensusService) sync() error {
 	defer voterCancel()
 
 	if err := cs.waitForVoter(voterCtx); err != nil {
+		c.markSyncFailed()
 		return fmt.Errorf("consensus: waiting to become a voter: %w", err)
 	}
 	log.Infoln("consensus: node received voter status")
@@ -677,6 +689,25 @@ func (c *consensusService) dropPrivateLeadership() {
 		"consensus: failed to send leader ship transfer to server %s: %v",
 		randomServer.String(), wait.Error(),
 	)
+}
+
+const (
+	syncFailedKey          = "sync-failed"
+	syncFailedLimit uint64 = 10
+)
+
+func (c *consensusService) markSyncFailed() {
+	num, _ := c.stableStore.GetUint64([]byte(syncFailedKey))
+	_ = c.stableStore.SetUint64([]byte(syncFailedKey), num+1)
+}
+
+func (c *consensusService) isTooManySyncsFailed() bool {
+	num, _ := c.stableStore.GetUint64([]byte(syncFailedKey))
+	if num == syncFailedLimit {
+		_ = c.stableStore.SetUint64([]byte(syncFailedKey), 0)
+		return true
+	}
+	return false
 }
 
 func (c *consensusService) Shutdown() {
