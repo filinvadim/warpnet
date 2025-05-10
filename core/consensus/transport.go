@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/hashicorp/raft"
@@ -50,7 +49,6 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 	if sl.host == nil {
 		return nil, errors.New("stream layer not initialized")
 	}
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 	var pid warpnet.WarpPeerID
 	value, ok := sl.cache.Load(string(address))
 	if ok {
@@ -62,8 +60,6 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 	if pid.String() == "" {
 		return nil, errors.New("raft-transport: invalid server id")
 	}
-
-	fmt.Println(pid.String(), "???????????????????????????????? DIAL")
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
