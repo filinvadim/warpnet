@@ -3,26 +3,22 @@ package consensus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/hashicorp/raft"
 	gostream "github.com/libp2p/go-libp2p-gostream"
 	"net"
+	"sync"
 	"time"
 )
 
 const raftProtocol warpnet.WarpProtocolID = "/raft/1.0.0/rpc"
 
-type addrProvider struct {
-}
+type addrProvider struct{}
 
 func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error) {
-	if result := warpnet.FromStringToPeerID(string(id)); result.String() == "" {
-		return "", errors.New("raft-transport: invalid server id")
-	}
-
 	return raft.ServerAddress(id), nil
-
 }
 
 type streamLayer struct {
@@ -30,9 +26,12 @@ type streamLayer struct {
 	l       net.Listener
 	lg      *consensusLogger
 	retrier retrier.Retrier
+	cache   *sync.Map
 }
 
 func newStreamLayer(h NodeTransporter, lg *consensusLogger) (*streamLayer, error) {
+	peerIdCache := new(sync.Map)
+
 	listener, err := gostream.Listen(h.Node(), raftProtocol)
 	if err != nil {
 		return nil, err
@@ -43,6 +42,7 @@ func newStreamLayer(h NodeTransporter, lg *consensusLogger) (*streamLayer, error
 		l:       listener,
 		lg:      lg,
 		retrier: retrier.New(time.Second*1, 5, retrier.ArithmeticalBackoff),
+		cache:   peerIdCache,
 	}, nil
 }
 
@@ -50,11 +50,20 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 	if sl.host == nil {
 		return nil, errors.New("stream layer not initialized")
 	}
-
-	pid := warpnet.FromStringToPeerID(string(address))
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+	var pid warpnet.WarpPeerID
+	value, ok := sl.cache.Load(string(address))
+	if ok {
+		pid = value.(warpnet.WarpPeerID)
+	} else {
+		pid = warpnet.FromStringToPeerID(string(address))
+		sl.cache.Store(string(address), pid)
+	}
 	if pid.String() == "" {
 		return nil, errors.New("raft-transport: invalid server id")
 	}
+
+	fmt.Println(pid.String(), "???????????????????????????????? DIAL")
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -83,7 +92,7 @@ func (sl *streamLayer) Addr() net.Addr {
 }
 
 func (sl *streamLayer) Close() error {
-	sl.lg.Debug("raft-trasport: stream closed")
+	sl.lg.Debug("raft-transport: stream closed")
 	return sl.l.Close()
 }
 

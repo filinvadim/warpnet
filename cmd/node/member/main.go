@@ -21,12 +21,20 @@ import (
 	"github.com/filinvadim/warpnet/server/server"
 	writer "github.com/ipfs/go-log/writer"
 	log "github.com/sirupsen/logrus"
+	//"net/http"
+	//_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
 )
+
+//func init() {
+//	go func() {
+//		http.ListenAndServe("localhost:8080", nil)
+//	}()
+//}
 
 type API struct {
 	*handlers.StaticController

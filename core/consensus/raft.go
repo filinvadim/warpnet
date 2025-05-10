@@ -67,7 +67,7 @@ type NodeTransporter interface {
 	Node() warpnet.P2PNode
 	NodeInfo() warpnet.NodeInfo
 	Network() warpnet.WarpNetwork
-	GenericStream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error)
+	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
 }
 
 type votersCacher interface {
@@ -274,7 +274,7 @@ func (c *consensusService) waitClusterReady() error {
 		if wait.Error() != nil {
 			return fmt.Errorf("consensus: config fetch error: %w", wait.Error())
 		}
-		log.Infof("consensus: cluster is ready: %v", wait.Configuration().Servers)
+		log.Infof("consensus: cluster is ready: servers list %s", wait.Configuration().Servers)
 		break
 	case <-timeoutTimer.C:
 		return errors.New("consensus: getting configuration timeout — possibly broken cluster")
@@ -301,7 +301,7 @@ func (c *consensusService) sync() error {
 		return err
 	}
 
-	leaderCtx, leaderCancel := context.WithTimeout(context.Background(), time.Minute)
+	leaderCtx, leaderCancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer leaderCancel()
 
 	cs := consensusSync{
@@ -314,7 +314,7 @@ func (c *consensusService) sync() error {
 	go cs.waitForLeader(leaderCtx)
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
-	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Second*90)
+	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer voterCancel()
 
 	if err := cs.waitForVoter(voterCtx); err != nil {
@@ -322,7 +322,7 @@ func (c *consensusService) sync() error {
 	}
 	log.Infoln("consensus: node received voter status")
 
-	updatesCtx, updatesCancel := context.WithTimeout(context.Background(), time.Minute*2)
+	updatesCtx, updatesCancel := context.WithTimeout(context.Background(), time.Minute)
 	defer updatesCancel()
 
 	if err := cs.waitForUpdates(updatesCtx); err != nil {
@@ -456,7 +456,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		log.Infof("consensus: new voter added %s", info.ID.String())
 	}
 
-	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal flapping
+	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal from flapping
 		Suffrage: raft.Voter,
 		ID:       id,
 		Address:  addr,

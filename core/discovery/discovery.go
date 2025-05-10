@@ -13,9 +13,7 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/retrier"
-	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -206,8 +204,8 @@ func (s *discoveryService) DefaultDiscoveryHandler(peerInfo warpnet.PeerAddrInfo
 
 	if err := s.node.Connect(peerInfo); err != nil {
 		log.Errorf(
-			"discovery: default handler: failed to connect to peer %s: %v",
-			peerInfo.String(),
+			"discovery: default handler: failed to connect to peer %s: %v\n",
+			peerInfo.ID.String(),
 			err,
 		)
 		return
@@ -288,8 +286,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 		return
 	}
 
-	s.amendPublicAddress(pi.ID, info.RequesterAddr)
-
 	if info.IsBootstrap() {
 		s.markBootstrapDiscovered(pi)
 		return
@@ -327,48 +323,6 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	)
 }
 
-func (s *discoveryService) amendPublicAddress(id warpnet.WarpPeerID, remoteAddr string) {
-	if remoteAddr == "" {
-		return
-	}
-	maddr, err := warpnet.NewMultiaddr(remoteAddr)
-	if err != nil {
-		return
-	}
-
-	publicMaddr := pingTCP(maddr)
-	if publicMaddr == nil {
-		return
-	}
-
-	week := time.Hour * 24 * 7
-	s.node.Peerstore().AddAddr(id, publicMaddr, week)
-}
-
-func pingTCP(addr multiaddr.Multiaddr) multiaddr.Multiaddr {
-	ip, err := addr.ValueForProtocol(warpnet.P_IP4)
-	if err != nil {
-		ip, err = addr.ValueForProtocol(warpnet.P_IP6)
-		if err != nil {
-			return nil
-		}
-	}
-
-	port, err := addr.ValueForProtocol(warpnet.P_TCP)
-	if err != nil {
-		return nil
-	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", ip, port))
-	if err != nil {
-		return nil
-	}
-	if conn != nil {
-		_ = conn.Close()
-	}
-	return addr
-
-}
-
 func (s *discoveryService) isMineBootstrapNodes(pi warpnet.PeerAddrInfo) bool {
 	if !s.syncDone.Load() {
 		return false
@@ -398,9 +352,6 @@ func (s *discoveryService) requestNodeInfo(pi warpnet.PeerAddrInfo) (info warpne
 	if s == nil {
 		return info, err
 	}
-
-	newNodeInfo := s.node.Peerstore().PeerInfo(pi.ID)
-	log.Infof("discovery: requesting node info for peer %s", newNodeInfo.String())
 
 	infoResp, err := s.node.GenericStream(pi.ID.String(), event.PUBLIC_GET_INFO, nil)
 	if err != nil {

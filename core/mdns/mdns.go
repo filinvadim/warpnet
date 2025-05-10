@@ -39,8 +39,6 @@ import (
     - Ideal for local applications but inefficient for large-scale global P2P networks.
 */
 
-const mdnsServiceName = "warpnet"
-
 type NodeConnector interface {
 	Connect(peer.AddrInfo) error
 	Node() warpnet.P2PNode
@@ -116,7 +114,7 @@ func (m *MulticastDNS) Start(n NodeConnector) {
 	m.service.node = n
 	m.service.mx.Unlock()
 
-	m.mdns = mdns.NewMdnsService(n.Node(), mdnsServiceName, m.service)
+	m.mdns = mdns.NewMdnsService(n.Node(), warpnet.WarpnetName, m.service)
 
 	go func() {
 		// start it a little bit later,

@@ -18,10 +18,7 @@ import (
 	"time"
 )
 
-const (
-	DefaultTimeout = 360 * time.Second
-	ServiceName    = "warpnet"
-)
+const DefaultTimeout = 360 * time.Second
 
 type Streamer interface {
 	Send(peerAddr warpnet.PeerAddrInfo, r stream.WarpRoute, data []byte) ([]byte, error)
@@ -94,7 +91,7 @@ func NewWarpNode(
 		libp2p.Peerstore(store),
 		libp2p.ResourceManager(rm),
 		libp2p.PrivateNetwork(warpnet.PSK(psk)),
-		libp2p.UserAgent(ServiceName),
+		libp2p.UserAgent(warpnet.WarpnetName),
 		libp2p.ConnectionManager(manager),
 		libp2p.Routing(routingFn),
 
@@ -248,16 +245,12 @@ func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
 
 var ErrSelfRequest = errors.New("self request is not allowed")
 
-func (n *WarpNode) Stream(nodeIdStr string, path stream.WarpRoute, data any) (_ []byte, err error) {
+func (n *WarpNode) Stream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
 		return nil, errors.New("node is not initialized")
 	}
-	if nodeIdStr == "" {
-		return nil, errors.New("node: empty node id")
-	}
-	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
 	if nodeId == "" {
-		return nil, fmt.Errorf("node: invalid node id: %v", nodeIdStr)
+		return nil, errors.New("node: empty node id")
 	}
 	if n.NodeInfo().ID == nodeId {
 		return nil, ErrSelfRequest

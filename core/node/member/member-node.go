@@ -148,7 +148,8 @@ func (m *MemberNode) Start(clientNode ClientNodeStreamer) error {
 type streamNodeID = string
 
 func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute, data any) (_ []byte, err error) {
-	bt, err := m.Stream(nodeIdStr, path, data)
+	nodeId := warpnet.FromStringToPeerID(nodeIdStr)
+	bt, err := m.Stream(nodeId, path, data)
 	if errors.Is(err, warpnet.ErrNodeIsOffline) {
 		m.setUserOffline(nodeIdStr)
 	}

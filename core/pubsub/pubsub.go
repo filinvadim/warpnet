@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/discovery"
@@ -10,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
+	"github.com/filinvadim/warpnet/json"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/sirupsen/logrus"
 	"slices"
@@ -358,7 +358,7 @@ func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 			g.topics[topicName] = topic
 		}
 
-		data, err := json.Marshal(msg)
+		data, err := json.JSON.Marshal(msg)
 		if err != nil {
 			log.Errorf("pubsub: failed to marshal owner update message: %v", err)
 			return err
@@ -400,7 +400,7 @@ func (g *warpPubSub) UnsubscribeUserUpdate(userId string) (err error) {
 
 func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 	var simulatedMessage event.Message
-	if err := json.Unmarshal(msg.Data, &simulatedMessage); err != nil {
+	if err := json.JSON.Unmarshal(msg.Data, &simulatedMessage); err != nil {
 		log.Errorf("pubsub: failed to decode user update message: %v %s", err, msg.Data)
 		return err
 	}
@@ -436,10 +436,10 @@ func (g *warpPubSub) handleUserUpdate(msg *pubsub.Message) error {
 func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 	var discoveryAddrInfos []warpnet.WarpAddrInfo
 
-	outerErr := json.Unmarshal(msg.Data, &discoveryAddrInfos)
+	outerErr := json.JSON.Unmarshal(msg.Data, &discoveryAddrInfos)
 	if outerErr != nil {
 		var single warpnet.WarpAddrInfo
-		if innerErr := json.Unmarshal(msg.Data, &single); innerErr != nil {
+		if innerErr := json.JSON.Unmarshal(msg.Data, &single); innerErr != nil {
 			log.Errorf("pubsub: discovery: failed to decode discovery message: %v %s", innerErr, msg.Data)
 			return
 		}
@@ -495,7 +495,7 @@ func (g *warpPubSub) runPeerInfoPublishing() {
 		_ = discTopic.Close()
 	}()
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
 	log.Infoln("pubsub: publisher started")
@@ -545,7 +545,7 @@ func (g *warpPubSub) publishPeerInfo(topic *pubsub.Topic) error {
 		limit--
 	}
 
-	data, err := json.Marshal(addrInfosMessage)
+	data, err := json.JSON.Marshal(addrInfosMessage)
 	if err != nil {
 		return fmt.Errorf("failed to marshal peer info message: %v", err)
 	}

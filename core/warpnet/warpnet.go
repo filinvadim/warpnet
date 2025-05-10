@@ -120,7 +120,6 @@ type NodeInfo struct {
 	Version        *semver.Version `json:"version"`
 	Addresses      []string        `json:"addresses"`
 	StartTime      time.Time       `json:"start_time"`
-	RequesterAddr  string          `json:"requester_addr"`
 	RelayState     string          `json:"relay_state"`
 	BootstrapPeers []PeerAddrInfo  `json:"bootstrap_peers"`
 }

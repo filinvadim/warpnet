@@ -55,8 +55,6 @@ import (
 
 const WarpnetRendezvous = "rendezvous-point@warpnet"
 
-var ErrDHTMisconfigured = errors.New("DHT is misconfigured")
-
 type RoutingStorer interface {
 	warpnet.WarpBatching
 }
@@ -181,6 +179,8 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		return
 	}
 
+	defer log.Infoln("dht rendezvous: stopped")
+
 	tryouts := 30
 	for len(d.dht.RoutingTable().ListPeers()) == 0 {
 		if tryouts == 0 {
@@ -191,17 +191,21 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		tryouts--
 	}
 
+	timer := time.NewTimer(time.Minute * 5)
+	defer timer.Stop()
+
 	rendezvousCtx, cancel := context.WithCancel(context.Background())
 	d.cancelFunc = cancel
 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
-	_, err := routingDiscovery.Advertise(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
+	_, err := routingDiscovery.Advertise(
+		rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour*3), lip2pDiscovery.Limit(5))
 	if err != nil {
 		log.Errorf("dht rendezvous: advertise: %s", err)
 		return
 	}
 
-	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour))
+	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous)
 	if err != nil {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
@@ -214,6 +218,12 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 
 	for {
 		select {
+		case <-timer.C:
+			return
+		case <-d.stopChan:
+			return
+		case <-rendezvousCtx.Done():
+			return
 		case peerInfo := <-peerChan:
 			if peerInfo.ID == ownID {
 				continue
@@ -225,10 +235,6 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 			for _, addF := range d.addFuncs {
 				addF(peerInfo)
 			}
-		case <-d.stopChan:
-			return
-		case <-rendezvousCtx.Done():
-			return
 		}
 	}
 }
@@ -275,10 +281,9 @@ func (d *DistributedHashTable) Close() {
 	}
 	close(d.stopChan)
 
+	log.Infoln("dht: table closing...")
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
-	d.dht = nil
-
 	log.Infoln("dht: table closed")
 }

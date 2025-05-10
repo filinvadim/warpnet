@@ -28,15 +28,10 @@ func StreamGetInfoHandler(
 				Addrs: []warpnet.WarpAddress{remoteAddr},
 			})
 		}
-
-		info := i.NodeInfo()
-		info.RequesterAddr = remoteAddr.String()
-
-		if err := json.JSON.NewEncoder(s).Encode(info); err != nil {
+		
+		if err := json.JSON.NewEncoder(s).Encode(i.NodeInfo()); err != nil {
 			log.Errorf("fail encoding generic response: %v", err)
 		}
-
-		log.Debugf("node info response sent: %v", info)
 		return
 	}
 }
