@@ -7,6 +7,7 @@ import (
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/hashicorp/raft"
 	gostream "github.com/libp2p/go-libp2p-gostream"
+	"github.com/libp2p/go-libp2p/core/network"
 	"net"
 	"sync"
 	"time"
@@ -64,6 +65,12 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	connectedness := sl.host.Network().Connectedness(pid)
+	switch connectedness {
+	case network.Limited:
+		ctx = network.WithAllowLimitedConn(ctx, warpnet.WarpnetName)
+	default:
+	}
 	conn, err := gostream.Dial(ctx, sl.host.Node(), pid, raftProtocol)
 	if err != nil {
 		sl.lg.Debug("raft-transport: dial failed to " + string(address) + ": " + err.Error())
