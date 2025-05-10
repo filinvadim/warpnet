@@ -7,7 +7,7 @@ services:
       - NODE_PORT=4001
       - NODE_HOST=${NODE_HOST}
       - NODE_INMEMORY=true
-      - LOGGING_LEVEL=DEBUG
+      - LOGGING_LEVEL=warn
     volumes:
     - snapshot1:/tmp/snapshot:rw
 
@@ -19,7 +19,7 @@ services:
       - NODE_PORT=4002
       - NODE_HOST=${NODE_HOST}
       - NODE_INMEMORY=true
-      - LOGGING_LEVEL=DEBUG
+      - LOGGING_LEVEL=warn
     volumes:
     - snapshot2:/tmp/snapshot:rw
 
@@ -31,7 +31,7 @@ services:
       - NODE_INMEMORY=true
       - NODE_PORT=4003
       - NODE_HOST=${NODE_HOST}
-      - LOGGING_LEVEL=DEBUG
+      - LOGGING_LEVEL=warn
     volumes:
     - snapshot3:/tmp/snapshot:rw
 

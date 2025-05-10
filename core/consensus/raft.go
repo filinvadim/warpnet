@@ -343,6 +343,7 @@ func (c *consensusService) sync() error {
 	if c.raftID == "" {
 		return errors.New("consensus: node id is not initialized")
 	}
+	log.Infoln("consensus: waiting for sync...")
 
 	if c.ctx.Err() != nil {
 		return c.ctx.Err()
@@ -361,7 +362,6 @@ func (c *consensusService) sync() error {
 		raftID: c.raftID,
 	}
 
-	log.Infoln("consensus: waiting for leader...")
 	go cs.waitForLeader(leaderCtx)
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
@@ -407,7 +407,7 @@ func (c *consensusSync) waitForLeader(ctx context.Context) {
 			return
 
 		case <-ctx.Done():
-			log.Errorf("consensus: waiting for leader: %v", ctx.Err())
+			log.Warningf("consensus: waiting for leader: %v", ctx.Err())
 			return
 		}
 	}
@@ -434,7 +434,6 @@ func (c *consensusSync) waitForVoter(ctx context.Context) error {
 			if isVoter(id, wait.Configuration()) {
 				return nil
 			}
-			log.Debugf("consensus: node is not voter yet: %s", id)
 		}
 	}
 }

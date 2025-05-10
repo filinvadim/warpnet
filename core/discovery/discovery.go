@@ -271,12 +271,12 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if !s.hasPublicAddresses(pi.Addrs) {
-		log.Warnf("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
+		log.Debugf("discovery: peer %s has no public addresses: %v", pi.ID.String(), pi.Addrs)
 		return
 	}
 
 	if err := s.node.Connect(pi); err != nil {
-		log.Errorf("discovery: failed to connect to new peer: %s...", err)
+		log.Errorf("discovery: failed to connect to new peer %s: %v", pi.ID.String(), err)
 		return
 	}
 
