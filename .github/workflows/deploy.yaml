@@ -45,9 +45,9 @@ jobs:
       - name: Deploy to Droplet
         run: |
           scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
-          scp ./docker-compose.yml root@${{ secrets.HOST_1 }}:/root
+          scp ./docker-compose-init.yml root@${{ secrets.HOST_1 }}:/root/docker-compose.yml
           ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
           
           scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/chmo
-          scp ./docker-compose.yml chmo@${{ secrets.HOST_SASHA }}:/chmo
-          ssh chmo@${{ secrets.HOST_SASHA }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /chmo/deploy.sh'
+          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/chmo/docker-compose.yml
+          ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /chmo/deploy.sh'
