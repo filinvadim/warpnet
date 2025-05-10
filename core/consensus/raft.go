@@ -97,6 +97,7 @@ type consensusService struct {
 	retrier        retrier.Retrier
 	l              *consensusLogger
 	bootstrapNodes []warpnet.PeerAddrInfo
+	stopChan       chan struct{}
 	isPrivate      bool
 }
 
@@ -109,7 +110,13 @@ func NewMemberRaft(
 	consRepo ConsensusStorer,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
-	return newRaft(ctx, consRepo, false, false, validators...)
+	svc, err := newRaft(ctx, consRepo, false, false, validators...)
+	if err != nil {
+		return nil, err
+	}
+	go svc.runLeadershipMonitoring()
+
+	return svc, nil
 }
 
 func newRaft(
@@ -166,6 +173,7 @@ func newRaft(
 		l:              l,
 		isPrivate:      !isBootstrap,
 		bootstrapNodes: infos,
+		stopChan:       make(chan struct{}),
 	}, nil
 }
 
@@ -250,6 +258,25 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	c.node = node
 	return nil
+}
+
+func (c *consensusService) runLeadershipMonitoring() {
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		if c.ctx.Err() != nil {
+			return
+		}
+		select {
+		case <-ticker.C:
+			c.dropPrivateLeadership()
+		case <-c.stopChan:
+			return
+		case <-c.ctx.Done():
+			return
+		}
+	}
 }
 
 func (c *consensusService) bootstrap(id raft.ServerID) error {
@@ -455,7 +482,6 @@ func isVoter(srvID raft.ServerID, cfg raft.Configuration) bool {
 
 func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	c.waitSync()
-	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return
@@ -491,7 +517,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 
 func (c *consensusService) RemoveVoter(id warpnet.WarpPeerID) {
 	c.waitSync()
-	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return
@@ -618,7 +643,6 @@ func (c *consensusService) AskLeaderValidation() error {
 
 func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error) {
 	c.waitSync()
-	c.dropPrivateLeadership()
 
 	if c.raft == nil {
 		return nil, errors.New("consensus: nil node")
@@ -727,6 +751,9 @@ func (c *consensusService) Shutdown() {
 	if c == nil || c.raft == nil {
 		return
 	}
+	defer func() { recover() }()
+
+	close(c.stopChan)
 
 	_ = c.transport.Close()
 	wait := c.raft.Shutdown()

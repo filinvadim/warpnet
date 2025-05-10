@@ -46,7 +46,7 @@ func NewWarpNode(
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
-	limiter := warpnet.NewFixedLimiter()
+	limiter := warpnet.NewAutoScaledLimiter()
 
 	manager, err := warpnet.NewConnManager(limiter)
 	if err != nil {
@@ -139,11 +139,11 @@ func (n *WarpNode) Connect(p warpnet.PeerAddrInfo) error {
 		return nil
 	}
 
-	log.Infoln("node: connect attempt to node:", p.ID.String(), p.Addrs)
+	log.Debugf("node: connect attempt to node: %s", p.String())
 	if err := n.node.Connect(n.ctx, p); err != nil {
 		return fmt.Errorf("failed to connect to node: %w", err)
 	}
-	log.Infoln("node: connect attempt successful:", p.ID.String())
+	log.Debugf("node: connect attempt successful: %s", p.ID.String())
 
 	return nil
 }

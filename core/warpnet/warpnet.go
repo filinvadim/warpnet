@@ -175,7 +175,7 @@ func NewResourceManager(limiter rcmgr.Limiter) (network.ResourceManager, error) 
 	return rcmgr.NewResourceManager(limiter)
 }
 
-func NewFixedLimiter() rcmgr.Limiter {
+func NewAutoScaledLimiter() rcmgr.Limiter {
 	defaultLimits := rcmgr.DefaultLimits.AutoScale()
 	return rcmgr.NewFixedLimiter(defaultLimits)
 }
