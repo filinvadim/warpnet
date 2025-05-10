@@ -61,17 +61,17 @@ func StreamNewTweetHandler(
 			return nil, errors.New("empty user id")
 		}
 
-		tweet, err := tweetRepo.Create(ev.UserId, ev)
-		if err != nil {
-			return nil, err
-		}
-
 		owner := authRepo.GetOwner()
 		if ev.UserId == "" {
 			ev.UserId = owner.UserId
 		}
 		if ev.Username == "" {
 			ev.Username = owner.Username
+		}
+
+		tweet, err := tweetRepo.Create(ev.UserId, ev)
+		if err != nil {
+			return nil, err
 		}
 
 		if tweet.Id == "" {

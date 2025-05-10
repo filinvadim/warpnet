@@ -1,5 +1,5 @@
 services:
-  warpnet1:
+  commonwarpnet1:
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
     network_mode: host
     restart: always
@@ -11,7 +11,7 @@ services:
     volumes:
     - snapshot1:/tmp/snapshot:rw
 
-  warpnet2:
+  commonwarpnet2:
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
     network_mode: host
     restart: always
@@ -23,7 +23,7 @@ services:
     volumes:
     - snapshot2:/tmp/snapshot:rw
 
-  warpnet3:
+  commonwarpnet3:
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
     network_mode: host
     restart: always
@@ -32,7 +32,6 @@ services:
       - NODE_PORT=4003
       - NODE_HOST=${NODE_HOST}
       - LOGGING_LEVEL=DEBUG
-
     volumes:
     - snapshot3:/tmp/snapshot:rw
 

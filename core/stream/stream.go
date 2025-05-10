@@ -46,7 +46,7 @@ func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byt
 	connectedness := p.n.Network().Connectedness(peerAddr.ID)
 	switch connectedness {
 	case network.Limited:
-		log.Warnf("stream: peer %s has limited connection", peerAddr.ID.String())
+		log.Debugf("stream: peer %s has limited connection", peerAddr.ID.String())
 		ctx = network.WithAllowLimitedConn(ctx, warpnet.WarpnetName)
 	default:
 	}
@@ -90,8 +90,8 @@ func send(
 	buf := bytes.NewBuffer(nil)
 	num, err := buf.ReadFrom(rw)
 	if err != nil {
-		log.Errorf("stream: reading response: %v", err)
-		return nil, fmt.Errorf("reading response: %s", err)
+		log.Errorf("stream: reading response from %s: %v", serverInfo.ID.String(), err)
+		return nil, fmt.Errorf("stream: reading response from %s: %w", serverInfo.ID.String(), err)
 	}
 
 	if num == 0 {

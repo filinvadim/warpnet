@@ -200,13 +200,13 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
 	_, err := routingDiscovery.Advertise(
 		rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour*3), lip2pDiscovery.Limit(5))
-	if err != nil {
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		log.Errorf("dht rendezvous: advertise: %s", err)
 		return
 	}
 
 	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous)
-	if err != nil {
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
 	}

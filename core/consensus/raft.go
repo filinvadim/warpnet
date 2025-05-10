@@ -240,6 +240,7 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 		if err := c.consRepo.Reset(); err != nil {
 			log.Errorf("consensus: failed to reset consensus state: %v", err)
 		}
+		return errors.New("consensus: too many attempts: reset consensus state")
 	}
 
 	err = c.retrier.Try(c.ctx, c.sync)
