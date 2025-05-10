@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	root "github.com/filinvadim/warpnet"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/node/bootstrap"
@@ -39,7 +40,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, err := bootstrap.NewBootstrapNode(ctx, psk)
+	seed := []byte(rand.Text())
+	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
+		seed = []byte(hostname)
+	}
+
+	isInMemory := config.ConfigFile.Node.IsInMemory
+
+	n, err := bootstrap.NewBootstrapNode(ctx, isInMemory, seed, psk)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}

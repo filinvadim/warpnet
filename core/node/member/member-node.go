@@ -57,10 +57,7 @@ func NewMemberNode(
 	followRepo := database.NewFollowRepo(db)
 	owner := authRepo.GetOwner()
 
-	raft, err := consensus.NewRaft(
-		ctx, consensusRepo, false,
-		userRepo.ValidateUser,
-	)
+	raft, err := consensus.NewMemberRaft(ctx, consensusRepo, userRepo.ValidateUser)
 	if err != nil {
 		return nil, fmt.Errorf("member: consensus initialization: %v", err)
 	}

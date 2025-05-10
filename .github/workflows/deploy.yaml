@@ -42,12 +42,14 @@ jobs:
           ssh-keyscan -H ${{ secrets.HOST_1 }} >> ~/.ssh/known_hosts
           ssh-keyscan -H ${{ secrets.HOST_SASHA }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Droplet
+      - name: Deploy to DO Droplet
         run: |
           scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
           scp ./docker-compose-init.yml root@${{ secrets.HOST_1 }}:/root/docker-compose.yml
           ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
-          
-          scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/chmo
-          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/chmo/docker-compose.yml
-          ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /chmo/deploy.sh'
+
+      - name: Deploy to BC Droplet
+        run: |
+          scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/home/chmo
+          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose.yml
+          ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /home/chmo/deploy.sh'

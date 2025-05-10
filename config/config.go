@@ -26,6 +26,7 @@ func init() {
 	pflag.String("node.port", "4001", "Node port")
 	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
 	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
+	pflag.Bool("node.inmemory", false, "Bootstrap node runs without persistent storage")
 	pflag.String("node.metrics.server", "", "Metrics server address")
 	pflag.String("logging.level", "INFO", "Logging level")
 
@@ -49,10 +50,11 @@ func init() {
 	ConfigFile = Config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
-			Bootstrap: bootstrapAddrList,
-			Host:      viper.GetString("node.host"),
-			Port:      viper.GetString("node.port"),
-			Prefix:    viper.GetString("node.network.prefix"),
+			Bootstrap:  bootstrapAddrList,
+			Host:       viper.GetString("node.host"),
+			Port:       viper.GetString("node.port"),
+			Prefix:     viper.GetString("node.network.prefix"),
+			IsInMemory: viper.GetBool("node.inmemory"),
 			Metrics: Metrics{
 				Server: viper.GetString("node.metrics.server"),
 			},
@@ -74,11 +76,12 @@ type Config struct {
 	Logging  Logging
 }
 type Node struct {
-	Bootstrap []string
-	Host      string
-	Port      string
-	Prefix    string
-	Metrics   Metrics
+	Bootstrap  []string
+	Host       string
+	Port       string
+	Prefix     string
+	IsInMemory bool
+	Metrics    Metrics
 }
 
 type Metrics struct {

@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/consensus"
@@ -20,7 +19,6 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 type BootstrapNode struct {
@@ -37,12 +35,10 @@ type BootstrapNode struct {
 
 func NewBootstrapNode(
 	ctx context.Context,
+	isInMemory bool,
+	seed []byte,
 	psk security.PSK,
 ) (_ *BootstrapNode, err error) {
-	seed := []byte(rand.Text())
-	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
-		seed = []byte(hostname)
-	}
 	privKey, err := security.GenerateKeyFromSeed(seed)
 	if err != nil {
 		return nil, fmt.Errorf("bootstrap: fail generating key: %v", err)
@@ -53,7 +49,7 @@ func NewBootstrapNode(
 		return nil, fmt.Errorf("bootstrap: fail getting ID: %v", err)
 	}
 
-	raft, err := consensus.NewBootstrapRaft(ctx)
+	raft, err := consensus.NewBootstrapRaft(ctx, isInMemory)
 	if err != nil {
 		return nil, err
 	}

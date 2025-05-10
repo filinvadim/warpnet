@@ -100,14 +100,22 @@ type consensusService struct {
 	isPrivate      bool
 }
 
-func NewBootstrapRaft(ctx context.Context, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
-	return NewRaft(ctx, nil, true, validators...)
+func NewBootstrapRaft(ctx context.Context, isInMemory bool, validators ...ConsensusValidatorFunc) (_ *consensusService, err error) {
+	return newRaft(ctx, nil, true, isInMemory, validators...)
 }
 
-func NewRaft(
+func NewMemberRaft(
 	ctx context.Context,
 	consRepo ConsensusStorer,
-	isBootstrap bool,
+	validators ...ConsensusValidatorFunc,
+) (_ *consensusService, err error) {
+	return newRaft(ctx, consRepo, false, false, validators...)
+}
+
+func newRaft(
+	ctx context.Context,
+	consRepo ConsensusStorer,
+	isBootstrap, isInMemory bool,
 	validators ...ConsensusValidatorFunc,
 ) (_ *consensusService, err error) {
 	var (
@@ -123,10 +131,14 @@ func NewRaft(
 	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
 
 	if isBootstrap {
-		basePath := "/tmp/snapshot"
-		snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, l)
-		if err != nil {
-			return nil, fmt.Errorf("consensus: failed to create snapshot store: %v", err)
+		if isInMemory {
+			snapshotStore = raft.NewInmemSnapshotStore()
+		} else {
+			basePath := "/tmp/snapshot"
+			snapshotStore, err = raft.NewFileSnapshotStoreWithLogger(basePath, 5, l)
+			if err != nil {
+				return nil, fmt.Errorf("consensus: failed to create snapshot store: %v", err)
+			}
 		}
 		stableStore = raft.NewInmemStore()
 	} else {
