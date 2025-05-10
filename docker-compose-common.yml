@@ -6,7 +6,7 @@ services:
     environment:
       - NODE_PORT=4001
       - NODE_HOST=${NODE_HOST}
-      - NODE_INMEMORY=true
+      - NODE_INMEMORY=false
       - LOGGING_LEVEL=warn
     volumes:
     - snapshot1:/tmp/snapshot:rw
@@ -18,7 +18,7 @@ services:
     environment:
       - NODE_PORT=4002
       - NODE_HOST=${NODE_HOST}
-      - NODE_INMEMORY=true
+      - NODE_INMEMORY=false
       - LOGGING_LEVEL=warn
     volumes:
     - snapshot2:/tmp/snapshot:rw
@@ -28,7 +28,7 @@ services:
     network_mode: host
     restart: always
     environment:
-      - NODE_INMEMORY=true
+      - NODE_INMEMORY=false
       - NODE_PORT=4003
       - NODE_HOST=${NODE_HOST}
       - LOGGING_LEVEL=warn

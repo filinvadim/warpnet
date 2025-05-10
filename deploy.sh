@@ -8,8 +8,8 @@ if [ -z "$GITHUB_TOKEN" ]; then
   echo "Error: GITHUB_TOKEN is not set"
   exit 1
 fi
-sudo docker stop $(sudo docker ps -aq) || true
-sudo docker container prune -f
+#sudo docker stop $(sudo docker ps -aq) || true
+#sudo docker container prune -f
 sudo docker compose down
 echo $GITHUB_TOKEN | sudo docker login ghcr.io -u filinvadim --password-stdin
 sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
@@ -24,4 +24,3 @@ sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo touch /tmp/snapshot || true
 sudo docker compose up -d --build
-sudo docker image prune
