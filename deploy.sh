@@ -29,4 +29,5 @@ sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 sudo touch /tmp/snapshot || true
 
 export NODE_HOST=$NODE_HOST
+env
 sudo -E docker compose -f docker-compose-warpnet.yml up -d --build
