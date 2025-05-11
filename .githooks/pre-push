@@ -12,13 +12,10 @@ fi
 # CURRENT_VERSION=$(grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z\.-]+)?' "$FILE")
 CURRENT_VERSION=$(grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+' "$FILE")
 
-# Проверяем, что пушится
 while read local_ref local_sha remote_ref remote_sha; do
-    # Если пушится тег
     if [[ "$remote_ref" == "refs/tags/"* ]]; then
         TAG_NAME=$(basename "$remote_ref")
 
-        # Если тег совпадает с версией из файла, продолжаем пуш
         if [[ "$TAG_NAME" == "v$CURRENT_VERSION" ]]; then
             echo "Pushing existing tag v$CURRENT_VERSION..."
             exit 0
@@ -26,7 +23,6 @@ while read local_ref local_sha remote_ref remote_sha; do
     fi
 done
 
-# Проверяем, существует ли тег с текущей версией локально
 if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
     echo "Pushing tag v$CURRENT_VERSION ..."
     git push origin "v$CURRENT_VERSION"

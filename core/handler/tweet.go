@@ -62,12 +62,6 @@ func StreamNewTweetHandler(
 		}
 
 		owner := authRepo.GetOwner()
-		if ev.UserId == "" {
-			ev.UserId = owner.UserId
-		}
-		if ev.Username == "" {
-			ev.Username = owner.Username
-		}
 
 		tweet, err := tweetRepo.Create(ev.UserId, ev)
 		if err != nil {

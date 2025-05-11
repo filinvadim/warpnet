@@ -169,7 +169,7 @@ func newRaft(
 		cache:          newVotersCache(),
 		consensus:      cons,
 		syncMx:         new(sync.RWMutex),
-		retrier:        retrier.New(time.Second*3, 3, retrier.ArithmeticalBackoff),
+		retrier:        retrier.New(time.Second*3, 5, retrier.ArithmeticalBackoff),
 		l:              l,
 		isPrivate:      !isBootstrap,
 		bootstrapNodes: infos,
@@ -368,6 +368,7 @@ func (c *consensusService) sync() error {
 
 	if err := cs.waitForVoter(voterCtx); err != nil {
 		c.markSyncFailed()
+		log.Warnf("consensus: waiting to become a voter: %v", err)
 		return fmt.Errorf("consensus: waiting to become a voter: %w", err)
 	}
 	log.Infoln("consensus: node received voter status")
@@ -500,9 +501,9 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 
-	//if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
-	log.Infof("consensus: new voter added %s", info.ID.String())
-	//}
+	if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
+		log.Infof("consensus: new voter added %s", info.ID.String())
+	}
 
 	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal from flapping
 		Suffrage: raft.Voter,

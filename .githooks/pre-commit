@@ -10,23 +10,18 @@ if [ ! -f "$CONFIG" ]; then
     exit 1
 fi
 
-# Читаем текущую версию из файла
 CURRENT_VERSION=$(grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+' "$CONFIG")
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
-# Увеличиваем PATCH
 PATCH=$((PATCH + 1))
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 
-# Обновляем файлы с версией
 sed -i "s/^$CURRENT_VERSION\$/$NEW_VERSION/" "$CONFIG"
 sed -i "s/\(version:\) [0-9]\+\.[0-9]\+\.[0-9]\+/\1 $NEW_VERSION/" "$SPEC_LOCAL"
 
-# Добавляем изменения в git
 git add "$CONFIG"
 git add "$SPEC_LOCAL"
 
-# Создаём новый тег
 git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
 
 echo "Version updated to $NEW_VERSION and tagged as v$NEW_VERSION."

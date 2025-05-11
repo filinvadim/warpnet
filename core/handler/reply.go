@@ -18,6 +18,7 @@ type ReplyTweetStorer interface {
 
 type ReplyStreamer interface {
 	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+	NodeInfo() warpnet.NodeInfo
 }
 
 type ReplyUserFetcher interface {
@@ -67,6 +68,10 @@ func StreamNewReplyHandler(
 		})
 		if err != nil {
 			return nil, err
+		}
+
+		if parentUser.NodeId == streamer.NodeInfo().ID.String() {
+			return reply, nil
 		}
 
 		replyDataResp, err := streamer.GenericStream(

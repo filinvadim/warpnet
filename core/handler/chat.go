@@ -75,6 +75,10 @@ func StreamCreateChatHandler(
 			return nil, err
 		}
 
+		if otherUser.NodeId == owner.NodeId {
+			return event.ChatCreatedResponse(ownerChat), nil
+		}
+
 		otherChatData, err := streamer.GenericStream(
 			otherUser.NodeId,
 			event.PUBLIC_POST_CHAT,

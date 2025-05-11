@@ -593,12 +593,16 @@ func iterateKeysValues(
 	}
 
 	var (
-		lastKey DatabaseKey
-		iterNum uint64
+		lastKey        DatabaseKey
+		iterNum        uint64
+		isFirstSkipped bool
 	)
 
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		//p = prefix.Bytes() // starting point found
+		if !startCursor.IsEmpty() && !isFirstSkipped {
+			// skip the first match
+			isFirstSkipped = true
+		}
 
 		item := it.Item()
 		key := string(item.Key())
