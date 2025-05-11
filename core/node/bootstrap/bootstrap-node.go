@@ -118,6 +118,8 @@ func NewBootstrapNode(
 
 	logging.SetLogLevels()
 
+	fmt.Println(bn.Node().ID(), "NODE ID")
+
 	return bn, nil
 }
 

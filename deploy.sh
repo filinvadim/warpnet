@@ -10,7 +10,7 @@ if [ -z "$GITHUB_TOKEN" ]; then
 fi
 #sudo docker stop $(sudo docker ps -aq) || true
 #sudo docker container prune -f
-sudo docker compose down
+sudo docker compose -f docker-compose-warpnet.yml down || true
 echo $GITHUB_TOKEN | sudo docker login ghcr.io -u filinvadim --password-stdin
 sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 sudo ufw disable
@@ -23,4 +23,5 @@ sudo iptables -P FORWARD ACCEPT
 sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo touch /tmp/snapshot || true
-sudo docker compose up -d --build
+export NODE_HOST=$NODE_HOST
+sudo -E docker compose -f docker-compose-warpnet.yml up -d --build
