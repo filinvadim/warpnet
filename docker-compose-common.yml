@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       - NODE_PORT=4001
-      - NODE_HOST=$NODE_HOST
+      - NODE_HOST=${NODE_HOST}
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
     volumes:
