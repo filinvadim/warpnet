@@ -1,9 +1,10 @@
 #!/bin/bash
 
 echo "Run deploy script"
-sudo echo "nameserver 8.8.8.8" > /etc/resolv.conf
-sudo echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+#sudo echo "nameserver 8.8.8.8" > /etc/resolv.conf
+#sudo echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 echo "GITHUB_TOKEN: ${GITHUB_TOKEN:0:4}... (truncated for security)"
+echo "NODE_HOST: ${NODE_HOST}... (truncated for security)"
 if [ -z "$GITHUB_TOKEN" ]; then
   echo "Error: GITHUB_TOKEN is not set"
   exit 1
@@ -23,5 +24,4 @@ sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 #sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 #sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo touch /tmp/snapshot || true
-export NODE_HOST=$NODE_HOST
-sudo -E docker compose -f docker-compose-warpnet.yml up -d --build
+NODE_HOST=$NODE_HOST sudo -E docker compose -f docker-compose-warpnet.yml up -d --build
