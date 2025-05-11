@@ -30,4 +30,5 @@ sudo touch /tmp/snapshot || true
 
 export NODE_HOST=$NODE_HOST
 env
+sudo -E env
 sudo -E docker compose -f docker-compose-warpnet.yml up -d --build
