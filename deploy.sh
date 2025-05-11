@@ -9,6 +9,9 @@ if [ -z "$GITHUB_TOKEN" ]; then
   echo "Error: GITHUB_TOKEN is not set"
   exit 1
 fi
+if [ -z "${NODE_HOST}" ]; then
+  echo "Error: NODE_HOST is not set"
+fi
 #sudo docker stop $(sudo docker ps -aq) || true
 #sudo docker container prune -f
 sudo docker compose -f docker-compose-warpnet.yml down || true
@@ -25,5 +28,5 @@ sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 #sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo touch /tmp/snapshot || true
 
-export NODE_HOST
-sudo env NODE_HOST="${NODE_HOST}" docker compose -f docker-compose-warpnet.yml up -d --build
+export NODE_HOST=$NODE_HOST
+sudo -E NODE_HOST="$NODE_HOST" docker compose -f docker-compose-warpnet.yml up -d --build
