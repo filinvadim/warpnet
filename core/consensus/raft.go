@@ -207,7 +207,7 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 		return err
 	}
 
-	c.transport, err = NewWarpnetConsensusTransport(node, newConsensusLogger())
+	c.transport, err = NewWarpnetConsensusTransport(node, c.l)
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
 		return
