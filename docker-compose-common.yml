@@ -1,41 +1,16 @@
 services:
-  commonwarpnet1:
+  warpnet:
+    container_name: warpnet
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
     network_mode: host
     restart: always
     environment:
       - NODE_PORT=4001
-      - NODE_HOST=${NODE_HOST}
+      - NODE_HOST=$NODE_HOST
       - NODE_INMEMORY=false
-      - LOGGING_LEVEL=warn
+      - LOGGING_LEVEL=debug
     volumes:
-    - snapshot1:/tmp/snapshot:rw
-
-  commonwarpnet2:
-    image: ghcr.io/filinvadim/warpnet-bootstrap:latest
-    network_mode: host
-    restart: always
-    environment:
-      - NODE_PORT=4002
-      - NODE_HOST=${NODE_HOST}
-      - NODE_INMEMORY=false
-      - LOGGING_LEVEL=warn
-    volumes:
-    - snapshot2:/tmp/snapshot:rw
-
-  commonwarpnet3:
-    image: ghcr.io/filinvadim/warpnet-bootstrap:latest
-    network_mode: host
-    restart: always
-    environment:
-      - NODE_INMEMORY=false
-      - NODE_PORT=4003
-      - NODE_HOST=${NODE_HOST}
-      - LOGGING_LEVEL=warn
-    volumes:
-    - snapshot3:/tmp/snapshot:rw
+    - snapshot:/tmp/snapshot:rw
 
 volumes:
-  snapshot1:
-  snapshot2:
-  snapshot3:
+  snapshot:
