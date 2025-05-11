@@ -27,8 +27,6 @@ sudo docker pull ghcr.io/filinvadim/warpnet-bootstrap:latest
 #sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 #sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo touch /tmp/snapshot || true
-
+export HOSTNAME=''
 export NODE_HOST=$NODE_HOST
-env
-sudo -E env
 sudo -E docker compose -f docker-compose-warpnet.yml up -d --build

@@ -55,12 +55,19 @@ var subsystems = []string{
 	"webrtc-udpmux",
 }
 
+func init() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02T15:04:05",
+	})
+}
+
 func SetLogLevels() {
 	level := logrus.GetLevel().String()
 	//level := "debug"
-	_ = golog.SetLogLevel("raftlib", "debug")
-	_ = golog.SetLogLevel("raft", "debug")
-	_ = golog.SetLogLevel("libp2p-raft", "debug")
+	_ = golog.SetLogLevel("raftlib", level)
+	_ = golog.SetLogLevel("raft", "error")
+	_ = golog.SetLogLevel("libp2p-raft", level)
 
 	_ = golog.SetLogLevel("autonatv2", level)
 	_ = golog.SetLogLevel("autonat", level)
