@@ -1,4 +1,4 @@
-package base
+package logging
 
 import (
 	golog "github.com/ipfs/go-log/v2"
@@ -55,9 +55,13 @@ var subsystems = []string{
 	"webrtc-udpmux",
 }
 
-func init() {
+func SetLogLevels() {
 	level := logrus.GetLevel().String()
 	//level := "debug"
+	_ = golog.SetLogLevel("raftlib", "debug")
+	_ = golog.SetLogLevel("raft", "debug")
+	_ = golog.SetLogLevel("libp2p-raft", "debug")
+
 	_ = golog.SetLogLevel("autonatv2", level)
 	_ = golog.SetLogLevel("autonat", level)
 	_ = golog.SetLogLevel("p2p-holepunch", level)
@@ -65,8 +69,8 @@ func init() {
 	_ = golog.SetLogLevel("nat", level)
 	_ = golog.SetLogLevel("p2p-circuit", level)
 	_ = golog.SetLogLevel("basichost", "error")
-	_ = golog.SetLogLevel("swarm2", level)
+	_ = golog.SetLogLevel("swarm2", "error")
 	_ = golog.SetLogLevel("autorelay", level)
-	_ = golog.SetLogLevel("net/identify", level)
-	_ = golog.SetLogLevel("tcp-tpt", level)
+	_ = golog.SetLogLevel("net/identify", "error")
+	_ = golog.SetLogLevel("tcp-tpt", "error")
 }

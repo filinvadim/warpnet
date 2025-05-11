@@ -1,116 +1,73 @@
 package consensus
 
 import (
-	"errors"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/raft"
-	"github.com/sirupsen/logrus"
+	golog "github.com/ipfs/go-log/v2"
+	"go.uber.org/zap/zapcore"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 )
 
-type bridgeLogger interface {
-	WithField(key string, value interface{}) *logrus.Entry
-	WithFields(fields logrus.Fields) *logrus.Entry
-	WithError(err error) *logrus.Entry
-	Logln(level logrus.Level, args ...interface{})
-	Traceln(args ...interface{})
-	Debugln(args ...interface{})
-	Infoln(args ...interface{})
-	Println(args ...interface{})
-	Warnln(args ...interface{})
-	Warningln(args ...interface{})
-	Errorln(args ...interface{})
-	Fatalln(args ...interface{})
-	Panicln(args ...interface{})
-	SetLevel(level logrus.Level)
-	GetLevel() logrus.Level
-}
+const systemName = "raft"
+
+var raftLogger = golog.Logger(systemName)
 
 type consensusLogger struct {
-	l     bridgeLogger
-	lvl   logrus.Level
-	name  string
-	count int
+	l    *golog.ZapEventLogger
+	name string
 }
 
-func newConsensusLogger(logLevel, name string) *consensusLogger {
-	lvl, _ := logrus.ParseLevel(strings.TrimSpace(strings.ToLower(logLevel)))
-	if lvl.String() == "unknown" {
-		lvl = logrus.InfoLevel
-	}
-	l := logrus.New()
-	l.SetLevel(lvl)
+func newConsensusLogger() *consensusLogger {
 	return &consensusLogger{
-		l:    l,
-		lvl:  lvl,
-		name: name,
+		l: raftLogger,
 	}
 }
 
 func (c *consensusLogger) Log(level hclog.Level, msg string, args ...interface{}) {
-	lvl, _ := logrus.ParseLevel(strings.TrimSpace(strings.ToLower(level.String())))
-	c.l.Logln(lvl, c.name+": "+msg, args)
+	lvl, _ := zapcore.ParseLevel(strings.TrimSpace(strings.ToLower(level.String())))
+	c.l.Logln(lvl, msg, args)
 }
 
 func (c *consensusLogger) Trace(msg string, args ...interface{}) {
-	c.l.Traceln(c.name+": "+msg, args)
+	c.l.Debugln(msg, args)
 }
 
 func (c *consensusLogger) Debug(msg string, args ...interface{}) {
-	c.l.Debugln(c.name+": "+msg, args)
+	c.l.Debugln(msg, args)
 }
 
 func (c *consensusLogger) Info(msg string, args ...interface{}) {
-	c.l.Infoln(c.name+": "+msg, args)
+	c.l.Infoln(msg, args)
 }
 
 func (c *consensusLogger) Warn(msg string, args ...interface{}) {
-	c.l.Warnln(c.name+": "+msg, args)
+	c.l.Warnln(msg, args)
 }
 
 func (c *consensusLogger) Error(msg string, args ...interface{}) {
-	for _, arg := range args {
-		err, ok := arg.(error)
-		if !ok {
-			return
-		}
-		if errors.Is(err, raft.ErrNothingNewToSnapshot) {
-			c.Debug(err.Error())
-			return
-		}
-		if strings.Contains(err.Error(), "failed to decode incoming command") {
-			if c.count < 1 {
-				c.count++
-				return
-			}
-			c.count = 0
-		}
-	}
-	c.l.Errorln(c.name+": "+msg, args)
+	c.l.Errorln(msg, args)
 }
 
 func (c *consensusLogger) IsTrace() bool {
-	return c.lvl == logrus.TraceLevel
+	return c.l.Level() == zapcore.DebugLevel
 }
 
 func (c *consensusLogger) IsDebug() bool {
-	return c.lvl == logrus.DebugLevel
+	return c.l.Level() == zapcore.DebugLevel
 }
 
 func (c *consensusLogger) IsInfo() bool {
-	return c.lvl == logrus.InfoLevel
+	return c.l.Level() == zapcore.InfoLevel
 }
 
 func (c *consensusLogger) IsWarn() bool {
-	return c.lvl == logrus.WarnLevel
+	return c.l.Level() == zapcore.WarnLevel
 }
 
 func (c *consensusLogger) IsError() bool {
-	return c.lvl == logrus.ErrorLevel
+	return c.l.Level() == zapcore.ErrorLevel
 }
 
 func (c *consensusLogger) ImpliedArgs() []interface{} {
@@ -118,10 +75,10 @@ func (c *consensusLogger) ImpliedArgs() []interface{} {
 }
 
 func (c *consensusLogger) With(args ...interface{}) hclog.Logger {
-	for i, arg := range args {
-		c.l.WithField(strconv.Itoa(i), arg)
-	}
-	return c
+	gl := golog.Logger(systemName)
+	gl.SugaredLogger = *gl.With(args)
+
+	return &consensusLogger{l: gl, name: c.name}
 }
 
 func (c *consensusLogger) Name() string {
@@ -129,6 +86,7 @@ func (c *consensusLogger) Name() string {
 }
 
 func (c *consensusLogger) Named(name string) hclog.Logger {
+	c.l.Named(name)
 	c.name = name
 	return c
 }
@@ -139,16 +97,11 @@ func (c *consensusLogger) ResetNamed(name string) hclog.Logger {
 }
 
 func (c *consensusLogger) SetLevel(level hclog.Level) {
-	lvl, _ := logrus.ParseLevel(strings.TrimSpace(strings.ToLower(level.String())))
-	if lvl.String() == "unknown" {
-		lvl = logrus.InfoLevel
-	}
-	c.l.SetLevel(lvl)
-	c.lvl = lvl
+	//_ = golog.SetLogLevel(systemName, strings.TrimSpace(strings.ToLower(level.String())))
 }
 
 func (c *consensusLogger) GetLevel() hclog.Level {
-	lvl := c.l.GetLevel()
+	lvl := c.l.Level()
 	return hclog.LevelFromString(lvl.String())
 }
 

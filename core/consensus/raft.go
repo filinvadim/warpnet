@@ -135,7 +135,7 @@ func newRaft(
 		return nil, err
 	}
 
-	l := newConsensusLogger(log.ErrorLevel.String(), "raft")
+	l := newConsensusLogger()
 
 	if isBootstrap {
 		if isInMemory {
@@ -207,9 +207,7 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 		return err
 	}
 
-	c.transport, err = NewWarpnetConsensusTransport(
-		node, newConsensusLogger(log.ErrorLevel.String(), "raft-libp2p-transport"),
-	)
+	c.transport, err = NewWarpnetConsensusTransport(node, newConsensusLogger())
 	if err != nil {
 		log.Errorf("failed to create node transport: %v", err)
 		return
@@ -502,9 +500,9 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		return
 	}
 
-	if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
-		log.Infof("consensus: new voter added %s", info.ID.String())
-	}
+	//if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
+	log.Infof("consensus: new voter added %s", info.ID.String())
+	//}
 
 	c.cache.addVoter(id, raft.Server{ // this cache only prevents voter removal from flapping
 		Suffrage: raft.Voter,

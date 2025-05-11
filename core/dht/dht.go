@@ -173,6 +173,7 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	go d.runRendezvousDiscovery(ownID)
 }
 
+// rendezvousDiscovery is memory leaking so run it only for 5 minutes
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
 	defer func() { recover() }()
 	if d == nil || d.dht == nil {
@@ -200,13 +201,13 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
 	_, err := routingDiscovery.Advertise(
 		rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour*3), lip2pDiscovery.Limit(5))
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 		log.Errorf("dht rendezvous: advertise: %s", err)
 		return
 	}
 
 	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous)
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
 	}
