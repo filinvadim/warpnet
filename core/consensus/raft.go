@@ -242,17 +242,15 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 
 	c.consensus.SetActor(libp2praft.NewActor(c.raft))
 
-	if c.isTooManySyncsFailed() {
-		if err := c.consRepo.Reset(); err != nil {
-			log.Errorf("consensus: failed to reset consensus state: %v", err)
-		}
-		return errors.New("consensus: too many attempts: reset consensus state")
+	if err := c.waitClusterReady(); err != nil {
+		return err
 	}
 
 	err = c.retrier.Try(c.ctx, c.sync)
 	if err != nil {
 		return err
 	}
+
 	log.Infof("consensus: ready node %s with last index: %d", c.raftID, c.raft.LastIndex())
 	c.node = node
 	return nil
@@ -341,14 +339,17 @@ func (c *consensusService) sync() error {
 	if c.raftID == "" {
 		return errors.New("consensus: node id is not initialized")
 	}
+	if c.isTooManySyncsFailed() {
+		if err := c.consRepo.Reset(); err != nil {
+			log.Errorf("consensus: failed to reset consensus state: %v", err)
+		}
+		return fmt.Errorf("consensus: too many attempts to sync: %w", retrier.ErrStopTrying)
+	}
+
 	log.Infoln("consensus: waiting for sync...")
 
 	if c.ctx.Err() != nil {
 		return c.ctx.Err()
-	}
-
-	if err := c.waitClusterReady(); err != nil {
-		return err
 	}
 
 	leaderCtx, leaderCancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -379,7 +380,7 @@ func (c *consensusService) sync() error {
 	if err := cs.waitForUpdates(updatesCtx); err != nil {
 		log.Errorf("consensus: waiting for consensus updates: %v", err)
 	}
-
+	c.markSyncSuccess()
 	log.Infoln("consensus: sync complete")
 	return nil
 }
@@ -734,6 +735,10 @@ const (
 func (c *consensusService) markSyncFailed() {
 	num, _ := c.stableStore.GetUint64([]byte(syncFailedKey))
 	_ = c.stableStore.SetUint64([]byte(syncFailedKey), num+1)
+}
+
+func (c *consensusService) markSyncSuccess() {
+	_ = c.stableStore.SetUint64([]byte(syncFailedKey), 0)
 }
 
 func (c *consensusService) isTooManySyncsFailed() bool {

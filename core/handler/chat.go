@@ -75,7 +75,10 @@ func StreamCreateChatHandler(
 			return nil, err
 		}
 
-		if otherUser.NodeId == owner.NodeId {
+		if otherUser.NodeId == owner.NodeId { // self chat
+			return event.ChatCreatedResponse(ownerChat), nil
+		}
+		if ev.OwnerId != owner.UserId { // other user created chat
 			return event.ChatCreatedResponse(ownerChat), nil
 		}
 
@@ -83,11 +86,10 @@ func StreamCreateChatHandler(
 			otherUser.NodeId,
 			event.PUBLIC_POST_CHAT,
 			domain.Chat{
-				CreatedAt: ownerChat.CreatedAt,
-				// switch users
-				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId),
-				OtherUserId: ownerChat.OwnerId,
-				OwnerId:     ownerChat.OtherUserId,
+				CreatedAt:   ownerChat.CreatedAt,
+				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId), // switch users
+				OtherUserId: ownerChat.OtherUserId,
+				OwnerId:     ownerChat.OwnerId,
 			},
 		)
 		if err != nil && !errors.Is(err, base.ErrSelfRequest) {

@@ -1,46 +1,50 @@
 package discovery
 
 import (
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type leakyBucketRateLimiter struct {
-	capacity     int
-	remaining    int
+	capacity     *atomic.Int64
+	remaining    *atomic.Int64
+	lastLeak     *atomic.Int64
 	leakInterval time.Duration
-	lastLeak     time.Time
-
-	mu *sync.Mutex
 }
 
 func newRateLimiter(capacity int, leakPer10Sec int) *leakyBucketRateLimiter {
+	if leakPer10Sec <= 0 {
+		leakPer10Sec = 1
+	}
+	atomicCap := new(atomic.Int64)
+	atomicCap.Store(int64(capacity))
+	atomicRemain := new(atomic.Int64)
+	atomicRemain.Store(0)
+	atomicLastLeak := new(atomic.Int64)
+	atomicLastLeak.Store(time.Now().UnixMilli())
 	return &leakyBucketRateLimiter{
-		capacity:     capacity,
-		remaining:    0,
+		capacity:     atomicCap,
+		remaining:    atomicRemain,
 		leakInterval: (time.Second * 10) / time.Duration(leakPer10Sec),
-		lastLeak:     time.Now(),
-		mu:           new(sync.Mutex),
+		lastLeak:     atomicLastLeak,
 	}
 }
 
 func (b *leakyBucketRateLimiter) Allow() bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	now := time.Now()
-	elapsed := now.Sub(b.lastLeak)
-	leaks := int(elapsed / b.leakInterval)
+	now := time.Now().UnixMilli()
+	elapsed := now - b.lastLeak.Load()
+	leaks := elapsed / b.leakInterval.Milliseconds()
 	if leaks > 0 {
-		b.remaining -= leaks
-		if b.remaining < 0 {
-			b.remaining = 0
+		b.remaining.Add(-leaks)
+		if b.remaining.Load() < 0 {
+			b.remaining.Store(0)
 		}
-		b.lastLeak = now
+		b.lastLeak.Store(b.lastLeak.Load() + leaks*b.leakInterval.Milliseconds())
 	}
 
-	if b.remaining < b.capacity {
-		b.remaining++
+	rem := b.remaining.Load()
+	if rem < b.capacity.Load() {
+		b.remaining.Add(1)
 		return true
 	}
 

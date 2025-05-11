@@ -159,6 +159,7 @@ type GetMessageEvent struct {
 
 type GetTweetStatsEvent struct {
 	TweetId string `json:"tweet_id"`
+	UserId  string `json:"user_id"`
 }
 
 // GetReTweetsCountEvent defines model for GetReTweetsCountEvent.
@@ -192,6 +193,7 @@ type GetUserEvent struct {
 type LikeEvent struct {
 	TweetId string `json:"tweet_id"`
 	UserId  string `json:"user_id"`
+	OwnerId string `json:"owner_id"`
 }
 
 // LikesCountResponse defines model for LikesCountResponse.
@@ -256,6 +258,7 @@ type NewReplyEvent struct {
 	RootId       string    `json:"root_id"`
 	Text         string    `json:"text"`
 	UserId       string    `json:"user_id"`
+	Username     string    `json:"username"`
 }
 
 // NewReplyResponse defines model for NewReplyResponse.

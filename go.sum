@@ -157,6 +157,12 @@ github.com/filinvadim/warpnet-frontend v0.0.511 h1:F5WThQPUsAX0U8imv3OIjA1HzjmNm
 github.com/filinvadim/warpnet-frontend v0.0.511/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
 github.com/filinvadim/warpnet-frontend v0.0.512 h1:LPmkcWP79W9qJ6++kDt4LdQptgEP4COdcn3CnKkAwWM=
 github.com/filinvadim/warpnet-frontend v0.0.512/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
+github.com/filinvadim/warpnet-frontend v0.0.513 h1:NCOiM4BCrQ80d9sOaOIZER3bPMBFcVDSE61mEwi/xrA=
+github.com/filinvadim/warpnet-frontend v0.0.513/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
+github.com/filinvadim/warpnet-frontend v0.0.514 h1:F9GNeRLhKubUg99GxXuObSnAFSRt5DlTIU3nYqq94EA=
+github.com/filinvadim/warpnet-frontend v0.0.514/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
+github.com/filinvadim/warpnet-frontend v0.0.515 h1:hOYw+yLA5oeU9wN0PpkMOJlEeo9w9jaYsK102TQ50Gk=
+github.com/filinvadim/warpnet-frontend v0.0.515/go.mod h1:UcwMVtU6nzacFjWcog36SgmM31LCCCCPrubo1Bf4P10=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v1.1.0 h1:KjPQoQCEFdZDiP03phOvGi11+SVVhBG2wOWAorLsstg=
 github.com/flynn/noise v1.1.0/go.mod h1:xbMo+0i6+IGbYdJhF31t2eR1BIU0CYc12+BNAKwUTag=

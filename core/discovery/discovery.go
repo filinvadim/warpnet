@@ -82,7 +82,7 @@ func NewDiscoveryService(
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version, handlers,
 		new(sync.RWMutex), addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
-		newRateLimiter(6, 1), make(chan warpnet.PeerAddrInfo, 1000), make(chan struct{}),
+		newRateLimiter(16, 1), make(chan warpnet.PeerAddrInfo, 1000), make(chan struct{}),
 		new(atomic.Bool),
 	}
 }
@@ -227,6 +227,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	defer func() { recover() }()
 
 	if !s.limiter.Allow() {
+		log.Warnf("discovery: limited by rate limiter: %s", pi.ID.String())
 		return
 	}
 

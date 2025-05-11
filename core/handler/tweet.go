@@ -24,6 +24,7 @@ type TweetUserFetcher interface {
 
 type TweetStreamer interface {
 	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+	NodeInfo() warpnet.NodeInfo
 }
 
 type OwnerTweetStorer interface {
@@ -121,7 +122,6 @@ func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
 
 func StreamGetTweetsHandler(
 	repo TweetsStorer,
-	authRepo OwnerTweetStorer,
 	userRepo TweetUserFetcher,
 	streamer TweetStreamer,
 ) middleware.WarpHandler {
@@ -135,7 +135,7 @@ func StreamGetTweetsHandler(
 			return nil, errors.New("empty user id")
 		}
 
-		ownerId := authRepo.GetOwner().UserId
+		ownerId := streamer.NodeInfo().OwnerId
 		if ev.UserId == ownerId {
 			tweets, cursor, err := repo.List(ev.UserId, ev.Limit, ev.Cursor)
 			if err != nil {
@@ -263,6 +263,8 @@ func StreamGetTweetStatsHandler(
 	likeRepo LikeTweetStorer,
 	retweetRepo RetweetsTweetStorer,
 	replyRepo RepliesTweetCounter, // TODO views
+	userRepo TweetUserFetcher,
+	streamer TweetStreamer,
 ) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetTweetStatsEvent
@@ -272,6 +274,36 @@ func StreamGetTweetStatsHandler(
 		}
 		if ev.TweetId == "" {
 			return nil, errors.New("empty tweet id")
+		}
+		if ev.UserId == "" {
+			return nil, errors.New("empty user id")
+		}
+
+		if ev.UserId != streamer.NodeInfo().OwnerId {
+			u, err := userRepo.Get(ev.UserId)
+			if err != nil {
+				return nil, err
+			}
+
+			statsResp, err := streamer.GenericStream(
+				u.NodeId,
+				event.PUBLIC_GET_TWEET_STATS,
+				ev,
+			)
+			if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+				return nil, err
+			}
+
+			var possibleError event.ErrorResponse
+			if _ = json.JSON.Unmarshal(statsResp, &possibleError); possibleError.Message != "" {
+				return nil, fmt.Errorf("unmarshal other reply response: %s", possibleError.Message)
+			}
+
+			var stats event.TweetStatsResponse
+			if err := json.JSON.Unmarshal(statsResp, &stats); err != nil {
+				return nil, fmt.Errorf("fetching tweet stats response: %v", err)
+			}
+			return stats, nil
 		}
 
 		var (

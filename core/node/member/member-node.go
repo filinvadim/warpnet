@@ -249,7 +249,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_TWEETS,
-		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo, authRepo, userRepo, m)))),
+		logMw(authMw(unwrapMw(handler.StreamGetTweetsHandler(tweetRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_TWEET,
@@ -257,7 +257,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_TWEET_STATS,
-		logMw(authMw(unwrapMw(handler.StreamGetTweetStatsHandler(likeRepo, tweetRepo, replyRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetTweetStatsHandler(likeRepo, tweetRepo, replyRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_REPLY,
@@ -265,7 +265,7 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_REPLIES,
-		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetRepliesHandler(replyRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_GET_FOLLOWERS,
@@ -341,40 +341,32 @@ func (m *MemberNode) Stop() {
 	if m == nil {
 		return
 	}
-
 	if m.discService != nil {
 		m.discService.Close()
 	}
-
 	if m.mdnsService != nil {
 		m.mdnsService.Close()
 	}
-
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
 			log.Errorf("member: failed to close pubsub: %v", err)
 		}
 	}
-
 	if m.providerStore != nil {
 		if err := m.providerStore.Close(); err != nil {
 			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
-
 	if m.dHashTable != nil {
 		m.dHashTable.Close()
 	}
-
 	if m.raft != nil {
 		m.raft.Shutdown()
 	}
-
 	if m.nodeRepo != nil {
 		if err := m.nodeRepo.Close(); err != nil {
 			log.Errorf("member: failed to close node repo: %v", err)
 		}
 	}
-
 	m.StopNode()
 }

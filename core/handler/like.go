@@ -12,6 +12,13 @@ import (
 	"strings"
 )
 
+type LikeTweetsStorer interface {
+	Get(userID, tweetID string) (tweet domain.Tweet, err error)
+	List(string, *uint64, *string) ([]domain.Tweet, string, error)
+	Create(_ string, tweet domain.Tweet) (domain.Tweet, error)
+	Delete(userID, tweetID string) error
+}
+
 type LikedUserFetcher interface {
 	GetBatch(userIds ...string) (users []domain.User, err error)
 	Get(userId string) (users domain.User, err error)
@@ -19,6 +26,7 @@ type LikedUserFetcher interface {
 
 type LikeStreamer interface {
 	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+	NodeInfo() warpnet.NodeInfo
 }
 
 type LikesStorer interface {
@@ -28,14 +36,20 @@ type LikesStorer interface {
 	Likers(tweetId string, limit *uint64, cursor *string) (likers []string, cur string, err error)
 }
 
-func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer LikeStreamer) middleware.WarpHandler {
+func StreamLikeHandler(
+	repo LikesStorer,
+	userRepo LikedUserFetcher,
+	streamer LikeStreamer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.LikeEvent
 		err := json.JSON.Unmarshal(buf, &ev)
 		if err != nil {
 			return nil, err
 		}
-
+		if ev.OwnerId == "" {
+			return nil, errors.New("like: empty owner id")
+		}
 		if ev.UserId == "" {
 			return nil, errors.New("like: empty user id")
 		}
@@ -43,14 +57,22 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 			return nil, errors.New("like: empty tweet id")
 		}
 
-		likedUser, err := userRepo.Get(ev.UserId)
+		tweetId := strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
+		num, err := repo.Like(tweetId, ev.OwnerId) // store my like
 		if err != nil {
 			return nil, err
 		}
 
-		num, err := repo.Like(strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix), ev.UserId)
+		likedUser, err := userRepo.Get(ev.UserId) // get other user info
 		if err != nil {
 			return nil, err
+		}
+
+		if ev.OwnerId == ev.UserId { // own tweet like
+			return event.LikesCountResponse{num}, nil
+		}
+		if ev.OwnerId != streamer.NodeInfo().OwnerId { // like exchange finished
+			return event.LikesCountResponse{num}, nil
 		}
 
 		likeDataResp, err := streamer.GenericStream(
@@ -58,6 +80,7 @@ func StreamLikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer Lik
 			event.PUBLIC_POST_LIKE,
 			event.LikeEvent{
 				TweetId: ev.TweetId,
+				OwnerId: ev.OwnerId,
 				UserId:  ev.UserId,
 			},
 		)
@@ -94,9 +117,17 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 			return nil, err
 		}
 
-		num, err := repo.Unlike(ev.UserId, strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix))
+		tweetId := strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
+		num, err := repo.Unlike(tweetId, ev.OwnerId)
 		if err != nil {
 			return nil, err
+		}
+
+		if ev.OwnerId == ev.UserId { // own tweet dislike
+			return event.LikesCountResponse{num}, nil
+		}
+		if ev.OwnerId != streamer.NodeInfo().OwnerId { // dislike exchange finished
+			return event.LikesCountResponse{num}, nil
 		}
 
 		unlikeDataResp, err := streamer.GenericStream(
@@ -105,6 +136,7 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 			event.UnlikeEvent{
 				TweetId: ev.TweetId,
 				UserId:  ev.UserId,
+				OwnerId: ev.OwnerId,
 			},
 		)
 		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {

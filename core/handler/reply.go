@@ -9,6 +9,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -65,6 +66,7 @@ func StreamNewReplyHandler(
 			RootId:    rootId,
 			Text:      ev.Text,
 			UserId:    ev.UserId,
+			Username:  ev.Username,
 		})
 		if err != nil {
 			return nil, err
@@ -85,6 +87,7 @@ func StreamNewReplyHandler(
 				RootId:       ev.RootId,
 				Text:         ev.Text,
 				UserId:       ev.UserId,
+				Username:     ev.Username,
 			},
 		)
 		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
@@ -189,7 +192,11 @@ func StreamDeleteReplyHandler(
 	}
 }
 
-func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
+func StreamGetRepliesHandler(
+	repo ReplyStorer,
+	userRepo ReplyUserFetcher,
+	streamer ReplyStreamer,
+) middleware.WarpHandler {
 	return func(buf []byte, s warpnet.WarpStream) (any, error) {
 		var ev event.GetAllRepliesEvent
 		err := json.JSON.Unmarshal(buf, &ev)
@@ -206,15 +213,47 @@ func StreamGetRepliesHandler(repo ReplyStorer) middleware.WarpHandler {
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
 		parentId := strings.TrimPrefix(ev.ParentId, domain.RetweetPrefix)
 
-		replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
+		if parentId == streamer.NodeInfo().OwnerId {
+			replies, cursor, err := repo.GetRepliesTree(rootId, parentId, ev.Limit, ev.Cursor)
 
+			if err != nil {
+				return nil, err
+			}
+			return event.RepliesResponse{
+				Cursor:  cursor,
+				Replies: replies,
+				UserId:  &parentId,
+			}, nil
+		}
+
+		parentUser, err := userRepo.Get(parentId)
 		if err != nil {
 			return nil, err
 		}
-		return event.RepliesResponse{
-			Cursor:  cursor,
-			Replies: replies,
-			UserId:  &parentId,
-		}, nil
+
+		replyDataResp, err := streamer.GenericStream(
+			parentUser.NodeId,
+			event.PUBLIC_GET_REPLIES,
+			ev,
+		)
+		if err != nil && !errors.Is(err, warpnet.ErrNodeIsOffline) {
+			return nil, err
+		}
+
+		var possibleError event.ErrorResponse
+		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
+			return nil, fmt.Errorf("unmarshal other delete reply error response: %s", possibleError.Message)
+		}
+
+		var repliesResp event.RepliesResponse
+		if err := json.JSON.Unmarshal(replyDataResp, &repliesResp); err != nil {
+			return nil, err
+		}
+		for _, reply := range repliesResp.Replies {
+			if _, err := repo.AddReply(reply.Reply); err != nil {
+				log.Errorf("failed to add reply to replies repo: %v", err)
+			}
+		}
+		return repliesResp, nil
 	}
 }

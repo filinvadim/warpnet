@@ -2,6 +2,7 @@ package retrier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -13,7 +14,10 @@ func (e retrierError) Error() string {
 	return string(e)
 }
 
-const ErrDeadlineReached retrierError = "retrier: deadline reached"
+const (
+	ErrDeadlineReached retrierError = "retrier: deadline reached"
+	ErrStopTrying      retrierError = "retrier: stop trying"
+)
 
 type (
 	backoff byte
@@ -60,6 +64,9 @@ func (r *retrier) Try(ctx context.Context, f RetrierFunc) (err error) {
 		}
 
 		err = f()
+		if errors.Is(err, ErrStopTrying) {
+			return err
+		}
 		if err == nil {
 			return nil
 		}

@@ -83,7 +83,7 @@ func (d *ProviderCache) dumpProviders() {
 
 				var validEntriesForCache []addrEntry
 				for _, v := range entries {
-					if v.readAt.Before(now.Add(-24 * time.Hour)) {
+					if v.readAt.After(now.Add(-8 * time.Hour)) {
 						validEntriesForCache = append(validEntriesForCache, v)
 						continue
 					}
