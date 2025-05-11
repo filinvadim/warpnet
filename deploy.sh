@@ -4,7 +4,7 @@ echo "Run deploy script"
 #sudo echo "nameserver 8.8.8.8" > /etc/resolv.conf
 #sudo echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 echo "GITHUB_TOKEN: ${GITHUB_TOKEN:0:4}... (truncated for security)"
-echo "NODE_HOST: ${NODE_HOST}... (truncated for security)"
+echo "NODE_HOST: ${NODE_HOST}"
 if [ -z "$GITHUB_TOKEN" ]; then
   echo "Error: GITHUB_TOKEN is not set"
   exit 1
