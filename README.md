@@ -51,6 +51,10 @@ Example:
     go run cmd/node/member/main.go --node.network.prefix myprefix
 ```
 
+## Developers group in Telegram
+
+https://t.me/warpnetdev
+
 ## License
 
 Warpnet is free software licensed under the GNU General Public License v3.0 or later.

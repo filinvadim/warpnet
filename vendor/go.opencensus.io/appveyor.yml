@@ -1,6 +1,3 @@
-# Copyright 2025 Vadim Filil
-# SPDX-License-Identifier: gpl
-
 version: "{build}"
 
 platform: x64

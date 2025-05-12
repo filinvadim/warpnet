@@ -30,3 +30,4 @@ var
 .idea
 *.pem
 *.sig
+licensor.yml

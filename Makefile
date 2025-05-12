@@ -1,5 +1,7 @@
 licensorize:
 	licensor
+	go mod vendor
+
 kill:
 	pkill -9 main
 
