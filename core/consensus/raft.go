@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package consensus
 
 import (
@@ -49,9 +52,10 @@ import (
 	    - Unlike the traditional Raft, it is adapted for dynamically changing networks.
 */
 
-const initiatorServerID raft.ServerID = "12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j"
-
-var ErrNoRaftCluster = errors.New("consensus: no cluster found")
+const (
+	initiatorServerID raft.ServerID = "12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j"
+	ErrNoRaftCluster                = warpnet.WarpError("consensus: no cluster found")
+)
 
 type (
 	Consensus = libp2praft.Consensus
@@ -179,7 +183,7 @@ func newRaft(
 
 func (c *consensusService) Start(node NodeTransporter) (err error) {
 	if c == nil {
-		return errors.New("consensus: nil consensus service")
+		return warpnet.WarpError("consensus: nil consensus service")
 	}
 
 	c.syncMx.Lock()
@@ -324,7 +328,7 @@ func (c *consensusService) waitClusterReady() error {
 		log.Infof("consensus: cluster is ready: servers list %s", wait.Configuration().Servers)
 		break
 	case <-timeoutTimer.C:
-		return errors.New("consensus: getting configuration timeout — possibly broken cluster")
+		return warpnet.WarpError("consensus: getting configuration timeout — possibly broken cluster")
 	}
 	return nil
 }
@@ -337,7 +341,7 @@ type consensusSync struct {
 
 func (c *consensusService) sync() error {
 	if c.raftID == "" {
-		return errors.New("consensus: node id is not initialized")
+		return warpnet.WarpError("consensus: node id is not initialized")
 	}
 	if c.isTooManySyncsFailed() {
 		if err := c.consRepo.Reset(); err != nil {
@@ -460,7 +464,7 @@ func (c *consensusSync) waitForUpdates(ctx context.Context) error {
 				return nil
 			}
 			if lastAppliedIndex > lastIndex {
-				return errors.New("consensus: last applied index is greater than current index")
+				return warpnet.WarpError("consensus: last applied index is greater than current index")
 			}
 		}
 	}
@@ -573,7 +577,7 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 
 	leaderId := c.LeaderID().String()
 	if leaderId == "" {
-		return errors.New("consensus: no leader found")
+		return warpnet.WarpError("consensus: no leader found")
 	}
 	if leaderId == string(c.raftID) {
 		_, err := c.CommitState(newState)
@@ -590,7 +594,7 @@ func (c *consensusService) AskUserValidation(user domain.User) error {
 		return fmt.Errorf("consensus: node verify stream: %w", err)
 	}
 	if len(resp) == 0 {
-		return errors.New("consensus: node verify stream returned empty response")
+		return warpnet.WarpError("consensus: node verify stream returned empty response")
 	}
 
 	var errResp event.ErrorResponse
@@ -608,7 +612,7 @@ func (c *consensusService) AskLeaderValidation() error {
 
 	leaderId := c.LeaderID().String()
 	if leaderId == "" {
-		return errors.New("consensus: no leader found")
+		return warpnet.WarpError("consensus: no leader found")
 	}
 
 	newState := map[string]string{
@@ -628,7 +632,7 @@ func (c *consensusService) AskLeaderValidation() error {
 		return fmt.Errorf("consensus: leader verify stream: %w", err)
 	}
 	if len(resp) == 0 {
-		return errors.New("consensus: node leader verify stream returned empty response")
+		return warpnet.WarpError("consensus: node leader verify stream returned empty response")
 	}
 
 	var errResp event.ErrorResponse
@@ -644,7 +648,7 @@ func (c *consensusService) CommitState(newState KVState) (_ *KVState, err error)
 	c.waitSync()
 
 	if c.raft == nil {
-		return nil, errors.New("consensus: nil node")
+		return nil, warpnet.WarpError("consensus: nil node")
 	}
 
 	wait := c.raft.GetConfiguration()
@@ -676,7 +680,7 @@ func (c *consensusService) CurrentState() (*KVState, error) {
 	c.waitSync()
 
 	if c.raft == nil {
-		return nil, errors.New("consensus: nil node")
+		return nil, warpnet.WarpError("consensus: nil node")
 	}
 
 	currentState, err := c.consensus.GetCurrentState()

@@ -1,10 +1,12 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package stream
 
 import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -34,7 +36,7 @@ func NewStreamPool(
 
 func (p *streamPool) Send(peerAddr warpnet.PeerAddrInfo, r WarpRoute, data []byte) ([]byte, error) {
 	if p == nil {
-		return nil, errors.New("nil stream pool")
+		return nil, warpnet.WarpError("nil stream pool")
 	}
 	if p.ctx.Err() != nil {
 		return nil, p.ctx.Err()
@@ -58,7 +60,7 @@ func send(
 	serverInfo warpnet.PeerAddrInfo, r WarpRoute, data []byte,
 ) ([]byte, error) {
 	if n == nil || serverInfo.String() == "" || r == "" {
-		return nil, errors.New("stream: parameters improperly configured")
+		return nil, warpnet.WarpError("stream: parameters improperly configured")
 	}
 
 	if len(serverInfo.ID) > 52 {

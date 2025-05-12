@@ -1,9 +1,12 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package consensus
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/hashicorp/raft"
 	log "github.com/sirupsen/logrus"
 	"github.com/vmihailenco/msgpack/v5"
@@ -11,7 +14,7 @@ import (
 	"sync"
 )
 
-var ErrConsensusRejection = errors.New("consensus: quorum rejected your node. Try to delete database and update app version")
+const ErrConsensusRejection = warpnet.WarpError("consensus: quorum rejected your node. Try to delete database and update app version")
 
 type KVState map[string]string
 
@@ -47,7 +50,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) (result interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			*fsm.state = fsm.prevState
-			result = errors.New("consensus: fsm apply panic: rollback")
+			result = warpnet.WarpError("consensus: fsm apply panic: rollback")
 		}
 	}()
 

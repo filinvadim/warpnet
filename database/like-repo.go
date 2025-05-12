@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filin
+// SPDX-License-Identifier: gpl
+
 package database
 
 import (
@@ -69,7 +72,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error
 	return likesCount, txn.Commit()
 }
 
-func (repo *LikeRepo) Unlike(userId, tweetId string) (likesCount uint64, err error) {
+func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err error) {
 	if tweetId == "" {
 		return 0, errors.New("empty tweet id")
 	}

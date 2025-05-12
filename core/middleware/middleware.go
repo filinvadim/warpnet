@@ -1,7 +1,11 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package middleware
 
 import (
 	"errors"
+	"github.com/docker/go-units"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/event"
@@ -75,11 +79,6 @@ func (p *WarpMiddleware) AuthMiddleware(next warpnet.WarpStreamHandler) warpnet.
 	}
 }
 
-const (
-	KB = 1000
-	MB = 1000 * KB
-)
-
 func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStreamHandler {
 	return func(s warpnet.WarpStream) {
 		defer func() {
@@ -94,14 +93,14 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 			encoder  = json.JSON.NewEncoder(s)
 		)
 
-		reader := io.LimitReader(s, MB) // TODO size limit???
+		reader := io.LimitReader(s, units.MiB) // TODO size limit???
 		data, err := io.ReadAll(reader)
 		if err != nil && err != io.EOF {
 			log.Errorf("middleware: reading from stream: %v", err)
 			response = event.ErrorResponse{Message: ErrStreamReadError.Error()}
 			return
 		}
-		//log.Infof(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(data))
+		log.Debugf(">>> STREAM REQUEST %s %s\n", string(s.Protocol()), string(data))
 
 		if response == nil {
 			response, err = fn(data, s)
@@ -112,10 +111,10 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 					data = data[:500]
 				}
 				log.Errorf("middleware: handling of %s message: %s failed: %v\n", s.Protocol(), string(data), err)
-				response = event.ErrorResponse{Code: 500, Message: err.Error()}
+				response = event.ErrorResponse{Code: 500, Message: err.Error()} // TODO errors ranking
 			}
 		}
-		//log.Infof("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), response)
+		log.Debugf("<<< STREAM RESPONSE: %s %+v\n", string(s.Protocol()), response)
 
 		switch response.(type) {
 		case []byte:

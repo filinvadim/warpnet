@@ -1,15 +1,18 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package consensus
 
 import (
-	"errors"
 	"fmt"
+	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/hashicorp/raft"
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
 
-var errVoterNotFound = errors.New("consensus: voter not found")
+var errVoterNotFound = warpnet.WarpError("consensus: voter not found")
 
 type voterTimed struct {
 	voter   raft.Server
@@ -37,7 +40,7 @@ func (d *votersCache) addVoter(key raft.ServerID, srv raft.Server) {
 	d.m[key] = voterTimed{srv, time.Now()}
 }
 
-var errTooSoonToRemoveVoter = errors.New("consensus:too soon to remove voter")
+var errTooSoonToRemoveVoter = warpnet.WarpError("consensus:too soon to remove voter")
 
 func (d *votersCache) removeVoter(key raft.ServerID) error {
 	d.mutex.Lock()

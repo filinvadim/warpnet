@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package storage
 
 import (
@@ -593,17 +596,11 @@ func iterateKeysValues(
 	}
 
 	var (
-		lastKey        DatabaseKey
-		iterNum        uint64
-		isFirstSkipped bool
+		lastKey DatabaseKey
+		iterNum uint64
 	)
 
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		if !startCursor.IsEmpty() && !isFirstSkipped {
-			// skip the first match
-			isFirstSkipped = true
-		}
-
 		item := it.Item()
 		key := string(item.Key())
 

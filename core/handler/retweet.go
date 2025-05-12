@@ -1,8 +1,10 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -51,10 +53,10 @@ func StreamNewReTweetHandler(
 			return nil, err
 		}
 		if retweetEvent.RetweetedBy == nil {
-			return nil, errors.New("retweeted by unknown")
+			return nil, warpnet.WarpError("retweeted by unknown")
 		}
 		if retweetEvent.Id == "" {
-			return nil, errors.New("empty retweet id")
+			return nil, warpnet.WarpError("empty retweet id")
 		}
 
 		retweet, err := tweetRepo.NewRetweet(retweetEvent)
@@ -86,7 +88,7 @@ func StreamNewReTweetHandler(
 		}
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(retweetDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other retweet error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other retweet error response: %s", possibleError.Message)
 		}
 
 		return retweet, nil
@@ -107,10 +109,10 @@ func StreamUnretweetHandler(
 		}
 
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, warpnet.WarpError("empty tweet id")
 		}
 
 		retweetedBy := ev.UserId
@@ -145,7 +147,7 @@ func StreamUnretweetHandler(
 		}
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(unretweetDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other unretweet error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other unretweet error response: %s", possibleError.Message)
 		}
 
 		return event.Accepted, nil

@@ -1,17 +1,20 @@
 # WARPNET
-## ! General principles of Warp Network !
-- warpnet must be independent of any third party services
-- warpnet must be independent of any third party technologies
-- warpnet node must be represented as a single executable file
-- warpnet must be a multiplatform service
-- warpnet must be a singleton node that running on a machine, but it could have as many aliases as needed
-- warpnet member node must be managed only by node consensus
-- warpnet business node could have centralized management
-- warpnet node must store private data only at host machine
-- warpnet member node must not be developed by a single programmer
-- warpnet contents must be moderated without any human being intervention
-- warpnet bootstrap node hosting must be rewarded
-- warpnet node owners take full personal responsibility for the content their upload
+
+## General Principles of the Warp Network
+
+1. WarpNet must operate independently of any third-party services.
+2. WarpNet must not rely on any proprietary or third-party technologies.
+3. A WarpNet node must be distributed as a single executable file.
+4. WarpNet must be a cross-platform solution.
+5. Only one WarpNet member node may run on a single machine, but it may have multiple aliases.
+6. WarpNet member nodes must be governed solely by network consensus.
+7. WarpNet business nodes may allow centralized management.
+8. A WarpNet node must store private data only on the local host machine.
+9. WarpNet member nodes must not be developed or controlled by a single individual.
+10. Content on WarpNet must be moderated automatically, without human intervention.
+11. Hosting a WarpNet bootstrap node must be incentivized with rewards.
+12. Node owners bear full personal responsibility for any content they upload to WarpNet.
+
 
 ## Requirements
     golang >=1.24
@@ -47,3 +50,9 @@ Example:
 ```bash 
     go run cmd/node/member/main.go --node.network.prefix myprefix
 ```
+
+## License
+
+Warpnet is free software licensed under the GNU General Public License v3.0 or later.
+
+See the [LICENSE](./LICENSE) file for details.

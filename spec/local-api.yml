@@ -1,7 +1,10 @@
+# Copyright 2025 Vadim Filin
+# SPDX-License-Identifier: gpl
+
 openapi: 3.0.0
 info:
   title: Warpnet
-  version: 0.2.407
+  version: 0.2.408
   description: External API for a distributed Twitter-like application
 servers:
   - url: http://localhost:4002

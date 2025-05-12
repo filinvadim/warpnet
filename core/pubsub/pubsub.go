@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package pubsub
 
 import (
@@ -128,7 +131,7 @@ func (g *warpPubSub) Run(
 
 func (g *warpPubSub) runListener() error {
 	if g == nil {
-		return errors.New("pubsub: service not initialized properly")
+		return warpnet.WarpError("pubsub: service not initialized properly")
 	}
 	for {
 		if !g.isRunning.Load() {
@@ -193,7 +196,7 @@ func (g *warpPubSub) runPubSub(n PubsubServerNodeConnector) (err error) {
 		}
 	}()
 	if g == nil {
-		return errors.New("pubsub: service not initialized properly")
+		return warpnet.WarpError("pubsub: service not initialized properly")
 	}
 
 	g.pubsub, err = pubsub.NewGossipSub(g.ctx, n.Node())
@@ -218,7 +221,7 @@ func (g *warpPubSub) runPubSub(n PubsubServerNodeConnector) (err error) {
 
 func (g *warpPubSub) subscribeFollowees() error {
 	if g == nil {
-		return errors.New("pubsub: service not initialized properly")
+		return warpnet.WarpError("pubsub: service not initialized properly")
 	}
 	if g.ownerId == "" {
 		return nil
@@ -254,14 +257,14 @@ func (g *warpPubSub) subscribeFollowees() error {
 
 func (g *warpPubSub) subscribe(topics ...string) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 	g.mx.Lock()
 	defer g.mx.Unlock()
 
 	for _, topicName := range topics {
 		if topicName == "" {
-			return errors.New("pubsub: topic name is empty")
+			return warpnet.WarpError("pubsub: topic name is empty")
 		}
 
 		topic, ok := g.topics[topicName]
@@ -307,7 +310,7 @@ func (g *warpPubSub) GetSubscribers() []warpnet.WarpPeerID {
 
 func (g *warpPubSub) unsubscribe(topics ...string) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 	g.mx.Lock()
 	defer g.mx.Unlock()
@@ -342,7 +345,7 @@ func (g *warpPubSub) unsubscribe(topics ...string) (err error) {
 
 func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 
 	g.mx.Lock()
@@ -379,10 +382,10 @@ func (g *warpPubSub) publish(msg event.Message, topics ...string) (err error) {
 // SubscribeUserUpdate - follow someone
 func (g *warpPubSub) SubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 	if g.ownerId == userId {
-		return errors.New("pubsub: can't subscribe to own user")
+		return warpnet.WarpError("pubsub: can't subscribe to own user")
 	}
 
 	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
@@ -392,7 +395,7 @@ func (g *warpPubSub) SubscribeUserUpdate(userId string) (err error) {
 // UnsubscribeUserUpdate - unfollow someone
 func (g *warpPubSub) UnsubscribeUserUpdate(userId string) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, userId)
 	return g.unsubscribe(topicName)
@@ -477,7 +480,7 @@ func (g *warpPubSub) handlePubSubDiscovery(msg *pubsub.Message) {
 // PublishOwnerUpdate - publish for followers
 func (g *warpPubSub) PublishOwnerUpdate(ownerId string, msg event.Message) (err error) {
 	if g == nil || !g.isRunning.Load() {
-		return errors.New("pubsub: service not initialized")
+		return warpnet.WarpError("pubsub: service not initialized")
 	}
 	topicName := fmt.Sprintf("%s-%s", userUpdateTopicPrefix, ownerId)
 

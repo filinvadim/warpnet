@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -59,7 +62,7 @@ func StreamNewTweetHandler(
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		owner := authRepo.GetOwner()
@@ -70,7 +73,7 @@ func StreamNewTweetHandler(
 		}
 
 		if tweet.Id == "" {
-			return tweet, errors.New("tweet handler: empty tweet id")
+			return tweet, warpnet.WarpError("tweet handler: empty tweet id")
 		}
 		if err = timelineRepo.AddTweetToTimeline(owner.UserId, tweet); err != nil {
 			log.Infof("fail adding tweet to timeline: %v", err)
@@ -110,10 +113,10 @@ func StreamGetTweetHandler(repo TweetsStorer) middleware.WarpHandler {
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, warpnet.WarpError("empty tweet id")
 		}
 
 		return repo.Get(ev.UserId, ev.TweetId)
@@ -132,7 +135,7 @@ func StreamGetTweetsHandler(
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		ownerId := streamer.NodeInfo().OwnerId
@@ -210,10 +213,10 @@ func StreamDeleteTweetHandler(
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, warpnet.WarpError("empty tweet id")
 		}
 
 		if _, err := likeRepo.Unlike(ev.UserId, strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)); err != nil {
@@ -273,10 +276,10 @@ func StreamGetTweetStatsHandler(
 			return nil, err
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, warpnet.WarpError("empty tweet id")
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		if ev.UserId != streamer.NodeInfo().OwnerId {

@@ -9,7 +9,6 @@ import (
 	"github.com/filinvadim/warpnet/core/dht"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
-	"github.com/filinvadim/warpnet/core/logging"
 	"github.com/filinvadim/warpnet/core/mdns"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/base"
@@ -106,7 +105,6 @@ func NewMemberNode(
 	}
 
 	mn.setupHandlers(authRepo, userRepo, followRepo, consensusRepo, db)
-	logging.SetLogLevels()
 	return mn, nil
 }
 

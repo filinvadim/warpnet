@@ -1,7 +1,9 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
-	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
@@ -21,7 +23,7 @@ func StreamTimelineHandler(repo TimelineFetcher) middleware.WarpHandler {
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		timeline, cursor, err := repo.GetTimeline(ev.UserId, ev.Limit, ev.Cursor)

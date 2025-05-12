@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package consensus
 
 import (
@@ -15,8 +18,9 @@ const systemName = "raft"
 var raftLogger = golog.Logger(systemName)
 
 type consensusLogger struct {
-	l    *golog.ZapEventLogger
-	name string
+	l     *golog.ZapEventLogger
+	name  string
+	count int
 }
 
 func newConsensusLogger() *consensusLogger {
@@ -47,7 +51,12 @@ func (c *consensusLogger) Warn(msg string, args ...interface{}) {
 }
 
 func (c *consensusLogger) Error(msg string, args ...interface{}) {
+	if c.count < 3 {
+		c.count++
+		return
+	}
 	c.l.Errorln(msg, args)
+	c.count = 0
 }
 
 func (c *consensusLogger) IsTrace() bool {

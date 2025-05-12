@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
@@ -46,6 +45,7 @@ func NewWarpNode(
 	listenAddr string,
 	routingFn func(node warpnet.P2PNode) (warpnet.WarpPeerRouting, error),
 ) (*WarpNode, error) {
+
 	limiter := warpnet.NewAutoScaledLimiter()
 
 	manager, err := warpnet.NewConnManager(limiter)
@@ -243,14 +243,14 @@ func (n *WarpNode) Mux() warpnet.WarpProtocolSwitch {
 	return n.node.Mux()
 }
 
-var ErrSelfRequest = errors.New("self request is not allowed")
+const ErrSelfRequest = warpnet.WarpError("self request is not allowed")
 
 func (n *WarpNode) Stream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data any) (_ []byte, err error) {
 	if n == nil || n.streamer == nil {
-		return nil, errors.New("node is not initialized")
+		return nil, warpnet.WarpError("node is not initialized")
 	}
 	if nodeId == "" {
-		return nil, errors.New("node: empty node id")
+		return nil, warpnet.WarpError("node: empty node id")
 	}
 	if n.NodeInfo().ID == nodeId {
 		return nil, ErrSelfRequest

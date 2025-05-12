@@ -57,10 +57,10 @@ func NewClientNode(ctx context.Context, psk security.PSK) (_ *WarpClientNode, er
 
 func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	if n == nil {
-		return errors.New("client: not initialized")
+		return warpnet.WarpError("client: not initialized")
 	}
 	if serverInfo.NodeInfo.ID.String() == "" {
-		return errors.New("client node: server node ID is empty")
+		return warpnet.WarpError("client node: server node ID is empty")
 	}
 
 	serverAddr := n.serverNodeAddr + serverInfo.NodeInfo.ID.String()
@@ -91,7 +91,7 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 	n.clientNode = client
 	client.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, warpnet.PermanentAddrTTL)
 	if len(client.Addrs()) != 0 {
-		return errors.New("client: must have no addresses")
+		return warpnet.WarpError("client: must have no addresses")
 	}
 
 	n.streamer = stream.NewStreamPool(n.ctx, n.clientNode)
@@ -111,7 +111,7 @@ func (n *WarpClientNode) Pair(serverInfo domain.AuthNodeInfo) error {
 func (n *WarpClientNode) pairNodes(nodeId string, serverInfo domain.AuthNodeInfo) error {
 	if n == nil {
 		log.Errorln("client: must not be nil")
-		return errors.New("client: must not be nil")
+		return warpnet.WarpError("client: must not be nil")
 	}
 	resp, err := n.ClientStream(nodeId, event.PRIVATE_POST_PAIR, serverInfo)
 	if err != nil {
@@ -132,7 +132,7 @@ func (n *WarpClientNode) IsRunning() bool {
 
 func (n *WarpClientNode) ClientStream(nodeId string, path string, data any) (_ []byte, err error) {
 	if n == nil || n.clientNode == nil {
-		return nil, errors.New("client: not initialized")
+		return nil, warpnet.WarpError("client: not initialized")
 	}
 	var bt []byte
 	if data != nil {

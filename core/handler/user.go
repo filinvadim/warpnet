@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -52,7 +55,7 @@ func StreamGetUserHandler(
 		}
 
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		ownerId := authRepo.GetOwner().UserId
@@ -131,7 +134,7 @@ func StreamGetUsersHandler(
 		}
 
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 
 		ownerId := authRepo.GetOwner().UserId

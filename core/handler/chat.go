@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -11,6 +14,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
@@ -54,7 +58,7 @@ func StreamCreateChatHandler(
 			return nil, err
 		}
 		if ev.OwnerId == "" || ev.OtherUserId == "" {
-			return nil, errors.New("owner ID or other user ID is empty")
+			return nil, warpnet.WarpError("owner ID or other user ID is empty")
 		}
 
 		owner := authRepo.GetOwner()
@@ -98,7 +102,7 @@ func StreamCreateChatHandler(
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(otherChatData, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other chat error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other chat error response: %s", possibleError.Message)
 		}
 
 		return event.ChatCreatedResponse(ownerChat), err
@@ -117,11 +121,11 @@ func StreamGetUserChatHandler(
 		}
 
 		if ev.ChatId == "" {
-			return nil, errors.New("empty other chat ID")
+			return nil, warpnet.WarpError("empty other chat ID")
 		}
 
 		if !strings.Contains(ev.ChatId, authRepo.GetOwner().UserId) {
-			return nil, errors.New("not owner's chats")
+			return nil, warpnet.WarpError("not owner's chats")
 		}
 
 		chat, err := repo.GetChat(ev.ChatId)
@@ -141,7 +145,7 @@ func StreamDeleteChatHandler(repo ChatStorer) middleware.WarpHandler {
 			return nil, err
 		}
 		if ev.ChatId == "" {
-			return nil, errors.New("owner ID, chat ID or other user ID is empty")
+			return nil, warpnet.WarpError("owner ID, chat ID or other user ID is empty")
 		}
 
 		return event.Accepted, repo.DeleteChat(ev.ChatId)
@@ -162,12 +166,12 @@ func StreamGetUserChatsHandler(
 			return nil, fmt.Errorf("get chats: unmarshal: %w", err)
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user ID")
+			return nil, warpnet.WarpError("empty user ID")
 		}
 
 		owner := authRepo.GetOwner()
 		if owner.UserId != ev.UserId {
-			return nil, errors.New("not owner's chats")
+			return nil, warpnet.WarpError("not owner's chats")
 		}
 
 		chats, cursor, err := repo.GetUserChats(ev.UserId, ev.Limit, ev.Cursor)
@@ -198,7 +202,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 			return nil, err
 		}
 		if ev.ChatId == "" || !strings.Contains(ev.ChatId, ":") || ev.Text == "" {
-			return nil, errors.New("message parameters are invalid")
+			return nil, warpnet.WarpError("message parameters are invalid")
 		}
 
 		split := strings.Split(ev.ChatId, ":")
@@ -238,7 +242,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(otherMsgData, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other message error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other message error response: %s", possibleError.Message)
 		}
 
 		return event.NewMessageResponse(msg), err
@@ -254,7 +258,7 @@ func StreamDeleteMessageHandler(repo ChatStorer) middleware.WarpHandler {
 			return nil, err
 		}
 		if ev.ChatId == "" || ev.UserId == "" || ev.Id == "" {
-			return nil, errors.New("chat ID, user ID, or message ID cannot be blank")
+			return nil, warpnet.WarpError("chat ID, user ID, or message ID cannot be blank")
 		}
 
 		return event.Accepted, repo.DeleteMessage(ev.UserId, ev.ChatId, ev.Id)
@@ -270,7 +274,7 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 			return nil, err
 		}
 		if ev.ChatId == "" {
-			return nil, errors.New("chat ID cannot be blank")
+			return nil, warpnet.WarpError("chat ID cannot be blank")
 		}
 
 		messages, cursor, err := repo.ListMessages(ev.ChatId, ev.Limit, ev.Cursor)
@@ -299,7 +303,7 @@ func StreamGetMessagesHandler(repo ChatStorer, userRepo ChatUserFetcher) middlew
 
 		// just double check
 		if storedUser.Id != "" && (storedUser.Id != userId || storedUser.Id != ownerId) {
-			return nil, errors.New("user doesn't own these messages")
+			return nil, warpnet.WarpError("user doesn't own these messages")
 		}
 
 		return event.ChatMessagesResponse{
@@ -320,7 +324,7 @@ func StreamGetMessageHandler(repo ChatStorer, userRepo ChatUserFetcher) middlewa
 			return nil, err
 		}
 		if ev.ChatId == "" || ev.UserId == "" || ev.Id == "" {
-			return nil, errors.New("chat ID, user ID, or message ID cannot be blank")
+			return nil, warpnet.WarpError("chat ID, user ID, or message ID cannot be blank")
 		}
 
 		msg, err := repo.GetMessage(ev.UserId, ev.ChatId, ev.Id)
@@ -340,7 +344,7 @@ func StreamGetMessageHandler(repo ChatStorer, userRepo ChatUserFetcher) middlewa
 		}
 
 		if user.Id != userId || userId != ownerId {
-			return nil, errors.New("unauthorized user")
+			return nil, warpnet.WarpError("unauthorized user")
 		}
 
 		return event.ChatMessageResponse(msg), nil

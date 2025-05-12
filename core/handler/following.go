@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -54,7 +57,7 @@ func StreamFollowHandler(
 			return nil, err
 		}
 		if ev.Follower == "" || ev.Followee == "" {
-			return nil, errors.New("empty follower or followee id")
+			return nil, warpnet.WarpError("empty follower or followee id")
 		}
 		if ev.Follower == ev.Followee {
 			return event.Accepted, nil
@@ -128,7 +131,7 @@ func StreamUnfollowHandler(
 			return nil, err
 		}
 		if ev.Follower == "" || ev.Followee == "" {
-			return nil, errors.New("empty follower or followee id")
+			return nil, warpnet.WarpError("empty follower or followee id")
 		}
 		if ev.Follower == ev.Followee {
 			return event.Accepted, nil
@@ -204,7 +207,7 @@ func StreamGetFollowersHandler(
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		owner := authRepo.GetOwner()
 		if ev.UserId == owner.UserId {
@@ -266,7 +269,7 @@ func StreamGetFolloweesHandler(
 			return nil, err
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		owner := authRepo.GetOwner()
 		if ev.UserId == owner.UserId {

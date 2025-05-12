@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -45,10 +48,10 @@ func StreamNewReplyHandler(
 			return nil, err
 		}
 		if ev.Text == "" {
-			return nil, errors.New("empty reply body")
+			return nil, warpnet.WarpError("empty reply body")
 		}
 		if ev.ParentId == nil {
-			return nil, errors.New("empty parent ID")
+			return nil, warpnet.WarpError("empty parent ID")
 		}
 
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
@@ -96,7 +99,7 @@ func StreamNewReplyHandler(
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other reply error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other reply error response: %s", possibleError.Message)
 		}
 
 		return reply, nil
@@ -111,7 +114,7 @@ func StreamGetReplyHandler(repo ReplyStorer) middleware.WarpHandler {
 			return nil, err
 		}
 		if ev.RootId == "" {
-			return nil, errors.New("empty root id")
+			return nil, warpnet.WarpError("empty root id")
 		}
 
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
@@ -134,10 +137,10 @@ func StreamDeleteReplyHandler(
 			return nil, err
 		}
 		if ev.ReplyId == "" {
-			return nil, errors.New("empty reply id")
+			return nil, warpnet.WarpError("empty reply id")
 		}
 		if ev.RootId == "" {
-			return nil, errors.New("empty root id")
+			return nil, warpnet.WarpError("empty root id")
 		}
 
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)
@@ -185,7 +188,7 @@ func StreamDeleteReplyHandler(
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(replyDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other delete reply error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other delete reply error response: %s", possibleError.Message)
 		}
 
 		return event.Accepted, nil
@@ -204,10 +207,10 @@ func StreamGetRepliesHandler(
 			return nil, err
 		}
 		if ev.ParentId == "" {
-			return nil, errors.New("empty parent id")
+			return nil, warpnet.WarpError("empty parent id")
 		}
 		if ev.RootId == "" {
-			return nil, errors.New("empty root id")
+			return nil, warpnet.WarpError("empty root id")
 		}
 
 		rootId := strings.TrimPrefix(ev.RootId, domain.RetweetPrefix)

@@ -1,14 +1,17 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
 	"errors"
-	"fmt"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/stream"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -48,13 +51,13 @@ func StreamLikeHandler(
 			return nil, err
 		}
 		if ev.OwnerId == "" {
-			return nil, errors.New("like: empty owner id")
+			return nil, warpnet.WarpError("like: empty owner id")
 		}
 		if ev.UserId == "" {
-			return nil, errors.New("like: empty user id")
+			return nil, warpnet.WarpError("like: empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("like: empty tweet id")
+			return nil, warpnet.WarpError("like: empty tweet id")
 		}
 
 		tweetId := strings.TrimPrefix(ev.TweetId, domain.RetweetPrefix)
@@ -90,7 +93,7 @@ func StreamLikeHandler(
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(likeDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other like error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other like error response: %s", possibleError.Message)
 		}
 
 		return event.LikesCountResponse{num}, nil
@@ -106,10 +109,10 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 		}
 
 		if ev.UserId == "" {
-			return nil, errors.New("empty user id")
+			return nil, warpnet.WarpError("empty user id")
 		}
 		if ev.TweetId == "" {
-			return nil, errors.New("empty tweet id")
+			return nil, warpnet.WarpError("empty tweet id")
 		}
 
 		unlikedUser, err := userRepo.Get(ev.UserId)
@@ -145,7 +148,7 @@ func StreamUnlikeHandler(repo LikesStorer, userRepo LikedUserFetcher, streamer L
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(unlikeDataResp, &possibleError); possibleError.Message != "" {
-			return nil, fmt.Errorf("unmarshal other unlike error response: %s", possibleError.Message)
+			log.Errorf("unmarshal other unlike error response: %s", possibleError.Message)
 		}
 
 		return event.LikesCountResponse{num}, nil

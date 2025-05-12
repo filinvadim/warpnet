@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
@@ -75,7 +78,7 @@ func StreamUploadImageHandler(
 
 		parts := strings.SplitN(ev.File, ",", 2)
 		if len(parts) != 2 {
-			return nil, errors.New("invalid base64 image data")
+			return nil, warpnet.WarpError("invalid base64 image data")
 		}
 
 		imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
@@ -85,7 +88,7 @@ func StreamUploadImageHandler(
 
 		img, _, err := image.Decode(bytes.NewReader(imgBytes))
 		if errors.Is(err, image.ErrFormat) {
-			return nil, errors.New("invalid image format: PNG, JPG, JPEG, GIF are only allowed") // TODO add more types
+			return nil, warpnet.WarpError("invalid image format: PNG, JPG, JPEG, GIF are only allowed") // TODO add more types
 		}
 		if err != nil {
 			return nil, fmt.Errorf("upload: image decoding: %w", err)
@@ -196,7 +199,7 @@ func amendExifMetadata(imageBytes, metadata []byte) ([]byte, error) {
 
 	sl, ok := intfc.(*jis.SegmentList)
 	if !ok {
-		return nil, errors.New("amend EXIF: invalid exif type: not a segment list")
+		return nil, warpnet.WarpError("amend EXIF: invalid exif type: not a segment list")
 	}
 
 	ifdMapping, err := exifcommon.NewIfdMappingWithStandard()

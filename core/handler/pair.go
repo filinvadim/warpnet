@@ -1,7 +1,9 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package handler
 
 import (
-	"errors"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
@@ -19,7 +21,7 @@ func StreamNodesPairingHandler(serverAuthInfo domain.AuthNodeInfo) middleware.Wa
 		tokenMatch := serverAuthInfo.Identity.Token == clientInfo.Identity.Token
 		if !tokenMatch {
 			log.Errorf("pair: token does not match server identity")
-			return nil, errors.New("token mismatch")
+			return nil, warpnet.WarpError("token mismatch")
 		}
 		return nil, nil
 	}

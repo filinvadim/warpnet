@@ -1,8 +1,10 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package consensus
 
 import (
 	"context"
-	"errors"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/hashicorp/raft"
@@ -48,7 +50,7 @@ func newStreamLayer(h NodeTransporter, lg *consensusLogger) (*streamLayer, error
 
 func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
 	if sl.host == nil {
-		return nil, errors.New("stream layer not initialized")
+		return nil, warpnet.WarpError("stream layer not initialized")
 	}
 	var pid warpnet.WarpPeerID
 	value, ok := sl.cache.Load(string(address))
@@ -59,7 +61,7 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 		sl.cache.Store(string(address), pid)
 	}
 	if pid.String() == "" {
-		return nil, errors.New("raft-transport: invalid server id")
+		return nil, warpnet.WarpError("raft-transport: invalid server id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

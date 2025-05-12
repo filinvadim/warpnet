@@ -1,8 +1,10 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package warpnet
 
 import (
 	"context"
-	"errors"
 	"github.com/Masterminds/semver/v3"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
@@ -52,12 +54,12 @@ const (
 	P_TCP = multiaddr.P_TCP
 
 	PermanentAddrTTL = peerstore.PermanentAddrTTL
+
+	ErrNodeIsOffline = WarpError("node is offline")
+	ErrUserIsOffline = WarpError("user is offline")
 )
 
 var (
-	ErrNodeIsOffline = errors.New("node is offline")
-	ErrUserIsOffline = errors.New("user is offline")
-
 	privateBlocks = []string{
 		"10.0.0.0/8", // VPN
 		"172.16.0.0/12",
@@ -67,6 +69,12 @@ var (
 		"169.254.0.0/16", // link-local
 	}
 )
+
+type WarpError string
+
+func (e WarpError) Error() string {
+	return string(e)
+}
 
 // interfaces
 type (

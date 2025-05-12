@@ -8,7 +8,6 @@ import (
 	dht "github.com/filinvadim/warpnet/core/dht"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/filinvadim/warpnet/core/handler"
-	"github.com/filinvadim/warpnet/core/logging"
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/node/base"
 	"github.com/filinvadim/warpnet/core/pubsub"
@@ -115,10 +114,6 @@ func NewBootstrapNode(
 		event.PUBLIC_GET_INFO,
 		logMw(handler.StreamGetInfoHandler(bn, discService.DefaultDiscoveryHandler)),
 	)
-
-	logging.SetLogLevels()
-
-	fmt.Println(bn.Node().ID(), "NODE ID")
 
 	return bn, nil
 }

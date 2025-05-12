@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package discovery
 
 import (
@@ -80,9 +83,12 @@ func NewDiscoveryService(
 		addrs[info.ID] = discoveryBoostrapNode{info.Addrs, false}
 	}
 	return &discoveryService{
-		ctx, nil, userRepo, nodeRepo, config.ConfigFile.Version, handlers,
-		new(sync.RWMutex), addrs, retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
-		newRateLimiter(16, 1), make(chan warpnet.PeerAddrInfo, 1000), make(chan struct{}),
+		ctx, nil, userRepo, nodeRepo,
+		config.ConfigFile.Version, handlers,
+		new(sync.RWMutex), addrs,
+		retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
+		newRateLimiter(16, 1),
+		make(chan warpnet.PeerAddrInfo, 1000), make(chan struct{}),
 		new(atomic.Bool),
 	}
 }
@@ -98,10 +104,10 @@ func NewBootstrapDiscoveryService(ctx context.Context, handlers ...DiscoveryHand
 
 func (s *discoveryService) Run(n DiscoveryInfoStorer) error {
 	if s == nil {
-		return errors.New("nil discovery service")
+		return warpnet.WarpError("nil discovery service")
 	}
 	if s.discoveryChan == nil {
-		return errors.New("discovery channel is nil")
+		return warpnet.WarpError("discovery channel is nil")
 	}
 	log.Infoln("discovery: service started")
 
@@ -173,7 +179,7 @@ func (s *discoveryService) syncBootstrapDiscovery() error {
 
 			tryouts--
 			if tryouts == 0 {
-				return errors.New("discovery: all discovery attempts failed")
+				return warpnet.WarpError("discovery: all discovery attempts failed")
 			}
 		}
 	}
@@ -227,7 +233,7 @@ func (s *discoveryService) HandlePeerFound(pi warpnet.PeerAddrInfo) {
 	defer func() { recover() }()
 
 	if !s.limiter.Allow() {
-		log.Warnf("discovery: limited by rate limiter: %s", pi.ID.String())
+		log.Debugf("discovery: limited by rate limiter: %s", pi.ID.String())
 		return
 	}
 

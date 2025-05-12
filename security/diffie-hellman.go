@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filin
+// SPDX-License-Identifier: gpl
+
 package security
 
 import (

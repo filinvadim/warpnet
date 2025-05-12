@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package logging
 
 import (
@@ -55,14 +58,14 @@ var subsystems = []string{
 	"webrtc-udpmux",
 }
 
+const RFC3339NoZ = "2006-01-02T15:04:05"
+
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
-		TimestampFormat: "2006-01-02T15:04:05",
+		TimestampFormat: RFC3339NoZ,
 	})
-}
 
-func SetLogLevels() {
 	level := logrus.GetLevel().String()
 	//level := "debug"
 	_ = golog.SetLogLevel("raftlib", level)

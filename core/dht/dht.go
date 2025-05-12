@@ -1,3 +1,6 @@
+// Copyright 2025 Vadim Filil
+// SPDX-License-Identifier: gpl
+
 package dht
 
 import (
@@ -173,7 +176,7 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	go d.runRendezvousDiscovery(ownID)
 }
 
-// rendezvousDiscovery is memory leaking so run it only for 5 minutes
+// rendezvous discovery is memory leaking so run it only for 5 minutes
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
 	defer func() { recover() }()
 	if d == nil || d.dht == nil {
@@ -282,7 +285,7 @@ func (d *DistributedHashTable) Close() {
 	}
 	close(d.stopChan)
 
-	log.Infoln("dht: table closing...")
+	log.Infoln("dht rendezvous: closing...")
 	if err := d.dht.Close(); err != nil {
 		log.Errorf("dht: table close: %v\n", err)
 	}
