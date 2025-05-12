@@ -2,6 +2,9 @@
 
 echo "Pre-commit hook started..."
 
+licensor || true
+git add .
+
 CONFIG="version"
 SPEC_LOCAL="spec/local-api.yml"
 

@@ -1,3 +1,5 @@
+licensorize:
+	licensor
 kill:
 	pkill -9 main
 
