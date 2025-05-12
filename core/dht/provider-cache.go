@@ -209,9 +209,8 @@ func (d *ProviderCache) Close() (err error) {
 		}
 		return true
 	})
-
-	d.isClosed.Store(true)
 	log.Infoln("dht: providers cache: stopped")
+	d.isClosed.Store(true)
 	close(d.stopChan)
 	return err
 }
