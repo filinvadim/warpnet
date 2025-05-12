@@ -28,6 +28,7 @@ import (
 	"errors"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
 
 	"github.com/filinvadim/warpnet/core/warpnet"
@@ -38,7 +39,6 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"io"
 	"time"
 )
 
@@ -82,16 +82,9 @@ type RoutingStorer interface {
 	warpnet.WarpBatching
 }
 
-type ProviderStorer interface {
-	AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error
-	GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo, error)
-	io.Closer
-}
-
 type DistributedHashTable struct {
 	ctx           context.Context
 	db            RoutingStorer
-	providerStore ProviderStorer
 	boostrapNodes []warpnet.PeerAddrInfo
 	addFuncs      []discovery.DiscoveryHandler
 	removeF       func(warpnet.WarpPeerID)
@@ -110,8 +103,7 @@ func defaultNodeAddedCallback(id warpnet.WarpPeerID) {
 
 func NewDHTable(
 	ctx context.Context,
-	db RoutingStorer,
-	providerStore ProviderStorer,
+	nodeRepo RoutingStorer,
 	removeF func(warpnet.WarpPeerID),
 	addFuncs ...discovery.DiscoveryHandler,
 ) *DistributedHashTable {
@@ -119,8 +111,7 @@ func NewDHTable(
 	log.Infoln("dht: bootstrap addresses:", bootstrapAddrs)
 	return &DistributedHashTable{
 		ctx:           ctx,
-		db:            db,
-		providerStore: providerStore,
+		db:            nodeRepo,
 		boostrapNodes: bootstrapAddrs,
 		addFuncs:      addFuncs,
 		removeF:       removeF,
@@ -129,6 +120,11 @@ func NewDHTable(
 }
 
 func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPeerRouting, err error) {
+	providerStore, err := providers.NewProviderManager(n.ID(), n.Peerstore(), d.db)
+	if err != nil {
+		return nil, err
+	}
+
 	d.dht, err = dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
@@ -138,7 +134,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 		dht.RoutingTableRefreshPeriod(time.Hour),
 		dht.RoutingTableRefreshQueryTimeout(time.Minute*5),
 		dht.BootstrapPeers(d.boostrapNodes...),
-		dht.ProviderStore(d.providerStore),
+		dht.ProviderStore(providerStore),
 		dht.RoutingTableLatencyTolerance(time.Hour*24),
 		dht.BucketSize(50),
 	)

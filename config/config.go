@@ -31,7 +31,7 @@ import (
 	"strings"
 )
 
-const noticeTemplate = " %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n"
+const noticeTemplate = " %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
 
 var defaultBootstrapNodes = []string{
 	"/ip4/207.154.221.44/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j",

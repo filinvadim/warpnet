@@ -275,6 +275,14 @@ func FromStringToPeerID(s string) WarpPeerID {
 	return peerID
 }
 
+func FromBytesToPeerID(b []byte) WarpPeerID {
+	peerID, err := peer.IDFromBytes(b)
+	if err != nil {
+		return ""
+	}
+	return peerID
+}
+
 func NewMultiaddr(s string) (a multiaddr.Multiaddr, err error) {
 	return multiaddr.NewMultiaddr(s)
 }

@@ -52,7 +52,7 @@ type DistributedHashTableCloser interface {
 	Close()
 }
 
-type ProviderCacheCloser interface {
+type ProviderCloser interface {
 	io.Closer
 }
 

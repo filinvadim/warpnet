@@ -36,7 +36,6 @@ import (
 	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/security"
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +47,6 @@ type BootstrapNode struct {
 	pubsubService     PubSubProvider
 	raft              ConsensusProvider
 	dHashTable        DistributedHashTableCloser
-	providerStore     ProviderCacheCloser
 	memoryStoreCloseF func() error
 	psk               security.PSK
 }
@@ -64,10 +62,6 @@ func NewBootstrapNode(
 		return nil, fmt.Errorf("bootstrap: fail generating key: %v", err)
 	}
 	warpPrivKey := privKey.(warpnet.WarpPrivateKey)
-	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf("bootstrap: fail getting ID: %v", err)
-	}
 
 	raft, err := consensus.NewBootstrapRaft(ctx, isInMemory)
 	if err != nil {
@@ -90,13 +84,8 @@ func NewBootstrapNode(
 		return mapStore.Close()
 	}
 
-	providersCache, err := providers.NewProviderManager(id, memoryStore, mapStore)
-	if err != nil {
-		return nil, fmt.Errorf("bootstrap: fail creating providers cache: %w", err)
-	}
-
 	dHashTable := dht.NewDHTable(
-		ctx, mapStore, providersCache,
+		ctx, mapStore,
 		raft.RemoveVoter, discService.DefaultDiscoveryHandler, raft.AddVoter,
 	)
 
@@ -119,7 +108,6 @@ func NewBootstrapNode(
 		pubsubService:     pubsubService,
 		raft:              raft,
 		dHashTable:        dHashTable,
-		providerStore:     providersCache,
 		memoryStoreCloseF: closeF,
 		psk:               psk,
 	}
@@ -177,11 +165,7 @@ func (bn *BootstrapNode) Stop() {
 			log.Errorf("bootstrap: failed to close pubsub: %v", err)
 		}
 	}
-	if bn.providerStore != nil {
-		if err := bn.providerStore.Close(); err != nil {
-			log.Errorf("bootstrap: failed to close provider: %v", err)
-		}
-	}
+
 	if bn.dHashTable != nil {
 		bn.dHashTable.Close()
 	}

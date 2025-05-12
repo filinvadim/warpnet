@@ -53,8 +53,7 @@ type MemberNode struct {
 	pubsubService PubSubProvider
 	raft          ConsensusProvider
 	dHashTable    DistributedHashTableCloser
-	providerStore ProviderCacheCloser
-	nodeRepo      ProviderCacheCloser
+	nodeRepo      ProviderCloser
 	retrier       retrier.Retrier
 	userRepo      UserFetcher
 }
@@ -87,13 +86,9 @@ func NewMemberNode(
 	pubsubService := pubsub.NewPubSub(
 		ctx, followRepo, owner.UserId, discService.HandlePeerFound,
 	)
-	providerStore, err := dht.NewProviderCache(ctx, nodeRepo)
-	if err != nil {
-		return nil, fmt.Errorf("member: failed to init providers: %v", err)
-	}
 
 	dHashTable := dht.NewDHTable(
-		ctx, nodeRepo, providerStore,
+		ctx, nodeRepo,
 		raft.RemoveVoter, raft.AddVoter, discService.HandlePeerFound,
 	)
 
@@ -118,7 +113,6 @@ func NewMemberNode(
 		pubsubService: pubsubService,
 		raft:          raft,
 		dHashTable:    dHashTable,
-		providerStore: providerStore,
 		nodeRepo:      nodeRepo,
 		retrier:       retrier.New(time.Second*10, 3, retrier.ArithmeticalBackoff),
 		userRepo:      userRepo,
@@ -368,11 +362,6 @@ func (m *MemberNode) Stop() {
 	if m.pubsubService != nil {
 		if err := m.pubsubService.Close(); err != nil {
 			log.Errorf("member: failed to close pubsub: %v", err)
-		}
-	}
-	if m.providerStore != nil {
-		if err := m.providerStore.Close(); err != nil {
-			log.Errorf("member: failed to close provider: %v", err)
 		}
 	}
 	if m.dHashTable != nil {

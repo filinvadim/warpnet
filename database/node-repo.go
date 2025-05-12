@@ -30,10 +30,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/database/storage"
-	"github.com/filinvadim/warpnet/json"
 	"github.com/jbenet/goprocess"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	"github.com/libp2p/go-libp2p/core/peer"
 	log "github.com/sirupsen/logrus"
 	"math"
 	"runtime"
@@ -53,9 +50,8 @@ const (
 )
 
 var (
-	_              ds.Batching             = (*NodeRepo)(nil)
-	_              providers.ProviderStore = (*NodeRepo)(nil)
-	ErrNilNodeRepo                         = errors.New("node repo is nil")
+	_              ds.Batching = (*NodeRepo)(nil)
+	ErrNilNodeRepo             = errors.New("node repo is nil")
 )
 
 type NodeStorer interface {
@@ -671,82 +667,6 @@ func (b *batch) Cancel() error {
 	b.writeBatch.Cancel()
 	runtime.SetFinalizer(b, nil)
 	return nil
-}
-
-func (d *NodeRepo) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
-	if d == nil {
-		return ErrNilNodeRepo
-	}
-	addrs, err := d.GetProviders(ctx, key)
-	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
-		return err
-	}
-
-	addrs = append(addrs, prov)
-	bt, err := json.JSON.Marshal(addrs)
-	if err != nil {
-		return err
-	}
-
-	providerKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(ProvidersSubNamespace).
-		AddRootID(string(key)).
-		Build()
-
-	return d.db.SetWithTTL(providerKey, bt, time.Hour*24*7)
-}
-
-func (d *NodeRepo) GetProviders(_ context.Context, key []byte) (addrs []peer.AddrInfo, err error) {
-	if d == nil {
-		return nil, ErrNilNodeRepo
-	}
-	providerKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(ProvidersSubNamespace).
-		AddRootID(string(key)).
-		Build()
-	bt, err := d.db.Get(providerKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.JSON.Unmarshal(bt, &addrs)
-	return addrs, err
-}
-
-func (d *NodeRepo) ListProviders() (_ map[string][]peer.AddrInfo, err error) {
-	if d == nil {
-		return nil, ErrNilNodeRepo
-	}
-	providersKey := storage.NewPrefixBuilder(NodesNamespace).
-		AddSubPrefix(ProvidersSubNamespace).
-		Build()
-
-	txn, err := d.db.NewReadTxn()
-	if err != nil {
-		return nil, err
-	}
-	defer txn.Rollback()
-
-	items, _, err := txn.List(providersKey, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, err
-	}
-
-	providersMap := make(map[string][]peer.AddrInfo, len(items))
-	for _, item := range items {
-		var addrs []peer.AddrInfo
-		providerKey := strings.TrimPrefix(item.Key, providersKey.String()+":")
-		if err := json.JSON.Unmarshal(item.Value, &addrs); err != nil {
-			return nil, err
-		}
-		providersMap[providerKey] = addrs
-	}
-
-	return providersMap, nil
 }
 
 func (d *NodeRepo) Blocklist(ctx context.Context, peerId warpnet.WarpPeerID) error {

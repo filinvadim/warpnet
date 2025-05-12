@@ -128,29 +128,6 @@ func (s *NodeRepoTestSuite) TestBlocklist() {
 	s.False(isBlocked)
 }
 
-func (s *NodeRepoTestSuite) TestAddProviderAndList() {
-	key := []byte("provider-data")
-	pk, err := security.GenerateKeyFromSeed([]byte("peer123"))
-	s.Require().NoError(err)
-
-	warpPrivKey := pk.(warpnet.WarpPrivateKey)
-	id, err := warpnet.IDFromPrivateKey(warpPrivKey)
-	s.Require().NoError(err)
-
-	provider := warpnet.PeerAddrInfo{ID: id}
-
-	err = s.repo.AddProvider(s.ctx, key, provider)
-	s.Require().NoError(err)
-
-	providers, err := s.repo.GetProviders(s.ctx, key)
-	s.Require().NoError(err)
-	s.Len(providers, 1)
-
-	all, err := s.repo.ListProviders()
-	s.Require().NoError(err)
-	s.NotEmpty(all)
-}
-
 func (s *NodeRepoTestSuite) TestQuerySimple() {
 	key := datastore.NewKey("query/key")
 	val := []byte("qval")
