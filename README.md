@@ -47,8 +47,7 @@
     <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
-![Screenshot](https://github.com/filinvadim/warpnet/blob/0243f5efa4f44c589d8384024a21cef7cee8a3ea/docs/warpscreen.jpg?raw=true)
-
+![Screenshot](https://github.com/filinvadim/warpnet/blob/main/docs/warpscreen.jpg?raw=true)
 
 ## General Principles of the Warp Network
 
