@@ -303,6 +303,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	}
 
 	if err := s.node.Connect(pi); err != nil {
+		log.Debugf("discovery: failed to connect to new peer %s: %v", pi.ID.String(), err)
+		if errors.Is(err, warpnet.ErrAllDialsFailed) {
+			err = warpnet.ErrAllDialsFailed
+		}
 		log.Errorf("discovery: failed to connect to new peer %s: %v", pi.ID.String(), err)
 		return
 	}

@@ -27,6 +27,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -93,7 +94,11 @@ func send(
 
 	stream, err := n.NewStream(ctx, serverInfo.ID, r.ProtocolID())
 	if err != nil {
-		return nil, fmt.Errorf("stream: new: %s", err)
+		log.Debugf("stream: new: failed to create stream: %v", err)
+		if errors.Is(err, warpnet.ErrAllDialsFailed) {
+			err = warpnet.ErrAllDialsFailed
+		}
+		return nil, fmt.Errorf("stream: new: %v", err)
 	}
 	defer closeStream(stream)
 

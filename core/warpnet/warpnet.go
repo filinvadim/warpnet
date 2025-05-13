@@ -61,6 +61,8 @@ import (
 	"time"
 )
 
+var ErrAllDialsFailed = swarm.ErrAllDialsFailed
+
 const (
 	BootstrapOwner = "bootstrap"
 	WarpnetName    = "warpnet"
