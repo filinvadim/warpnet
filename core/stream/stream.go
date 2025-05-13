@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 // Copyright 2025 Vadim Filin
-// SPDX-License-Identifier: gpl
 
 package stream
 

@@ -1,4 +1,8 @@
 # WARPNET
+[![Go Version](https://img.shields.io/badge/Go-1.24+-brightgreen)](https://golang.org/dl/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
+[![Release](https://github.com/filinvadim/warpnet/actions/workflows/release.yaml/badge.svg)](https://github.com/filinvadim/warpnet/actions/workflows/release.yaml)
+[![Telegram Chat](https://img.shields.io/badge/chat-telegram-blue.svg)](https://t.me/warpnetdev)
 
 ## General Principles of the Warp Network
 
