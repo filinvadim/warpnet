@@ -51,6 +51,8 @@ github.com/dgraph-io/badger/v3/y
 github.com/dgraph-io/ristretto
 github.com/dgraph-io/ristretto/z
 github.com/dgraph-io/ristretto/z/simd
+# github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da
+## explicit
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
@@ -192,6 +194,7 @@ github.com/hashicorp/golang-lru/arc/v2
 # github.com/hashicorp/golang-lru/v2 v2.0.7
 ## explicit; go 1.18
 github.com/hashicorp/golang-lru/v2
+github.com/hashicorp/golang-lru/v2/expirable
 github.com/hashicorp/golang-lru/v2/internal
 github.com/hashicorp/golang-lru/v2/simplelru
 # github.com/hashicorp/raft v1.7.3
