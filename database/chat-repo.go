@@ -33,6 +33,8 @@ import (
 	"time"
 )
 
+var ErrChatNotFound = errors.New("chat not found")
+
 const (
 	ChatNamespace       = "/CHATS"
 	MessageSubNamespace = "MESSAGES"
@@ -93,7 +95,18 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 		OwnerId:     ownerId,
 	}
 
-	bt, err := json.JSON.Marshal(chat)
+	bt, err := txn.Get(sortableUserChatKey)
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		return chat, err
+	}
+	if err == nil {
+		if err = json.JSON.Unmarshal(bt, &chat); err != nil {
+			return chat, err
+		}
+		return chat, nil
+	}
+
+	bt, err = json.JSON.Marshal(chat)
 	if err != nil {
 		return chat, err
 	}
@@ -167,7 +180,7 @@ func (repo *ChatRepo) GetChat(chatId string) (chat domain.Chat, err error) {
 
 	bt, err := txn.Get(storage.DatabaseKey(sortableKey))
 	if errors.Is(err, storage.ErrKeyNotFound) {
-		return chat, nil
+		return chat, ErrChatNotFound
 	}
 	if err != nil {
 		return chat, err

@@ -193,7 +193,6 @@ func (d *DistributedHashTable) bootstrapDHT() {
 	go d.runRendezvousDiscovery(ownID)
 }
 
-// rendezvous discovery is memory leaking so run it only for 5 minutes
 func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) {
 	defer func() { recover() }()
 	if d == nil || d.dht == nil {
@@ -211,9 +210,6 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		time.Sleep(time.Second * 5)
 		tryouts--
 	}
-
-	timer := time.NewTimer(time.Minute * 5)
-	defer timer.Stop()
 
 	rendezvousCtx, cancel := context.WithCancel(context.Background())
 	d.cancelFunc = cancel
@@ -239,8 +235,6 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 
 	for {
 		select {
-		case <-timer.C:
-			return
 		case <-d.stopChan:
 			return
 		case <-rendezvousCtx.Done():

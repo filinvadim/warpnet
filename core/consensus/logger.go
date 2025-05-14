@@ -71,7 +71,10 @@ func (c *consensusLogger) Warn(msg string, args ...interface{}) {
 }
 
 func (c *consensusLogger) Error(msg string, args ...interface{}) {
-	if c.count < 3 {
+	if strings.Contains(msg, "failed to take snapshot") {
+		return
+	}
+	if strings.Contains(msg, "failed to decode incoming command") && c.count < 3 {
 		c.count++
 		return
 	}
