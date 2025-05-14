@@ -45,6 +45,7 @@ type ChatAuthStorer interface {
 
 type ChatStreamer interface {
 	GenericStream(nodeId string, path stream.WarpRoute, data any) (_ []byte, err error)
+	NodeInfo() warpnet.NodeInfo
 }
 
 type ChatUserFetcher interface {
@@ -62,6 +63,7 @@ type ChatStorer interface {
 	DeleteMessage(userId, chatId, id string) error
 	GetChat(chatId string) (chat domain.Chat, err error)
 	ComposeChatId(ownerId, otherUserId string) string
+	FlipChatId(chatId string) (flipped string)
 }
 
 // Handler for creating a new chat
@@ -81,10 +83,6 @@ func StreamCreateChatHandler(
 			return nil, warpnet.WarpError("owner ID or other user ID is empty")
 		}
 
-		owner := authRepo.GetOwner()
-		if ev.ChatId != nil && ev.OtherUserId == owner.UserId {
-			*ev.ChatId = repo.ComposeChatId(ev.OtherUserId, ev.OwnerId)
-		}
 		otherUser, err := userRepo.Get(ev.OtherUserId)
 		if err != nil {
 			return nil, err
@@ -99,10 +97,10 @@ func StreamCreateChatHandler(
 			return nil, err
 		}
 
-		if otherUser.NodeId == owner.NodeId { // self chat
+		if ev.OwnerId == ev.OtherUserId { // self chat
 			return event.ChatCreatedResponse(ownerChat), nil
 		}
-		if ev.OwnerId != owner.UserId { // other user created chat
+		if ev.OwnerId != streamer.NodeInfo().OwnerId { // other user created chat
 			return event.ChatCreatedResponse(ownerChat), nil
 		}
 
@@ -111,7 +109,7 @@ func StreamCreateChatHandler(
 			event.PUBLIC_POST_CHAT,
 			domain.Chat{
 				CreatedAt:   ownerChat.CreatedAt,
-				Id:          repo.ComposeChatId(ownerChat.OtherUserId, ownerChat.OwnerId), // switch users
+				Id:          repo.FlipChatId(ownerChat.Id), // flip chat id
 				OtherUserId: ownerChat.OtherUserId,
 				OwnerId:     ownerChat.OwnerId,
 			},
@@ -149,11 +147,8 @@ func StreamGetUserChatHandler(
 		}
 
 		chat, err := repo.GetChat(ev.ChatId)
-		if err != nil {
-			return nil, err
-		}
 
-		return event.GetChatResponse(chat), nil
+		return event.GetChatResponse(chat), err
 	}
 }
 
@@ -199,12 +194,6 @@ func StreamGetUserChatsHandler(
 			return nil, fmt.Errorf("get chats: fetch from db: %w", err)
 		}
 
-		for i, chat := range chats {
-			if !strings.Contains(chat.Id, owner.UserId) {
-				chats[i] = domain.Chat{}
-			}
-		}
-
 		return event.ChatsResponse{
 			UserId: ev.UserId,
 			Chats:  chats,
@@ -241,6 +230,14 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 			return nil, err
 		}
 
+		if ownerId == otherUserId { // self chat
+			return event.NewMessageResponse(msg), nil
+		}
+		if ownerId != streamer.NodeInfo().OwnerId { // the other user sent a message
+			log.Infoln("new message!")
+			return event.NewMessageResponse(msg), nil
+		}
+
 		otherUser, err := userRepo.Get(otherUserId)
 		if err != nil {
 			return nil, err
@@ -253,7 +250,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 				CreatedAt: time.Now(),
 				Id:        msg.Id,
 				Text:      msg.Text,
-				ChatId:    repo.ComposeChatId(otherUserId, ownerId), // switch users
+				ChatId:    ev.ChatId,
 			},
 		)
 		if err != nil {

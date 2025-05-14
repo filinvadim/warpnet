@@ -30,6 +30,7 @@ import (
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/filinvadim/warpnet/json"
 	"github.com/oklog/ulid/v2"
+	"sync"
 	"time"
 )
 
@@ -48,23 +49,26 @@ type ChatStorer interface {
 
 type ChatRepo struct {
 	db ChatStorer
+	mx *sync.Mutex
 }
 
 func NewChatRepo(db ChatStorer) *ChatRepo {
-	return &ChatRepo{db: db}
+	return &ChatRepo{db: db, mx: new(sync.Mutex)}
 }
 
-type (
-	chatID = string
-)
-
-func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (domain.Chat, error) {
+func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (chat domain.Chat, err error) {
 	if ownerId == "" || otherUserId == "" {
 		return domain.Chat{}, errors.New("user ID or other user ID is empty")
 	}
 	if _, err := ulid.ParseStrict(ownerId); err != nil {
 		return domain.Chat{}, err
 	}
+	if _, err := ulid.ParseStrict(otherUserId); err != nil {
+		return domain.Chat{}, err
+	}
+
+	repo.mx.Lock()
+	defer repo.mx.Unlock()
 
 	txn, err := repo.db.NewWriteTxn()
 	if err != nil {
@@ -73,28 +77,22 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 	defer txn.Rollback()
 
 	if chatId == nil || *chatId == "" {
-		chatId = new(chatID)
-		*chatId = repo.ComposeChatId(ownerId, otherUserId)
+		chatId = new(string)
+		*chatId = repo.composeChatId(ownerId, otherUserId)
 	}
+
+	sortableUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
+		AddRootID(ownerId).
+		AddParentId(*chatId).
+		AddReversedTimestamp(time.Now()).
+		Build()
 
 	fixedUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
 		AddRootID(*chatId).
 		AddRange(storage.FixedRangeKey).
 		Build()
 
-	sortableUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(*chatId).
-		AddReversedTimestamp(time.Now()).
-		Build()
-
-	chat := domain.Chat{
-		CreatedAt:   time.Now(),
-		Id:          *chatId,
-		OtherUserId: otherUserId,
-		UpdatedAt:   time.Now(),
-		OwnerId:     ownerId,
-	}
-
+	// check if already exist
 	bt, err := txn.Get(sortableUserChatKey)
 	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return chat, err
@@ -103,7 +101,16 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (d
 		if err = json.JSON.Unmarshal(bt, &chat); err != nil {
 			return chat, err
 		}
-		return chat, nil
+		return chat, txn.Commit()
+	}
+
+	// create new chat
+	chat = domain.Chat{
+		CreatedAt:   time.Now(),
+		Id:          *chatId,
+		OtherUserId: otherUserId,
+		UpdatedAt:   time.Now(),
+		OwnerId:     ownerId,
 	}
 
 	bt, err = json.JSON.Marshal(chat)
@@ -138,10 +145,7 @@ func (repo *ChatRepo) DeleteChat(chatId string) error {
 		Build()
 
 	sortableKey, err := txn.Get(fixedUserChatKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return err
 	}
 	if err := txn.Delete(fixedUserChatKey); err != nil {
@@ -171,20 +175,14 @@ func (repo *ChatRepo) GetChat(chatId string) (chat domain.Chat, err error) {
 		Build()
 
 	sortableKey, err := txn.Get(fixedUserChatKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return chat, nil
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
+		return chat, err
 	}
-	if err != nil {
+	bt, err := txn.Get(storage.DatabaseKey(sortableKey))
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return chat, err
 	}
 
-	bt, err := txn.Get(storage.DatabaseKey(sortableKey))
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return chat, ErrChatNotFound
-	}
-	if err != nil {
-		return chat, err
-	}
 	if err = json.JSON.Unmarshal(bt, &chat); err != nil {
 		return chat, err
 	}
@@ -197,7 +195,7 @@ func (repo *ChatRepo) GetUserChats(userId string, limit *uint64, cursor *string)
 	}
 
 	prefix := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(userId + ":").
+		AddRootID(userId).
 		Build()
 
 	txn, err := repo.db.NewReadTxn()
@@ -236,6 +234,10 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 	if msg == (domain.ChatMessage{}) {
 		return msg, errors.New("empty message")
 	}
+
+	repo.mx.Lock()
+	defer repo.mx.Unlock()
+
 	if msg.CreatedAt.IsZero() {
 		msg.CreatedAt = time.Now()
 	}
@@ -334,15 +336,12 @@ func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessag
 	defer txn.Rollback()
 
 	sortableKey, err := txn.Get(fixedKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return m, nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return m, err
 	}
 
 	data, err := txn.Get(storage.DatabaseKey(sortableKey))
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return m, err
 	}
 
@@ -373,13 +372,9 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 	defer txn.Rollback()
 
 	sortableKey, err := txn.Get(fixedKey)
-	if errors.Is(err, storage.ErrKeyNotFound) {
-		return nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
 		return err
 	}
-
 	if err = txn.Delete(fixedKey); err != nil {
 		return err
 	}
@@ -390,7 +385,13 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 	return txn.Commit()
 }
 
-// TODO access this approach
-func (repo *ChatRepo) ComposeChatId(ownerId, otherUserId string) string {
-	return fmt.Sprintf("%s:%s", ownerId, otherUserId)
+// ComposeChatId TODO access this approach
+// 26 symbols: first 10 symbols of ULID contain timestamp, last ones - random
+func (repo *ChatRepo) composeChatId(ownerId, otherUserId string) string {
+	randomPartOwnerId := ownerId[14:]
+	randomPartOtherId := otherUserId[14:]
+	if randomPartOwnerId > randomPartOtherId {
+		randomPartOwnerId, randomPartOtherId = randomPartOtherId, randomPartOwnerId
+	}
+	return fmt.Sprintf("%s:%s", randomPartOwnerId, randomPartOtherId)
 }
