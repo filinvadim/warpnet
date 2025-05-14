@@ -37,9 +37,9 @@ import (
 var ErrChatNotFound = errors.New("chat not found")
 
 const (
-	ChatNamespace       = "/CHATS"
-	MessageSubNamespace = "MESSAGES"
-	NonceSubNamespace   = "NONCE"
+	ChatNamespace     = "/CHATS"
+	MessageNamespace  = "/MESSAGES"
+	NonceSubNamespace = "NONCE"
 )
 
 type ChatStorer interface {
@@ -82,8 +82,7 @@ func (repo *ChatRepo) CreateChat(chatId *string, ownerId, otherUserId string) (c
 	}
 
 	sortableUserChatKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(ownerId).
-		AddParentId(*chatId).
+		AddRootID(*chatId).
 		AddReversedTimestamp(time.Now()).
 		Build()
 
@@ -194,9 +193,7 @@ func (repo *ChatRepo) GetUserChats(userId string, limit *uint64, cursor *string)
 		return []domain.Chat{}, "", errors.New("ID cannot be blank")
 	}
 
-	prefix := storage.NewPrefixBuilder(ChatNamespace).
-		AddRootID(userId).
-		Build()
+	prefix := storage.NewPrefixBuilder(ChatNamespace).Build()
 
 	txn, err := repo.db.NewReadTxn()
 	if err != nil {
@@ -245,16 +242,14 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 		msg.Id = ulid.Make().String()
 	}
 
-	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(msg.ChatId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(msg.OwnerId).
 		AddId(msg.Id).
 		Build()
 
-	sortableKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+	sortableKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(msg.ChatId).
 		AddReversedTimestamp(msg.CreatedAt).
 		AddParentId(msg.OwnerId).
@@ -287,8 +282,7 @@ func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string)
 		return nil, "", errors.New("chat ID cannot be blank")
 	}
 
-	prefix := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+	prefix := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(chatId).
 		Build()
 
@@ -321,8 +315,7 @@ func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string)
 }
 
 func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessage, err error) {
-	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(chatId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userId).
@@ -357,8 +350,7 @@ func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessag
 }
 
 func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
-	fixedKey := storage.NewPrefixBuilder(ChatNamespace).
-		AddSubPrefix(MessageSubNamespace).
+	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(chatId).
 		AddRange(storage.FixedRangeKey).
 		AddParentId(userId).
@@ -386,7 +378,7 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 }
 
 // TODO access this approach
-// ILID consist of 26 symbols: first 10 symbols contain timestamp, last ones - random
+// ULID consist of 26 symbols: first 10 symbols contain timestamp, last ones - random
 func (repo *ChatRepo) composeChatId(ownerId, otherUserId string) string {
 	randomPartOwnerId := ownerId[14:]
 	randomPartOtherId := otherUserId[14:]

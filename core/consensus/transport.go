@@ -25,6 +25,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/retrier"
 	"github.com/hashicorp/raft"
@@ -94,8 +95,12 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 	default:
 	}
 	conn, err := gostream.Dial(ctx, sl.host.Node(), pid, raftProtocol)
+
 	if err != nil {
 		sl.lg.Debug("raft-transport: dial failed to " + string(address) + ": " + err.Error())
+		if errors.Is(err, warpnet.ErrAllDialsFailed) {
+			err = warpnet.ErrAllDialsFailed
+		}
 	}
 	return conn, err
 }

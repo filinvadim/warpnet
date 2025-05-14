@@ -130,7 +130,7 @@ func (p *WarpMiddleware) UnwrapStreamMiddleware(fn WarpHandler) warpnet.WarpStre
 				if len(data) > 500 {
 					data = data[:500]
 				}
-				log.Errorf("middleware: handling of %s message: %s failed: %v\n", s.Protocol(), string(data), err)
+				log.Errorf("middleware: handling of %s %s message: %s failed: %v\n", s.Protocol(), s.Conn().RemotePeer(), string(data), err)
 				response = event.ErrorResponse{Code: 500, Message: err.Error()} // TODO errors ranking
 			}
 		}

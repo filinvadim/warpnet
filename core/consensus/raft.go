@@ -100,7 +100,6 @@ type votersCacher interface {
 	getVoter(key raft.ServerID) (_ raft.Server, err error)
 	removeVoter(key raft.ServerID) error
 	print()
-	close()
 }
 
 type consensusService struct {
@@ -787,7 +786,6 @@ func (c *consensusService) Shutdown() {
 	if wait != nil && wait.Error() != nil {
 		log.Infof("consensus: failed to shutdown node: %v", wait.Error())
 	}
-	c.cache.close()
 	c.raft = nil
 	log.Infoln("consensus: node shut down")
 

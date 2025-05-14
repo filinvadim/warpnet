@@ -309,11 +309,11 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PUBLIC_POST_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, authRepo, m)))),
+		logMw(authMw(unwrapMw(handler.StreamCreateChatHandler(chatRepo, userRepo, m)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_DELETE_CHAT,
-		logMw(authMw(unwrapMw(handler.StreamDeleteChatHandler(chatRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamDeleteChatHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_CHATS,
@@ -325,15 +325,15 @@ func (m *MemberNode) setupHandlers(
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_DELETE_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamDeleteMessageHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_MESSAGE,
-		logMw(authMw(unwrapMw(handler.StreamGetMessageHandler(chatRepo, userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetMessageHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_MESSAGES,
-		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, userRepo)))),
+		logMw(authMw(unwrapMw(handler.StreamGetMessagesHandler(chatRepo, authRepo)))),
 	)
 	m.SetStreamHandler(
 		event.PRIVATE_GET_CHAT,

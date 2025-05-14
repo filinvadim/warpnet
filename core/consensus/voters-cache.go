@@ -100,9 +100,3 @@ func (d *votersCache) print() {
 		fmt.Printf("========== %s", k)
 	}
 }
-
-func (d *votersCache) close() {
-	d.m = nil
-	log.Infoln("consensus: voters cache closed")
-	return
-}

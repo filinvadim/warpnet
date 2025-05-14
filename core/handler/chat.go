@@ -97,6 +97,7 @@ func StreamCreateChatHandler(
 			return event.ChatCreatedResponse(ownerChat), nil
 		}
 		if ev.OwnerId != streamer.NodeInfo().OwnerId { // other user created chat
+			log.Infoln("new chat!")
 			return event.ChatCreatedResponse(ownerChat), nil
 		}
 
@@ -270,7 +271,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 			},
 		)
 		if errors.Is(err, warpnet.ErrNodeIsOffline) {
-			log.Warnf("chat send to offline: %s", otherUser.NodeId)
+			log.Warnf("chat message send to offline: %s", otherUser.NodeId)
 			return event.NewMessageResponse(msg), err
 		}
 		if err != nil {
