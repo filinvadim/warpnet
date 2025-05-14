@@ -113,10 +113,9 @@ type GetAllChatsEvent struct {
 
 // GetAllMessagesEvent defines model for GetAllMessagesEvent.
 type GetAllMessagesEvent struct {
-	ChatId  string  `json:"chat_id"`
-	Cursor  *string `json:"cursor,omitempty"`
-	Limit   *uint64 `json:"limit,omitempty"`
-	OwnerId string  `json:"owner_id"`
+	ChatId string  `json:"chat_id"`
+	Cursor *string `json:"cursor,omitempty"`
+	Limit  *uint64 `json:"limit,omitempty"`
 }
 
 // GetAllRepliesEvent defines model for GetAllRepliesEvent.

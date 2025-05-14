@@ -385,8 +385,8 @@ func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
 	return txn.Commit()
 }
 
-// ComposeChatId TODO access this approach
-// 26 symbols: first 10 symbols of ULID contain timestamp, last ones - random
+// TODO access this approach
+// ILID consist of 26 symbols: first 10 symbols contain timestamp, last ones - random
 func (repo *ChatRepo) composeChatId(ownerId, otherUserId string) string {
 	randomPartOwnerId := ownerId[14:]
 	randomPartOtherId := otherUserId[14:]
