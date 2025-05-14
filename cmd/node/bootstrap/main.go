@@ -60,9 +60,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed := []byte(rand.Text())
-	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
-		seed = []byte(hostname)
+	seed := []byte(config.ConfigFile.Node.Seed)
+	if len(seed) == 0 {
+		seed = []byte(rand.Text())
 	}
 
 	isInMemory := config.ConfigFile.Node.IsInMemory

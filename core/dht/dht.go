@@ -129,7 +129,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht, err = dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Prefix)),
+		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Network)),
 		dht.Datastore(d.db),
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour),

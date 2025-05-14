@@ -126,7 +126,7 @@ const testNetPrefix = "testnet"
 
 // GeneratePSK is not secure TODO
 func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
-	if config.ConfigFile.Node.Prefix == testNetPrefix {
+	if config.ConfigFile.Node.Network == testNetPrefix {
 		return ConvertToSHA256([]byte(testNetPrefix)), nil
 	}
 	if codebase == nil || v == nil {
@@ -139,7 +139,7 @@ func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	entropy := generateAnchoredEntropy()
 	majorStr := strconv.FormatInt(int64(v.Major()), 10)
 
-	seed := append([]byte(config.ConfigFile.Node.Prefix), codeHash...)
+	seed := append([]byte(config.ConfigFile.Node.Network), codeHash...)
 	seed = append(seed, []byte(majorStr)...)
 	seed = append(seed, entropy...)
 	return ConvertToSHA256(seed), nil

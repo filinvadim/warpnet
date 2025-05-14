@@ -52,6 +52,7 @@ type ChatMessage struct {
 	OtherUserId string    `json:"other_user_id"`
 	OwnerId     string    `json:"owner_id"`
 	Text        string    `json:"text"`
+	Status      string    `json:"status"`
 }
 
 // Error defines model for Error.

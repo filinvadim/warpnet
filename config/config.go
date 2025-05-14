@@ -49,7 +49,8 @@ func init() {
 	pflag.String("server.port", "4002", "Server port")
 	pflag.String("node.host", "0.0.0.0", "Node host")
 	pflag.String("node.port", "4001", "Node port")
-	pflag.String("node.network.prefix", "testnet", "Private network prefix. Use 'testnet' for testing env.")
+	pflag.String("node.seed", "", "Bootstrap node seed for deterministic ID generation (random string)")
+	pflag.String("node.network", "testnet", "Private network. Use 'testnet' for testing env.")
 	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
 	pflag.Bool("node.inmemory", false, "Bootstrap node runs without persistent storage")
 	pflag.String("node.metrics.server", "", "Metrics server address")
@@ -76,9 +77,10 @@ func init() {
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
 			Bootstrap:  bootstrapAddrList,
+			Seed:       viper.GetString("node.seed"),
 			Host:       viper.GetString("node.host"),
 			Port:       viper.GetString("node.port"),
-			Prefix:     viper.GetString("node.network.prefix"),
+			Network:    viper.GetString("node.network"),
 			IsInMemory: viper.GetBool("node.inmemory"),
 			Metrics: Metrics{
 				Server: viper.GetString("node.metrics.server"),
@@ -104,9 +106,10 @@ type Node struct {
 	Bootstrap  []string
 	Host       string
 	Port       string
-	Prefix     string
+	Network    string
 	IsInMemory bool
 	Metrics    Metrics
+	Seed       string
 }
 
 type Metrics struct {

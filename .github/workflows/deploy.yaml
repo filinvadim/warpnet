@@ -45,7 +45,7 @@ jobs:
       - name: Deploy to DO Droplet
         run: |
           scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
-          scp ./docker-compose-init.yml root@${{ secrets.HOST_1 }}:/root/docker-compose-warpnet.yml
+          scp ./docker-compose-consensus.yml root@${{ secrets.HOST_1 }}:/root/docker-compose-warpnet.yml
           ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
 
       - name: Deploy to BC Droplet

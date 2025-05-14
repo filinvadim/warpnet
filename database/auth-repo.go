@@ -34,6 +34,8 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"math/big"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -76,6 +78,11 @@ func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 	if repo.db == nil {
 		return storage.ErrNotRunning
 	}
+	password = strings.TrimSpace(password)
+
+	if err := validatePassword(password); err != nil {
+		return err
+	}
 
 	err = repo.db.Run(username, password)
 	if err != nil {
@@ -86,21 +93,52 @@ func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 	return err
 }
 
+func validatePassword(pw string) error {
+	if pw == "" {
+		return errors.New("empty password")
+	}
+	if len(pw) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+	if len(pw) > 32 {
+		return errors.New("password must be less than 32 characters")
+	}
+
+	var (
+		hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString
+		hasLower   = regexp.MustCompile(`[a-z]`).MatchString
+		hasNumber  = regexp.MustCompile(`[0-9]`).MatchString
+		hasSpecial = regexp.MustCompile(`[\W_]`).MatchString
+	)
+
+	switch {
+	case !hasUpper(pw):
+		return errors.New("password must have at least one uppercase letter")
+	case !hasLower(pw):
+		return errors.New("password must have at least one lowercase letter")
+	case !hasNumber(pw):
+		return errors.New("password must have at least one digit")
+	case !hasSpecial(pw):
+		return errors.New("password must have at least one special character")
+	}
+	return nil
+}
+
 func (repo *AuthRepo) generateSecrets(username, password string) (token string, pk crypto.PrivateKey, err error) {
 	n, err := rand.Int(rand.Reader, big.NewInt(127))
 	if err != nil {
 		return "", nil, err
 	}
 	randChar := string(uint8(n.Uint64())) //#nosec
-	feed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
-	token = base64.StdEncoding.EncodeToString(security.ConvertToSHA256(feed))
+	tokenSeed := []byte(username + "@" + password + "@" + randChar + "@" + time.Now().String())
+	token = base64.StdEncoding.EncodeToString(security.ConvertToSHA256(tokenSeed))
 
-	seed := base64.StdEncoding.EncodeToString(
+	pkSeed := base64.StdEncoding.EncodeToString(
 		security.ConvertToSHA256(
-			[]byte(username + "@" + password + "@" + "seed"), // no random - private key must be determined
+			[]byte(username + "@" + password + "@" + strings.Repeat("@", len(password))), // no random - private key must be determined
 		),
 	)
-	privateKey, err := security.GenerateKeyFromSeed([]byte(seed))
+	privateKey, err := security.GenerateKeyFromSeed([]byte(pkSeed))
 	if err != nil {
 		return "", nil, fmt.Errorf("generate private key from seed: %w", err)
 	}

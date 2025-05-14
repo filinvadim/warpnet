@@ -49,18 +49,20 @@
 
 ## General Principles of the Warp Network
 
-1. WarpNet must operate independently of any third-party services.
-2. WarpNet must not rely on any proprietary or third-party technologies.
-3. A WarpNet node must be distributed as a single executable file.
-4. WarpNet must be a cross-platform solution.
-5. Only one WarpNet member node may run on a single machine, but it may have multiple aliases.
-6. WarpNet member nodes must be governed solely by network consensus.
-7. WarpNet business nodes may allow centralized management.
-8. A WarpNet node must store private data only on the local host machine.
-9. WarpNet member nodes must not be developed or controlled by a single individual.
-10. Content on WarpNet must be moderated automatically, without human intervention.
-11. Hosting a WarpNet bootstrap node must be incentivized with rewards.
-12. Node owners bear full personal responsibility for any content they upload to WarpNet.
+1. WarpNet cannot be owned by anyone.
+2. WarpNet must operate independently of any third-party services.
+3. WarpNet must not rely on any proprietary or third-party technologies.
+4. A WarpNet node must be distributed as a single executable file.
+5. WarpNet must be a cross-platform solution.
+6. Only one WarpNet member node may run on a single machine, but it may have multiple aliases.
+7. WarpNet member nodes must be governed solely by network consensus.
+8. WarpNet business nodes may allow centralized management.
+9. WarpNet business nodes must responsibly run at least one bootstrap node.
+10. A WarpNet node must store private data only on the local host machine.
+11. WarpNet member nodes must not be developed or controlled by a single individual.
+12. Content on WarpNet must be moderated automatically, without human intervention.
+13. Hosting a WarpNet bootstrap node must be incentivized with rewards.
+14. Node owners bear full personal responsibility for any content they upload to WarpNet.
 
 ## Getting Started
 
@@ -96,23 +98,23 @@ This is an example of how to list things you need to use the software and how to
 
 ### How to run multiple nodes in isolated network (dev mode)
 1. In addition to the previous chapter update flags:
-    - change `node.network.prefix` flag to different one.
+    - change `node.network` flag to different one.
 2. Run multiple nodes as described in the previous chapter.
 
 * Example:
 ```bash 
-    go run cmd/node/member/main.go --node.network.prefix myprefix
+    go run cmd/node/member/main.go --node.network mynetwork
 ```
 
 ## TODO
 
-- [ ] Setup a website
+- [ ] Set up a website
   - [ ] Add docs to website
   - [ ] Run URL shortener server
+- [ ] Create DMG package
+- [ ] Create Snap package
 - [ ] TODO
 - [ ] TODO
-   - [ ] TODO
-   - [ ] TODO
 
 See the [open issues](TODO) for a full list of proposed features (and known issues).
 
@@ -126,9 +128,9 @@ You can also open an issue with the tag "enhancement."
 Remember to give the project a star! Thanks again!
 
 1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+2. Create your Feature Branch (`git checkout -b IssueNumber/AmazingFeature`)
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+4. Push to the Branch (`git push origin IssueNumber/AmazingFeature`)
 5. Open a Pull Request
 
 ### Top contributors:

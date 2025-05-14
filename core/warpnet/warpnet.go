@@ -152,6 +152,7 @@ type NodeInfo struct {
 	StartTime      time.Time       `json:"start_time"`
 	RelayState     string          `json:"relay_state"`
 	BootstrapPeers []PeerAddrInfo  `json:"bootstrap_peers"`
+	PSKHash        string          `json:"psk_hash"`
 }
 
 func (ni NodeInfo) IsBootstrap() bool {

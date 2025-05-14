@@ -22,6 +22,7 @@ package base
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"github.com/Masterminds/semver/v3"
 	"github.com/filinvadim/warpnet/config"
@@ -50,6 +51,7 @@ type WarpNode struct {
 	streamer Streamer
 
 	ownerId  string
+	pskHash  string
 	isClosed *atomic.Bool
 	version  *semver.Version
 
@@ -131,7 +133,7 @@ func NewWarpNode(
 
 	relayService, err := relay.NewRelay(node)
 	if err != nil {
-		return nil, fmt.Errorf("node: failed to create relay: %v", err)
+		return nil, fmt.Errorf("node: failed to create relay	: %v", err)
 	}
 
 	wn := &WarpNode{
@@ -139,6 +141,7 @@ func NewWarpNode(
 		node:      node,
 		relay:     relayService,
 		ownerId:   ownerId,
+		pskHash:   hex.EncodeToString(security.ConvertToSHA256(psk)),
 		streamer:  stream.NewStreamPool(ctx, node),
 		isClosed:  new(atomic.Bool),
 		version:   config.ConfigFile.Version,
@@ -235,6 +238,7 @@ func (n *WarpNode) NodeInfo() warpnet.NodeInfo {
 		OwnerId:    n.ownerId,
 		StartTime:  n.startTime,
 		RelayState: relayState,
+		PSKHash:    n.pskHash,
 	}
 }
 
@@ -295,8 +299,6 @@ func (n *WarpNode) Stream(nodeId warpnet.WarpPeerID, path stream.WarpRoute, data
 	}
 	return n.streamer.Send(peerInfo, path, bt)
 }
-
-const default4001Port = "4001"
 
 func (n *WarpNode) StopNode() {
 	log.Infoln("node: shutting down node...")

@@ -76,6 +76,7 @@ type discoveryService struct {
 	userRepo UserStorer
 	nodeRepo NodeStorer
 	version  *semver.Version
+	pskHash  string
 
 	handlers []DiscoveryHandler
 
@@ -104,7 +105,7 @@ func NewDiscoveryService(
 	}
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo,
-		config.ConfigFile.Version, handlers,
+		config.ConfigFile.Version, "", handlers,
 		new(sync.RWMutex), addrs,
 		retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 		newRateLimiter(16, 1),
@@ -132,6 +133,7 @@ func (s *discoveryService) Run(n DiscoveryInfoStorer) error {
 	log.Infoln("discovery: service started")
 
 	s.node = n
+	s.pskHash = n.NodeInfo().PSKHash
 
 	go func() {
 		for {
@@ -314,6 +316,10 @@ func (s *discoveryService) handle(pi warpnet.PeerAddrInfo) {
 	info, err := s.requestNodeInfo(pi)
 	if err != nil {
 		log.Errorf("discovery: %v", err)
+		return
+	}
+	if info.PSKHash != s.pskHash {
+		log.Errorf("discovery: PSK hashes mismatch %s", info.PSKHash)
 		return
 	}
 

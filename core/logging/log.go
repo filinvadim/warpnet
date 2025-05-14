@@ -26,6 +26,7 @@ package logging
 import (
 	golog "github.com/ipfs/go-log/v2"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 var subsystems = []string{
@@ -78,12 +79,10 @@ var subsystems = []string{
 	"webrtc-udpmux",
 }
 
-const RFC3339NoZ = "2006-01-02T15:04:05"
-
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
-		TimestampFormat: RFC3339NoZ,
+		TimestampFormat: time.DateTime,
 	})
 
 	level := logrus.GetLevel().String()

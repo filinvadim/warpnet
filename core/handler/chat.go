@@ -112,12 +112,14 @@ func StreamCreateChatHandler(
 			},
 		)
 		if err != nil && !errors.Is(err, base.ErrSelfRequest) {
+			_ = repo.DeleteChat(ownerChat.Id)
 			return nil, err
 		}
 
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(otherChatData, &possibleError); possibleError.Message != "" {
-			log.Errorf("unmarshal other chat error response: %s", possibleError.Message)
+			_ = repo.DeleteChat(ownerChat.Id)
+			return nil, fmt.Errorf("unmarshal other chat error response: %s", possibleError.Message)
 		}
 
 		return event.ChatCreatedResponse(ownerChat), err
@@ -272,6 +274,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		)
 		if errors.Is(err, warpnet.ErrNodeIsOffline) {
 			log.Warnf("chat message send to offline: %s", otherUser.NodeId)
+			msg.Status = "undelivered"
 			return event.NewMessageResponse(msg), err
 		}
 		if err != nil {
@@ -281,6 +284,7 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		var possibleError event.ErrorResponse
 		if _ = json.JSON.Unmarshal(otherMsgData, &possibleError); possibleError.Message != "" {
 			log.Errorf("unmarshal other message error response: %s", possibleError.Message)
+			msg.Status = "undelivered"
 		}
 
 		return event.NewMessageResponse(msg), err

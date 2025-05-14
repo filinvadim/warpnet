@@ -2,11 +2,11 @@ services:
   warpnet1:
     container_name: warpnet1
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
-    hostname: warpnet1
     network_mode: host
     restart: always
     environment:
       - NODE_PORT=4001
+      - NODE_SEED=warpnet1
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=debug
     volumes:
@@ -15,11 +15,11 @@ services:
   warpnet2:
     container_name: warpnet2
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
-    hostname: warpnet2
     network_mode: host
     restart: always
     environment:
       - NODE_PORT=4002
+      - NODE_SEED=warpnet2
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=debug
     volumes:
@@ -28,10 +28,10 @@ services:
   warpnet3:
     container_name: warpnet3
     image: ghcr.io/filinvadim/warpnet-bootstrap:latest
-    hostname: warpnet3
     network_mode: host
     restart: always
     environment:
+      - NODE_SEED=warpnet3
       - NODE_PORT=4003
       - NODE_HOST=207.154.221.44
       - LOGGING_LEVEL=debug

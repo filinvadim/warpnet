@@ -114,7 +114,7 @@ func NewMemberNode(
 		raft:          raft,
 		dHashTable:    dHashTable,
 		nodeRepo:      nodeRepo,
-		retrier:       retrier.New(time.Second*10, 3, retrier.ArithmeticalBackoff),
+		retrier:       retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 		userRepo:      userRepo,
 	}
 
@@ -163,6 +163,15 @@ func (m *MemberNode) GenericStream(nodeIdStr streamNodeID, path stream.WarpRoute
 	bt, err := m.Stream(nodeId, path, data)
 	if errors.Is(err, warpnet.ErrNodeIsOffline) {
 		m.setUserOffline(nodeIdStr)
+		return bt, err
+	}
+	if err != nil {
+		ctx, cancelF := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancelF()
+		m.retrier.Try(ctx, func() error {
+			bt, err = m.Stream(nodeId, path, data) // TODO dead letters queue
+			return err
+		})
 	}
 	return bt, err
 }
