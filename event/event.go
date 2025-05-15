@@ -50,7 +50,6 @@ type ChatMessagesResponse struct {
 	ChatId   string               `json:"chat_id"`
 	Cursor   string               `json:"cursor"`
 	Messages []domain.ChatMessage `json:"messages"`
-	OwnerId  string               `json:"owner_id"`
 }
 
 // ChatsResponse defines model for ChatsResponse.
@@ -176,7 +175,6 @@ type GetLikesCountEvent struct {
 type GetMessageEvent struct {
 	ChatId string `json:"chat_id"`
 	Id     string `json:"id"`
-	UserId string `json:"user_id"`
 }
 
 type GetTweetStatsEvent struct {
@@ -261,12 +259,7 @@ type NewChatEvent struct {
 type NewFollowEvent = domain.Following
 
 // NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	Id        string    `json:"id"`
-	ChatId    string    `json:"chat_id"`
-	CreatedAt time.Time `json:"created_at"`
-	Text      string    `json:"text"`
-}
+type NewMessageEvent = domain.ChatMessage
 
 // NewMessageResponse defines model for NewMessageResponse.
 type NewMessageResponse = domain.ChatMessage

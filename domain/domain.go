@@ -46,13 +46,13 @@ type Chat struct {
 
 // ChatMessage defines model for ChatMessage.
 type ChatMessage struct {
-	ChatId      string    `json:"chat_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	Id          string    `json:"id"`
-	OtherUserId string    `json:"other_user_id"`
-	OwnerId     string    `json:"owner_id"`
-	Text        string    `json:"text"`
-	Status      string    `json:"status"`
+	ChatId     string    `json:"chat_id"`
+	CreatedAt  time.Time `json:"created_at,omitempty"`
+	Id         string    `json:"id"`
+	ReceiverId string    `json:"receiver_id"`
+	SenderId   string    `json:"sender_id"`
+	Text       string    `json:"text"`
+	Status     string    `json:"status,omitempty"`
 }
 
 // Error defines model for Error.

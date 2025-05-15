@@ -245,15 +245,13 @@ func (repo *ChatRepo) CreateMessage(msg domain.ChatMessage) (domain.ChatMessage,
 	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(msg.ChatId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(msg.OwnerId).
-		AddId(msg.Id).
+		AddParentId(msg.Id).
 		Build()
 
 	sortableKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(msg.ChatId).
 		AddReversedTimestamp(msg.CreatedAt).
-		AddParentId(msg.OwnerId).
-		AddId(msg.Id).
+		AddParentId(msg.Id).
 		Build()
 
 	data, err := json.JSON.Marshal(msg)
@@ -314,12 +312,11 @@ func (repo *ChatRepo) ListMessages(chatId string, limit *uint64, cursor *string)
 	return chatsMsgs, cur, nil
 }
 
-func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessage, err error) {
+func (repo *ChatRepo) GetMessage(chatId, id string) (m domain.ChatMessage, err error) {
 	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(chatId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
-		AddId(id).
+		AddParentId(id).
 		Build()
 
 	txn, err := repo.db.NewReadTxn()
@@ -349,12 +346,11 @@ func (repo *ChatRepo) GetMessage(userId, chatId, id string) (m domain.ChatMessag
 	return m, nil
 }
 
-func (repo *ChatRepo) DeleteMessage(userId, chatId, id string) error {
+func (repo *ChatRepo) DeleteMessage(chatId, id string) error {
 	fixedKey := storage.NewPrefixBuilder(MessageNamespace).
 		AddRootID(chatId).
 		AddRange(storage.FixedRangeKey).
-		AddParentId(userId).
-		AddId(id).
+		AddParentId(id).
 		Build()
 
 	txn, err := repo.db.NewWriteTxn()

@@ -58,8 +58,8 @@ type ChatStorer interface {
 	GetUserChats(userId string, limit *uint64, cursor *string) ([]domain.Chat, string, error)
 	CreateMessage(msg domain.ChatMessage) (domain.ChatMessage, error)
 	ListMessages(chatId string, limit *uint64, cursor *string) ([]domain.ChatMessage, string, error)
-	GetMessage(userId, chatId, id string) (domain.ChatMessage, error)
-	DeleteMessage(userId, chatId, id string) error
+	GetMessage(chatId, id string) (domain.ChatMessage, error)
+	DeleteMessage(chatId, id string) error
 	GetChat(chatId string) (chat domain.Chat, err error)
 }
 
@@ -224,24 +224,38 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		if ev.ChatId == "" || !strings.Contains(ev.ChatId, ":") || ev.Text == "" {
 			return nil, warpnet.WarpError("message parameters are invalid")
 		}
+		if ev.SenderId == "" || ev.ReceiverId == "" {
+			return nil, warpnet.WarpError("sender and receiver parameters are invalid")
+		}
+		if len(ev.Text) > 5000 {
+			return nil, warpnet.WarpError("message is too long")
+		}
+
+		ownerId := streamer.NodeInfo().OwnerId
+
+		if ev.SenderId != ownerId && ev.ReceiverId != ownerId {
+			return nil, warpnet.WarpError("not authorized to send message to this chat")
+		}
+
+		isSelfChat := ev.SenderId == ev.ReceiverId
+		isOwnerReceiver := ownerId == ev.ReceiverId
 
 		chat, err := repo.GetChat(ev.ChatId)
 		if err != nil {
 			return nil, err
 		}
 
-		ownerId := streamer.NodeInfo().OwnerId
 		if chat.OwnerId != ownerId && chat.OtherUserId != ownerId {
 			return nil, warpnet.WarpError("not authorized for this chat")
 		}
 
 		now := time.Now()
 		msg := domain.ChatMessage{
-			ChatId:      ev.ChatId,
-			OwnerId:     chat.OwnerId,
-			OtherUserId: chat.OtherUserId,
-			Text:        ev.Text,
-			CreatedAt:   now,
+			ChatId:     ev.ChatId,
+			SenderId:   ev.SenderId,
+			ReceiverId: ev.ReceiverId,
+			Text:       ev.Text,
+			CreatedAt:  now,
 		}
 
 		msg, err = repo.CreateMessage(msg)
@@ -249,15 +263,15 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 			return nil, err
 		}
 
-		if chat.OwnerId == chat.OtherUserId { // self chat
+		if isSelfChat {
 			return event.NewMessageResponse(msg), nil
 		}
-		if chat.OwnerId != ownerId { // the other user sent a message
-			log.Infoln("new message!")
+		if isOwnerReceiver { // the other user sent a message
+			log.Infoln("received new message!")
 			return event.NewMessageResponse(msg), nil
 		}
 
-		otherUser, err := userRepo.Get(chat.OtherUserId)
+		otherUser, err := userRepo.Get(ev.ReceiverId)
 		if err != nil {
 			return nil, err
 		}
@@ -265,12 +279,13 @@ func StreamSendMessageHandler(repo ChatStorer, userRepo ChatUserFetcher, streame
 		otherMsgData, err := streamer.GenericStream(
 			otherUser.NodeId,
 			event.PUBLIC_POST_MESSAGE,
-			event.NewMessageEvent{
-				CreatedAt: now,
-				Id:        msg.Id,
-				Text:      msg.Text,
-				ChatId:    ev.ChatId,
-			},
+			event.NewMessageEvent(domain.ChatMessage{
+				ChatId:     ev.ChatId,
+				SenderId:   ownerId,
+				ReceiverId: ev.ReceiverId,
+				Text:       ev.Text,
+				CreatedAt:  now,
+			}),
 		)
 		if errors.Is(err, warpnet.ErrNodeIsOffline) {
 			log.Warnf("chat message send to offline: %s", otherUser.NodeId)
@@ -299,7 +314,7 @@ func StreamDeleteMessageHandler(repo ChatStorer, authRepo OwnerChatsStorer) midd
 		if err != nil {
 			return nil, err
 		}
-		if ev.ChatId == "" || ev.UserId == "" || ev.Id == "" {
+		if ev.ChatId == "" || ev.Id == "" {
 			return nil, warpnet.WarpError("chat ID, user ID, or message ID cannot be blank")
 		}
 		chat, err := repo.GetChat(ev.ChatId)
@@ -311,7 +326,7 @@ func StreamDeleteMessageHandler(repo ChatStorer, authRepo OwnerChatsStorer) midd
 			return nil, warpnet.WarpError("not authorized for this chat")
 		}
 
-		return event.Accepted, repo.DeleteMessage(ev.UserId, ev.ChatId, ev.Id)
+		return event.Accepted, repo.DeleteMessage(ev.ChatId, ev.Id)
 	}
 }
 
@@ -347,15 +362,11 @@ func StreamGetMessagesHandler(repo ChatStorer, authRepo OwnerChatsStorer) middle
 				ChatId:   ev.ChatId,
 				Cursor:   cursor,
 				Messages: []domain.ChatMessage{},
-				OwnerId:  "",
 			}, nil
 		}
 
-		messagesOwnerId := messages[0].OwnerId
-
 		return event.ChatMessagesResponse{
 			ChatId:   ev.ChatId,
-			OwnerId:  messagesOwnerId,
 			Messages: messages,
 			Cursor:   cursor,
 		}, nil
@@ -370,7 +381,7 @@ func StreamGetMessageHandler(repo ChatStorer, authRepo OwnerChatsStorer) middlew
 		if err != nil {
 			return nil, err
 		}
-		if ev.ChatId == "" || ev.UserId == "" || ev.Id == "" {
+		if ev.ChatId == "" || ev.Id == "" {
 			return nil, warpnet.WarpError("chat ID, user ID, or message ID cannot be blank")
 		}
 
@@ -384,7 +395,7 @@ func StreamGetMessageHandler(repo ChatStorer, authRepo OwnerChatsStorer) middlew
 			return nil, warpnet.WarpError("not authorized for this chat")
 		}
 
-		msg, err := repo.GetMessage(ev.UserId, ev.ChatId, ev.Id)
+		msg, err := repo.GetMessage(ev.ChatId, ev.Id)
 		if err != nil {
 			return nil, err
 		}

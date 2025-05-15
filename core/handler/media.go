@@ -26,8 +26,10 @@ package handler
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/docker/go-units"
 	"github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	jis "github.com/dsoprea/go-jpeg-image-structure/v2"
@@ -104,6 +106,10 @@ func StreamUploadImageHandler(
 		imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
 		if err != nil {
 			return nil, fmt.Errorf("upload: base64 decoding: %w", err)
+		}
+
+		if size := binary.Size(imgBytes); size > units.MiB*50 {
+			return nil, warpnet.WarpError("image is too large")
 		}
 
 		img, _, err := image.Decode(bytes.NewReader(imgBytes))
