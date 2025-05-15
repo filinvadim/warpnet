@@ -48,8 +48,8 @@ jobs:
           scp ./docker-compose-consensus.yml root@${{ secrets.HOST_1 }}:/root/docker-compose-warpnet.yml
           ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
 
-      - name: Deploy to BC Droplet
-        run: |
-          scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/home/chmo
-          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose-warpnet.yml
-          ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /home/chmo/deploy.sh'
+#      - name: Deploy to BC Droplet
+#        run: |
+#          scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/home/chmo
+#          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose-warpnet.yml
+#          ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /home/chmo/deploy.sh'

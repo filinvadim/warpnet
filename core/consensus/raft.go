@@ -385,7 +385,10 @@ func (c *consensusService) sync() error {
 		raftID: c.raftID,
 	}
 
-	cs.waitForLeader(leaderCtx)
+	if err := cs.waitForLeader(leaderCtx); err != nil {
+		log.Errorf("consensus: failed to wait for leadership sync: %v", err)
+		return err
+	}
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
 	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -409,13 +412,13 @@ func (c *consensusService) sync() error {
 	return nil
 }
 
-func (c *consensusSync) waitForLeader(ctx context.Context) {
+func (c *consensusSync) waitForLeader(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		if c.ctx.Err() != nil {
-			return
+			return c.ctx.Err()
 		}
 		select {
 		case <-ticker.C:
@@ -425,14 +428,14 @@ func (c *consensusSync) waitForLeader(ctx context.Context) {
 			}
 			if c.raftID == leaderID {
 				log.Infoln("consensus: node is a leader!")
-				return
+				return nil
 			}
 			log.Infof("consensus: current leader: %s", leaderID)
-			return
+			return nil
 
 		case <-ctx.Done():
 			log.Warningf("consensus: waiting for leader: %v", ctx.Err())
-			return
+			return ctx.Err()
 		}
 	}
 }
