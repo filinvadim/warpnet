@@ -23,11 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package logging
 
-import (
-	golog "github.com/ipfs/go-log/v2"
-	"github.com/sirupsen/logrus"
-	"time"
-)
+import golog "github.com/ipfs/go-log/v2"
 
 var subsystems = []string{
 	"autonat",
