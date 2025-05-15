@@ -122,12 +122,10 @@ func generateAnchoredEntropy() []byte {
 	return input
 }
 
-const testNetPrefix = "testnet"
-
-// GeneratePSK is not secure TODO
+// GeneratePSK TODO access this approach
 func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
-	if config.ConfigFile.Node.Network == testNetPrefix {
-		return ConvertToSHA256([]byte(testNetPrefix)), nil
+	if config.ConfigFile.Node.IsTestnet() {
+		return ConvertToSHA256([]byte(config.ConfigFile.Node.Network)), nil
 	}
 	if codebase == nil || v == nil {
 		return nil, errors.New("psk: codebase or version required")

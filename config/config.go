@@ -31,7 +31,7 @@ import (
 	"strings"
 )
 
-const noticeTemplate = " %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
+const noticeTemplate = " %s version %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
 
 var defaultBootstrapNodes = []string{
 	"/ip4/207.154.221.44/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j",
@@ -42,7 +42,6 @@ var defaultBootstrapNodes = []string{
 var ConfigFile Config
 
 func init() {
-	fmt.Printf(noticeTemplate, strings.ToUpper(warpnet.WarpnetName), "2025", "Vadim Filin")
 
 	pflag.String("database.dir", "storage", "Database directory name")
 	pflag.String("server.host", "localhost", "Server host")
@@ -72,6 +71,8 @@ func init() {
 	bootstrapAddrList = append(bootstrapAddrList, defaultBootstrapNodes...)
 
 	version := root.GetVersion()
+
+	fmt.Printf(noticeTemplate, strings.ToUpper(warpnet.WarpnetName), version, "2025", "Vadim Filin")
 
 	ConfigFile = Config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
@@ -125,6 +126,12 @@ type Logging struct {
 type Server struct {
 	Host string
 	Port string
+}
+
+const testNetPrefix = "testnet"
+
+func (n *Node) IsTestnet() bool {
+	return n.Network == testNetPrefix
 }
 
 func (n *Node) AddrInfos() (infos []warpnet.PeerAddrInfo, err error) {

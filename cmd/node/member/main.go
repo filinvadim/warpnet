@@ -65,13 +65,11 @@ type API struct {
 
 func main() {
 	defer closeWriter()
+	appPath := getAppPath()
 
-	log.Infoln("config bootstrap nodes:")
 	for _, n := range config.ConfigFile.Node.Bootstrap {
 		fmt.Println("         ", n)
 	}
-
-	log.Infoln("Warpnet version:", config.ConfigFile.Version)
 
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
@@ -87,6 +85,20 @@ func main() {
 		FullTimestamp:   true,
 		TimestampFormat: time.DateTime,
 	})
+	if !config.ConfigFile.Node.IsTestnet() {
+		logDir := filepath.Join(appPath, "log")
+		err := os.MkdirAll(logDir, 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
+		logPath := filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format(time.DateOnly)))
+		f, err := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
@@ -94,7 +106,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, err := storage.New(getAppPath(), false, config.ConfigFile.Database.DirName)
+	db, err := storage.New(appPath, false, config.ConfigFile.Database.DirName)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}

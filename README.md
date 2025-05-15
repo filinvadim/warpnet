@@ -1,10 +1,10 @@
 [![Go Version](https://img.shields.io/badge/Go-1.24+-brightgreen)](https://golang.org/dl/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
-[![Release](https://github.com/filinvadim/warpnet/actions/workflows/release.yaml/badge.svg)](https://github.com/filinvadim/warpnet/actions/workflows/release.yaml)
+[![Release](https://github.com/Warp-net/warpnet/actions/workflows/release.yaml/badge.svg)](https://github.com/Warp-net/warpnet/actions/workflows/release.yaml)
 [![Telegram Chat](https://img.shields.io/badge/chat-telegram-blue.svg)](https://t.me/warpnetdev)
 <br />
 <div align="center">
-  <a href="https://github.com/myuser/myrepo">
+  <a href="https://github.com/Warp-net/warpnet">
     <img src="docs/logo.png" alt="Logo" width="80" height="80">
   </a>
 
@@ -13,37 +13,36 @@
   <p align="center">
     An awesome README template to jumpstart your projects!
     <br />
-    <a href="https://github.com/myuser/myrepo"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/Warp-net/docs"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     &middot;
-    <a href="https://github.com/myuser/myrepo/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/Warp-net/warpnet/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
-    <a href="https://github.com/myuser/myrepo/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/Warp-net/warpnet/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
+<summary>Table of Contents</summary>
+<ol>
     <li>
-      <a href="#general-principles-of-the-warp-network">About The Project</a>
+      <a href="#general-principles-of-the-warp-network">General Principles</a>
     </li>
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
-        <li><a href="#How to run single node (dev mode)">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#usage-and-available-options">Usage and available options</a></li>
+        <li><a href="#how-to-run-single-node-dev-mode">How to run single node (dev mode)</a></li>
+        <li><a href="#how-to-run-multiple-nodes-dev-mode">How to run multiple nodes (dev mode)</a></li>
+        <li><a href="#how-to-run-multiple-nodes-in-isolated-network-dev-mode">How to run multiple nodes in isolated network (dev mode)</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
+    <li><a href="#TODO">TODO</a></li>
+    <li><a href="#Contributing">Contributing</a></li>
+    <li><a href="#Contact">Contact</a></li>
+    <li><a href="#License">License</a></li>
+</ol>
 
 ![Screenshot](docs/warpscreen.jpg)
 
@@ -73,6 +72,30 @@ To get a local copy up and running, follow these simple example steps.
 
 This is an example of how to list things you need to use the software and how to install them.
 * [Golang](https://go.dev/doc/install)
+
+### Usage and available options
+
+```bash 
+    --database.dir string          Database directory name (default "storage")
+    --logging.level string         Logging level (default "info")
+    --node.bootstrap string        Bootstrap nodes multiaddr list, comma separated
+    --node.host string             Node host (default "0.0.0.0")
+    --node.inmemory                Bootstrap node runs without persistent storage
+    --node.metrics.server string   Metrics push server address
+    --node.network string          Private network. Use 'testnet' for testing env. (default "testnet")
+    --node.port string             Node port (default "4001")
+    --node.seed string             Bootstrap node seed for deterministic ID generation (random string)
+    --server.host string           Server host (default "localhost")
+    --server.port string           Server port (default "4002")
+```
+The above parameters also could be set as environment variables:
+```
+    NODE_PORT=4001
+    NODE_SEED=warpnet1
+    NODE_HOST=207.154.221.44
+    LOGGING_LEVEL=debug 
+    ...
+```
 
 ### How to run single node (dev mode)
 - bootstrap node
@@ -113,10 +136,10 @@ This is an example of how to list things you need to use the software and how to
   - [ ] Run URL shortener server
 - [ ] Create DMG package
 - [ ] Create Snap package
-- [ ] TODO
+- [ ] Set up bootstrap nodes on each continent
 - [ ] TODO
 
-See the [open issues](TODO) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/Warp-net/warpnet/issues) for a full list of proposed features (and known issues).
 
 ## Contributing
 
@@ -135,8 +158,8 @@ Remember to give the project a star! Thanks again!
 
 ### Top contributors:
 
-<a href="https://github.com/todo/Best-README-Template/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=todo/Best-README-Template" alt="contrib.rocks image" />
+<a href="https://github.com/Warp-net/warpnet/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Warp-net/warpnet" alt="contrib.rocks image" />
 </a>
 
 ## Contact

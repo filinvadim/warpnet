@@ -386,7 +386,7 @@ func (c *consensusService) sync() error {
 	}
 
 	if err := cs.waitForLeader(leaderCtx); err != nil {
-		log.Errorf("consensus: failed to wait for leadership sync: %v", err)
+		log.Warnf("consensus: failed to wait for leadership sync: %v", err)
 		return err
 	}
 
@@ -723,6 +723,7 @@ func (c *consensusService) waitSync() {
 	c.syncMx.RUnlock()
 }
 
+// unreachable private node could potentially block all consensus
 func (c *consensusService) dropPrivateLeadership() {
 	if c == nil || c.raft == nil {
 		return
