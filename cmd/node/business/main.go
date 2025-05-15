@@ -60,15 +60,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Infoln("bootstrap seed: ", config.ConfigFile.Node.Seed)
-	seed := []byte(config.ConfigFile.Node.Seed)
-	if len(seed) == 0 {
-		seed = []byte(rand.Text())
-	}
-
-	isInMemory := config.ConfigFile.Node.IsInMemory
-
-	n, err := bootstrap.NewBootstrapNode(ctx, isInMemory, seed, psk)
+	seed := []byte(rand.Text())
+	n, err := bootstrap.NewBootstrapNode(ctx, true, seed, psk)
 	if err != nil {
 		log.Fatalf("failed to init bootstrap node: %v", err)
 	}
@@ -80,8 +73,11 @@ func main() {
 
 	m := metrics.NewMetricsClient(config.ConfigFile.Node.Metrics.Server, n.NodeInfo().ID.String(), true)
 	m.PushStatusOnline()
+
+	// TODO business node is here
+
 	<-interruptChan
-	log.Infoln("bootstrap node interrupted...")
+	log.Infoln("business node interrupted...")
 }
 
 // TODO temp. Check for https://github.com/libp2p/go-libp2p-kad-dht/issues/1073
