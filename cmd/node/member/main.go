@@ -67,10 +67,6 @@ func main() {
 	defer closeWriter()
 	appPath := getAppPath()
 
-	for _, n := range config.ConfigFile.Node.Bootstrap {
-		fmt.Println("         ", n)
-	}
-
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		log.Fatal(err)

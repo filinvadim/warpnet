@@ -434,7 +434,6 @@ func (c *consensusSync) waitForLeader(ctx context.Context) error {
 			return nil
 
 		case <-ctx.Done():
-			log.Warningf("consensus: waiting for leader: %v", ctx.Err())
 			return ctx.Err()
 		}
 	}
