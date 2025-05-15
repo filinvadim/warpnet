@@ -60,7 +60,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Infoln("bootstrap seed: ", config.ConfigFile.Node.Seed)
+	log.Infoln("bootstrap seed:", config.ConfigFile.Node.Seed)
 	seed := []byte(config.ConfigFile.Node.Seed)
 	if len(seed) == 0 {
 		seed = []byte(rand.Text())

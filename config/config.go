@@ -77,7 +77,7 @@ func init() {
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
 		Node: Node{
 			Bootstrap:  bootstrapAddrList,
-			Seed:       viper.GetString("node.seed"),
+			Seed:       strings.TrimSpace(viper.GetString("node.seed")),
 			Host:       viper.GetString("node.host"),
 			Port:       viper.GetString("node.port"),
 			Network:    viper.GetString("node.network"),
