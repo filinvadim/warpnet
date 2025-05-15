@@ -80,18 +80,18 @@ func init() {
 			Seed:       strings.TrimSpace(viper.GetString("node.seed")),
 			Host:       viper.GetString("node.host"),
 			Port:       viper.GetString("node.port"),
-			Network:    viper.GetString("node.network"),
+			Network:    strings.TrimSpace(viper.GetString("node.network")),
 			IsInMemory: viper.GetBool("node.inmemory"),
 			Metrics: Metrics{
 				Server: viper.GetString("node.metrics.server"),
 			},
 		},
-		Database: Database{viper.GetString("database.dir")},
+		Database: Database{strings.TrimSpace(viper.GetString("database.dir"))},
 		Server: Server{
 			Host: viper.GetString("server.host"),
 			Port: viper.GetString("server.port"),
 		},
-		Logging: Logging{Level: viper.GetString("logging.level")},
+		Logging: Logging{Level: strings.TrimSpace(viper.GetString("logging.level"))},
 	}
 }
 
