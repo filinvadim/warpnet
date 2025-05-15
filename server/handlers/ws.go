@@ -141,7 +141,6 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 			response = newErrorResp(fmt.Sprintf("missing data: %s", msg))
 			break
 		}
-		// TODO check version
 
 		if wsMsg.NodeId == "" || wsMsg.Path == "" {
 			log.Errorf("websocket: missing node id or path: %s\n", string(msg))

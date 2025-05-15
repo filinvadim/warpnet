@@ -32,6 +32,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"math"
 	"os"
+	"regexp"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -85,6 +87,12 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 		}, nil
 	}
 	log.Infof("authenticating user %s", message.Username)
+
+	message.Password = strings.TrimSpace(message.Password)
+
+	if err := validatePassword(message.Password); err != nil {
+		return authInfo, err
+	}
 
 	if err := as.authPersistence.Authenticate(message.Username, message.Password); err != nil {
 		log.Errorf("authentication failed: %v", err)
@@ -154,6 +162,37 @@ func (as *AuthService) AuthLogin(message event.LoginEvent) (authInfo event.Login
 	as.isAuthenticated.Store(true)
 
 	return event.LoginResponse(authInfo), nil
+}
+
+func validatePassword(pw string) error {
+	if pw == "" {
+		return errors.New("empty password")
+	}
+	if len(pw) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+	if len(pw) > 32 {
+		return errors.New("password must be less than 32 characters")
+	}
+
+	var (
+		hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString
+		hasLower   = regexp.MustCompile(`[a-z]`).MatchString
+		hasNumber  = regexp.MustCompile(`[0-9]`).MatchString
+		hasSpecial = regexp.MustCompile(`[\W_]`).MatchString
+	)
+
+	switch {
+	case !hasUpper(pw):
+		return errors.New("password must have at least one uppercase letter")
+	case !hasLower(pw):
+		return errors.New("password must have at least one lowercase letter")
+	case !hasNumber(pw):
+		return errors.New("password must have at least one digit")
+	case !hasSpecial(pw):
+		return errors.New("password must have at least one special character")
+	}
+	return nil
 }
 
 func (as *AuthService) AuthLogout() error {

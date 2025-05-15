@@ -155,13 +155,9 @@ func (s *EncryptedUpgrader) readLoop() error {
 			log.Errorf("websocket: failed to decrypt message: %v", err)
 			return nil
 		}
-
 		response, err := s.readCallback(decryptedMessage)
 		if err != nil {
 			log.Errorf("websocket: read callback: %v", err)
-		}
-		if response == nil {
-			continue
 		}
 		if err = s.SendEncrypted(response); err != nil {
 			log.Errorf("websocket: failed to send encrypted message: %v", err)
@@ -207,6 +203,9 @@ func (s *EncryptedUpgrader) renewSalt() error {
 }
 
 func (s *EncryptedUpgrader) SendEncrypted(msg []byte) error {
+	if len(msg) == 0 {
+		return nil
+	}
 	encryptedMessage, err := s.encrypter.EncryptMessage(msg)
 	if err != nil {
 		return err

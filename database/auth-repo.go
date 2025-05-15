@@ -34,7 +34,6 @@ import (
 	"github.com/filinvadim/warpnet/json"
 	"github.com/filinvadim/warpnet/security"
 	"math/big"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -78,11 +77,6 @@ func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 	if repo.db == nil {
 		return storage.ErrNotRunning
 	}
-	password = strings.TrimSpace(password)
-
-	if err := validatePassword(password); err != nil {
-		return err
-	}
 
 	err = repo.db.Run(username, password)
 	if err != nil {
@@ -91,37 +85,6 @@ func (repo *AuthRepo) Authenticate(username, password string) (err error) {
 
 	repo.sessionToken, repo.privateKey, err = repo.generateSecrets(username, password)
 	return err
-}
-
-func validatePassword(pw string) error {
-	if pw == "" {
-		return errors.New("empty password")
-	}
-	if len(pw) < 8 {
-		return errors.New("password must be at least 8 characters")
-	}
-	if len(pw) > 32 {
-		return errors.New("password must be less than 32 characters")
-	}
-
-	var (
-		hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString
-		hasLower   = regexp.MustCompile(`[a-z]`).MatchString
-		hasNumber  = regexp.MustCompile(`[0-9]`).MatchString
-		hasSpecial = regexp.MustCompile(`[\W_]`).MatchString
-	)
-
-	switch {
-	case !hasUpper(pw):
-		return errors.New("password must have at least one uppercase letter")
-	case !hasLower(pw):
-		return errors.New("password must have at least one lowercase letter")
-	case !hasNumber(pw):
-		return errors.New("password must have at least one digit")
-	case !hasSpecial(pw):
-		return errors.New("password must have at least one special character")
-	}
-	return nil
 }
 
 func (repo *AuthRepo) generateSecrets(username, password string) (token string, pk crypto.PrivateKey, err error) {
