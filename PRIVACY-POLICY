@@ -1,0 +1,65 @@
+Privacy Policy
+
+Effective Date: 15.05.2025
+
+WarpNet is a peer-to-peer network designed with privacy, user autonomy, and decentralization in mind.
+This Privacy Policy explains what data is collected, how it is used, and the responsibilities you have as a WarpNet user.
+
+1. No Central Data Collection
+
+WarpNet does not store any of your personal data on centralized servers. All your data — including messages, media,
+and account settings — is stored locally on your own device.
+
+2. Local-Only Storage
+
+Your account, content, and preferences exist only on your device. WarpNet does not back up, sync, or remotely store
+your data. If you lose access to your device or its data is destroyed, your account cannot be recovered.
+You are responsible for making your own backups.
+
+3. Peer-to-Peer Communication
+
+When you communicate with other WarpNet users, data is transmitted directly between devices using end-to-end protocols.
+WarpNet nodes do not act as intermediaries and cannot access the contents of your communications.
+
+4. No Tracking, No Ads (for now)
+
+WarpNet does not track your usage, behavior, or location. Currently, there is no advertising system integrated into
+WarpNet. However, sponsored content may be introduced in the future, and will always be clearly marked.
+
+5. Your Responsibility
+
+As a WarpNet user, you are solely responsible for the content you upload or distribute. Do not share illegal, harmful,
+or abusive material. WarpNet is an open system, but local community moderation may apply depending on node policies.
+
+6. Open Source Transparency
+
+WarpNet is open-source software. Anyone may inspect, audit, or modify the code. This ensures transparency and encourages
+privacy-respecting development practices.
+
+7. GDPR and CCPA Compliance
+
+WarpNet is designed to minimize data collection and empower user control, in line with the principles of the
+General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA).
+
+However, due to its decentralized architecture, there is no centralized data controller or processor.
+All data remains under your control on your local device. Therefore:
+
+    We do not collect or store any personal information.
+
+    We do not sell or share data with third parties.
+
+    You are in full control of your data and its removal.
+
+    There is no centralized entity to submit data access or deletion requests to — you already possess full access.
+
+By using WarpNet, you acknowledge and accept this decentralized responsibility model.
+
+8. Changes to This Policy
+
+We may update this Privacy Policy to reflect future changes in the software or legal requirements. You will be notified
+via the WarpNet interface when updates occur.
+
+Contact
+
+If you have questions or concerns about your privacy while using WarpNet, please contact the maintainers via the official
+WarpNet GitHub repository - https://github.com/Warp-net or community discussion channels.
