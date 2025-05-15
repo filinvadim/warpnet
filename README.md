@@ -108,29 +108,18 @@ The above parameters also could be set as environment variables:
 ```
 
 ### How to run multiple nodes (dev mode)
-1. go to `config/config.go`:
-   - change all ports to different ones;
-   - change `database.dir` flag to different one.
-2. Run every node as an independent OS process
-   as described in the previous chapter.
-
-* Example:
+Change database directory name and ports. Run every node as an independent OS process.
 ```bash 
     go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
 ```
 
 ### How to run multiple nodes in isolated network (dev mode)
-1. In addition to the previous chapter update flags:
-    - change `node.network` flag to different one.
-2. Run multiple nodes as described in the previous chapter.
-
-* Example:
+In addition to the previous chapter update flags - change `node.network` flag to different one.
 ```bash 
-    go run cmd/node/member/main.go --node.network mynetwork
+    go run cmd/node/member/main.go --node.network myownnetwork
 ```
 
 ## TODO
-
 - [ ] Set up a website
   - [ ] Add docs to website
   - [ ] Run URL shortener server
