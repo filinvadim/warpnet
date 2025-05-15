@@ -41,6 +41,8 @@ import (
 	"github.com/filinvadim/warpnet/server/server"
 	writer "github.com/ipfs/go-log/writer"
 	log "github.com/sirupsen/logrus"
+	"time"
+
 	//"net/http"
 	//_ "net/http/pprof"
 	"os"
@@ -81,6 +83,10 @@ func main() {
 		lvl = log.InfoLevel
 	}
 	log.SetLevel(lvl)
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: time.DateTime,
+	})
 
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)

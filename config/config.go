@@ -54,7 +54,7 @@ func init() {
 	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
 	pflag.Bool("node.inmemory", false, "Bootstrap node runs without persistent storage")
 	pflag.String("node.metrics.server", "", "Metrics server address")
-	pflag.String("logging.level", "INFO", "Logging level")
+	pflag.String("logging.level", "info", "Logging level")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()

@@ -24,7 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package logging
 
 import (
-	"fmt"
 	golog "github.com/ipfs/go-log/v2"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -81,14 +80,8 @@ var subsystems = []string{
 }
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: time.DateTime,
-	})
 
-	level := logrus.GetLevel().String()
-	fmt.Printf("logging level: %s\n", level)
-	//level := "debug"
+	level := "debug"
 	_ = golog.SetLogLevel("raftlib", "debug")
 	_ = golog.SetLogLevel("raft", "debug")
 	_ = golog.SetLogLevel("libp2p-raft", "debug")

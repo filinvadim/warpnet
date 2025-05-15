@@ -34,6 +34,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -57,7 +58,11 @@ func main() {
 		lvl = log.InfoLevel
 	}
 	log.SetLevel(lvl)
-
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: time.DateTime,
+	})
+	
 	var interruptChan = make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT)
 
