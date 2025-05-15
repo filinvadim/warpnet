@@ -385,7 +385,7 @@ func (c *consensusService) sync() error {
 		raftID: c.raftID,
 	}
 
-	go cs.waitForLeader(leaderCtx)
+	cs.waitForLeader(leaderCtx)
 
 	log.Infoln("consensus: waiting until we are promoted to a voter...")
 	voterCtx, voterCancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -516,6 +516,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
+	log.Debugf("consensus: new voter added %s", info.ID.String())
 
 	id := raft.ServerID(info.ID.String())
 	addr := raft.ServerAddress(info.ID.String())
