@@ -38,9 +38,9 @@ const systemName = "raft"
 var raftLogger = golog.Logger(systemName)
 
 type consensusLogger struct {
-	l     *golog.ZapEventLogger
-	name  string
-	count int
+	l                               *golog.ZapEventLogger
+	name                            string
+	decodeCount, failedRequestCount int
 }
 
 func newConsensusLogger() *consensusLogger {
@@ -74,12 +74,17 @@ func (c *consensusLogger) Error(msg string, args ...interface{}) {
 	if strings.Contains(msg, "failed to take snapshot") {
 		return
 	}
-	if strings.Contains(msg, "failed to decode incoming command") && c.count < 3 {
-		c.count++
+	if strings.Contains(msg, "failed to make requestVote RPC") && c.failedRequestCount < 10 {
+		c.failedRequestCount++
+		return
+	}
+	if strings.Contains(msg, "failed to decode incoming command") && c.decodeCount < 3 {
+		c.decodeCount++
 		return
 	}
 	c.l.Errorln(msg, args)
-	c.count = 0
+	c.decodeCount = 0
+	c.failedRequestCount = 0
 }
 
 func (c *consensusLogger) IsTrace() bool {
