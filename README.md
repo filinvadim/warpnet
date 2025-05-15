@@ -109,8 +109,8 @@ Change database directory name and ports. Run every node as an independent OS pr
     go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
 ```
 
-### How to run multiple nodes in isolated network (dev mode)
-In addition to the previous chapter update flags - change `node.network` flag to different one.
+### How to run node in isolated network (dev mode)
+Change `node.network` flag to different one.
 ```bash 
     go run cmd/node/member/main.go --node.network myownnetwork
 ```
