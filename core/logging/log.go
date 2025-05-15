@@ -87,13 +87,13 @@ func init() {
 
 	level := logrus.GetLevel().String()
 	//level := "debug"
-	_ = golog.SetLogLevel("raftlib", level)
-	_ = golog.SetLogLevel("raft", "error")
-	_ = golog.SetLogLevel("libp2p-raft", level)
+	_ = golog.SetLogLevel("raftlib", "debug")
+	_ = golog.SetLogLevel("raft", "debug")
+	_ = golog.SetLogLevel("libp2p-raft", "debug")
 
 	_ = golog.SetLogLevel("autonatv2", level)
 	_ = golog.SetLogLevel("autonat", level)
-	_ = golog.SetLogLevel("p2p-holepunch", level)
+	_ = golog.SetLogLevel("p2p-holepunch", "debug")
 	_ = golog.SetLogLevel("relay", level)
 	_ = golog.SetLogLevel("nat", level)
 	_ = golog.SetLogLevel("p2p-circuit", level)

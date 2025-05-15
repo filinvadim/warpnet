@@ -243,7 +243,7 @@ func (c *consensusService) Start(node NodeTransporter) (err error) {
 	}
 
 	isInitiator := raftConfig.LocalID == initiatorServerID
-	log.Infof("consensus: node is initiator: %t, has state:  %t", isInitiator, hasState)
+	log.Infof("consensus: node is initiator: %t, has state: %t", isInitiator, hasState)
 
 	if !hasState && isInitiator {
 		log.Infoln("consensus: setting up new cluster...")
