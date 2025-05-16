@@ -67,8 +67,11 @@ func init() {
 	bootstrapAddrList := make([]string, 0, len(mainnetBootstrapNodes))
 	if strings.Contains(bootstrapAddrs, ",") {
 		bootstrapAddrList = strings.Split(bootstrapAddrs, ",")
+	} else {
+		bootstrapAddrList = []string{bootstrapAddrs} // single addr
 	}
-	if len(bootstrapAddrList) == 0 {
+
+	if bootstrapAddrs == "" {
 		bootstrapAddrList = mainnetBootstrapNodes
 	}
 

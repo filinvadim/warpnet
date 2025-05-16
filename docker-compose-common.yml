@@ -26,6 +26,7 @@ services:
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
       - NODE_SEED=warpnetTestnet2
+      - NODE_BOOTSTRAP='/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWEPDnDU8rzZSRNfS1VNUyDp8WZ67rjKXk3tLhfwJDMqT1'
     volumes:
       - snapshot2:/tmp/snapshot:rw
 
@@ -41,6 +42,7 @@ services:
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
       - NODE_SEED=warpnetTestnet2
+      - NODE_BOOTSTRAP='/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWEPDnDU8rzZSRNfS1VNUyDp8WZ67rjKXk3tLhfwJDMqT1'
     volumes:
       - snapshot3:/tmp/snapshot:rw
 
