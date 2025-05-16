@@ -16,6 +16,10 @@
 
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+WarpNet is provided “as is” without warranty of any kind, either expressed or implied.
+Use at your own risk. The maintainers shall not be liable for any damages or data loss
+resulting from the use or misuse of this software.
 */
 
 package member
