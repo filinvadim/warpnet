@@ -10,6 +10,7 @@ services:
       - NODE_NETWORK=testnet
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
+      - NODE_SEED=warpnetTestnet1
     volumes:
     - snapshot1:/tmp/snapshot:rw
 
@@ -24,6 +25,7 @@ services:
       - NODE_NETWORK=testnet
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
+      - NODE_SEED=warpnetTestnet2
     volumes:
       - snapshot2:/tmp/snapshot:rw
 
@@ -38,6 +40,7 @@ services:
       - NODE_NETWORK=testnet
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
+      - NODE_SEED=warpnetTestnet2
     volumes:
       - snapshot3:/tmp/snapshot:rw
 

@@ -42,13 +42,13 @@ jobs:
           ssh-keyscan -H ${{ secrets.HOST_1 }} >> ~/.ssh/known_hosts
           ssh-keyscan -H ${{ secrets.HOST_SASHA }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to DO Droplet
-        run: |
-          scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
-          scp ./docker-compose-consensus.yml root@${{ secrets.HOST_1 }}:/root/docker-compose-warpnet.yml
-          ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
+#      - name: Deploy to Warpnet Droplet
+#        run: |
+#          scp ./deploy.sh root@${{ secrets.HOST_1 }}:/root
+#          scp ./docker-compose-consensus.yml root@${{ secrets.HOST_1 }}:/root/docker-compose-warpnet.yml
+#          ssh root@${{ secrets.HOST_1 }} 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /root/deploy.sh'
 
-      - name: Deploy to BC Droplet
+      - name: Deploy to Testnet Droplet
         run: |
           scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/home/chmo
           scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose-warpnet.yml
