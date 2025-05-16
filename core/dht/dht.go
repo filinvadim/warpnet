@@ -1,7 +1,7 @@
 /*
 
 Warpnet - Decentralized Social Network
-Copyright (C) 2025 Vadim Filin, https://github.com/filinvadim,
+Copyright (C) 2025 Vadim Filin, https://github.com/Warp-net,
 <github.com.mecdy@passmail.net>
 
 This program is free software: you can redistribute it and/or modify
@@ -233,7 +233,7 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		return
 	}
 
-	log.Infoln("dht rendezvous: is running")
+	log.Infof("dht rendezvous: is running in a namespace %s", namespace)
 
 	for {
 		select {

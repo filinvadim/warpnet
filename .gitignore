@@ -30,4 +30,4 @@ var
 .idea
 *.pem
 *.sig
-../warpnet-frontend/licensor.yml
+licensor.yml

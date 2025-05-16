@@ -1,7 +1,7 @@
 /*
 
 Warpnet - Decentralized Social Network
-Copyright (C) 2025 Vadim Filin, https://github.com/filinvadim,
+Copyright (C) 2025 Vadim Filin, https://github.com/Warp-net,
 <github.com.mecdy@passmail.net>
 
 This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ import (
 
 const noticeTemplate = " %s version %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
 
-var defaultBootstrapNodes = []string{
+var mainnetBootstrapNodes = []string{
 	"/ip4/207.154.221.44/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j",
 	"/ip4/207.154.221.44/tcp/4002/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU",
 	"/ip4/207.154.221.44/tcp/4003/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ",
@@ -64,11 +64,13 @@ func init() {
 	_ = viper.BindPFlags(pflag.CommandLine)
 
 	bootstrapAddrs := viper.GetString("node.bootstrap")
-	bootstrapAddrList := make([]string, 0, len(defaultBootstrapNodes))
+	bootstrapAddrList := make([]string, 0, len(mainnetBootstrapNodes))
 	if strings.Contains(bootstrapAddrs, ",") {
 		bootstrapAddrList = strings.Split(bootstrapAddrs, ",")
 	}
-	bootstrapAddrList = append(bootstrapAddrList, defaultBootstrapNodes...)
+	if len(bootstrapAddrList) == 0 {
+		bootstrapAddrList = mainnetBootstrapNodes
+	}
 
 	version := root.GetVersion()
 
