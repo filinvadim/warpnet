@@ -67,12 +67,12 @@ func main() {
 	defer closeWriter()
 	appPath := getAppPath()
 
-	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
+	psk, err := security.GeneratePSK(root.GetCodeBase(), config.Config().Version)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
+	lvl, err := log.ParseLevel(config.Config().Logging.Level)
 	if err != nil {
 		lvl = log.InfoLevel
 	}
@@ -81,7 +81,7 @@ func main() {
 		FullTimestamp:   true,
 		TimestampFormat: time.DateTime,
 	})
-	if !config.ConfigFile.Node.IsTestnet() {
+	if !config.Config().Node.IsTestnet() {
 		logDir := filepath.Join(appPath, "log")
 		err := os.MkdirAll(logDir, 0755)
 		if err != nil {
@@ -102,7 +102,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, err := storage.New(appPath, false, config.ConfigFile.Database.DirName)
+	db, err := storage.New(appPath, false, config.Config().Database.DirName)
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
@@ -177,7 +177,7 @@ func main() {
 	}
 
 	m := metrics.NewMetricsClient(
-		config.ConfigFile.Node.Metrics.Server, serverNodeAuthInfo.Identity.Owner.NodeId, false,
+		config.Config().Node.Metrics.Server, serverNodeAuthInfo.Identity.Owner.NodeId, false,
 	)
 	m.PushStatusOnline()
 	log.Infoln("WARPNET STARTED")

@@ -58,7 +58,7 @@ type interfaceServer struct {
 }
 
 func NewInterfaceServer() (PublicServer, error) {
-	conf := config.ConfigFile
+	conf := config.Config()
 	swagger, err := api.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("loading swagger spec: %v", err)

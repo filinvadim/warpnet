@@ -31,6 +31,11 @@ import (
 	"strings"
 )
 
+const (
+	testNetNetwork = "testnet"
+	warpnetNetwork = "warpnet"
+)
+
 const noticeTemplate = " %s version %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
 
 var mainnetBootstrapNodes = []string{
@@ -39,10 +44,9 @@ var mainnetBootstrapNodes = []string{
 	"/ip4/207.154.221.44/tcp/4003/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ",
 }
 
-var ConfigFile Config
+var configSingleton config
 
 func init() {
-
 	pflag.String("database.dir", "storage", "Database directory name")
 	pflag.String("server.host", "localhost", "Server host")
 	pflag.String("server.port", "4002", "Server port")
@@ -69,7 +73,10 @@ func init() {
 	split := strings.Split(bootstrapAddrs, ",")
 	if len(split) != 0 {
 		bootstrapAddrList = split
-	} else {
+	}
+
+	network := strings.TrimSpace(viper.GetString("node.network"))
+	if len(bootstrapAddrList) == 0 && network == warpnetNetwork {
 		bootstrapAddrList = mainnetBootstrapNodes
 	}
 
@@ -77,67 +84,69 @@ func init() {
 
 	fmt.Printf(noticeTemplate, strings.ToUpper(warpnet.WarpnetName), version, "2025", "Vadim Filin")
 
-	ConfigFile = Config{
+	configSingleton = config{
 		Version: semver.MustParse(strings.TrimSpace(string(version))),
-		Node: Node{
+		Node: node{
 			Bootstrap:  bootstrapAddrList,
 			Seed:       strings.TrimSpace(viper.GetString("node.seed")),
 			Host:       viper.GetString("node.host"),
 			Port:       viper.GetString("node.port"),
-			Network:    strings.TrimSpace(viper.GetString("node.network")),
+			Network:    network,
 			IsInMemory: viper.GetBool("node.inmemory"),
-			Metrics: Metrics{
+			Metrics: metrics{
 				Server: viper.GetString("node.metrics.server"),
 			},
 		},
-		Database: Database{strings.TrimSpace(viper.GetString("database.dir"))},
-		Server: Server{
+		Database: database{strings.TrimSpace(viper.GetString("database.dir"))},
+		Server: server{
 			Host: viper.GetString("server.host"),
 			Port: viper.GetString("server.port"),
 		},
-		Logging: Logging{Level: strings.TrimSpace(viper.GetString("logging.level"))},
+		Logging: logging{Level: strings.TrimSpace(viper.GetString("logging.level"))},
 	}
 }
 
-type Config struct {
-	Version  *semver.Version
-	Node     Node
-	Database Database
-	Server   Server
-	Logging  Logging
+func Config() config {
+	return configSingleton
 }
-type Node struct {
+
+type config struct {
+	Version  *semver.Version
+	Node     node
+	Database database
+	Server   server
+	Logging  logging
+}
+type node struct {
 	Bootstrap  []string
 	Host       string
 	Port       string
 	Network    string
 	IsInMemory bool
-	Metrics    Metrics
+	Metrics    metrics
 	Seed       string
 }
 
-type Metrics struct {
+type metrics struct {
 	Server string
 }
-type Database struct {
+type database struct {
 	DirName string
 }
-type Logging struct {
+type logging struct {
 	Level  string
 	Format string
 }
-type Server struct {
+type server struct {
 	Host string
 	Port string
 }
 
-const testNetPrefix = "testnet"
-
-func (n *Node) IsTestnet() bool {
-	return n.Network == testNetPrefix
+func (n node) IsTestnet() bool {
+	return n.Network == testNetNetwork
 }
 
-func (n *Node) AddrInfos() (infos []warpnet.PeerAddrInfo, err error) {
+func (n node) AddrInfos() (infos []warpnet.PeerAddrInfo, err error) {
 	for _, addr := range n.Bootstrap {
 		maddr, err := warpnet.NewMultiaddr(addr)
 		if err != nil {

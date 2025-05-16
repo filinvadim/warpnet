@@ -58,7 +58,7 @@ func NewStaticController(
 
 	return &StaticController{
 		fileSystem, isFirstRun,
-		config.ConfigFile.Server.Host, config.ConfigFile.Server.Port,
+		config.Config().Server.Host, config.Config().Server.Port,
 	}
 }
 

@@ -105,15 +105,14 @@ func (s *ChatRepoTestSuite) TestCreateAndGetMessage() {
 	chat, _ := s.repo.CreateChat(nil, ownerID, otherID)
 
 	msg := domain.ChatMessage{
-		ChatId:  chat.Id,
-		OwnerId: ownerID,
-		Text:    "hello",
+		ChatId: chat.Id,
+		Text:   "hello",
 	}
 
 	created, err := s.repo.CreateMessage(msg)
 	s.Require().NoError(err)
 
-	got, err := s.repo.GetMessage(ownerID, chat.Id, created.Id)
+	got, err := s.repo.GetMessage(chat.Id, created.Id)
 	s.Require().NoError(err)
 	s.Equal(msg.Text, got.Text)
 }
@@ -126,7 +125,6 @@ func (s *ChatRepoTestSuite) TestListMessages() {
 	for i := 0; i < 5; i++ {
 		msg := domain.ChatMessage{
 			ChatId:    chat.Id,
-			OwnerId:   ownerID,
 			Text:      "msg",
 			CreatedAt: time.Now().Add(-time.Duration(i) * time.Second),
 		}
@@ -147,16 +145,15 @@ func (s *ChatRepoTestSuite) TestDeleteMessage() {
 	chat, _ := s.repo.CreateChat(nil, ownerID, otherID)
 
 	msg := domain.ChatMessage{
-		ChatId:  chat.Id,
-		OwnerId: ownerID,
-		Text:    "to delete",
+		ChatId: chat.Id,
+		Text:   "to delete",
 	}
 	created, _ := s.repo.CreateMessage(msg)
 
-	err := s.repo.DeleteMessage(ownerID, chat.Id, created.Id)
+	err := s.repo.DeleteMessage(chat.Id, created.Id)
 	s.Require().NoError(err)
 
-	got, err := s.repo.GetMessage(ownerID, chat.Id, created.Id)
+	got, err := s.repo.GetMessage(chat.Id, created.Id)
 	s.Require().NoError(err)
 	s.Empty(got.Text)
 }

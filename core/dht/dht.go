@@ -108,7 +108,7 @@ func NewDHTable(
 	removeF func(warpnet.WarpPeerID),
 	addFuncs ...discovery.DiscoveryHandler,
 ) *DistributedHashTable {
-	bootstrapAddrs, _ := config.ConfigFile.Node.AddrInfos()
+	bootstrapAddrs, _ := config.Config().Node.AddrInfos()
 	log.Infoln("dht: bootstrap addresses:", bootstrapAddrs)
 	return &DistributedHashTable{
 		ctx:           ctx,
@@ -130,7 +130,7 @@ func (d *DistributedHashTable) StartRouting(n warpnet.P2PNode) (_ warpnet.WarpPe
 	d.dht, err = dht.New(
 		d.ctx, n,
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(protocol.ID("/"+config.ConfigFile.Node.Network)),
+		dht.ProtocolPrefix(protocol.ID("/"+config.Config().Node.Network)),
 		dht.Datastore(d.db),
 		dht.MaxRecordAge(time.Hour*24*365),
 		dht.RoutingTableRefreshPeriod(time.Hour),
@@ -217,7 +217,7 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
 
-	namespace := fmt.Sprintf(warpnetRendezvousPrefix, config.ConfigFile.Node.Network)
+	namespace := fmt.Sprintf(warpnetRendezvousPrefix, config.Config().Node.Network)
 	_, err := routingDiscovery.Advertise(rndvuCtx, namespace, lip2pDisc.TTL(time.Hour*3), lip2pDisc.Limit(5))
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 		log.Errorf("dht rendezvous: advertise: %s", err)

@@ -34,7 +34,7 @@ import (
 	"time"
 )
 
-const salt = "cec27db4"
+const salt = "cec27db4" // intentionally
 
 func generateWeakKey(salt []byte) []byte {
 	ts := time.Now().Unix()

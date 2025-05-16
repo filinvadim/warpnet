@@ -39,16 +39,16 @@ import (
 func main() {
 	defer closeWriter()
 
-	log.Infoln("Warpnet version:", config.ConfigFile.Version)
+	log.Infoln("Warpnet version:", config.Config().Version)
 
-	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
+	psk, err := security.GeneratePSK(root.GetCodeBase(), config.Config().Version)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
+	log.Infoln("bootstrap nodes: ", config.Config().Node.Bootstrap)
 
-	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
+	lvl, err := log.ParseLevel(config.Config().Logging.Level)
 	if err != nil {
 		lvl = log.InfoLevel
 	}
@@ -71,7 +71,7 @@ func main() {
 		log.Fatalf("failed to start bootstrap node: %v", err)
 	}
 
-	m := metrics.NewMetricsClient(config.ConfigFile.Node.Metrics.Server, n.NodeInfo().ID.String(), true)
+	m := metrics.NewMetricsClient(config.Config().Node.Metrics.Server, n.NodeInfo().ID.String(), true)
 	m.PushStatusOnline()
 
 	// TODO business node is here

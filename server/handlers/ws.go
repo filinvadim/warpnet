@@ -53,7 +53,6 @@ type WSController struct {
 	upgrader *websocket.EncryptedUpgrader
 	auth     AuthServicer
 	ctx      context.Context
-	conf     config.Config
 
 	clientNode ClientNodeStreamer
 }
@@ -63,7 +62,7 @@ func NewWSController(
 	clientNode ClientNodeStreamer,
 ) *WSController {
 
-	return &WSController{nil, auth, nil, config.ConfigFile, clientNode}
+	return &WSController{nil, auth, nil, clientNode}
 }
 
 func (c *WSController) WebsocketUpgrade(ctx echo.Context) (err error) {
@@ -169,7 +168,7 @@ func (c *WSController) handle(msg []byte) (_ []byte, err error) {
 	response.NodeId = wsMsg.NodeId
 	response.Path = wsMsg.Path
 	response.Timestamp = time.Now()
-	response.Version = c.conf.Version.String()
+	response.Version = config.Config().Version.String()
 
 	var buffer bytes.Buffer
 	err = json.JSON.NewEncoder(&buffer).Encode(response)

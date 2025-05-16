@@ -99,13 +99,13 @@ func NewDiscoveryService(
 	handlers ...DiscoveryHandler,
 ) *discoveryService {
 	addrs := make(map[warpnet.WarpPeerID]discoveryBoostrapNode)
-	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	addrInfos, _ := config.Config().Node.AddrInfos()
 	for _, info := range addrInfos {
 		addrs[info.ID] = discoveryBoostrapNode{info.Addrs, false}
 	}
 	return &discoveryService{
 		ctx, nil, userRepo, nodeRepo,
-		config.ConfigFile.Version, "", handlers,
+		config.Config().Version, "", handlers,
 		new(sync.RWMutex), addrs,
 		retrier.New(time.Second, 5, retrier.ArithmeticalBackoff),
 		newRateLimiter(16, 1),
@@ -116,7 +116,7 @@ func NewDiscoveryService(
 
 func NewBootstrapDiscoveryService(ctx context.Context, handlers ...DiscoveryHandler) *discoveryService {
 	addrs := make(map[warpnet.WarpPeerID][]warpnet.WarpAddress)
-	addrInfos, _ := config.ConfigFile.Node.AddrInfos()
+	addrInfos, _ := config.Config().Node.AddrInfos()
 	for _, info := range addrInfos {
 		addrs[info.ID] = info.Addrs
 	}

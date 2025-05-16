@@ -98,7 +98,7 @@ func NewMemberNode(
 		store,
 		owner.UserId,
 		psk,
-		fmt.Sprintf("/ip4/%s/tcp/%s", config.ConfigFile.Node.Host, config.ConfigFile.Node.Port),
+		fmt.Sprintf("/ip4/%s/tcp/%s", config.Config().Node.Host, config.Config().Node.Port),
 		dHashTable.StartRouting,
 	)
 	if err != nil {

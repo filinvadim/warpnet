@@ -124,8 +124,8 @@ func generateAnchoredEntropy() []byte {
 
 // GeneratePSK TODO access this approach
 func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
-	if config.ConfigFile.Node.IsTestnet() {
-		return ConvertToSHA256([]byte(config.ConfigFile.Node.Network)), nil
+	if config.Config().Node.IsTestnet() {
+		return ConvertToSHA256([]byte(config.Config().Node.Network)), nil
 	}
 	if codebase == nil || v == nil {
 		return nil, errors.New("psk: codebase or version required")
@@ -137,7 +137,7 @@ func GeneratePSK(codebase FileSystem, v *semver.Version) (PSK, error) {
 	entropy := generateAnchoredEntropy()
 	majorStr := strconv.FormatInt(int64(v.Major()), 10)
 
-	seed := append([]byte(config.ConfigFile.Node.Network), codeHash...)
+	seed := append([]byte(config.Config().Node.Network), codeHash...)
 	seed = append(seed, []byte(majorStr)...)
 	seed = append(seed, entropy...)
 	return ConvertToSHA256(seed), nil

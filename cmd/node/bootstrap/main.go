@@ -40,16 +40,16 @@ import (
 func main() {
 	defer closeWriter()
 
-	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
+	psk, err := security.GeneratePSK(root.GetCodeBase(), config.Config().Version)
 	if err != nil {
 		panic(err)
 	}
 
-	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
+	lvl, err := log.ParseLevel(config.Config().Logging.Level)
 	if err != nil {
 		log.Errorf(
 			"failed to parse log level %s: %v, defaulting to INFO level...",
-			config.ConfigFile.Logging.Level, err,
+			config.Config().Logging.Level, err,
 		)
 		lvl = log.InfoLevel
 	}
@@ -65,13 +65,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Infoln("bootstrap seed:", config.ConfigFile.Node.Seed)
-	seed := []byte(config.ConfigFile.Node.Seed)
+	log.Infoln("bootstrap seed:", config.Config().Node.Seed)
+	seed := []byte(config.Config().Node.Seed)
 	if len(seed) == 0 {
 		seed = []byte(rand.Text())
 	}
 
-	isInMemory := config.ConfigFile.Node.IsInMemory
+	isInMemory := config.Config().Node.IsInMemory
 
 	n, err := bootstrap.NewBootstrapNode(ctx, isInMemory, seed, psk)
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 		log.Fatalf("failed to start bootstrap node: %v", err)
 	}
 
-	m := metrics.NewMetricsClient(config.ConfigFile.Node.Metrics.Server, n.NodeInfo().ID.String(), true)
+	m := metrics.NewMetricsClient(config.Config().Node.Metrics.Server, n.NodeInfo().ID.String(), true)
 	m.PushStatusOnline()
 	<-interruptChan
 	log.Infoln("bootstrap node interrupted...")

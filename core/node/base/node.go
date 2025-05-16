@@ -81,7 +81,7 @@ func NewWarpNode(
 		return nil, err
 	}
 
-	infos, err := config.ConfigFile.Node.AddrInfos()
+	infos, err := config.Config().Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func NewWarpNode(
 		pskHash:   hex.EncodeToString(security.ConvertToSHA256(psk)),
 		streamer:  stream.NewStreamPool(ctx, node),
 		isClosed:  new(atomic.Bool),
-		version:   config.ConfigFile.Version,
+		version:   config.Config().Version,
 		startTime: time.Now(),
 	}
 

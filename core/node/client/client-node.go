@@ -60,7 +60,7 @@ func NewClientNode(ctx context.Context, psk security.PSK) (_ *WarpClientNode, er
 	if err != nil {
 		log.Fatalf("client: fail generating key: %v", err)
 	}
-	serverNodeAddrDefault := fmt.Sprintf("/ip4/127.0.0.1/tcp/%s/p2p/", config.ConfigFile.Node.Port)
+	serverNodeAddrDefault := fmt.Sprintf("/ip4/127.0.0.1/tcp/%s/p2p/", config.Config().Node.Port)
 
 	n := &WarpClientNode{
 		ctx:            ctx,

@@ -153,7 +153,7 @@ func newRaft(
 		snapshotStore raft.SnapshotStore
 	)
 
-	infos, err := config.ConfigFile.Node.AddrInfos()
+	infos, err := config.Config().Node.AddrInfos()
 	if err != nil {
 		return nil, err
 	}
