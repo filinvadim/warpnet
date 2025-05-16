@@ -26,10 +26,11 @@ package dht
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filinvadim/warpnet/config"
 	"github.com/filinvadim/warpnet/core/discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
-	lip2pDiscovery "github.com/libp2p/go-libp2p/core/discovery"
+	lip2pDisc "github.com/libp2p/go-libp2p/core/discovery"
 
 	"github.com/filinvadim/warpnet/core/warpnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -76,7 +77,7 @@ import (
   implementing decentralized content lookup (as in IPFS), and enabling efficient routing in a distributed network.
 */
 
-const WarpnetRendezvous = "rendezvous-point@warpnet"
+const warpnetRendezvousPrefix = "rendezvous-warpnet@%s"
 
 type RoutingStorer interface {
 	warpnet.WarpBatching
@@ -211,18 +212,19 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		tryouts--
 	}
 
-	rendezvousCtx, cancel := context.WithCancel(context.Background())
+	rndvuCtx, cancel := context.WithCancel(context.Background())
 	d.cancelFunc = cancel
 
 	routingDiscovery := drouting.NewRoutingDiscovery(d.dht)
-	_, err := routingDiscovery.Advertise(
-		rendezvousCtx, WarpnetRendezvous, lip2pDiscovery.TTL(time.Hour*3), lip2pDiscovery.Limit(5))
+
+	namespace := fmt.Sprintf(warpnetRendezvousPrefix, config.ConfigFile.Node.Network)
+	_, err := routingDiscovery.Advertise(rndvuCtx, namespace, lip2pDisc.TTL(time.Hour*3), lip2pDisc.Limit(5))
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 		log.Errorf("dht rendezvous: advertise: %s", err)
 		return
 	}
 
-	peerChan, err := routingDiscovery.FindPeers(rendezvousCtx, WarpnetRendezvous)
+	peerChan, err := routingDiscovery.FindPeers(rndvuCtx, namespace)
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 		log.Errorf("dht rendezvous: find peers: %s", err)
 		return
@@ -237,7 +239,7 @@ func (d *DistributedHashTable) runRendezvousDiscovery(ownID warpnet.WarpPeerID) 
 		select {
 		case <-d.stopChan:
 			return
-		case <-rendezvousCtx.Done():
+		case <-rndvuCtx.Done():
 			return
 		case peerInfo := <-peerChan:
 			if peerInfo.ID == ownID {
