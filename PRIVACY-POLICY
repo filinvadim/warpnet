@@ -21,7 +21,7 @@ You are responsible for making your own backups.
 When you communicate with other WarpNet users, data is transmitted directly between devices using end-to-end protocols.
 WarpNet nodes do not act as intermediaries and cannot access the contents of your communications.
 
-4. No Tracking, No Ads (for now)
+4. Tracking-Free by Design. Sponsored Content May Be Introduced
 
 WarpNet does not track your usage, behavior, or location. Currently, there is no advertising system integrated into
 WarpNet. However, sponsored content may be introduced in the future, and will always be clearly marked.
@@ -39,12 +39,11 @@ or abusive material. WarpNet is an open system, but local community moderation m
 WarpNet is open-source software. Anyone may inspect, audit, or modify the code. This ensures transparency and encourages
 privacy-respecting development practices.
 
-7. GDPR and CCPA Compliance
+7. GDPR and CCPA: Applicability in a Decentralized Context
 
-WarpNet is designed to minimize data collection and empower user control, in line with the principles of the
-General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA).
+WarpNet is designed to follow the ethos of privacy principles of laws such as the GDPR and CCPA. However, due to its
+decentralized architecture, these laws do not directly apply, as there is no centralized data controller or processor.
 
-However, due to its decentralized architecture, there is no centralized data controller or processor.
 All data remains under your control on your local device. Therefore:
 
     We do not collect or store any personal information.
