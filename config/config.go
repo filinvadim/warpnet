@@ -63,15 +63,13 @@ func init() {
 
 	_ = viper.BindPFlags(pflag.CommandLine)
 
-	bootstrapAddrs := viper.GetString("node.bootstrap")
 	bootstrapAddrList := make([]string, 0, len(mainnetBootstrapNodes))
-	if strings.Contains(bootstrapAddrs, ",") {
-		bootstrapAddrList = strings.Split(bootstrapAddrs, ",")
-	} else {
-		bootstrapAddrList = []string{bootstrapAddrs} // single addr
-	}
+	bootstrapAddrs := viper.GetString("node.bootstrap")
 
-	if bootstrapAddrs == "" {
+	split := strings.Split(bootstrapAddrs, ",")
+	if len(split) != 0 {
+		bootstrapAddrList = split
+	} else {
 		bootstrapAddrList = mainnetBootstrapNodes
 	}
 

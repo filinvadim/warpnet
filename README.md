@@ -1,6 +1,6 @@
 [![Go Version](https://img.shields.io/badge/Go-1.24+-brightgreen)](https://golang.org/dl/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
-[![Release](https://github.com/Warp-net/warpnet/actions/workflows/release.yaml/badge.svg)](https://github.com/Warp-net/warpnet/actions/workflows/release.yaml)
+[![Build Bootstrap Node](https://github.com/filinvadim/Warp-net/actions/workflows/build-bootstrap.yaml/badge.svg)](https://github.com/filinvadim/Warp-net/actions/workflows/build-bootstrap.yaml)
 [![Telegram Chat](https://img.shields.io/badge/chat-telegram-blue.svg)](https://t.me/warpnetdev)
 <br />
 <div align="center">
