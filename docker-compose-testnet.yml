@@ -11,7 +11,7 @@ services:
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
       - NODE_SEED=warpnet1
-      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWEPDnDU8rzZSRNfS1VNUyDp8WZ67rjKXk3tLhfwJDMqT1,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWPHt4PQMvgfMhdcpYZNUduWxNkU1W9somo8gdJq9pBWM1
+      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ
     volumes:
     - snapshot1:/tmp/snapshot:rw
 
@@ -27,7 +27,7 @@ services:
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
       - NODE_SEED=warpnet2
-      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWEPDnDU8rzZSRNfS1VNUyDp8WZ67rjKXk3tLhfwJDMqT1,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWPHt4PQMvgfMhdcpYZNUduWxNkU1W9somo8gdJq9pBWM1
+      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ
     volumes:
       - snapshot2:/tmp/snapshot:rw
 
@@ -43,7 +43,7 @@ services:
       - NODE_INMEMORY=false
       - LOGGING_LEVEL=debug
       - NODE_SEED=warpnet3
-      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWEPDnDU8rzZSRNfS1VNUyDp8WZ67rjKXk3tLhfwJDMqT1,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWPHt4PQMvgfMhdcpYZNUduWxNkU1W9somo8gdJq9pBWM1
+      - NODE_BOOTSTRAP=/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU,/ip4/${NODE_HOST}/tcp/4001/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ
     volumes:
       - snapshot3:/tmp/snapshot:rw
 

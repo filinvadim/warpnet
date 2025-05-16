@@ -23,5 +23,5 @@ jobs:
       - name: Deploy to Testnet Droplet
         run: |
           scp ./deploy.sh chmo@${{ secrets.HOST_SASHA }}:/home/chmo
-          scp ./docker-compose-common.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose-warpnet.yml
+          scp ./docker-compose-testnet.yml chmo@${{ secrets.HOST_SASHA }}:/home/chmo/docker-compose-warpnet.yml
           ssh chmo@${{ secrets.HOST_SASHA }} 'NODE_HOST=${{ secrets.HOST_SASHA }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /home/chmo/deploy.sh'
