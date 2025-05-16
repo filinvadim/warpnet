@@ -1,7 +1,7 @@
 # WARPNET-FRONTEND
 ## Requirements
-    npm version 9.2.0
-    golang >=1.23 (brew install go)
+    npm version >= 9.2.0
+    golang >= 1.23 (brew install go)
 
 ## How to run node (dev mode)
 - commit and push your frontend changes (INCLUDING DIST FOLDER!)

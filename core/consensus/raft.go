@@ -73,8 +73,8 @@ import (
 */
 
 const (
-	initiatorServerID raft.ServerID = "12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j"
-	ErrNoRaftCluster                = warpnet.WarpError("consensus: no cluster found")
+	initiatorServerID = "12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j" // NODE_SEED=warpnet1
+	ErrNoRaftCluster  = warpnet.WarpError("consensus: no cluster found")
 )
 
 type (
