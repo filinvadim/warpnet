@@ -40,14 +40,10 @@ import (
 func main() {
 	defer closeWriter()
 
-	log.Infoln("Warpnet version:", config.ConfigFile.Version)
-
 	psk, err := security.GeneratePSK(root.GetCodeBase(), config.ConfigFile.Version)
 	if err != nil {
 		panic(err)
 	}
-
-	log.Infoln("bootstrap nodes: ", config.ConfigFile.Node.Bootstrap)
 
 	lvl, err := log.ParseLevel(config.ConfigFile.Logging.Level)
 	if err != nil {
