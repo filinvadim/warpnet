@@ -1,4 +1,4 @@
-Terms and Conditions of WarpNet
+# **Terms and Conditions of WarpNet**
 
 Effective Date: 15/05/2025
 Last Updated: 15/05/2025
@@ -99,5 +99,5 @@ Continued use of WarpNet implies acceptance of the latest version of these terms
 10. Governance and Contact
 
 WarpNet is not operated by a single entity. The project is developed and maintained by a decentralized community.
-For questions, contributions, or reports, contact the maintainers via the official WarpNet GitHub repository -
-'https://github.com/Warp-net' or community discussion channels - 'https://t.me/warpnetdev'.
+For questions, contributions, or reports, contact the maintainers via the official WarpNet GitHub repository —
+'https://github.com/Warp-net' or community discussion channels — 'https://t.me/warpnetdev'.

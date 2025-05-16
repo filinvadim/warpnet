@@ -1,4 +1,4 @@
-Privacy Policy
+# **Privacy Policy**
 
 Effective Date: 15/05/2025
 
@@ -7,7 +7,7 @@ This Privacy Policy explains what data is collected, how it is used, and the res
 
 1. No Central Data Collection
 
-WarpNet does not store any of your personal data on centralized servers - there're no centralized servers.
+WarpNet does not store any of your personal data on centralized servers — there're no centralized servers.
 All your data — including messages, media, and account settings — is stored locally on your own device.
 
 2. Local-Only Storage
@@ -61,8 +61,8 @@ By using WarpNet, you acknowledge and accept this decentralized responsibility m
 
 To discourage the spread of illegal and disturbing media content, WarpNet automatically embeds encrypted
 forensic metadata into media files uploaded through the platform. This metadata includes the originating
-IP address,the device MAC address, username, account ID and other user and node specific information at the
-time of upload.These identifiers are encrypted using computationally expensive method that make decryption
+IP address, the device MAC address, username, account ID and other user and node specific information at the
+time of upload. These identifiers are encrypted using computationally expensive method that make decryption
 infeasible for the average user.
 However, it may be technically possible for entities with substantial computing resources — such as law enforcement
 agencies, security research institutions, or data centers — to decrypt such metadata under lawful conditions.
