@@ -5,11 +5,14 @@ licensorize:
 kill:
 	pkill -9 main
 
+run-member:
+	go run cmd/node/member/main.go --node.network testnet
+
 second-member:
-	go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
+	go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022 --node.network testnet
 
 third-member:
-	go run cmd/node/member/main.go --database.dir storage3 --node.port 4031 --server.port 4032
+	go run cmd/node/member/main.go --database.dir storage3 --node.port 4031 --server.port 4032  --node.network testnet
 
 tests:
 	CGO_ENABLED=0 go test -count=1 -short ./...

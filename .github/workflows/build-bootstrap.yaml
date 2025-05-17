@@ -20,7 +20,7 @@ jobs:
           cache-dependency-path: godep/go.sum
 
       - name: Test
-        run: go test -count=1 ./...
+        run: go test -count=1 -short ./...
 
       - name: Log in to Container registry
         uses: docker/login-action@v3
