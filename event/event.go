@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	Accepted acceptedResponse = `["code":0,"message":"Accepted"]`
+	Accepted acceptedResponse = `{"code":0,"message":"Accepted"}`
 )
 
 type ID = string

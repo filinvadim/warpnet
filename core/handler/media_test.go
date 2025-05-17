@@ -55,11 +55,8 @@ func TestUploadImage_Success(t *testing.T) {
 	bt, err := json.JSON.Marshal(ev)
 	assert.NoError(t, err)
 
-	res, err := StreamUploadImageHandler(n{}, m{}, u{})(bt, s{})
+	_, err = StreamUploadImageHandler(n{}, m{}, u{})(bt, s{})
 	assert.NoError(t, err)
-	if res != nil {
-		assert.Equal(t, event.Accepted, res)
-	}
 }
 
 const (

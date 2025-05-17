@@ -4,11 +4,11 @@
     golang >= 1.23 (brew install go)
 
 ## How to run node (dev mode)
-- commit and push your frontend changes (INCLUDING DIST FOLDER!)
-  to master branch (it's okay);
-- switch to backend repo and call command:
+* commit and push your frontend changes (INCLUDING DIST FOLDER!)
+* switch to backend repo and call command:
+
 ```bash 
-    make get-frontend
+     go get github.com/Warp-net/warpnet-frontend && go mod vendor
 ```
 - in backend repo run node:
 ```bash 

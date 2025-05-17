@@ -17,6 +17,10 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.24
+          cache-dependency-path: godep/go.sum
+
+      - name: Test
+        run: go test -count=1 ./...
 
       - name: Log in to Container registry
         uses: docker/login-action@v3

@@ -31,6 +31,7 @@ import (
 	"github.com/filinvadim/warpnet/core/middleware"
 	"github.com/filinvadim/warpnet/core/warpnet"
 	"github.com/filinvadim/warpnet/domain"
+	"github.com/filinvadim/warpnet/event"
 	"github.com/filinvadim/warpnet/json"
 	log "github.com/sirupsen/logrus"
 )
@@ -47,6 +48,6 @@ func StreamNodesPairingHandler(serverAuthInfo domain.AuthNodeInfo) middleware.Wa
 			log.Errorf("pair: token does not match server identity")
 			return nil, warpnet.WarpError("token mismatch")
 		}
-		return nil, nil
+		return event.Accepted, nil
 	}
 }

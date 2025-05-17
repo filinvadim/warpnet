@@ -28,6 +28,8 @@ resulting from the use or misuse of this software.
 package database
 
 import (
+	"crypto/rand"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/goleak"
 	"testing"
 	"time"
@@ -35,96 +37,141 @@ import (
 	"github.com/filinvadim/warpnet/database/storage"
 	"github.com/filinvadim/warpnet/domain"
 	"github.com/oklog/ulid/v2"
-	"github.com/stretchr/testify/suite"
 )
 
-type ChatRepoTestSuite struct {
-	suite.Suite
-	db   *storage.DB
-	repo *ChatRepo
-}
+const testUserID = "01BX5ZZKBKACTAV9WEVGEMTEST"
 
-func (s *ChatRepoTestSuite) SetupSuite() {
+func setupChatRepo() (*ChatRepo, func(), error) {
 	var err error
-	s.db, err = storage.New(".", true, "")
-	s.Require().NoError(err)
-	authRepo := NewAuthRepo(s.db)
+	db, err := storage.New(".", true, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	dbCloseFunc := db.Close
 
-	err = authRepo.Authenticate("test", "test")
-	s.Require().NoError(err)
+	authRepo := NewAuthRepo(db)
 
-	s.repo = NewChatRepo(s.db)
+	err = authRepo.Authenticate(rand.Text(), rand.Text())
+	if err != nil {
+		return nil, dbCloseFunc, err
+	}
+
+	return NewChatRepo(db), dbCloseFunc, nil
 }
 
-func (s *ChatRepoTestSuite) TearDownSuite() {
-	s.db.Close()
-}
+func TestCreateAndGetChat(t *testing.T) {
+	defer goleak.VerifyNone(t)
 
-func (s *ChatRepoTestSuite) TestCreateAndGetChat() {
-	ownerID := ulid.Make().String()
+	ownerID := testUserID
 	otherID := ulid.Make().String()
 
-	chat, err := s.repo.CreateChat(nil, ownerID, otherID)
-	s.Require().NoError(err)
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
 
-	fetched, err := s.repo.GetChat(chat.Id)
-	s.Require().NoError(err)
-	s.Equal(chat.Id, fetched.Id)
-	s.Equal(chat.OwnerId, fetched.OwnerId)
-	s.Equal(chat.OtherUserId, fetched.OtherUserId)
+	chat, err := repo.CreateChat(nil, ownerID, otherID)
+	assert.NoError(t, err)
+
+	fetched, err := repo.GetChat(chat.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, chat.Id, fetched.Id)
+	assert.Equal(t, chat.OwnerId, fetched.OwnerId)
+	assert.Equal(t, chat.OtherUserId, fetched.OtherUserId)
+
+	closeWriter()
+
 }
 
-func (s *ChatRepoTestSuite) TestDeleteChat() {
-	ownerID := ulid.Make().String()
+func TestDeleteChat(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ownerID := testUserID
 	otherID := ulid.Make().String()
-	chat, err := s.repo.CreateChat(nil, ownerID, otherID)
-	s.Require().NoError(err)
 
-	err = s.repo.DeleteChat(chat.Id)
-	s.Require().NoError(err)
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
 
-	deleted, err := s.repo.GetChat(chat.Id)
-	s.Require().NoError(err)
-	s.Empty(deleted.Id)
+	chat, err := repo.CreateChat(nil, ownerID, otherID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, chat.Id)
+
+	err = repo.DeleteChat(chat.Id)
+	assert.NoError(t, err)
+
+	deleted, err := repo.GetChat(chat.Id)
+	assert.Error(t, err)
+	assert.Empty(t, deleted.Id)
+	closeWriter()
+
 }
 
-func (s *ChatRepoTestSuite) TestGetUserChats() {
-	userID := ulid.Make().String()
+func TestGetUserChats(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	userID := testUserID
+
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
+
 	for i := 0; i < 3; i++ {
 		other := ulid.Make().String()
-		_, err := s.repo.CreateChat(nil, userID, other)
-		s.Require().NoError(err)
+		_, err := repo.CreateChat(nil, userID, other)
+		assert.NoError(t, err)
 	}
 
 	limit := uint64(10)
-	chats, cursor, err := s.repo.GetUserChats(userID, &limit, nil)
-	s.Require().NoError(err)
-	s.Len(chats, 3)
-	s.Equal(cursor, "end")
+	chats, cursor, err := repo.GetUserChats(userID, &limit, nil)
+	assert.NoError(t, err)
+	assert.Len(t, chats, 3)
+	assert.Equal(t, cursor, "end")
+
+	closeWriter()
+
 }
 
-func (s *ChatRepoTestSuite) TestCreateAndGetMessage() {
-	ownerID := ulid.Make().String()
+func TestCreateAndGetMessage(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ownerID := testUserID
 	otherID := ulid.Make().String()
-	chat, _ := s.repo.CreateChat(nil, ownerID, otherID)
+
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
+
+	chat, _ := repo.CreateChat(nil, ownerID, otherID)
 
 	msg := domain.ChatMessage{
 		ChatId: chat.Id,
 		Text:   "hello",
 	}
 
-	created, err := s.repo.CreateMessage(msg)
-	s.Require().NoError(err)
+	created, err := repo.CreateMessage(msg)
+	assert.NoError(t, err)
 
-	got, err := s.repo.GetMessage(chat.Id, created.Id)
-	s.Require().NoError(err)
-	s.Equal(msg.Text, got.Text)
+	got, err := repo.GetMessage(chat.Id, created.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, msg.Text, got.Text)
+
+	closeWriter()
+
 }
 
-func (s *ChatRepoTestSuite) TestListMessages() {
-	ownerID := ulid.Make().String()
+func TestListMessages(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ownerID := testUserID
 	otherID := ulid.Make().String()
-	chat, _ := s.repo.CreateChat(nil, ownerID, otherID)
+
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
+
+	chat, err := repo.CreateChat(nil, ownerID, otherID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, chat.Id)
 
 	for i := 0; i < 5; i++ {
 		msg := domain.ChatMessage{
@@ -132,39 +179,47 @@ func (s *ChatRepoTestSuite) TestListMessages() {
 			Text:      "msg",
 			CreatedAt: time.Now().Add(-time.Duration(i) * time.Second),
 		}
-		_, err := s.repo.CreateMessage(msg)
-		s.Require().NoError(err)
+		_, err := repo.CreateMessage(msg)
+		assert.NoError(t, err)
 	}
 
 	limit := uint64(10)
-	msgs, cursor, err := s.repo.ListMessages(chat.Id, &limit, nil)
-	s.Require().NoError(err)
-	s.Len(msgs, 5)
-	s.Equal(cursor, "end")
+	msgs, cursor, err := repo.ListMessages(chat.Id, &limit, nil)
+	assert.NoError(t, err)
+	assert.Len(t, msgs, 5)
+	assert.Equal(t, cursor, "end")
+
+	closeWriter()
+
 }
 
-func (s *ChatRepoTestSuite) TestDeleteMessage() {
-	ownerID := ulid.Make().String()
+func TestDeleteMessage(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ownerID := testUserID
 	otherID := ulid.Make().String()
-	chat, _ := s.repo.CreateChat(nil, ownerID, otherID)
+
+	repo, closeF, err := setupChatRepo()
+	assert.NoError(t, err)
+	defer closeF()
+
+	chat, err := repo.CreateChat(nil, ownerID, otherID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, chat.Id)
 
 	msg := domain.ChatMessage{
 		ChatId: chat.Id,
 		Text:   "to delete",
 	}
-	created, _ := s.repo.CreateMessage(msg)
+	created, _ := repo.CreateMessage(msg)
 
-	err := s.repo.DeleteMessage(chat.Id, created.Id)
-	s.Require().NoError(err)
+	err = repo.DeleteMessage(chat.Id, created.Id)
+	assert.NoError(t, err)
 
-	got, err := s.repo.GetMessage(chat.Id, created.Id)
-	s.Require().NoError(err)
-	s.Empty(got.Text)
-}
+	got, err := repo.GetMessage(chat.Id, created.Id)
+	assert.Error(t, err)
+	assert.Empty(t, got.Text)
 
-func TestChatRepoTestSuite(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
-	suite.Run(t, new(ChatRepoTestSuite))
 	closeWriter()
+
 }

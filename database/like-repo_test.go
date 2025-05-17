@@ -86,12 +86,12 @@ func (s *LikeRepoTestSuite) TestLikeAndUnlike() {
 	s.Equal(userId, likers[0])
 
 	// Unlike
-	likes, err = s.repo.Unlike(userId, tweetId)
+	likes, err = s.repo.Unlike(tweetId, userId)
 	s.Require().NoError(err)
 	s.Equal(uint64(0), likes)
 
 	// Unlike again (should not fail)
-	likes, err = s.repo.Unlike(userId, tweetId)
+	likes, err = s.repo.Unlike(tweetId, userId)
 	s.Require().NoError(err)
 	s.Equal(uint64(0), likes)
 

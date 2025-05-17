@@ -83,6 +83,7 @@ func (repo *LikeRepo) Like(tweetId, userId string) (likesCount uint64, err error
 
 	_, err = txn.Get(likerKey)
 	if !errors.Is(err, storage.ErrKeyNotFound) {
+		txn.Commit()
 		return repo.LikesCount(tweetId) // like exists
 	}
 
@@ -124,6 +125,7 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err err
 
 	_, err = txn.Get(likerKey)
 	if errors.Is(err, storage.ErrKeyNotFound) { // already unliked
+		txn.Commit()
 		return repo.LikesCount(tweetId)
 	}
 	if err = txn.Delete(likerKey); err != nil {
@@ -131,7 +133,7 @@ func (repo *LikeRepo) Unlike(tweetId, userId string) (likesCount uint64, err err
 	}
 	likesCount, err = txn.Decrement(likeKey)
 	if errors.Is(err, storage.ErrKeyNotFound) {
-		return 0, nil
+		return 0, txn.Commit()
 	}
 	if err != nil {
 		return 0, err

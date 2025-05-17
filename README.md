@@ -28,16 +28,8 @@
     <li>
       <a href="#general-principles-of-the-warp-network">General Principles</a>
     </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#usage-and-available-options">Usage and available options</a></li>
-        <li><a href="#how-to-run-single-node-dev-mode">How to run single node (dev mode)</a></li>
-        <li><a href="#how-to-run-multiple-nodes-dev-mode">How to run multiple nodes (dev mode)</a></li>
-        <li><a href="#how-to-run-multiple-nodes-in-isolated-network-dev-mode">How to run multiple nodes in isolated network (dev mode)</a></li>
-      </ul>
-    </li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="https://github.com/filinvadim/Warp-net/docs">Documentation</a></li>
     <li><a href="#TODO">TODO</a></li>
     <li><a href="#Contributing">Contributing</a></li>
     <li><a href="#Contact">Contact</a></li>
@@ -64,56 +56,9 @@
 14. Node owners bear full personal responsibility for any content they upload to WarpNet.
 
 ## Getting Started
-### Prerequisites
 
 List of software needed and how to install them.
 * [Golang](https://go.dev/doc/install)
-
-### Usage and available options
-
-```bash 
-    --database.dir string          Database directory name (default "storage")
-    --logging.level string         Logging level (default "info")
-    --node.bootstrap string        Bootstrap nodes multiaddr list, comma separated
-    --node.host string             Node host (default "0.0.0.0")
-    --node.inmemory                Bootstrap node runs without persistent storage
-    --node.metrics.server string   Metrics push server address
-    --node.network string          Private network. Use 'testnet' for testing env. (default "testnet")
-    --node.port string             Node port (default "4001")
-    --node.seed string             Bootstrap node seed for deterministic ID generation (random string)
-    --server.host string           Server host (default "localhost")
-    --server.port string           Server port (default "4002")
-```
-The above parameters also could be set as environment variables:
-```
-    NODE_PORT=4001
-    NODE_SEED=warpnet1
-    NODE_HOST=207.154.221.44
-    LOGGING_LEVEL=debug 
-    ...
-```
-
-### How to run single node (dev mode)
-- bootstrap node
-```bash 
-    go run cmd/node/bootstrap/main.go
-```
-- member node
-```bash 
-    go run cmd/node/member/main.go
-```
-
-### How to run multiple nodes (dev mode)
-Change database directory name and ports. Run every node as an independent OS process.
-```bash 
-    go run cmd/node/member/main.go --database.dir storage2 --node.port 4021 --server.port 4022
-```
-
-### How to run node in isolated network (dev mode)
-Change `node.network` flag to different one.
-```bash 
-    go run cmd/node/member/main.go --node.network myownnetwork
-```
 
 ## TODO
 - [ ] Set up a website

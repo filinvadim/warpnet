@@ -3,7 +3,6 @@
 echo "Pre-commit hook started..."
 
 CONFIG="version"
-SPEC_LOCAL="spec/local-api.yml"
 
 if [ ! -f "$CONFIG" ]; then
     echo "Config file not found!"
@@ -17,10 +16,8 @@ PATCH=$((PATCH + 1))
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 
 sed -i "s/^$CURRENT_VERSION\$/$NEW_VERSION/" "$CONFIG"
-sed -i "s/\(version:\) [0-9]\+\.[0-9]\+\.[0-9]\+/\1 $NEW_VERSION/" "$SPEC_LOCAL"
 
 git add "$CONFIG"
-git add "$SPEC_LOCAL"
 
 git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
 

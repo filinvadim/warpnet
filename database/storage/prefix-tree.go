@@ -169,7 +169,6 @@ func (k DatabaseKey) DropId() string {
 		// Если двоеточия нет, возвращаем оригинальную строку
 		return key
 	}
-	// Возвращаем строку до последнего двоеточия
 	return key[:lastColon]
 }
 
