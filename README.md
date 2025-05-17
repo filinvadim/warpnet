@@ -55,6 +55,10 @@
 13. Hosting a WarpNet bootstrap node must be incentivized with rewards.
 14. Node owners bear full personal responsibility for any content they upload to WarpNet.
 
+## HOW TO HELP 
+
+[Answer](HOW-TO-HELP.md)
+
 ## Getting Started
 
 List of software needed and how to install them.
