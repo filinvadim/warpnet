@@ -63,7 +63,7 @@ func init() {
 	pflag.String("node.host", "0.0.0.0", "Node host")
 	pflag.String("node.port", "4001", "Node port")
 	pflag.String("node.seed", "", "Bootstrap node seed for deterministic ID generation (random string)")
-	pflag.String("node.network", "testnet", "Private network. Use 'testnet' for testing env.")
+	pflag.String("node.network", "warpnet", "Private network. Use 'testnet' for testing env.")
 	pflag.String("node.bootstrap", "", "Bootstrap nodes multiaddr list, comma separated")
 	pflag.Bool("node.inmemory", false, "Bootstrap node runs without persistent storage")
 	pflag.String("node.metrics.server", "", "Metrics server address")
