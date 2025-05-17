@@ -522,7 +522,6 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 	if _, leaderId := c.raft.LeaderWithID(); c.raftID != leaderId {
 		return
 	}
-	log.Debugf("consensus: new voter adding.. %s", info.ID.String())
 
 	id := raft.ServerID(info.ID.String())
 	addr := raft.ServerAddress(info.ID.String())
@@ -532,6 +531,7 @@ func (c *consensusService) AddVoter(info warpnet.PeerAddrInfo) {
 		log.Errorf("consensus: failed to add voted: %v", wait.Error())
 		return
 	}
+	log.Debugf("consensus: new voter added %s", info.ID.String())
 
 	if _, err := c.cache.getVoter(id); errors.Is(err, errVoterNotFound) {
 		log.Infof("consensus: new voter added %s", info.ID.String())

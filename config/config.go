@@ -42,10 +42,16 @@ const (
 
 const noticeTemplate = " %s version %s. Copyright (C) <%s> <%s>. This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to redistribute it under certain conditions.\n\n\n"
 
-var mainnetBootstrapNodes = []string{
+var warpnetBootstrapNodes = []string{
 	"/ip4/207.154.221.44/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j",
 	"/ip4/207.154.221.44/tcp/4002/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU",
 	"/ip4/207.154.221.44/tcp/4003/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ",
+}
+
+var testnetBootstrapNodes = []string{
+	"/ip4/88.119.169.156/tcp/4001/p2p/12D3KooWMKZFrp1BDKg9amtkv5zWnLhuUXN32nhqMvbtMdV2hz7j",
+	"/ip4/88.119.169.156/tcp/4002/p2p/12D3KooWSjbYrsVoXzJcEtmgJLMVCbPXMzJmNN1JkEZB9LJ2rnmU",
+	"/ip4/88.119.169.156/tcp/4003/p2p/12D3KooWNXSGyfTuYc3JznW48jay73BtQgHszWfPpyF581EWcpGJ",
 }
 
 var configSingleton config
@@ -71,7 +77,7 @@ func init() {
 
 	_ = viper.BindPFlags(pflag.CommandLine)
 
-	bootstrapAddrList := make([]string, 0, len(mainnetBootstrapNodes))
+	bootstrapAddrList := make([]string, 0, len(warpnetBootstrapNodes))
 	bootstrapAddrs := viper.GetString("node.bootstrap")
 
 	split := strings.Split(bootstrapAddrs, ",")
@@ -80,8 +86,11 @@ func init() {
 	}
 
 	network := strings.TrimSpace(viper.GetString("node.network"))
-	if len(bootstrapAddrList) == 0 && network == warpnetNetwork {
-		bootstrapAddrList = mainnetBootstrapNodes
+	if network == warpnetNetwork {
+		bootstrapAddrList = append(bootstrapAddrList, warpnetBootstrapNodes...)
+	}
+	if network == testNetNetwork {
+		bootstrapAddrList = append(bootstrapAddrList, testnetBootstrapNodes...)
 	}
 
 	version := root.GetVersion()
